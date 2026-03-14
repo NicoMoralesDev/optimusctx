@@ -18,7 +18,7 @@
 
 - Active milestone: v1 foundation
 - Active phase: Phase 1 - Bootstrap, Repository Discovery, and Persistent State
-- Next planning action: execute Wave 3 plan `01-04`
+- Next planning action: verify Phase 1 goal achievement
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -29,6 +29,8 @@
 - Persistent runtime state is now anchored under `<repo>/.optimusctx/` with `state.json`, `db.sqlite`, `logs/`, and `tmp/` as the canonical Phase 1 layout.
 - SQLite schema evolution now runs through embedded forward-only SQL migrations recorded in `schema_migrations`.
 - Store initialization now creates state directories before opening SQLite, applies migrations, and syncs `state.json` schema metadata from the active migration version.
+- `optimusctx init` now bootstraps `.optimusctx`, persists the initial repository inventory, and reports operator-facing bootstrap details.
+- `optimusctx snippet` now prints a manual-copy integration snippet to stdout and performs no repository writes.
 
 ## References
 
@@ -44,9 +46,11 @@
 - Plan `01-01` is complete with a working Go CLI scaffold, version output, and bootstrap documentation.
 - Plan `01-02` is complete with repository root detection, ignore-aware discovery, and persistence-ready metadata records under `internal/repository`.
 - Plan `01-03` is complete with repository-local `.optimusctx` layout helpers, SQLite migrations, and store initialization under `internal/state` and `internal/store`.
+- Plan `01-04` is complete with end-to-end `init` and `snippet` command integration under `internal/app` and `internal/cli`.
 - Verification for `01-01` used a local Go toolchain installed under `/tmp/optimusctx-go`.
 - Verification for `01-02` also used `/tmp/optimusctx-go/go/bin/go` with `GOCACHE` and `GOMODCACHE` redirected into `/tmp`.
 - Verification for `01-03` used the same `/tmp/optimusctx-go` toolchain and `/tmp` Go caches for SQLite-backed tests.
+- Verification for `01-04` used the same toolchain for targeted tests plus temporary built-binary checks for `init` and `snippet` in fixture repositories.
 
 ---
-*Last updated: 2026-03-14 after completing plans 01-01 through 01-03*
+*Last updated: 2026-03-14 after completing plans 01-01 through 01-04*
