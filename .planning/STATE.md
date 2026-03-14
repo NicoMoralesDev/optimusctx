@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 3
 current_phase_name: Structural Extraction and Repository Artifact Model
-current_plan: 0
-status: ready_to_plan
-stopped_at: Completed 02-06-PLAN.md
-last_updated: "2026-03-14T23:22:34.115Z"
+current_plan: 1
+status: executing
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-03-14T23:52:15.920Z"
 last_activity: 2026-03-14
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 10
-  completed_plans: 10
-  percent: 100
+  total_plans: 14
+  completed_plans: 11
+  percent: 79
 ---
 
 # Planning State: OptimusCtx
@@ -23,13 +23,13 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready for next phase planning
+**Status:** Ready to execute
 **Current Phase:** 3
 **Current Phase Name:** Structural Extraction and Repository Artifact Model
 **Total Phases:** 6
-**Current Plan:** 0
+**Current Plan:** 1
 **Total Plans in Phase:** 6
-**Progress:** [██████████] 100%
+**Progress:** [████████░░] 79%
 **Last Activity:** 2026-03-14
 **Last Activity Description:** Completed plan 02-06 gap closure for degraded refresh rollback, recovery, and smoke guidance
 
@@ -123,6 +123,9 @@ progress:
 - [Phase 02]: Ignored-on-both-sides paths are excluded from unchanged totals so refresh counts only describe tracked repository content.
 - [Phase 02]: Degraded refresh coverage reuses the shared InjectFailure seam and must prove last-good snapshot rollback plus fresh recovery on the same repository.
 - [Phase 02]: Phase 2 smoke guidance now targets disposable temp Git repositories via go install or local go run; npm and npx remain out of scope.
+- [Phase 03]: Persist structural coverage in file_extractions while keeping files.language as the routing hint and single file-inventory source of truth.
+- [Phase 03]: Replace per-file symbols transactionally inside SQLite so later generations cannot mix stale and current artifacts.
+- [Phase 03]: Build repository-map inputs from top-level persisted symbols and explicit coverage states instead of parser-owned blobs.
 
 ## Blockers
 
@@ -130,8 +133,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-14T23:22:34.112Z
-**Stopped At:** Completed 02-06-PLAN.md
+**Last Date:** 2026-03-14T23:52:15.917Z
+**Stopped At:** Completed 03-01-PLAN.md
 **Resume File:** None
 
 ---

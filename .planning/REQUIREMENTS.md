@@ -31,10 +31,10 @@
 
 ### Structural Extraction and Symbols
 
-- [ ] **EXTR-01**: Runtime can detect supported languages for indexed files.
+- [x] **EXTR-01**: Runtime can detect supported languages for indexed files.
 - [ ] **EXTR-02**: Runtime can extract structural blocks and symbols from supported languages using deterministic parser-backed analysis.
-- [ ] **EXTR-03**: Runtime stores exact symbol spans, kinds, names, and parent relationships for supported files.
-- [ ] **EXTR-04**: Runtime degrades gracefully for unsupported or partially parsed files and surfaces coverage state in diagnostics.
+- [x] **EXTR-03**: Runtime stores exact symbol spans, kinds, names, and parent relationships for supported files.
+- [x] **EXTR-04**: Runtime degrades gracefully for unsupported or partially parsed files and surfaces coverage state in diagnostics.
 - [ ] **EXTR-05**: Runtime can generate a compact repository map from persisted structural artifacts.
 
 ### Context and Query Surface
@@ -110,10 +110,10 @@
 | REFR-03 | Phase 2 - Incremental Refresh and Freshness Model | Complete |
 | REFR-04 | Phase 2 - Incremental Refresh and Freshness Model | Complete |
 | REFR-05 | Phase 2 - Incremental Refresh and Freshness Model | Complete |
-| EXTR-01 | Phase 3 - Structural Extraction and Repository Artifact Model | Pending |
+| EXTR-01 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
 | EXTR-02 | Phase 3 - Structural Extraction and Repository Artifact Model | Pending |
-| EXTR-03 | Phase 3 - Structural Extraction and Repository Artifact Model | Pending |
-| EXTR-04 | Phase 3 - Structural Extraction and Repository Artifact Model | Pending |
+| EXTR-03 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
+| EXTR-04 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
 | EXTR-05 | Phase 3 - Structural Extraction and Repository Artifact Model | Pending |
 | CTX-01 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
 | CTX-02 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
