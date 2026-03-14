@@ -133,6 +133,21 @@ func TestTrackedMutationRefreshCounts(t *testing.T) {
 	if mutated.UnchangedFiles != 1 {
 		t.Fatalf("UnchangedFiles = %d, want 1", mutated.UnchangedFiles)
 	}
+
+	noOpAfterMutation, err := fixture.service.Refresh(context.Background(), RefreshRequest{
+		StartPath: fixture.repoRoot,
+		Reason:    repository.RefreshReasonManual,
+	})
+	if err != nil {
+		t.Fatalf("Refresh() no-op after mutation error = %v", err)
+	}
+
+	if noOpAfterMutation.ChangedFiles != 0 {
+		t.Fatalf("ChangedFiles = %d, want 0", noOpAfterMutation.ChangedFiles)
+	}
+	if noOpAfterMutation.UnchangedFiles != 5 {
+		t.Fatalf("UnchangedFiles = %d, want 5", noOpAfterMutation.UnchangedFiles)
+	}
 }
 
 func TestSnapshotEquivalence(t *testing.T) {

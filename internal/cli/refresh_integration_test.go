@@ -45,6 +45,16 @@ func TestTrackedMutationRefreshCounts(t *testing.T) {
 	assertContains(t, output, "moved files: 1")
 	assertContains(t, output, "newly ignored files: 1")
 	assertContains(t, output, "unchanged files: 1")
+
+	noOpOutput := fixture.runRefresh(t)
+	assertContains(t, noOpOutput, "refresh generation: 3")
+	assertContains(t, noOpOutput, "freshness: fresh")
+	assertContains(t, noOpOutput, "added files: 0")
+	assertContains(t, noOpOutput, "changed files: 0")
+	assertContains(t, noOpOutput, "deleted files: 0")
+	assertContains(t, noOpOutput, "moved files: 0")
+	assertContains(t, noOpOutput, "newly ignored files: 0")
+	assertContains(t, noOpOutput, "unchanged files: 5")
 }
 
 func TestDegradedRefreshRecovery(t *testing.T) {

@@ -60,7 +60,7 @@ func DiffSnapshots(current, persisted Snapshot) Diff {
 			case persistedFile.IgnoreStatus == repository.IgnoreStatusIncluded && currentFile.IgnoreStatus != repository.IgnoreStatusIncluded:
 				diff.NewlyIgnored = append(diff.NewlyIgnored, toCurrentChange(currentFile))
 			case currentFile.IgnoreStatus != repository.IgnoreStatusIncluded && persistedFile.IgnoreStatus != repository.IgnoreStatusIncluded:
-				diff.Unchanged = append(diff.Unchanged, toCurrentChange(currentFile))
+				continue
 			case currentFile.ContentHash == persistedFile.ContentHash:
 				diff.Unchanged = append(diff.Unchanged, toCurrentChange(currentFile))
 			default:
