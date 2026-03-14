@@ -27,11 +27,11 @@ func TestMigrationRunnerAppliesFreshDatabase(t *testing.T) {
 	}
 
 	versions := appliedVersions(t, db)
-	if !reflect.DeepEqual(versions, []int{1}) {
-		t.Fatalf("versions = %v, want [1]", versions)
+	if !reflect.DeepEqual(versions, []int{1, 2}) {
+		t.Fatalf("versions = %v, want [1 2]", versions)
 	}
 
-	assertTablesExist(t, db, "schema_migrations", "repositories", "directories", "files")
+	assertTablesExist(t, db, "schema_migrations", "repositories", "directories", "files", "refresh_runs", "refresh_file_events")
 }
 
 func TestApplyMigrationsIsNoOpWhenAlreadyCurrent(t *testing.T) {
@@ -67,8 +67,43 @@ func TestApplyMigrationsCreatesRequiredIndexes(t *testing.T) {
 	}
 
 	assertIndexColumns(t, db, "files", []string{"repository_id", "directory_path"})
+	assertIndexColumns(t, db, "files", []string{"repository_id", "path"})
 	assertIndexColumns(t, db, "files", []string{"repository_id", "ignore_status"})
 	assertIndexColumns(t, db, "files", []string{"repository_id", "language"})
+	assertIndexColumns(t, db, "directories", []string{"repository_id", "path"})
+	assertIndexColumns(t, db, "refresh_runs", []string{"repository_id", "started_at"})
+	assertIndexColumns(t, db, "refresh_runs", []string{"repository_id", "status"})
+	assertIndexColumns(t, db, "refresh_file_events", []string{"refresh_run_id", "path"})
+	assertIndexColumns(t, db, "refresh_file_events", []string{"repository_id", "path"})
+}
+
+func TestApplyMigrationsAddsRefreshStateColumns(t *testing.T) {
+	t.Parallel()
+
+	db := openTestDatabase(t)
+	defer db.Close()
+
+	if err := Apply(context.Background(), db); err != nil {
+		t.Fatalf("Apply() error = %v", err)
+	}
+
+	assertColumnExists(t, db, "repositories", "last_refresh_started_at")
+	assertColumnExists(t, db, "repositories", "last_refresh_completed_at")
+	assertColumnExists(t, db, "repositories", "last_refresh_reason")
+	assertColumnExists(t, db, "repositories", "last_refresh_status")
+	assertColumnExists(t, db, "repositories", "freshness_status")
+	assertColumnExists(t, db, "repositories", "freshness_reason")
+	assertColumnExists(t, db, "repositories", "current_refresh_generation")
+	assertColumnExists(t, db, "repositories", "last_refresh_generation")
+	assertColumnExists(t, db, "directories", "subtree_fingerprint")
+	assertColumnExists(t, db, "directories", "included_file_count")
+	assertColumnExists(t, db, "directories", "included_directory_count")
+	assertColumnExists(t, db, "directories", "total_size_bytes")
+	assertColumnExists(t, db, "directories", "last_refreshed_at")
+	assertColumnExists(t, db, "directories", "last_refresh_generation")
+	assertColumnExists(t, db, "files", "last_seen_generation")
+	assertColumnExists(t, db, "files", "refresh_run_id")
+	assertColumnExists(t, db, "files", "updated_reason")
 }
 
 func TestMigrationRunnerRollsBackOnFailure(t *testing.T) {
@@ -209,4 +244,30 @@ func assertIndexColumns(t *testing.T, db *sql.DB, tableName string, expected []s
 	}
 
 	t.Fatalf("index with columns %v not found on %s", expected, tableName)
+}
+
+func assertColumnExists(t *testing.T, db *sql.DB, tableName, columnName string) {
+	t.Helper()
+
+	rows, err := db.Query(`SELECT name FROM pragma_table_info(?)`, tableName)
+	if err != nil {
+		t.Fatalf("Query(pragma_table_info %q) error = %v", tableName, err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			t.Fatalf("rows.Scan() error = %v", err)
+		}
+		if name == columnName {
+			return
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		t.Fatalf("rows.Err() = %v", err)
+	}
+
+	t.Fatalf("column %q missing from %s", columnName, tableName)
 }
