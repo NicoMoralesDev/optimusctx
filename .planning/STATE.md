@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 2
-current_phase_name: Incremental Refresh and Freshness Model
-current_plan: 5
-status: in_progress
-stopped_at: Completed 02-05-PLAN.md
-last_updated: "2026-03-14T23:15:35.423Z"
+current_phase: 3
+current_phase_name: Structural Extraction and Repository Artifact Model
+current_plan: 0
+status: ready_to_plan
+stopped_at: Completed 02-06-PLAN.md
+last_updated: "2026-03-14T23:22:34.115Z"
 last_activity: 2026-03-14
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_plans: 10
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase in progress — continue executing remaining Phase 2 plans
-**Current Phase:** 2
-**Current Phase Name:** Incremental Refresh and Freshness Model
+**Status:** Ready for next phase planning
+**Current Phase:** 3
+**Current Phase Name:** Structural Extraction and Repository Artifact Model
 **Total Phases:** 6
-**Current Plan:** 5
+**Current Plan:** 0
 **Total Plans in Phase:** 6
-**Progress:** [█████████░] 90%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-14
-**Last Activity Description:** Completed plan 02-05 gap closure for hermetic refresh fixtures and truthful tracked-file counts
+**Last Activity Description:** Completed plan 02-06 gap closure for degraded refresh rollback, recovery, and smoke guidance
 
 ## Project Memory
 
@@ -44,8 +44,8 @@ progress:
 ## Current Planning Context
 
 - Active milestone: v1 foundation
-- Active phase: Phase 2 - Incremental Refresh and Freshness Model
-- Next planning action: execute plan 02-06 to finish Phase 2
+- Active phase: Phase 3 - Structural Extraction and Repository Artifact Model
+- Next planning action: plan Phase 3 now that Phase 2 is complete
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -61,6 +61,8 @@ progress:
 - Refresh persistence now tracks repository freshness explicitly with `fresh`, `stale`, and `partially_degraded` states plus separate current and last successful generations.
 - Phase 2 snapshot reads now use typed repository, directory, file, and refresh-run models instead of ad hoc SQL consumers.
 - Refresh history now keeps active file rows lean and records deletion or move audit details in `refresh_file_events`.
+- Degraded refresh coverage reuses the shared `InjectFailure` seam and must prove last-good snapshot rollback plus fresh recovery on the same repository.
+- Phase 2 smoke guidance now targets disposable temp Git repositories via `go install` or local `go run`; npm and `npx` remain out of scope.
 
 ## References
 
@@ -92,6 +94,8 @@ progress:
 - Verification for `02-04` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go caches for targeted CLI coverage, the full Go test suite, and a temporary built binary for fixture command checks.
 - Plan `02-05` is complete with hermetic temp-repository refresh fixtures, explicit `.optimusctx` exclusion regressions, and truthful unchanged counts after ignore transitions.
 - Verification for `02-05` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go caches for targeted runtime-state, service, and CLI refresh coverage plus the full Go test suite.
+- Plan `02-06` is complete with degraded refresh rollback and recovery coverage plus supported temp-repository smoke guidance for Phase 2 operators.
+- Verification for `02-06` used `/tmp/optimusctx-go/go/bin/go` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted degraded-refresh coverage and the full Go test suite.
 
 ## Performance Metrics
 
@@ -102,6 +106,7 @@ progress:
 | Phase 02 P03 | 6min | 3 tasks | 7 files |
 | Phase 02 P04 | 4min | 3 tasks | 9 files |
 | Phase 02-incremental-refresh-and-freshness-model P05 | 32min | 3 tasks | 6 files |
+| Phase 02-incremental-refresh-and-freshness-model P06 | 5min | 3 tasks | 4 files |
 
 ## Decisions Made
 
@@ -116,6 +121,8 @@ progress:
 - [Phase 02]: Manual refresh failures now print degraded freshness and generation before returning the underlying error.
 - [Phase 02]: Refresh verification now runs in temp Git repositories at the service and CLI layers so mutable worktree state cannot contaminate Phase 2 assertions.
 - [Phase 02]: Ignored-on-both-sides paths are excluded from unchanged totals so refresh counts only describe tracked repository content.
+- [Phase 02]: Degraded refresh coverage reuses the shared InjectFailure seam and must prove last-good snapshot rollback plus fresh recovery on the same repository.
+- [Phase 02]: Phase 2 smoke guidance now targets disposable temp Git repositories via go install or local go run; npm and npx remain out of scope.
 
 ## Blockers
 
@@ -123,9 +130,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-14T23:15:35.420Z
-**Stopped At:** Completed 02-05-PLAN.md
+**Last Date:** 2026-03-14T23:22:34.112Z
+**Stopped At:** Completed 02-06-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-14 after completing plan 02-05*
+*Last updated: 2026-03-14 after completing plan 02-06*
