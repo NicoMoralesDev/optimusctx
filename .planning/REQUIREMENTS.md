@@ -95,47 +95,48 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CLI-01 | TBD | Pending |
-| CLI-02 | TBD | Pending |
-| CLI-03 | TBD | Pending |
-| CLI-04 | TBD | Pending |
-| CLI-05 | TBD | Pending |
-| REPO-01 | TBD | Pending |
-| REPO-02 | TBD | Pending |
-| REPO-03 | TBD | Pending |
-| REPO-04 | TBD | Pending |
-| REPO-05 | TBD | Pending |
-| REFR-01 | TBD | Pending |
-| REFR-02 | TBD | Pending |
-| REFR-03 | TBD | Pending |
-| REFR-04 | TBD | Pending |
-| REFR-05 | TBD | Pending |
-| EXTR-01 | TBD | Pending |
-| EXTR-02 | TBD | Pending |
-| EXTR-03 | TBD | Pending |
-| EXTR-04 | TBD | Pending |
-| EXTR-05 | TBD | Pending |
-| CTX-01 | TBD | Pending |
-| CTX-02 | TBD | Pending |
-| CTX-03 | TBD | Pending |
-| CTX-04 | TBD | Pending |
-| CTX-05 | TBD | Pending |
-| CTX-06 | TBD | Pending |
-| MCP-01 | TBD | Pending |
-| MCP-02 | TBD | Pending |
-| MCP-03 | TBD | Pending |
-| MCP-04 | TBD | Pending |
-| OPS-01 | TBD | Pending |
-| OPS-02 | TBD | Pending |
-| OPS-03 | TBD | Pending |
-| OPS-04 | TBD | Pending |
-| OPS-05 | TBD | Pending |
+| CLI-01 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
+| CLI-02 | Phase 5 - MCP Serving and Integration Contracts | Pending |
+| CLI-03 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
+| CLI-04 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
+| CLI-05 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
+| REPO-01 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
+| REPO-02 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
+| REPO-03 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
+| REPO-04 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
+| REPO-05 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
+| REFR-01 | Phase 2 - Incremental Refresh and Freshness Model | Pending |
+| REFR-02 | Phase 2 - Incremental Refresh and Freshness Model | Pending |
+| REFR-03 | Phase 2 - Incremental Refresh and Freshness Model | Pending |
+| REFR-04 | Phase 2 - Incremental Refresh and Freshness Model | Pending |
+| REFR-05 | Phase 2 - Incremental Refresh and Freshness Model | Pending |
+| EXTR-01 | Phase 3 - Structural Extraction and Repository Artifact Model | Pending |
+| EXTR-02 | Phase 3 - Structural Extraction and Repository Artifact Model | Pending |
+| EXTR-03 | Phase 3 - Structural Extraction and Repository Artifact Model | Pending |
+| EXTR-04 | Phase 3 - Structural Extraction and Repository Artifact Model | Pending |
+| EXTR-05 | Phase 3 - Structural Extraction and Repository Artifact Model | Pending |
+| CTX-01 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
+| CTX-02 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
+| CTX-03 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
+| CTX-04 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
+| CTX-05 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
+| CTX-06 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
+| MCP-01 | Phase 5 - MCP Serving and Integration Contracts | Pending |
+| MCP-02 | Phase 5 - MCP Serving and Integration Contracts | Pending |
+| MCP-03 | Phase 5 - MCP Serving and Integration Contracts | Pending |
+| MCP-04 | Phase 5 - MCP Serving and Integration Contracts | Pending |
+| OPS-01 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
+| OPS-02 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
+| OPS-03 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
+| OPS-04 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
+| OPS-05 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
 
 **Coverage:**
 - v1 requirements: 35 total
-- Mapped to phases: 0
-- Unmapped: 35 ⚠️
+- Mapped to phases: 35
+- Unmapped: 0
+- Multi-mapped: 0
 
 ---
 *Requirements defined: 2026-03-14*
-*Last updated: 2026-03-14 after initial definition*
+*Last updated: 2026-03-14 after roadmap traceability mapping*
