@@ -149,6 +149,62 @@ func TestSnippetCommandLeavesExistingStateUntouched(t *testing.T) {
 	}
 }
 
+type cliRefreshFixture struct {
+	repoRoot string
+}
+
+func newCLIRefreshFixture(t *testing.T) cliRefreshFixture {
+	t.Helper()
+
+	repoRoot := initCLIRepo(t)
+	writeCLIFile(t, filepath.Join(repoRoot, ".gitignore"), "")
+	writeCLIFile(t, filepath.Join(repoRoot, "README.md"), "# Repo\n")
+	writeCLIFile(t, filepath.Join(repoRoot, "main.go"), "package main\n")
+	writeCLIFile(t, filepath.Join(repoRoot, "move-me.txt"), "move me\n")
+	writeCLIFile(t, filepath.Join(repoRoot, "delete-me.txt"), "delete me\n")
+	writeCLIFile(t, filepath.Join(repoRoot, "ignored-later.log"), "baseline log\n")
+
+	return cliRefreshFixture{repoRoot: repoRoot}
+}
+
+func (f cliRefreshFixture) runInit(t *testing.T) string {
+	t.Helper()
+
+	var stdout bytes.Buffer
+	withWorkingDirectory(t, f.repoRoot, func() {
+		if err := NewRootCommand().Execute([]string{"init"}, &stdout); err != nil {
+			t.Fatalf("Execute(init) error = %v", err)
+		}
+	})
+	return stdout.String()
+}
+
+func (f cliRefreshFixture) runRefresh(t *testing.T) string {
+	t.Helper()
+
+	var stdout bytes.Buffer
+	withWorkingDirectory(t, f.repoRoot, func() {
+		if err := NewRootCommand().Execute([]string{"refresh"}, &stdout); err != nil {
+			t.Fatalf("Execute(refresh) error = %v", err)
+		}
+	})
+	return stdout.String()
+}
+
+func (f cliRefreshFixture) applyTrackedMutations(t *testing.T) {
+	t.Helper()
+
+	writeCLIFile(t, filepath.Join(f.repoRoot, "main.go"), "package main\n\nfunc refreshed() {}\n")
+	writeCLIFile(t, filepath.Join(f.repoRoot, "added.go"), "package main\n")
+	writeCLIFile(t, filepath.Join(f.repoRoot, ".gitignore"), "*.log\n")
+	if err := os.Remove(filepath.Join(f.repoRoot, "delete-me.txt")); err != nil {
+		t.Fatalf("Remove(delete-me.txt) error = %v", err)
+	}
+	if err := os.Rename(filepath.Join(f.repoRoot, "move-me.txt"), filepath.Join(f.repoRoot, "moved.txt")); err != nil {
+		t.Fatalf("Rename(move-me.txt) error = %v", err)
+	}
+}
+
 func initCLIRepo(t *testing.T) string {
 	t.Helper()
 

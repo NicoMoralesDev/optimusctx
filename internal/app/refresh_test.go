@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -60,13 +61,10 @@ func TestRefreshService(t *testing.T) {
 }
 
 func TestNoOpRefresh(t *testing.T) {
-	repoRoot := initRepo(t)
-	writeRepoFile(t, filepath.Join(repoRoot, "main.go"), "package main\n")
+	fixture := newRefreshFixture(t)
 
-	service := NewRefreshService()
-
-	first, err := service.Refresh(context.Background(), RefreshRequest{
-		StartPath: repoRoot,
+	first, err := fixture.service.Refresh(context.Background(), RefreshRequest{
+		StartPath: fixture.repoRoot,
 		Reason:    repository.RefreshReasonInit,
 		ForceFull: true,
 	})
@@ -74,8 +72,8 @@ func TestNoOpRefresh(t *testing.T) {
 		t.Fatalf("Refresh() baseline error = %v", err)
 	}
 
-	second, err := service.Refresh(context.Background(), RefreshRequest{
-		StartPath: repoRoot,
+	second, err := fixture.service.Refresh(context.Background(), RefreshRequest{
+		StartPath: fixture.repoRoot,
 		Reason:    repository.RefreshReasonManual,
 	})
 	if err != nil {
@@ -93,6 +91,47 @@ func TestNoOpRefresh(t *testing.T) {
 	}
 	if second.Generation != first.Generation+1 {
 		t.Fatalf("generation = %d, want %d", second.Generation, first.Generation+1)
+	}
+}
+
+func TestTrackedMutationRefreshCounts(t *testing.T) {
+	fixture := newRefreshFixture(t)
+
+	if _, err := fixture.service.Refresh(context.Background(), RefreshRequest{
+		StartPath: fixture.repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() baseline error = %v", err)
+	}
+
+	fixture.applyTrackedMutations(t)
+
+	mutated, err := fixture.service.Refresh(context.Background(), RefreshRequest{
+		StartPath: fixture.repoRoot,
+		Reason:    repository.RefreshReasonManual,
+	})
+	if err != nil {
+		t.Fatalf("Refresh() mutation error = %v", err)
+	}
+
+	if mutated.AddedFiles != 1 {
+		t.Fatalf("AddedFiles = %d, want 1", mutated.AddedFiles)
+	}
+	if mutated.ChangedContentFiles != 2 {
+		t.Fatalf("ChangedContentFiles = %d, want 2", mutated.ChangedContentFiles)
+	}
+	if mutated.DeletedFiles != 1 {
+		t.Fatalf("DeletedFiles = %d, want 1", mutated.DeletedFiles)
+	}
+	if mutated.MovedFiles != 1 {
+		t.Fatalf("MovedFiles = %d, want 1", mutated.MovedFiles)
+	}
+	if mutated.NewlyIgnoredFiles != 1 {
+		t.Fatalf("NewlyIgnoredFiles = %d, want 1", mutated.NewlyIgnoredFiles)
+	}
+	if mutated.UnchangedFiles != 1 {
+		t.Fatalf("UnchangedFiles = %d, want 1", mutated.UnchangedFiles)
 	}
 }
 
@@ -212,4 +251,40 @@ func testRepoRoot(repoRoot string) repository.RepositoryRoot {
 
 func serviceNow() time.Time {
 	return time.Date(2026, 3, 14, 22, 0, 0, 0, time.UTC)
+}
+
+type refreshFixture struct {
+	repoRoot string
+	service  RefreshService
+}
+
+func newRefreshFixture(t *testing.T) refreshFixture {
+	t.Helper()
+
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, ".gitignore"), "")
+	writeRepoFile(t, filepath.Join(repoRoot, "README.md"), "# Repo\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "main.go"), "package main\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "move-me.txt"), "move me\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "delete-me.txt"), "delete me\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "ignored-later.log"), "baseline log\n")
+
+	return refreshFixture{
+		repoRoot: repoRoot,
+		service:  NewRefreshService(),
+	}
+}
+
+func (f refreshFixture) applyTrackedMutations(t *testing.T) {
+	t.Helper()
+
+	writeRepoFile(t, filepath.Join(f.repoRoot, "main.go"), "package main\n\nfunc refreshed() {}\n")
+	writeRepoFile(t, filepath.Join(f.repoRoot, "added.go"), "package main\n")
+	writeRepoFile(t, filepath.Join(f.repoRoot, ".gitignore"), "*.log\n")
+	if err := os.Remove(filepath.Join(f.repoRoot, "delete-me.txt")); err != nil {
+		t.Fatalf("Remove(delete-me.txt) error = %v", err)
+	}
+	if err := os.Rename(filepath.Join(f.repoRoot, "move-me.txt"), filepath.Join(f.repoRoot, "moved.txt")); err != nil {
+		t.Fatalf("Rename(move-me.txt) error = %v", err)
+	}
 }

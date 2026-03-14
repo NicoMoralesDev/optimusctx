@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -14,78 +13,38 @@ import (
 )
 
 func TestRefreshIntegration(t *testing.T) {
-	repoRoot := initCLIRepo(t)
-	writeCLIFile(t, filepath.Join(repoRoot, "main.go"), "package main\n")
-	writeCLIFile(t, filepath.Join(repoRoot, "README.md"), "# Repo\n")
+	fixture := cliRefreshFixture{repoRoot: initCLIRepo(t)}
+	writeCLIFile(t, filepath.Join(fixture.repoRoot, "main.go"), "package main\n")
+	writeCLIFile(t, filepath.Join(fixture.repoRoot, "README.md"), "# Repo\n")
 
-	withWorkingDirectory(t, repoRoot, func() {
-		var stdout bytes.Buffer
-		if err := NewRootCommand().Execute([]string{"init"}, &stdout); err != nil {
-			t.Fatalf("Execute(init) error = %v", err)
-		}
-	})
+	fixture.runInit(t)
+	output := fixture.runRefresh(t)
 
-	withWorkingDirectory(t, repoRoot, func() {
-		var stdout bytes.Buffer
-		if err := NewRootCommand().Execute([]string{"refresh"}, &stdout); err != nil {
-			t.Fatalf("Execute(refresh) error = %v", err)
-		}
-
-		output := stdout.String()
-		assertContains(t, output, "repository root: "+repoRoot)
-		assertContains(t, output, "refresh generation: 2")
-		assertContains(t, output, "freshness: fresh")
-		assertContains(t, output, "added files: 0")
-		assertContains(t, output, "changed files: 0")
-		assertContains(t, output, "deleted files: 0")
-		assertContains(t, output, "moved files: 0")
-		assertContains(t, output, "newly ignored files: 0")
-		assertContains(t, output, "unchanged files: 2")
-	})
+	assertContains(t, output, "repository root: "+fixture.repoRoot)
+	assertContains(t, output, "refresh generation: 2")
+	assertContains(t, output, "freshness: fresh")
+	assertContains(t, output, "added files: 0")
+	assertContains(t, output, "changed files: 0")
+	assertContains(t, output, "deleted files: 0")
+	assertContains(t, output, "moved files: 0")
+	assertContains(t, output, "newly ignored files: 0")
+	assertContains(t, output, "unchanged files: 2")
 }
 
-func TestFreshnessStateCLI(t *testing.T) {
-	repoRoot := initCLIRepo(t)
-	writeCLIFile(t, filepath.Join(repoRoot, ".gitignore"), "")
-	writeCLIFile(t, filepath.Join(repoRoot, "README.md"), "# Repo\n")
-	writeCLIFile(t, filepath.Join(repoRoot, "main.go"), "package main\n")
-	writeCLIFile(t, filepath.Join(repoRoot, "move-me.txt"), "move me\n")
-	writeCLIFile(t, filepath.Join(repoRoot, "delete-me.txt"), "delete me\n")
-	writeCLIFile(t, filepath.Join(repoRoot, "ignored-later.log"), "baseline log\n")
+func TestTrackedMutationRefreshCounts(t *testing.T) {
+	fixture := newCLIRefreshFixture(t)
+	fixture.runInit(t)
+	fixture.applyTrackedMutations(t)
 
-	withWorkingDirectory(t, repoRoot, func() {
-		var stdout bytes.Buffer
-		if err := NewRootCommand().Execute([]string{"init"}, &stdout); err != nil {
-			t.Fatalf("Execute(init) error = %v", err)
-		}
-	})
-
-	writeCLIFile(t, filepath.Join(repoRoot, "main.go"), "package main\n\nfunc refreshed() {}\n")
-	writeCLIFile(t, filepath.Join(repoRoot, "added.go"), "package main\n")
-	writeCLIFile(t, filepath.Join(repoRoot, ".gitignore"), "*.log\n")
-	if err := os.Remove(filepath.Join(repoRoot, "delete-me.txt")); err != nil {
-		t.Fatalf("Remove(delete-me.txt) error = %v", err)
-	}
-	if err := os.Rename(filepath.Join(repoRoot, "move-me.txt"), filepath.Join(repoRoot, "moved.txt")); err != nil {
-		t.Fatalf("Rename(move-me.txt) error = %v", err)
-	}
-
-	withWorkingDirectory(t, repoRoot, func() {
-		var stdout bytes.Buffer
-		if err := NewRootCommand().Execute([]string{"refresh"}, &stdout); err != nil {
-			t.Fatalf("Execute(refresh) error = %v", err)
-		}
-
-		output := stdout.String()
-		assertContains(t, output, "refresh generation: 2")
-		assertContains(t, output, "freshness: fresh")
-		assertContains(t, output, "added files: 1")
-		assertContains(t, output, "changed files: 2")
-		assertContains(t, output, "deleted files: 1")
-		assertContains(t, output, "moved files: 1")
-		assertContains(t, output, "newly ignored files: 1")
-		assertContains(t, output, "unchanged files: 1")
-	})
+	output := fixture.runRefresh(t)
+	assertContains(t, output, "refresh generation: 2")
+	assertContains(t, output, "freshness: fresh")
+	assertContains(t, output, "added files: 1")
+	assertContains(t, output, "changed files: 2")
+	assertContains(t, output, "deleted files: 1")
+	assertContains(t, output, "moved files: 1")
+	assertContains(t, output, "newly ignored files: 1")
+	assertContains(t, output, "unchanged files: 1")
 }
 
 func TestDegradedRefreshRecovery(t *testing.T) {
