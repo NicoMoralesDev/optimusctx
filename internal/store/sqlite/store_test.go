@@ -304,6 +304,225 @@ func TestSnapshotReadModel(t *testing.T) {
 	}
 }
 
+func TestRepositoryFreshnessState(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+
+	initial, err := store.ReadRepositoryFreshness(ctx, repoID)
+	if err != nil {
+		store.Close()
+		t.Fatalf("ReadRepositoryFreshness() initial error = %v", err)
+	}
+	if initial.FreshnessStatus != repository.FreshnessStatusStale {
+		store.Close()
+		t.Fatalf("initial freshness status = %q, want %q", initial.FreshnessStatus, repository.FreshnessStatusStale)
+	}
+
+	startedAt := time.Date(2026, 3, 14, 14, 0, 0, 0, time.UTC)
+	completedAt := startedAt.Add(3 * time.Minute)
+	if err := store.WriteRepositoryFreshness(ctx, repository.RepositoryFreshness{
+		RepositoryID:           repoID,
+		LastRefreshStartedAt:   startedAt,
+		LastRefreshCompletedAt: completedAt,
+		LastRefreshReason:      repository.RefreshReasonInit,
+		LastRefreshStatus:      repository.RefreshRunStatusSuccess,
+		FreshnessStatus:        repository.FreshnessStatusFresh,
+		CurrentGeneration:      1,
+		LastRefreshGeneration:  1,
+	}); err != nil {
+		store.Close()
+		t.Fatalf("WriteRepositoryFreshness() fresh error = %v", err)
+	}
+
+	if err := store.Close(); err != nil {
+		t.Fatalf("store.Close() error = %v", err)
+	}
+
+	store, err = OpenOrCreateStore(ctx, layout, repository.DetectionModeGit)
+	if err != nil {
+		t.Fatalf("reopen OpenOrCreateStore() error = %v", err)
+	}
+	defer store.Close()
+
+	persisted, err := store.ReadRepositoryFreshness(ctx, repoID)
+	if err != nil {
+		t.Fatalf("ReadRepositoryFreshness() persisted error = %v", err)
+	}
+
+	if persisted.FreshnessStatus != repository.FreshnessStatusFresh {
+		t.Fatalf("persisted freshness status = %q, want %q", persisted.FreshnessStatus, repository.FreshnessStatusFresh)
+	}
+	if persisted.LastRefreshStatus != repository.RefreshRunStatusSuccess {
+		t.Fatalf("persisted last refresh status = %q, want %q", persisted.LastRefreshStatus, repository.RefreshRunStatusSuccess)
+	}
+	if !persisted.LastRefreshCompletedAt.Equal(completedAt) {
+		t.Fatalf("persisted completed_at = %v, want %v", persisted.LastRefreshCompletedAt, completedAt)
+	}
+	if persisted.CurrentGeneration != 1 || persisted.LastRefreshGeneration != 1 {
+		t.Fatalf("persisted generations = current %d last %d", persisted.CurrentGeneration, persisted.LastRefreshGeneration)
+	}
+}
+
+func TestRefreshRunPersistence(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	startedAt := time.Date(2026, 3, 14, 15, 0, 0, 0, time.UTC)
+	run, err := store.CreateRefreshRun(ctx, repository.RefreshRunRecord{
+		RepositoryID: repoID,
+		Generation:   4,
+		Reason:       repository.RefreshReasonManual,
+		Status:       repository.RefreshRunStatusRunning,
+		StartedAt:    startedAt,
+		MetadataJSON: `{"mode":"incremental"}`,
+	})
+	if err != nil {
+		store.Close()
+		t.Fatalf("CreateRefreshRun() error = %v", err)
+	}
+
+	run.Status = repository.RefreshRunStatusSuccess
+	run.CompletedAt = startedAt.Add(90 * time.Second)
+	if err := store.UpdateRefreshRun(ctx, run); err != nil {
+		store.Close()
+		t.Fatalf("UpdateRefreshRun() error = %v", err)
+	}
+
+	if err := store.Close(); err != nil {
+		t.Fatalf("store.Close() error = %v", err)
+	}
+
+	store, err = OpenOrCreateStore(ctx, layout, repository.DetectionModeGit)
+	if err != nil {
+		t.Fatalf("reopen OpenOrCreateStore() error = %v", err)
+	}
+	defer store.Close()
+
+	var generation int64
+	var status string
+	var completedAt string
+	if err := store.DB().QueryRowContext(ctx, `
+		SELECT generation, status, completed_at
+		FROM refresh_runs
+		WHERE repository_id = ? AND generation = ?
+	`, repoID, 4).Scan(&generation, &status, &completedAt); err != nil {
+		t.Fatalf("QueryRow(refresh_runs) error = %v", err)
+	}
+
+	if generation != 4 {
+		t.Fatalf("generation = %d, want 4", generation)
+	}
+	if repository.RefreshRunStatus(status) != repository.RefreshRunStatusSuccess {
+		t.Fatalf("status = %q, want %q", status, repository.RefreshRunStatusSuccess)
+	}
+	if completedAt != run.CompletedAt.Format(time.RFC3339) {
+		t.Fatalf("completed_at = %q, want %q", completedAt, run.CompletedAt.Format(time.RFC3339))
+	}
+}
+
+func TestDegradedRefreshMetadata(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+
+	successAt := time.Date(2026, 3, 14, 16, 0, 0, 0, time.UTC)
+	if err := store.WriteRepositoryFreshness(ctx, repository.RepositoryFreshness{
+		RepositoryID:           repoID,
+		LastRefreshStartedAt:   successAt,
+		LastRefreshCompletedAt: successAt.Add(2 * time.Minute),
+		LastRefreshReason:      repository.RefreshReasonInit,
+		LastRefreshStatus:      repository.RefreshRunStatusSuccess,
+		FreshnessStatus:        repository.FreshnessStatusFresh,
+		CurrentGeneration:      3,
+		LastRefreshGeneration:  3,
+	}); err != nil {
+		store.Close()
+		t.Fatalf("WriteRepositoryFreshness() baseline error = %v", err)
+	}
+
+	run, err := store.CreateRefreshRun(ctx, repository.RefreshRunRecord{
+		RepositoryID: repoID,
+		Generation:   4,
+		Reason:       repository.RefreshReasonManual,
+		Status:       repository.RefreshRunStatusRunning,
+		StartedAt:    successAt.Add(10 * time.Minute),
+	})
+	if err != nil {
+		store.Close()
+		t.Fatalf("CreateRefreshRun() error = %v", err)
+	}
+
+	run.Status = repository.RefreshRunStatusFailed
+	run.FailureReason = "hashing interrupted"
+	run.CompletedAt = run.StartedAt.Add(45 * time.Second)
+	if err := store.UpdateRefreshRun(ctx, run); err != nil {
+		store.Close()
+		t.Fatalf("UpdateRefreshRun() error = %v", err)
+	}
+
+	if err := store.WriteRepositoryFreshness(ctx, repository.RepositoryFreshness{
+		RepositoryID:           repoID,
+		LastRefreshStartedAt:   run.StartedAt,
+		LastRefreshCompletedAt: run.CompletedAt,
+		LastRefreshReason:      repository.RefreshReasonManual,
+		LastRefreshStatus:      repository.RefreshRunStatusFailed,
+		FreshnessStatus:        repository.FreshnessStatusPartiallyDegraded,
+		FreshnessReason:        run.FailureReason,
+		CurrentGeneration:      4,
+		LastRefreshGeneration:  3,
+	}); err != nil {
+		store.Close()
+		t.Fatalf("WriteRepositoryFreshness() degraded error = %v", err)
+	}
+
+	if err := store.Close(); err != nil {
+		t.Fatalf("store.Close() error = %v", err)
+	}
+
+	store, err = OpenOrCreateStore(ctx, layout, repository.DetectionModeGit)
+	if err != nil {
+		t.Fatalf("reopen OpenOrCreateStore() error = %v", err)
+	}
+	defer store.Close()
+
+	persisted, err := store.ReadRepositoryFreshness(ctx, repoID)
+	if err != nil {
+		t.Fatalf("ReadRepositoryFreshness() error = %v", err)
+	}
+
+	if persisted.FreshnessStatus != repository.FreshnessStatusPartiallyDegraded {
+		t.Fatalf("freshness status = %q, want %q", persisted.FreshnessStatus, repository.FreshnessStatusPartiallyDegraded)
+	}
+	if persisted.FreshnessReason != "hashing interrupted" {
+		t.Fatalf("freshness reason = %q", persisted.FreshnessReason)
+	}
+	if persisted.CurrentGeneration != 4 || persisted.LastRefreshGeneration != 3 {
+		t.Fatalf("generations = current %d last %d", persisted.CurrentGeneration, persisted.LastRefreshGeneration)
+	}
+	if persisted.LastRefreshStatus != repository.RefreshRunStatusFailed {
+		t.Fatalf("last refresh status = %q, want %q", persisted.LastRefreshStatus, repository.RefreshRunStatusFailed)
+	}
+}
+
 func openStoreWithRepository(t *testing.T, ctx context.Context, layout state.Layout) (*Store, int64) {
 	t.Helper()
 
