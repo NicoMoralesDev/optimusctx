@@ -95,6 +95,7 @@ func TestDegradedRefreshRecovery(t *testing.T) {
 		}
 
 		output := stdout.String()
+		assertContains(t, output, "repository root: "+repoRoot)
 		assertContains(t, output, "refresh generation: 2")
 		assertContains(t, output, "freshness: partially degraded")
 		assertContains(t, output, "changed files: 1")
@@ -108,6 +109,7 @@ func TestDegradedRefreshRecovery(t *testing.T) {
 		}
 
 		output := stdout.String()
+		assertContains(t, output, "repository root: "+repoRoot)
 		assertContains(t, output, "refresh generation: 3")
 		assertContains(t, output, "freshness: fresh")
 		assertContains(t, output, "changed files: 1")
