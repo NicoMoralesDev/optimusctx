@@ -55,20 +55,6 @@ func (c *Command) printHelp(stdout io.Writer) {
 	)
 }
 
-func newInitCommand() *Command {
-	return &Command{
-		Name:    "init",
-		Summary: "Initialize repository-local OptimusCtx state",
-		Run: func(stdout io.Writer, args []string) error {
-			if len(args) > 0 {
-				return errors.New("init does not accept arguments")
-			}
-
-			return fmt.Errorf("init is not implemented yet")
-		},
-	}
-}
-
 func newSnippetCommand() *Command {
 	return &Command{
 		Name:    "snippet",
