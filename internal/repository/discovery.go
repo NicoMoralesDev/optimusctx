@@ -17,34 +17,6 @@ type Discovery struct {
 	Now      func() time.Time
 }
 
-type DiscoveryResult struct {
-	RootPath    string
-	Directories []DirectoryRecord
-	Files       []FileRecord
-}
-
-type DirectoryRecord struct {
-	Path         string
-	ParentPath   string
-	IgnoreStatus IgnoreStatus
-	IgnoreReason IgnoreReason
-	DiscoveredAt time.Time
-}
-
-type FileRecord struct {
-	Path              string
-	DirectoryPath     string
-	Extension         string
-	LanguageHint      string
-	SizeBytes         int64
-	ContentHash       string
-	LastIndexedAt     time.Time
-	FilesystemModTime time.Time
-	IgnoreStatus      IgnoreStatus
-	IgnoreReason      IgnoreReason
-	DiscoveredAt      time.Time
-}
-
 func NewDiscovery(rootPath string) Discovery {
 	return Discovery{
 		RootPath: rootPath,
@@ -68,7 +40,10 @@ func (d Discovery) Walk() (DiscoveryResult, error) {
 
 	discoveredAt := d.Now().UTC()
 	result := DiscoveryResult{
-		RootPath: rootPath,
+		Repository: RepositoryRecord{
+			RootPath:      rootPath,
+			DetectionMode: detectionModeForMatcher(d.Matcher),
+		},
 		Directories: []DirectoryRecord{
 			{
 				Path:         ".",
@@ -91,6 +66,13 @@ func (d Discovery) Walk() (DiscoveryResult, error) {
 	})
 
 	return result, nil
+}
+
+func detectionModeForMatcher(matcher *IgnoreMatcher) string {
+	if matcher != nil && matcher.gitEnabled {
+		return DetectionModeGit
+	}
+	return DetectionModeOptimusCtxState
 }
 
 func (d Discovery) walkDirectory(absPath, relPath string, discoveredAt time.Time, result *DiscoveryResult) error {
