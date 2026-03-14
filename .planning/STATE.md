@@ -26,6 +26,9 @@
 - Repository root detection now canonicalizes the start path, prefers Git top-level discovery, and falls back to an existing `.optimusctx` directory only when Git metadata is absent.
 - Repository discovery walks directories in lexical order, records explicit ignore reasons, and does not traverse symlinks in Phase 1.
 - File metadata records now include language hint, SHA-256 `content_hash`, filesystem mod time, and `last_indexed_at` for included files so later persistence work can consume them directly.
+- Persistent runtime state is now anchored under `<repo>/.optimusctx/` with `state.json`, `db.sqlite`, `logs/`, and `tmp/` as the canonical Phase 1 layout.
+- SQLite schema evolution now runs through embedded forward-only SQL migrations recorded in `schema_migrations`.
+- Store initialization now creates state directories before opening SQLite, applies migrations, and syncs `state.json` schema metadata from the active migration version.
 
 ## References
 

@@ -27,6 +27,11 @@
 - Schema versioning and migrations are exercised by tests so an empty database and an upgraded database both initialize cleanly.
 - `optimusctx snippet` returns a manual-copy integration snippet and performs no file writes outside the local state directory.
 
+**Plan progress:**
+- Completed: `01-01`, `01-02`, `01-03`
+- Remaining: `01-04`
+- Summary coverage: 3 of 4 Phase 1 plans completed
+
 ## Phase 2: Incremental Refresh and Freshness Model
 
 **Goal:** Make refresh cheap, correct, and explicit by implementing hash-driven change detection, subtree fingerprints, and freshness state.
@@ -124,4 +129,4 @@
 6. Phase 6 adds watch, export, and operator hardening without using them to compensate for missing correctness.
 
 ---
-*Last updated: 2026-03-14 initial roadmap creation*
+*Last updated: 2026-03-14 after completing plan 01-03*
