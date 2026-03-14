@@ -327,6 +327,31 @@ func TestConditionalHashingRehashesChangedOrReincludedFiles(t *testing.T) {
 	}
 }
 
+func TestDiscoveryExcludesRuntimeStateContents(t *testing.T) {
+	repoRoot := initDiscoveryRepo(t)
+	writeFile(t, filepath.Join(repoRoot, "main.go"), "package main\n")
+	writeFile(t, filepath.Join(repoRoot, ".optimusctx", "state.json"), "{\"generation\":1}\n")
+	writeFile(t, filepath.Join(repoRoot, ".optimusctx", "tmp", "run.log"), "ignored runtime state\n")
+
+	result, err := NewDiscovery(repoRoot).Walk()
+	if err != nil {
+		t.Fatalf("Walk() error = %v", err)
+	}
+
+	if directory := directoryByPath(result.Directories, ".optimusctx"); directory.IgnoreReason != IgnoreReasonBuiltinExclusion {
+		t.Fatalf(".optimusctx ignore reason = %q, want %q", directory.IgnoreReason, IgnoreReasonBuiltinExclusion)
+	}
+	if hasFile(result.Files, ".optimusctx/state.json") {
+		t.Fatal(".optimusctx/state.json should not be discovered as repository content")
+	}
+	if hasFile(result.Files, ".optimusctx/tmp/run.log") {
+		t.Fatal(".optimusctx/tmp/run.log should not be discovered as repository content")
+	}
+	if got, want := includedFilePaths(result.Files), []string{"main.go"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("included file paths = %v, want %v", got, want)
+	}
+}
+
 func TestStreamingHashing(t *testing.T) {
 	repoRoot := initDiscoveryRepo(t)
 	path := filepath.Join(repoRoot, "large.txt")

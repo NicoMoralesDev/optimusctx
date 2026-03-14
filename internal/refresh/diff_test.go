@@ -119,6 +119,38 @@ func TestIgnoreTransitions(t *testing.T) {
 	}
 }
 
+func TestRuntimeStateExcludedFromRefreshCounts(t *testing.T) {
+	persisted := Snapshot{
+		Directories: []DirectorySnapshot{
+			{Path: ".", IgnoreStatus: repository.IgnoreStatusIncluded},
+			{Path: ".optimusctx", ParentPath: ".", IgnoreStatus: repository.IgnoreStatusIgnored, IgnoreReason: repository.IgnoreReasonBuiltinExclusion},
+		},
+		Files: []FileSnapshot{
+			{Path: "main.go", DirectoryPath: ".", ContentHash: "stable-hash", IgnoreStatus: repository.IgnoreStatusIncluded},
+		},
+	}
+	current := Snapshot{
+		Directories: []DirectorySnapshot{
+			{Path: ".", IgnoreStatus: repository.IgnoreStatusIncluded},
+			{Path: ".optimusctx", ParentPath: ".", IgnoreStatus: repository.IgnoreStatusIgnored, IgnoreReason: repository.IgnoreReasonBuiltinExclusion},
+		},
+		Files: []FileSnapshot{
+			{Path: "main.go", DirectoryPath: ".", ContentHash: "stable-hash", IgnoreStatus: repository.IgnoreStatusIncluded},
+			{Path: ".optimusctx/state.json", DirectoryPath: ".optimusctx", IgnoreStatus: repository.IgnoreStatusIgnored, IgnoreReason: repository.IgnoreReasonBuiltinExclusion},
+			{Path: ".optimusctx/db.sqlite", DirectoryPath: ".optimusctx", IgnoreStatus: repository.IgnoreStatusIgnored, IgnoreReason: repository.IgnoreReasonBuiltinExclusion},
+		},
+	}
+
+	diff := DiffSnapshots(current, persisted)
+
+	if got, want := paths(diff.Unchanged), []string{"main.go"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("unchanged = %v, want %v", got, want)
+	}
+	if len(diff.Added) != 0 || len(diff.Changed) != 0 || len(diff.Deleted) != 0 || len(diff.Moved) != 0 || len(diff.NewlyIgnored) != 0 {
+		t.Fatalf("runtime state should not affect refresh counts: %+v", diff)
+	}
+}
+
 func paths(changes []FileChange) []string {
 	result := make([]string, 0, len(changes))
 	for _, change := range changes {
