@@ -24,6 +24,12 @@ type RefreshResult struct {
 	StatePath           string
 	SchemaVersion       int
 	Reason              repository.RefreshReason
+	AddedFiles          int
+	ChangedContentFiles int
+	DeletedFiles        int
+	MovedFiles          int
+	NewlyIgnoredFiles   int
+	ReincludedFiles     int
 	ChangedFiles        int
 	UnchangedFiles      int
 	AffectedDirectories int
@@ -148,6 +154,12 @@ func (s RefreshService) Refresh(ctx context.Context, request RefreshRequest) (Re
 		StatePath:           layout.StateDir,
 		SchemaVersion:       store.SchemaVersion(),
 		Reason:              request.Reason,
+		AddedFiles:          len(diff.Added),
+		ChangedContentFiles: len(diff.Changed),
+		DeletedFiles:        len(diff.Deleted),
+		MovedFiles:          len(diff.Moved),
+		NewlyIgnoredFiles:   len(diff.NewlyIgnored),
+		ReincludedFiles:     len(diff.Reincluded),
 		ChangedFiles:        changedFileCount(diff),
 		UnchangedFiles:      len(diff.Unchanged),
 		AffectedDirectories: len(affected),
