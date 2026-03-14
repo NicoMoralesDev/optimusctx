@@ -46,6 +46,11 @@
 - Incremental refresh updates changed files and dependent aggregates without rebuilding the entire repository index.
 - The runtime exposes explicit freshness states of `fresh`, `stale`, or `partially degraded` before context is served.
 
+**Plan progress:**
+- Completed: none
+- Remaining: `02-01`, `02-02`, `02-03`, `02-04`
+- Summary coverage: 0 of 4 Phase 2 plans completed
+
 ## Phase 3: Structural Extraction and Repository Artifact Model
 
 **Goal:** Add deterministic parser-backed structural extraction and persist exact symbols, spans, and repository-map building blocks.
@@ -129,4 +134,4 @@
 6. Phase 6 adds watch, export, and operator hardening without using them to compensate for missing correctness.
 
 ---
-*Last updated: 2026-03-14 after completing plan 01-04*
+*Last updated: 2026-03-14 after planning Phase 2 execution breakdown*
