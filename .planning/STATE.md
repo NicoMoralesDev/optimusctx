@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-last_updated: "2026-03-14T20:55:00.000Z"
+status: executing
+last_updated: "2026-03-14T20:53:41.000Z"
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 8
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Planning State: OptimusCtx
@@ -17,7 +17,7 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to plan
+**Status:** Executing Phase 2
 
 ## Project Memory
 
@@ -31,7 +31,7 @@ progress:
 
 - Active milestone: v1 foundation
 - Active phase: Phase 2 - Incremental Refresh and Freshness Model
-- Next planning action: execute Phase 2 plans 02-01 through 02-04
+- Next planning action: execute Phase 2 plans 02-02 through 02-04
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -44,6 +44,9 @@ progress:
 - Store initialization now creates state directories before opening SQLite, applies migrations, and syncs `state.json` schema metadata from the active migration version.
 - `optimusctx init` now bootstraps `.optimusctx`, persists the initial repository inventory, and reports operator-facing bootstrap details.
 - `optimusctx snippet` now prints a manual-copy integration snippet to stdout and performs no repository writes.
+- Refresh persistence now tracks repository freshness explicitly with `fresh`, `stale`, and `partially_degraded` states plus separate current and last successful generations.
+- Phase 2 snapshot reads now use typed repository, directory, file, and refresh-run models instead of ad hoc SQL consumers.
+- Refresh history now keeps active file rows lean and records deletion or move audit details in `refresh_file_events`.
 
 ## References
 
@@ -60,11 +63,13 @@ progress:
 - Plan `01-02` is complete with repository root detection, ignore-aware discovery, and persistence-ready metadata records under `internal/repository`.
 - Plan `01-03` is complete with repository-local `.optimusctx` layout helpers, SQLite migrations, and store initialization under `internal/state` and `internal/store`.
 - Plan `01-04` is complete with end-to-end `init` and `snippet` command integration under `internal/app` and `internal/cli`.
+- Plan `02-01` is complete with Phase 2 schema additions for refresh generations, directory fingerprints, refresh runs, and explicit freshness-state store contracts.
 - Verification for `01-01` used a local Go toolchain installed under `/tmp/optimusctx-go`.
 - Verification for `01-02` also used `/tmp/optimusctx-go/go/bin/go` with `GOCACHE` and `GOMODCACHE` redirected into `/tmp`.
 - Verification for `01-03` used the same `/tmp/optimusctx-go` toolchain and `/tmp` Go caches for SQLite-backed tests.
 - Verification for `01-04` used the same toolchain for targeted tests plus `go run` fixture checks driven through a module-preserving exec wrapper.
+- Verification for `02-01` used `/tmp/optimusctx-go/go/bin/go` with `/tmp` Go caches for migration, store, CLI integration, and full-package test coverage.
 - Phase 2 planning is complete with four executable plans: `02-01` schema and freshness contracts, `02-02` snapshot diff and fingerprint engine, `02-03` transactional refresh service, and `02-04` CLI refresh integration.
 
 ---
-*Last updated: 2026-03-14 after creating plans 02-01 through 02-04*
+*Last updated: 2026-03-14 after completing plan 02-01*
