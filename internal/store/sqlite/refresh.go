@@ -226,6 +226,7 @@ func (s *Store) recordRefreshFailure(ctx context.Context, req ApplyRefreshPlanRe
 
 func applyFileChanges(ctx context.Context, tx *sql.Tx, req ApplyRefreshPlanRequest, refreshRunID, generation int64) error {
 	currentFiles := currentFilesByPath(req.CurrentResult.Files)
+	persistedFiles := persistedFilesByPath(req.PersistedSnapshot.Files)
 
 	if err := upsertFiles(ctx, tx, req.RepositoryID, refreshRunID, generation, req.CompletedAt, currentFiles, req.Diff.Added, "added"); err != nil {
 		return err
@@ -252,6 +253,18 @@ func applyFileChanges(ctx context.Context, tx *sql.Tx, req ApplyRefreshPlanReque
 	for _, change := range req.Diff.Deleted {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM files WHERE repository_id = ? AND path = ?`, req.RepositoryID, change.Path); err != nil {
 			return fmt.Errorf("delete file %q: %w", change.Path, err)
+		}
+	}
+
+	for path, file := range currentFiles {
+		if file.IgnoreStatus != repository.IgnoreStatusIgnored {
+			continue
+		}
+		if _, ok := persistedFiles[path]; ok {
+			continue
+		}
+		if err := upsertSingleFile(ctx, tx, req.RepositoryID, refreshRunID, generation, req.CompletedAt, file, "ignored_discovered"); err != nil {
+			return err
 		}
 	}
 
@@ -596,6 +609,14 @@ func persistedDirectoriesByPath(directories []repository.DirectorySnapshotRecord
 	index := make(map[string]repository.DirectorySnapshotRecord, len(directories))
 	for _, directory := range directories {
 		index[normalizeStoredDirectory(directory.Path)] = directory
+	}
+	return index
+}
+
+func persistedFilesByPath(files []repository.PersistedFileSnapshotRecord) map[string]repository.PersistedFileSnapshotRecord {
+	index := make(map[string]repository.PersistedFileSnapshotRecord, len(files))
+	for _, file := range files {
+		index[file.Path] = file
 	}
 	return index
 }

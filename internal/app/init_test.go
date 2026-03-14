@@ -102,6 +102,37 @@ func TestInitWorkflowReturnsRepositoryNotFound(t *testing.T) {
 	}
 }
 
+func TestInitUsesRefreshBaseline(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "main.go"), "package main\n")
+
+	realRefresh := NewRefreshService()
+	var seen RefreshRequest
+	service := NewInitService()
+	service.Refresh = func(ctx context.Context, request RefreshRequest) (RefreshResult, error) {
+		seen = request
+		return realRefresh.Refresh(ctx, request)
+	}
+
+	result, err := service.Init(context.Background(), filepath.Join(repoRoot, "nested"))
+	if err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	if seen.Reason != repository.RefreshReasonInit {
+		t.Fatalf("refresh reason = %q, want %q", seen.Reason, repository.RefreshReasonInit)
+	}
+	if !seen.ForceFull {
+		t.Fatal("init should force the baseline refresh path")
+	}
+	if seen.StartPath != repoRoot {
+		t.Fatalf("refresh start path = %q, want %q", seen.StartPath, repoRoot)
+	}
+	if result.FileCount == 0 || result.IncludedFiles == 0 {
+		t.Fatalf("unexpected init result: %+v", result)
+	}
+}
+
 func initRepo(t *testing.T) string {
 	t.Helper()
 
