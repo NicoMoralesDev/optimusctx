@@ -861,6 +861,30 @@ func TestUnsupportedExtractionState(t *testing.T) {
 
 	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
 		Extraction: repository.FileExtractionRecord{
+			RepositoryID:        repoID,
+			FileID:              fileID,
+			Path:                "assets/template.mustache",
+			Language:            "mustache",
+			AdapterName:         "legacy-adapter",
+			GrammarVersion:      "v1",
+			SourceContentHash:   "hash-template",
+			SourceGeneration:    2,
+			CoverageState:       repository.ExtractionCoverageStateSupported,
+			SymbolCount:         1,
+			TopLevelSymbolCount: 1,
+			MaxSymbolDepth:      0,
+			ExtractedAt:         time.Date(2026, 3, 14, 19, 55, 0, 0, time.UTC),
+			RefreshRunID:        run.ID,
+		},
+		Symbols: []repository.SymbolRecord{
+			testTopLevelSymbol("assets/template.mustache", "mustache", "template", "Legacy", "legacy", 0),
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts() baseline error = %v", err)
+	}
+
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
 			RepositoryID:      repoID,
 			FileID:            fileID,
 			Path:              "assets/template.mustache",
@@ -884,6 +908,9 @@ func TestUnsupportedExtractionState(t *testing.T) {
 	}
 	if len(extractions) != 1 || extractions[0].CoverageState != repository.ExtractionCoverageStateUnsupported || extractions[0].CoverageReason != repository.ExtractionCoverageReasonUnsupportedLanguage {
 		t.Fatalf("unsupported extraction = %+v", extractions)
+	}
+	if extractions[0].SourceGeneration != 3 || extractions[0].SymbolCount != 0 {
+		t.Fatalf("unsupported extraction should replace prior symbols: %+v", extractions[0])
 	}
 
 	symbols, err := store.ListSymbols(ctx, repoID)
@@ -973,6 +1000,27 @@ func TestPartialAndFailedExtractionState(t *testing.T) {
 		t.Fatalf("ReplaceFileArtifacts() failed error = %v", err)
 	}
 
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:      repoID,
+			FileID:            partialFileID,
+			Path:              "pkg/partial.go",
+			Language:          "go",
+			AdapterName:       "tree-sitter-go",
+			GrammarVersion:    "v0.25.1",
+			SourceContentHash: "hash-partial-v2",
+			SourceGeneration:  12,
+			CoverageState:     repository.ExtractionCoverageStateFailed,
+			CoverageReason:    repository.ExtractionCoverageReasonParseError,
+			ParserErrorCount:  6,
+			HasErrorNodes:     true,
+			ExtractedAt:       time.Date(2026, 3, 14, 20, 32, 0, 0, time.UTC),
+			RefreshRunID:      run.ID,
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts() partial->failed error = %v", err)
+	}
+
 	extractions, err := store.ListFileExtractions(ctx, repoID)
 	if err != nil {
 		t.Fatalf("ListFileExtractions() error = %v", err)
@@ -983,15 +1031,15 @@ func TestPartialAndFailedExtractionState(t *testing.T) {
 	if extractions[0].CoverageState != repository.ExtractionCoverageStateFailed || extractions[0].SymbolCount != 0 {
 		t.Fatalf("failed extraction = %+v", extractions[0])
 	}
-	if extractions[1].CoverageState != repository.ExtractionCoverageStatePartial || !extractions[1].HasErrorNodes || extractions[1].SymbolCount != 1 {
-		t.Fatalf("partial extraction = %+v", extractions[1])
+	if extractions[1].CoverageState != repository.ExtractionCoverageStateFailed || !extractions[1].HasErrorNodes || extractions[1].SymbolCount != 0 || extractions[1].SourceGeneration != 12 {
+		t.Fatalf("partial file should advance to failed generation without stale symbols: %+v", extractions[1])
 	}
 
 	symbols, err := store.ListSymbols(ctx, repoID)
 	if err != nil {
 		t.Fatalf("ListSymbols() error = %v", err)
 	}
-	if len(symbols) != 1 || symbols[0].Path != "pkg/partial.go" {
+	if len(symbols) != 0 {
 		t.Fatalf("symbols = %+v", symbols)
 	}
 
@@ -999,7 +1047,7 @@ func TestPartialAndFailedExtractionState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadRepositoryStructuralCoverage() error = %v", err)
 	}
-	if summary.PartialCount != 1 || summary.FailedCount != 1 || summary.FilesWithCoverageGap != 2 || summary.TotalSymbolCount != 1 {
+	if summary.PartialCount != 0 || summary.FailedCount != 2 || summary.FilesWithCoverageGap != 2 || summary.TotalSymbolCount != 0 {
 		t.Fatalf("coverage summary = %+v", summary)
 	}
 }
