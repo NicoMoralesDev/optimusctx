@@ -27,11 +27,11 @@ func TestMigrationRunnerAppliesFreshDatabase(t *testing.T) {
 	}
 
 	versions := appliedVersions(t, db)
-	if !reflect.DeepEqual(versions, []int{1, 2}) {
-		t.Fatalf("versions = %v, want [1 2]", versions)
+	if !reflect.DeepEqual(versions, []int{1, 2, 3}) {
+		t.Fatalf("versions = %v, want [1 2 3]", versions)
 	}
 
-	assertTablesExist(t, db, "schema_migrations", "repositories", "directories", "files", "refresh_runs", "refresh_file_events")
+	assertTablesExist(t, db, "schema_migrations", "repositories", "directories", "files", "refresh_runs", "refresh_file_events", "file_extractions", "symbols")
 }
 
 func TestApplyMigrationsIsNoOpWhenAlreadyCurrent(t *testing.T) {
@@ -75,6 +75,15 @@ func TestApplyMigrationsCreatesRequiredIndexes(t *testing.T) {
 	assertIndexColumns(t, db, "refresh_runs", []string{"repository_id", "status"})
 	assertIndexColumns(t, db, "refresh_file_events", []string{"refresh_run_id", "path"})
 	assertIndexColumns(t, db, "refresh_file_events", []string{"repository_id", "path"})
+	assertIndexColumns(t, db, "file_extractions", []string{"repository_id", "path"})
+	assertIndexColumns(t, db, "file_extractions", []string{"repository_id", "coverage_state"})
+	assertIndexColumns(t, db, "file_extractions", []string{"repository_id", "language"})
+	assertIndexColumns(t, db, "file_extractions", []string{"repository_id", "source_generation"})
+	assertIndexColumns(t, db, "symbols", []string{"repository_id", "name"})
+	assertIndexColumns(t, db, "symbols", []string{"repository_id", "kind"})
+	assertIndexColumns(t, db, "symbols", []string{"file_id", "ordinal"})
+	assertIndexColumns(t, db, "symbols", []string{"repository_id", "path", "ordinal"})
+	assertIndexColumns(t, db, "symbols", []string{"repository_id", "qualified_name"})
 }
 
 func TestApplyMigrationsAddsRefreshStateColumns(t *testing.T) {
@@ -104,6 +113,54 @@ func TestApplyMigrationsAddsRefreshStateColumns(t *testing.T) {
 	assertColumnExists(t, db, "files", "last_seen_generation")
 	assertColumnExists(t, db, "files", "refresh_run_id")
 	assertColumnExists(t, db, "files", "updated_reason")
+	assertColumnExists(t, db, "file_extractions", "path")
+	assertColumnExists(t, db, "file_extractions", "language")
+	assertColumnExists(t, db, "file_extractions", "adapter_name")
+	assertColumnExists(t, db, "file_extractions", "grammar_version")
+	assertColumnExists(t, db, "file_extractions", "source_content_hash")
+	assertColumnExists(t, db, "file_extractions", "source_generation")
+	assertColumnExists(t, db, "file_extractions", "coverage_state")
+	assertColumnExists(t, db, "file_extractions", "coverage_reason")
+	assertColumnExists(t, db, "file_extractions", "parser_error_count")
+	assertColumnExists(t, db, "file_extractions", "has_error_nodes")
+	assertColumnExists(t, db, "file_extractions", "symbol_count")
+	assertColumnExists(t, db, "file_extractions", "top_level_symbol_count")
+	assertColumnExists(t, db, "file_extractions", "max_symbol_depth")
+	assertColumnExists(t, db, "file_extractions", "extracted_at")
+	assertColumnExists(t, db, "symbols", "stable_key")
+	assertColumnExists(t, db, "symbols", "parent_symbol_id")
+	assertColumnExists(t, db, "symbols", "qualified_name")
+	assertColumnExists(t, db, "symbols", "ordinal")
+	assertColumnExists(t, db, "symbols", "depth")
+	assertColumnExists(t, db, "symbols", "name_start_byte")
+	assertColumnExists(t, db, "symbols", "name_end_byte")
+	assertColumnExists(t, db, "symbols", "signature_start_byte")
+	assertColumnExists(t, db, "symbols", "signature_end_byte")
+	assertColumnExists(t, db, "symbols", "is_exported")
+}
+
+func TestExtractionSchemaContracts(t *testing.T) {
+	t.Parallel()
+
+	db := openTestDatabase(t)
+	defer db.Close()
+
+	if err := Apply(context.Background(), db); err != nil {
+		t.Fatalf("Apply() error = %v", err)
+	}
+
+	assertTablesExist(t, db, "file_extractions", "symbols")
+	assertColumnExists(t, db, "file_extractions", "file_id")
+	assertColumnExists(t, db, "file_extractions", "repository_id")
+	assertColumnExists(t, db, "file_extractions", "refresh_run_id")
+	assertColumnExists(t, db, "symbols", "file_extraction_id")
+	assertColumnExists(t, db, "symbols", "file_id")
+	assertColumnExists(t, db, "symbols", "repository_id")
+
+	assertIndexColumns(t, db, "file_extractions", []string{"repository_id", "path"})
+	assertIndexColumns(t, db, "file_extractions", []string{"repository_id", "coverage_state"})
+	assertIndexColumns(t, db, "symbols", []string{"repository_id", "name"})
+	assertIndexColumns(t, db, "symbols", []string{"repository_id", "path", "ordinal"})
 }
 
 func TestMigrationRunnerRollsBackOnFailure(t *testing.T) {
