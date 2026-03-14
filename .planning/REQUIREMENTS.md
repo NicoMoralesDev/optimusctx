@@ -1,0 +1,141 @@
+# Requirements: OptimusCtx
+
+**Defined:** 2026-03-14
+**Core Value:** Make repository understanding persistent, compact, incremental, and reusable across coding agents.
+
+## v1 Requirements
+
+### Installation and CLI
+
+- [ ] **CLI-01**: User can install the OptimusCtx runtime locally through a bootstrap path without modifying repository contents.
+- [ ] **CLI-02**: User can optionally register MCP configuration for supported clients during install, with explicit consent.
+- [ ] **CLI-03**: User can run `optimusctx init` in a repository and create the local project state directory successfully.
+- [ ] **CLI-04**: User can run `optimusctx snippet` and receive a manual-copy integration snippet without any file being modified automatically.
+- [ ] **CLI-05**: User can run `optimusctx doctor` and receive actionable installation, repository, state, and MCP diagnostics.
+
+### Repository Discovery and State
+
+- [ ] **REPO-01**: Runtime can detect the repository root for the current working directory.
+- [ ] **REPO-02**: Runtime can collect indexable files while respecting ignore rules and common generated/vendor exclusions.
+- [ ] **REPO-03**: Runtime stores repository configuration, runtime metadata, and persistent index state in a project-local state directory.
+- [ ] **REPO-04**: Runtime persists repository, file, and directory metadata in SQLite with explicit schema versioning and migration support.
+- [ ] **REPO-05**: Runtime tracks per-file language, size, hash, last indexed time, and ignore status in persistent state.
+
+### Refresh and Change Detection
+
+- [ ] **REFR-01**: Runtime can compute file hashes for indexed files and use them to detect changed content.
+- [ ] **REFR-02**: Runtime can compute directory or subtree fingerprints to support cheap stale checks.
+- [ ] **REFR-03**: Runtime can detect added, changed, deleted, and moved files during refresh.
+- [ ] **REFR-04**: Runtime can refresh only changed files and affected aggregates without rebuilding the full index.
+- [ ] **REFR-05**: Runtime can report whether project state is fresh, stale, or partially degraded before serving context.
+
+### Structural Extraction and Symbols
+
+- [ ] **EXTR-01**: Runtime can detect supported languages for indexed files.
+- [ ] **EXTR-02**: Runtime can extract structural blocks and symbols from supported languages using deterministic parser-backed analysis.
+- [ ] **EXTR-03**: Runtime stores exact symbol spans, kinds, names, and parent relationships for supported files.
+- [ ] **EXTR-04**: Runtime degrades gracefully for unsupported or partially parsed files and surfaces coverage state in diagnostics.
+- [ ] **EXTR-05**: Runtime can generate a compact repository map from persisted structural artifacts.
+
+### Context and Query Surface
+
+- [ ] **CTX-01**: Runtime can return an L0 repository snapshot with repository identity, dominant languages, major areas, and freshness metadata.
+- [ ] **CTX-02**: Runtime can return an L1 structural map with candidate files, symbols, concise summaries, and relevance-limiting metadata.
+- [ ] **CTX-03**: Runtime can return an L2 targeted context block with exact file paths, symbol or line-range targeting, and bounded surrounding code context.
+- [ ] **CTX-04**: Runtime can resolve exact symbol lookups by symbol name with optional path and language scoping.
+- [ ] **CTX-05**: Runtime can resolve exact structural lookups by supported pattern or normalized structural query.
+- [ ] **CTX-06**: Runtime can estimate token cost by file and directory and expose ranked context-budget hotspots.
+
+### MCP Integration
+
+- [ ] **MCP-01**: Runtime can serve MCP requests over STDIO as the primary integration mode.
+- [ ] **MCP-02**: MCP tools return structured machine-readable payloads with freshness metadata and cache-versus-refresh status.
+- [ ] **MCP-03**: MCP surface includes repository map, symbol lookup, structure lookup, context block, token tree, refresh, pack, and health capabilities.
+- [ ] **MCP-04**: MCP handlers enforce bounded payload defaults and return transparent actionable failures.
+
+### Watch, Export, and Operations
+
+- [ ] **OPS-01**: User can optionally run watch mode to keep the index fresh in the background without it being required for normal use.
+- [ ] **OPS-02**: Watch mode uses the same incremental refresh pipeline as manual refresh paths.
+- [ ] **OPS-03**: User can export a compact repository pack for offline or non-MCP workflows.
+- [ ] **OPS-04**: Pack export can fit output to a target budget using include/exclude rules.
+- [ ] **OPS-05**: Doctor output reports repository root detection, index freshness, watch status, storage health, parsing failures, and top token-cost paths.
+
+## v1.1 Requirements
+
+### Output Optimization
+
+- **OUT-01**: Runtime can compact verbose tool outputs through deduplication, truncation, and line-focused extraction.
+- **OUT-02**: Runtime can produce richer repository-level context-budget analysis and exclusion suggestions.
+- **OUT-03**: Runtime can offer improved pack/export presets optimized for target token budgets.
+- **OUT-04**: Runtime can expose richer symbol and reference relationships where extraction support is feasible.
+
+## v2 Requirements
+
+### Advanced Context Intelligence
+
+- **ADV-01**: Runtime can support deeper language-specific graph extraction beyond baseline symbol ownership and imports.
+- **ADV-02**: Runtime can support optional LSP-backed enrichment as a plugin or secondary layer.
+- **ADV-03**: Runtime can assemble multi-hop context bundles based on query intent.
+- **ADV-04**: Runtime can provide CI helpers and shared-workspace workflows for teams.
+- **ADV-05**: Runtime can support an optional semantic layer as a plugin without making it a core dependency.
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Hosted service or cloud sync in v1 | Violates the local-first wedge and expands scope into infra, auth, and trust concerns too early |
+| Default semantic or vector retrieval in v1 | Weakens the exact-first deterministic product promise and turns the product into generic RAG infrastructure |
+| Automatic rewriting of repository instruction or policy files | Conflicts with the explicit non-invasive integration principle |
+| Full IDE or LSP replacement behavior | Outside the product boundary; OptimusCtx should complement agents and existing dev tools |
+| Multi-user shared index store in v1 | Adds distributed-state complexity before the single-user local runtime is proven |
+| Analytics dashboard as a first-class v1 feature | Not required to validate the core runtime and integration wedge |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| CLI-01 | TBD | Pending |
+| CLI-02 | TBD | Pending |
+| CLI-03 | TBD | Pending |
+| CLI-04 | TBD | Pending |
+| CLI-05 | TBD | Pending |
+| REPO-01 | TBD | Pending |
+| REPO-02 | TBD | Pending |
+| REPO-03 | TBD | Pending |
+| REPO-04 | TBD | Pending |
+| REPO-05 | TBD | Pending |
+| REFR-01 | TBD | Pending |
+| REFR-02 | TBD | Pending |
+| REFR-03 | TBD | Pending |
+| REFR-04 | TBD | Pending |
+| REFR-05 | TBD | Pending |
+| EXTR-01 | TBD | Pending |
+| EXTR-02 | TBD | Pending |
+| EXTR-03 | TBD | Pending |
+| EXTR-04 | TBD | Pending |
+| EXTR-05 | TBD | Pending |
+| CTX-01 | TBD | Pending |
+| CTX-02 | TBD | Pending |
+| CTX-03 | TBD | Pending |
+| CTX-04 | TBD | Pending |
+| CTX-05 | TBD | Pending |
+| CTX-06 | TBD | Pending |
+| MCP-01 | TBD | Pending |
+| MCP-02 | TBD | Pending |
+| MCP-03 | TBD | Pending |
+| MCP-04 | TBD | Pending |
+| OPS-01 | TBD | Pending |
+| OPS-02 | TBD | Pending |
+| OPS-03 | TBD | Pending |
+| OPS-04 | TBD | Pending |
+| OPS-05 | TBD | Pending |
+
+**Coverage:**
+- v1 requirements: 35 total
+- Mapped to phases: 0
+- Unmapped: 35 ⚠️
+
+---
+*Requirements defined: 2026-03-14*
+*Last updated: 2026-03-14 after initial definition*
