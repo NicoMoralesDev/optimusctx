@@ -4,12 +4,13 @@ OptimusCtx is a local-first runtime that builds and maintains persistent reposit
 
 ## Current status
 
-Phase 1 is bootstrapping the Go CLI and the repository-local state model. The command surface is intentionally small while the discovery and persistence layers are being built:
+Phase 2 now includes the repository-local bootstrap and manual refresh path. The command surface is still intentionally small while extraction and query features are built:
 
 - `optimusctx --help`
 - `optimusctx version`
-- `optimusctx init` (planned in this phase)
-- `optimusctx snippet` (planned in this phase)
+- `optimusctx init`
+- `optimusctx refresh`
+- `optimusctx snippet`
 
 ## Install locally
 
@@ -25,6 +26,48 @@ For local development from this repository:
 go run ./cmd/optimusctx --help
 go run ./cmd/optimusctx version
 ```
+
+The supported local install path for Phase 2 is `go install ./cmd/optimusctx`. Local development can also use `go run ./cmd/optimusctx ...` from this repository. npm or `npx` packaging is not part of the current product scope.
+
+## Smoke test in a fresh temp repository
+
+The reproducible verification path is a disposable Git repository, not the mutable `optimusctx` checkout itself.
+
+```bash
+go install ./cmd/optimusctx
+
+tmpdir="$(mktemp -d)"
+cd "$tmpdir"
+git init
+
+cat <<'EOF' > main.go
+package main
+
+func main() {}
+EOF
+
+git add main.go
+git commit -m "baseline"
+
+optimusctx init
+```
+
+Expected results:
+
+- `.optimusctx/` is created under the temp repository
+- `optimusctx init` reports the repository root, state directory, refresh generation, and `fresh` freshness
+
+To verify incremental refresh behavior, mutate tracked files in the temp repo and run:
+
+```bash
+printf '\nfunc refreshed() {}\n' >> main.go
+cat <<'EOF' > helper.go
+package main
+EOF
+optimusctx refresh
+```
+
+This fixture-style flow matches the automated integration tests. Running count-based UAT inside the actively changing `optimusctx` worktree is not a reliable way to validate no-op or mutation counts.
 
 ## Non-invasive contract
 
