@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -150,6 +151,94 @@ func TestTrackedMutationRefreshCounts(t *testing.T) {
 	}
 }
 
+func TestRefreshServiceFailureLeavesLastGoodSnapshot(t *testing.T) {
+	fixture := newRefreshFixture(t)
+
+	initial, err := fixture.service.Refresh(context.Background(), RefreshRequest{
+		StartPath: fixture.repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	})
+	if err != nil {
+		t.Fatalf("Refresh() baseline error = %v", err)
+	}
+
+	beforeFailure := loadSnapshotForRepo(t, fixture.repoRoot)
+	writeRepoFile(t, filepath.Join(fixture.repoRoot, "main.go"), "package main\n\nfunc degraded() {}\n")
+
+	failed, err := fixture.service.Refresh(context.Background(), RefreshRequest{
+		StartPath: fixture.repoRoot,
+		Reason:    repository.RefreshReasonManual,
+		InjectFailure: func(stage string) error {
+			if stage == "after_files" {
+				return errors.New("forced after file updates")
+			}
+			return nil
+		},
+	})
+	if err == nil || err.Error() != "apply refresh plan: forced after file updates" {
+		t.Fatalf("Refresh() error = %v, want injected failure", err)
+	}
+	if failed.RepositoryRoot != fixture.repoRoot {
+		t.Fatalf("RepositoryRoot = %q, want %q", failed.RepositoryRoot, fixture.repoRoot)
+	}
+	if failed.Generation != initial.Generation+1 {
+		t.Fatalf("Generation = %d, want %d", failed.Generation, initial.Generation+1)
+	}
+	if failed.FreshnessStatus != repository.FreshnessStatusPartiallyDegraded {
+		t.Fatalf("FreshnessStatus = %q, want %q", failed.FreshnessStatus, repository.FreshnessStatusPartiallyDegraded)
+	}
+	if failed.ChangedContentFiles != 1 {
+		t.Fatalf("ChangedContentFiles = %d, want 1", failed.ChangedContentFiles)
+	}
+
+	afterFailure := loadSnapshotForRepo(t, fixture.repoRoot)
+	if !reflect.DeepEqual(beforeFailure.Files, afterFailure.Files) {
+		t.Fatalf("files changed after failed refresh:\nbefore=%#v\nafter=%#v", beforeFailure.Files, afterFailure.Files)
+	}
+	if !reflect.DeepEqual(beforeFailure.Directories, afterFailure.Directories) {
+		t.Fatalf("directories changed after failed refresh:\nbefore=%#v\nafter=%#v", beforeFailure.Directories, afterFailure.Directories)
+	}
+	if afterFailure.Repository.LastRefreshGeneration != initial.Generation {
+		t.Fatalf("LastRefreshGeneration = %d, want %d", afterFailure.Repository.LastRefreshGeneration, initial.Generation)
+	}
+	if afterFailure.Repository.CurrentGeneration != initial.Generation+1 {
+		t.Fatalf("CurrentGeneration = %d, want %d", afterFailure.Repository.CurrentGeneration, initial.Generation+1)
+	}
+	if afterFailure.Repository.FreshnessStatus != repository.FreshnessStatusPartiallyDegraded {
+		t.Fatalf("FreshnessStatus = %q, want %q", afterFailure.Repository.FreshnessStatus, repository.FreshnessStatusPartiallyDegraded)
+	}
+
+	recovered, err := fixture.service.Refresh(context.Background(), RefreshRequest{
+		StartPath: fixture.repoRoot,
+		Reason:    repository.RefreshReasonManual,
+	})
+	if err != nil {
+		t.Fatalf("Refresh() recovery error = %v", err)
+	}
+	if recovered.Generation != initial.Generation+2 {
+		t.Fatalf("Generation = %d, want %d", recovered.Generation, initial.Generation+2)
+	}
+	if recovered.FreshnessStatus != repository.FreshnessStatusFresh {
+		t.Fatalf("FreshnessStatus = %q, want %q", recovered.FreshnessStatus, repository.FreshnessStatusFresh)
+	}
+	if recovered.ChangedContentFiles != 1 {
+		t.Fatalf("ChangedContentFiles = %d, want 1", recovered.ChangedContentFiles)
+	}
+
+	afterRecovery := loadSnapshotForRepo(t, fixture.repoRoot)
+	mainFile := persistedSnapshotFileByPath(afterRecovery.Files, "main.go")
+	if mainFile.ContentHash == persistedSnapshotFileByPath(beforeFailure.Files, "main.go").ContentHash {
+		t.Fatal("main.go content hash did not update after successful recovery refresh")
+	}
+	if afterRecovery.Repository.FreshnessStatus != repository.FreshnessStatusFresh {
+		t.Fatalf("FreshnessStatus = %q, want %q", afterRecovery.Repository.FreshnessStatus, repository.FreshnessStatusFresh)
+	}
+	if afterRecovery.Repository.LastRefreshGeneration != recovered.Generation {
+		t.Fatalf("LastRefreshGeneration = %d, want %d", afterRecovery.Repository.LastRefreshGeneration, recovered.Generation)
+	}
+}
+
 func TestSnapshotEquivalence(t *testing.T) {
 	baselineRepo := initRepo(t)
 	writeRepoFile(t, filepath.Join(baselineRepo, "README.md"), "final\n")
@@ -249,6 +338,15 @@ func normalizeSnapshot(snapshot repository.RepositorySnapshot) repository.Reposi
 		snapshot.Files[index].UpdatedReason = ""
 	}
 	return snapshot
+}
+
+func persistedSnapshotFileByPath(files []repository.PersistedFileSnapshotRecord, path string) repository.PersistedFileSnapshotRecord {
+	for _, file := range files {
+		if file.Path == path {
+			return file
+		}
+	}
+	return repository.PersistedFileSnapshotRecord{}
 }
 
 func testRepoRoot(repoRoot string) repository.RepositoryRoot {

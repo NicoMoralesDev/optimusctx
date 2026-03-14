@@ -318,6 +318,101 @@ func TestDegradedRefreshState(t *testing.T) {
 	}
 }
 
+func TestDegradedRefreshRecovery(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	root := testRepositoryRoot(layout)
+	base := buildDiscoveryResult(root, time.Date(2026, 3, 14, 21, 30, 0, 0, time.UTC),
+		[]repository.DirectoryRecord{
+			directory(".", "", repository.IgnoreStatusIncluded, "", time.Date(2026, 3, 14, 21, 30, 0, 0, time.UTC)),
+		},
+		[]repository.FileRecord{
+			file("main.go", ".", "go", 48, "hash-main-initial", repository.IgnoreStatusIncluded, "", time.Date(2026, 3, 14, 21, 30, 0, 0, time.UTC)),
+		},
+	)
+
+	initialResult, err := store.ApplyRefreshPlan(ctx, buildRefreshRequest(repoID, root, repository.RepositorySnapshot{}, base, repository.RefreshReasonInit, nil))
+	if err != nil {
+		t.Fatalf("ApplyRefreshPlan() baseline error = %v", err)
+	}
+
+	beforeFailure, err := store.LoadRepositorySnapshot(ctx, repoID)
+	if err != nil {
+		t.Fatalf("LoadRepositorySnapshot() before failure error = %v", err)
+	}
+
+	failedResult := buildDiscoveryResult(root, time.Date(2026, 3, 14, 21, 40, 0, 0, time.UTC),
+		[]repository.DirectoryRecord{
+			directory(".", "", repository.IgnoreStatusIncluded, "", time.Date(2026, 3, 14, 21, 40, 0, 0, time.UTC)),
+		},
+		[]repository.FileRecord{
+			file("main.go", ".", "go", 96, "hash-main-updated", repository.IgnoreStatusIncluded, "", time.Date(2026, 3, 14, 21, 40, 0, 0, time.UTC)),
+		},
+	)
+
+	_, err = store.ApplyRefreshPlan(ctx, buildRefreshRequest(repoID, root, beforeFailure, failedResult, repository.RefreshReasonManual, func(stage string) error {
+		if stage == "after_files" {
+			return errors.New("forced after file updates")
+		}
+		return nil
+	}))
+	if err == nil || !strings.Contains(err.Error(), "forced after file updates") {
+		t.Fatalf("ApplyRefreshPlan() error = %v, want injected failure", err)
+	}
+
+	afterFailure, err := store.LoadRepositorySnapshot(ctx, repoID)
+	if err != nil {
+		t.Fatalf("LoadRepositorySnapshot() after failure error = %v", err)
+	}
+	if !reflect.DeepEqual(beforeFailure.Files, afterFailure.Files) {
+		t.Fatalf("files changed after failed refresh:\nbefore=%#v\nafter=%#v", beforeFailure.Files, afterFailure.Files)
+	}
+	if afterFailure.Repository.LastRefreshGeneration != initialResult.Generation {
+		t.Fatalf("last refresh generation = %d, want %d", afterFailure.Repository.LastRefreshGeneration, initialResult.Generation)
+	}
+	if afterFailure.Repository.CurrentGeneration != initialResult.Generation+1 {
+		t.Fatalf("current generation = %d, want %d", afterFailure.Repository.CurrentGeneration, initialResult.Generation+1)
+	}
+	if afterFailure.Repository.FreshnessStatus != repository.FreshnessStatusPartiallyDegraded {
+		t.Fatalf("freshness status = %q, want %q", afterFailure.Repository.FreshnessStatus, repository.FreshnessStatusPartiallyDegraded)
+	}
+
+	recovered, err := store.ApplyRefreshPlan(ctx, buildRefreshRequest(repoID, root, afterFailure, failedResult, repository.RefreshReasonManual, nil))
+	if err != nil {
+		t.Fatalf("ApplyRefreshPlan() recovery error = %v", err)
+	}
+	if recovered.Generation != initialResult.Generation+2 {
+		t.Fatalf("generation = %d, want %d", recovered.Generation, initialResult.Generation+2)
+	}
+	if recovered.FreshnessStatus != repository.FreshnessStatusFresh {
+		t.Fatalf("freshness status = %q, want %q", recovered.FreshnessStatus, repository.FreshnessStatusFresh)
+	}
+
+	afterRecovery, err := store.LoadRepositorySnapshot(ctx, repoID)
+	if err != nil {
+		t.Fatalf("LoadRepositorySnapshot() after recovery error = %v", err)
+	}
+	mainFile := persistedFileByPath(afterRecovery.Files, "main.go")
+	if mainFile.ContentHash != "hash-main-updated" {
+		t.Fatalf("main.go content hash = %q, want hash-main-updated", mainFile.ContentHash)
+	}
+	if afterRecovery.Repository.LastRefreshGeneration != recovered.Generation {
+		t.Fatalf("last refresh generation = %d, want %d", afterRecovery.Repository.LastRefreshGeneration, recovered.Generation)
+	}
+	if afterRecovery.Repository.FreshnessStatus != repository.FreshnessStatusFresh {
+		t.Fatalf("freshness status = %q, want %q", afterRecovery.Repository.FreshnessStatus, repository.FreshnessStatusFresh)
+	}
+}
+
 func buildRefreshRequest(repoID int64, root repository.RepositoryRoot, persisted repository.RepositorySnapshot, current repository.DiscoveryResult, reason repository.RefreshReason, inject func(string) error) ApplyRefreshPlanRequest {
 	currentSnapshot := refreshcore.CurrentSnapshot(current)
 	persistedRefreshSnapshot := refreshcore.PersistedSnapshot(persisted)
