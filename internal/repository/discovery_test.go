@@ -1,9 +1,12 @@
 package repository
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -227,6 +230,123 @@ func TestFileRecord(t *testing.T) {
 	}
 }
 
+func TestConditionalHashingReusesPersistedHashesOnNoOpScan(t *testing.T) {
+	repoRoot := initDiscoveryRepo(t)
+	writeFile(t, filepath.Join(repoRoot, "src", "app.go"), "package main\n")
+	writeFile(t, filepath.Join(repoRoot, "README.md"), "# OptimusCtx\n")
+
+	initialResult, err := NewDiscovery(repoRoot).Walk()
+	if err != nil {
+		t.Fatalf("initial Walk() error = %v", err)
+	}
+
+	hashCalls := 0
+	secondResult, err := Discovery{
+		RootPath: repoRoot,
+		Matcher:  NewIgnoreMatcher(repoRoot),
+		PersistedSnapshot: RepositorySnapshot{
+			Files: persistedFilesFromRecords(initialResult.Files),
+		},
+		HashFile: func(path string) (string, error) {
+			hashCalls++
+			return hashFile(path)
+		},
+	}.Walk()
+	if err != nil {
+		t.Fatalf("second Walk() error = %v", err)
+	}
+
+	if hashCalls != 0 {
+		t.Fatalf("hash calls = %d, want 0", hashCalls)
+	}
+
+	for _, path := range []string{"README.md", "src/app.go"} {
+		first := fileByPath(initialResult.Files, path)
+		second := fileByPath(secondResult.Files, path)
+		if first.ContentHash != second.ContentHash {
+			t.Fatalf("%s hash = %q, want %q", path, second.ContentHash, first.ContentHash)
+		}
+		if !first.LastIndexedAt.Equal(second.LastIndexedAt) {
+			t.Fatalf("%s last indexed at = %v, want %v", path, second.LastIndexedAt, first.LastIndexedAt)
+		}
+	}
+}
+
+func TestConditionalHashingRehashesChangedOrReincludedFiles(t *testing.T) {
+	repoRoot := initDiscoveryRepo(t)
+	writeFile(t, filepath.Join(repoRoot, ".gitignore"), "*.tmp\n")
+	writeFile(t, filepath.Join(repoRoot, "stable.go"), "package main\n")
+	writeFile(t, filepath.Join(repoRoot, "changed.go"), "package changed\n")
+	writeFile(t, filepath.Join(repoRoot, "new.tmp"), "temporary\n")
+
+	initialResult, err := NewDiscovery(repoRoot).Walk()
+	if err != nil {
+		t.Fatalf("initial Walk() error = %v", err)
+	}
+
+	writeFile(t, filepath.Join(repoRoot, "changed.go"), "package changed\n\nfunc refreshed() {}\n")
+	if err := os.WriteFile(filepath.Join(repoRoot, ".gitignore"), []byte(""), 0o644); err != nil {
+		t.Fatalf("WriteFile(.gitignore) error = %v", err)
+	}
+
+	var hashedPaths []string
+	secondResult, err := Discovery{
+		RootPath: repoRoot,
+		Matcher:  NewIgnoreMatcher(repoRoot),
+		PersistedSnapshot: RepositorySnapshot{
+			Files: persistedFilesFromRecords(initialResult.Files),
+		},
+		HashFile: func(path string) (string, error) {
+			hashedPaths = append(hashedPaths, filepath.Base(path))
+			return hashFile(path)
+		},
+	}.Walk()
+	if err != nil {
+		t.Fatalf("second Walk() error = %v", err)
+	}
+
+	if got, want := hashedPaths, []string{".gitignore", "changed.go", "new.tmp"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("hashed paths = %v, want %v", got, want)
+	}
+
+	stableBefore := fileByPath(initialResult.Files, "stable.go")
+	stableAfter := fileByPath(secondResult.Files, "stable.go")
+	if stableBefore.ContentHash != stableAfter.ContentHash {
+		t.Fatalf("stable.go hash changed from %q to %q", stableBefore.ContentHash, stableAfter.ContentHash)
+	}
+	if !stableBefore.LastIndexedAt.Equal(stableAfter.LastIndexedAt) {
+		t.Fatalf("stable.go last indexed at = %v, want %v", stableAfter.LastIndexedAt, stableBefore.LastIndexedAt)
+	}
+
+	reincluded := fileByPath(secondResult.Files, "new.tmp")
+	if reincluded.IgnoreStatus != IgnoreStatusIncluded {
+		t.Fatalf("new.tmp ignore status = %q, want %q", reincluded.IgnoreStatus, IgnoreStatusIncluded)
+	}
+	if reincluded.ContentHash == "" {
+		t.Fatal("new.tmp should be hashed after re-inclusion")
+	}
+}
+
+func TestStreamingHashing(t *testing.T) {
+	repoRoot := initDiscoveryRepo(t)
+	path := filepath.Join(repoRoot, "large.txt")
+	content := strings.Repeat("optimusctx-streaming-hash\n", 4096)
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", path, err)
+	}
+
+	got, err := hashFile(path)
+	if err != nil {
+		t.Fatalf("hashFile() error = %v", err)
+	}
+
+	wantSum := sha256.Sum256([]byte(content))
+	want := hex.EncodeToString(wantSum[:])
+	if got != want {
+		t.Fatalf("hashFile() = %q, want %q", got, want)
+	}
+}
+
 func initDiscoveryRepo(t *testing.T) string {
 	t.Helper()
 
@@ -251,6 +371,27 @@ func createBuiltInFixtureTree(t *testing.T, repoRoot string) {
 	} {
 		writeFile(t, filepath.Join(repoRoot, dir, "artifact.txt"), dir+"\n")
 	}
+}
+
+func persistedFilesFromRecords(files []FileRecord) []PersistedFileSnapshotRecord {
+	records := make([]PersistedFileSnapshotRecord, 0, len(files))
+	for _, file := range files {
+		records = append(records, PersistedFileSnapshotRecord{
+			Path:              file.Path,
+			DirectoryPath:     file.DirectoryPath,
+			Extension:         file.Extension,
+			LanguageHint:      file.LanguageHint,
+			SizeBytes:         file.SizeBytes,
+			ContentHash:       file.ContentHash,
+			LastIndexedAt:     file.LastIndexedAt,
+			FilesystemModTime: file.FilesystemModTime,
+			IgnoreStatus:      file.IgnoreStatus,
+			IgnoreReason:      file.IgnoreReason,
+			DiscoveredAt:      file.DiscoveredAt,
+			UpdatedAt:         file.DiscoveredAt,
+		})
+	}
+	return records
 }
 
 func includedFilePaths(files []FileRecord) []string {

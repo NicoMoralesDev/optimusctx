@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -12,9 +13,11 @@ import (
 )
 
 type Discovery struct {
-	RootPath string
-	Matcher  *IgnoreMatcher
-	Now      func() time.Time
+	RootPath          string
+	Matcher           *IgnoreMatcher
+	Now               func() time.Time
+	PersistedSnapshot RepositorySnapshot
+	HashFile          func(string) (string, error)
 }
 
 func NewDiscovery(rootPath string) Discovery {
@@ -26,11 +29,22 @@ func NewDiscovery(rootPath string) Discovery {
 }
 
 func (d Discovery) Walk() (DiscoveryResult, error) {
+	return d.walk(d.PersistedSnapshot)
+}
+
+func (d Discovery) WalkWithPersistedSnapshot(snapshot RepositorySnapshot) (DiscoveryResult, error) {
+	return d.walk(snapshot)
+}
+
+func (d Discovery) walk(snapshot RepositorySnapshot) (DiscoveryResult, error) {
 	if d.Matcher == nil {
 		d.Matcher = NewIgnoreMatcher(d.RootPath)
 	}
 	if d.Now == nil {
 		d.Now = time.Now
+	}
+	if d.HashFile == nil {
+		d.HashFile = hashFile
 	}
 
 	rootPath, err := canonicalPath(d.RootPath)
@@ -54,7 +68,8 @@ func (d Discovery) Walk() (DiscoveryResult, error) {
 		},
 	}
 
-	if err := d.walkDirectory(rootPath, ".", discoveredAt, &result); err != nil {
+	persistedFiles := persistedFilesByPath(snapshot.Files)
+	if err := d.walkDirectory(rootPath, ".", discoveredAt, persistedFiles, &result); err != nil {
 		return DiscoveryResult{}, err
 	}
 
@@ -75,7 +90,7 @@ func detectionModeForMatcher(matcher *IgnoreMatcher) string {
 	return DetectionModeOptimusCtxState
 }
 
-func (d Discovery) walkDirectory(absPath, relPath string, discoveredAt time.Time, result *DiscoveryResult) error {
+func (d Discovery) walkDirectory(absPath, relPath string, discoveredAt time.Time, persistedFiles map[string]PersistedFileSnapshotRecord, result *DiscoveryResult) error {
 	entries, err := os.ReadDir(absPath)
 	if err != nil {
 		return err
@@ -125,7 +140,7 @@ func (d Discovery) walkDirectory(absPath, relPath string, discoveredAt time.Time
 			if match.Status == IgnoreStatusIgnored {
 				continue
 			}
-			if err := d.walkDirectory(childAbsPath, childRelPath, discoveredAt, result); err != nil {
+			if err := d.walkDirectory(childAbsPath, childRelPath, discoveredAt, persistedFiles, result); err != nil {
 				return err
 			}
 			continue
@@ -143,12 +158,17 @@ func (d Discovery) walkDirectory(absPath, relPath string, discoveredAt time.Time
 			DiscoveredAt:      discoveredAt,
 		}
 		if match.Status == IgnoreStatusIncluded {
-			hash, err := hashFile(childAbsPath)
-			if err != nil {
-				return err
+			if persisted := persistedFiles[childRelPath]; canReusePersistedHash(persisted, fileRecord) {
+				fileRecord.ContentHash = persisted.ContentHash
+				fileRecord.LastIndexedAt = persisted.LastIndexedAt
+			} else {
+				hash, err := d.HashFile(childAbsPath)
+				if err != nil {
+					return err
+				}
+				fileRecord.ContentHash = hash
+				fileRecord.LastIndexedAt = discoveredAt
 			}
-			fileRecord.ContentHash = hash
-			fileRecord.LastIndexedAt = discoveredAt
 		}
 
 		result.Files = append(result.Files, fileRecord)
@@ -158,13 +178,41 @@ func (d Discovery) walkDirectory(absPath, relPath string, discoveredAt time.Time
 }
 
 func hashFile(path string) (string, error) {
-	content, err := os.ReadFile(path)
+	file, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
+	defer file.Close()
 
-	sum := sha256.Sum256(content)
-	return hex.EncodeToString(sum[:]), nil
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
+func persistedFilesByPath(files []PersistedFileSnapshotRecord) map[string]PersistedFileSnapshotRecord {
+	index := make(map[string]PersistedFileSnapshotRecord, len(files))
+	for _, file := range files {
+		index[file.Path] = file
+	}
+	return index
+}
+
+func canReusePersistedHash(persisted PersistedFileSnapshotRecord, current FileRecord) bool {
+	if persisted.Path == "" {
+		return false
+	}
+	if persisted.IgnoreStatus != IgnoreStatusIncluded || current.IgnoreStatus != IgnoreStatusIncluded {
+		return false
+	}
+	if persisted.ContentHash == "" {
+		return false
+	}
+	if persisted.SizeBytes != current.SizeBytes {
+		return false
+	}
+	return persisted.FilesystemModTime.Equal(current.FilesystemModTime)
 }
 
 func normalizeDirectory(path string) string {
