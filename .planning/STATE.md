@@ -4,7 +4,7 @@
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Executing phase 1
+**Status:** Phase 1 implementation complete
 
 ## Project Memory
 
@@ -50,7 +50,7 @@
 - Verification for `01-01` used a local Go toolchain installed under `/tmp/optimusctx-go`.
 - Verification for `01-02` also used `/tmp/optimusctx-go/go/bin/go` with `GOCACHE` and `GOMODCACHE` redirected into `/tmp`.
 - Verification for `01-03` used the same `/tmp/optimusctx-go` toolchain and `/tmp` Go caches for SQLite-backed tests.
-- Verification for `01-04` used the same toolchain for targeted tests plus temporary built-binary checks for `init` and `snippet` in fixture repositories.
+- Verification for `01-04` used the same toolchain for targeted tests plus `go run` fixture checks driven through a module-preserving exec wrapper.
 
 ---
 *Last updated: 2026-03-14 after completing plans 01-01 through 01-04*
