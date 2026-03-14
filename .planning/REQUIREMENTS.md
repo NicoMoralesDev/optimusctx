@@ -26,7 +26,7 @@
 - [x] **REFR-01**: Runtime can compute file hashes for indexed files and use them to detect changed content.
 - [x] **REFR-02**: Runtime can compute directory or subtree fingerprints to support cheap stale checks.
 - [x] **REFR-03**: Runtime can detect added, changed, deleted, and moved files during refresh.
-- [ ] **REFR-04**: Runtime can refresh only changed files and affected aggregates without rebuilding the full index.
+- [x] **REFR-04**: Runtime can refresh only changed files and affected aggregates without rebuilding the full index.
 - [x] **REFR-05**: Runtime can report whether project state is fresh, stale, or partially degraded before serving context.
 
 ### Structural Extraction and Symbols
@@ -108,7 +108,7 @@
 | REFR-01 | Phase 2 - Incremental Refresh and Freshness Model | Complete |
 | REFR-02 | Phase 2 - Incremental Refresh and Freshness Model | Complete |
 | REFR-03 | Phase 2 - Incremental Refresh and Freshness Model | Complete |
-| REFR-04 | Phase 2 - Incremental Refresh and Freshness Model | Pending |
+| REFR-04 | Phase 2 - Incremental Refresh and Freshness Model | Complete |
 | REFR-05 | Phase 2 - Incremental Refresh and Freshness Model | Complete |
 | EXTR-01 | Phase 3 - Structural Extraction and Repository Artifact Model | Pending |
 | EXTR-02 | Phase 3 - Structural Extraction and Repository Artifact Model | Pending |

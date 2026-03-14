@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 2
 current_phase_name: Incremental Refresh and Freshness Model
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-03-14T21:04:38.496Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-03-14T22:09:36Z"
 last_activity: 2026-03-14
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 8
-  completed_plans: 6
-  percent: 75
+  completed_plans: 7
+  percent: 88
 ---
 
 # Planning State: OptimusCtx
@@ -27,11 +27,11 @@ progress:
 **Current Phase:** 2
 **Current Phase Name:** Incremental Refresh and Freshness Model
 **Total Phases:** 6
-**Current Plan:** 3
+**Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [████████░░] 75%
+**Progress:** [█████████░] 88%
 **Last Activity:** 2026-03-14
-**Last Activity Description:** Completed plan 02-02 snapshot diff and fingerprint engine
+**Last Activity Description:** Completed plan 02-03 transactional refresh service and init baseline refactor
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1 foundation
 - Active phase: Phase 2 - Incremental Refresh and Freshness Model
-- Next planning action: execute Phase 2 plans 02-03 through 02-04
+- Next planning action: execute Phase 2 plan 02-04
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -85,6 +85,8 @@ progress:
 - Verification for `02-01` used `/tmp/optimusctx-go/go/bin/go` with `/tmp` Go caches for migration, store, CLI integration, and full-package test coverage.
 - Plan `02-02` is complete with conditional-hash repository discovery plus deterministic snapshot diffing and subtree fingerprint recomputation under `internal/repository` and `internal/refresh`.
 - Verification for `02-02` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go caches for targeted Wave 2 coverage and the full Go test suite.
+- Plan `02-03` is complete with transactional sqlite refresh reconciliation, shared app refresh orchestration, and init reuse of the canonical refresh baseline.
+- Verification for `02-03` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go caches for targeted Wave 3 coverage and the full Go test suite after fetching `modernc.org/sqlite` once.
 - Phase 2 planning is complete with four executable plans: `02-01` schema and freshness contracts, `02-02` snapshot diff and fingerprint engine, `02-03` transactional refresh service, and `02-04` CLI refresh integration.
 
 ## Performance Metrics
@@ -93,12 +95,16 @@ progress:
 | --- | --- | --- | --- |
 | Phase 02 P01 | recorded earlier | 3 tasks | 6 files |
 | Phase 02 P02 | 8min | 3 tasks | 7 files |
+| Phase 02 P03 | 6min | 3 tasks | 7 files |
 
 ## Decisions Made
 
 - [Phase 02]: Discovery reuses persisted hashes only when included-file path, size, and mod-time still match, keeping content hashes as the correctness key.
 - [Phase 02]: Snapshot diffs classify moves only for unique added/deleted content-hash pairs so duplicate-content cases degrade safely to add-plus-delete.
 - [Phase 02]: Subtree fingerprints are recomputed only for affected directories and ancestors while unchanged child subtrees reuse persisted fingerprints.
+- [Phase 02]: SQLite refresh now commits file reconciliation, directory aggregates, refresh events, and repository freshness in one transaction on success.
+- [Phase 02]: Refresh failures now roll back snapshot writes and record a separate failed run with partially degraded freshness metadata.
+- [Phase 02]: Init now uses the shared refresh service with ReasonInit and ForceFull=true instead of a destructive inventory replacement path.
 
 ## Blockers
 
@@ -106,9 +112,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-14T21:04:38.493Z
-**Stopped At:** Completed 02-02-PLAN.md
+**Last Date:** 2026-03-14T22:09:36Z
+**Stopped At:** Completed 02-03-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-14 after completing plan 02-02*
+*Last updated: 2026-03-14 after completing plan 02-03*
