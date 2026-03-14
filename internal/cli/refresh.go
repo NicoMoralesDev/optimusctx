@@ -35,6 +35,11 @@ func newRefreshCommand() *Command {
 
 			result, err := refreshCommandService(context.Background(), workingDir)
 			if err != nil {
+				if result.RepositoryRoot != "" {
+					if _, writeErr := io.WriteString(stdout, formatRefreshSummary(result)); writeErr != nil {
+						return writeErr
+					}
+				}
 				if errors.Is(err, repository.ErrRepositoryNotFound) || strings.Contains(err.Error(), repository.ErrRepositoryNotFound.Error()) {
 					return fmt.Errorf("no supported repository root found from %s; run `optimusctx refresh` inside an initialized Git repository or existing .optimusctx state directory", workingDir)
 				}

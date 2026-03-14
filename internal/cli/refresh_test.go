@@ -115,6 +115,30 @@ func TestRefreshCommandErrors(t *testing.T) {
 			}
 		})
 	})
+
+	t.Run("prints degraded summary before returning failure", func(t *testing.T) {
+		previous := refreshCommandService
+		t.Cleanup(func() {
+			refreshCommandService = previous
+		})
+		refreshCommandService = func(ctx context.Context, workingDir string) (app.RefreshResult, error) {
+			return app.RefreshResult{
+				RepositoryRoot:  repoRoot,
+				Generation:      4,
+				FreshnessStatus: repository.FreshnessStatusPartiallyDegraded,
+			}, errors.New("forced refresh failure")
+		}
+
+		withWorkingDirectory(t, repoRoot, func() {
+			var stdout bytes.Buffer
+			err := NewRootCommand().Execute([]string{"refresh"}, &stdout)
+			if err == nil || err.Error() != "forced refresh failure" {
+				t.Fatalf("Execute(refresh) error = %v, want forced refresh failure", err)
+			}
+			assertContains(t, stdout.String(), "freshness: partially degraded")
+			assertContains(t, stdout.String(), "refresh generation: 4")
+		})
+	})
 }
 
 func TestRenderFreshnessStatus(t *testing.T) {

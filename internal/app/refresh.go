@@ -13,10 +13,11 @@ import (
 )
 
 type RefreshRequest struct {
-	StartPath   string
-	Reason      repository.RefreshReason
-	ForceFull   bool
-	ChangedHint []string
+	StartPath     string
+	Reason        repository.RefreshReason
+	ForceFull     bool
+	ChangedHint   []string
+	InjectFailure func(string) error
 }
 
 type RefreshResult struct {
@@ -144,9 +145,14 @@ func (s RefreshService) Refresh(ctx context.Context, request RefreshRequest) (Re
 		Diff:              diff,
 		AffectedPaths:     affected,
 		Fingerprints:      fingerprints,
+		InjectFailure:     request.InjectFailure,
 	})
 	if err != nil {
-		return RefreshResult{}, err
+		failureResult, failureLoadErr := buildRefreshFailureResult(ctx, store, repoRecord.ID, layout.StateDir, root.RootPath, diff, affected, request)
+		if failureLoadErr != nil {
+			return RefreshResult{}, err
+		}
+		return failureResult, err
 	}
 
 	return RefreshResult{
@@ -165,6 +171,40 @@ func (s RefreshService) Refresh(ctx context.Context, request RefreshRequest) (Re
 		AffectedDirectories: len(affected),
 		Generation:          applyResult.Generation,
 		FreshnessStatus:     applyResult.FreshnessStatus,
+	}, nil
+}
+
+func buildRefreshFailureResult(
+	ctx context.Context,
+	store *sqlite.Store,
+	repositoryID int64,
+	statePath string,
+	rootPath string,
+	diff refreshcore.Diff,
+	affected []string,
+	request RefreshRequest,
+) (RefreshResult, error) {
+	freshness, err := store.ReadRepositoryFreshness(ctx, repositoryID)
+	if err != nil {
+		return RefreshResult{}, fmt.Errorf("read refresh failure state: %w", err)
+	}
+
+	return RefreshResult{
+		RepositoryRoot:      rootPath,
+		StatePath:           statePath,
+		SchemaVersion:       store.SchemaVersion(),
+		Reason:              request.Reason,
+		AddedFiles:          len(diff.Added),
+		ChangedContentFiles: len(diff.Changed),
+		DeletedFiles:        len(diff.Deleted),
+		MovedFiles:          len(diff.Moved),
+		NewlyIgnoredFiles:   len(diff.NewlyIgnored),
+		ReincludedFiles:     len(diff.Reincluded),
+		ChangedFiles:        changedFileCount(diff),
+		UnchangedFiles:      len(diff.Unchanged),
+		AffectedDirectories: len(affected),
+		Generation:          freshness.CurrentGeneration,
+		FreshnessStatus:     freshness.FreshnessStatus,
 	}, nil
 }
 
