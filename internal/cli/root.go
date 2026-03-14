@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -56,17 +55,7 @@ func (c *Command) printHelp(stdout io.Writer) {
 }
 
 func newSnippetCommand() *Command {
-	return &Command{
-		Name:    "snippet",
-		Summary: "Print the manual integration snippet",
-		Run: func(stdout io.Writer, args []string) error {
-			if len(args) > 0 {
-				return errors.New("snippet does not accept arguments")
-			}
-
-			return fmt.Errorf("snippet is not implemented yet")
-		},
-	}
+	return newSnippetCommandImpl()
 }
 
 func Execute() int {
