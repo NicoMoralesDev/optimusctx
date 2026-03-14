@@ -6,8 +6,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/niccrow/optimusctx/internal/store/migrations"
 )
 
 func TestInitCommandInitializesFromNestedRepositoryPath(t *testing.T) {
@@ -31,7 +34,7 @@ func TestInitCommandInitializesFromNestedRepositoryPath(t *testing.T) {
 		if !strings.Contains(output, "state directory: "+filepath.Join(repoRoot, ".optimusctx")) {
 			t.Fatalf("output = %q, want state directory", output)
 		}
-		if !strings.Contains(output, "schema version: 1") {
+		if !strings.Contains(output, "schema version: "+strconv.Itoa(migrations.CurrentVersion())) {
 			t.Fatalf("output = %q, want schema version", output)
 		}
 		if !strings.Contains(output, "discovered files: 3") {
