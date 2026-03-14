@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 2
 current_phase_name: Incremental Refresh and Freshness Model
 current_plan: 4
-status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-03-14T22:09:36Z"
+status: verifying
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-03-14T22:18:09.314Z"
 last_activity: 2026-03-14
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
-  percent: 88
+  completed_plans: 8
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 **Current Phase:** 2
 **Current Phase Name:** Incremental Refresh and Freshness Model
 **Total Phases:** 6
 **Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [█████████░] 88%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-14
-**Last Activity Description:** Completed plan 02-03 transactional refresh service and init baseline refactor
+**Last Activity Description:** Completed plan 02-04 CLI refresh integration and degraded-state reporting
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1 foundation
 - Active phase: Phase 2 - Incremental Refresh and Freshness Model
-- Next planning action: execute Phase 2 plan 02-04
+- Next planning action: verify Phase 2 completion and begin Phase 3 planning
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -88,6 +88,8 @@ progress:
 - Plan `02-03` is complete with transactional sqlite refresh reconciliation, shared app refresh orchestration, and init reuse of the canonical refresh baseline.
 - Verification for `02-03` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go caches for targeted Wave 3 coverage and the full Go test suite after fetching `modernc.org/sqlite` once.
 - Phase 2 planning is complete with four executable plans: `02-01` schema and freshness contracts, `02-02` snapshot diff and fingerprint engine, `02-03` transactional refresh service, and `02-04` CLI refresh integration.
+- Plan `02-04` is complete with the manual `refresh` command, shared init/refresh freshness reporting, and CLI integration coverage for no-op, mutation, degraded, and recovery flows.
+- Verification for `02-04` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go caches for targeted CLI coverage, the full Go test suite, and a temporary built binary for fixture command checks.
 
 ## Performance Metrics
 
@@ -96,6 +98,7 @@ progress:
 | Phase 02 P01 | recorded earlier | 3 tasks | 6 files |
 | Phase 02 P02 | 8min | 3 tasks | 7 files |
 | Phase 02 P03 | 6min | 3 tasks | 7 files |
+| Phase 02 P04 | 4min | 3 tasks | 9 files |
 
 ## Decisions Made
 
@@ -105,6 +108,9 @@ progress:
 - [Phase 02]: SQLite refresh now commits file reconciliation, directory aggregates, refresh events, and repository freshness in one transaction on success.
 - [Phase 02]: Refresh failures now roll back snapshot writes and record a separate failed run with partially degraded freshness metadata.
 - [Phase 02]: Init now uses the shared refresh service with ReasonInit and ForceFull=true instead of a destructive inventory replacement path.
+- [Phase 02]: The refresh command stays a thin CLI wrapper and delegates orchestration to internal/app.RefreshService.
+- [Phase 02]: CLI output normalizes partially_degraded to partially degraded at the render boundary for both init and refresh.
+- [Phase 02]: Manual refresh failures now print degraded freshness and generation before returning the underlying error.
 
 ## Blockers
 
@@ -112,9 +118,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-14T22:09:36Z
-**Stopped At:** Completed 02-03-PLAN.md
+**Last Date:** 2026-03-14T22:18:09.312Z
+**Stopped At:** Completed 02-04-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-14 after completing plan 02-03*
+*Last updated: 2026-03-14 after completing plan 02-04*
