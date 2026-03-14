@@ -96,6 +96,15 @@ func (s *Store) UpsertRepository(ctx context.Context, root repository.Repository
 	if s == nil || s.db == nil {
 		return RepositoryRecord{}, fmt.Errorf("upsert repository: store is not initialized")
 	}
+	return s.upsertRepository(ctx, s.db, root, now)
+}
+
+type repositoryExecer interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+func (s *Store) upsertRepository(ctx context.Context, execer repositoryExecer, root repository.RepositoryRoot, now time.Time) (RepositoryRecord, error) {
 	if root.RootPath == "" {
 		return RepositoryRecord{}, fmt.Errorf("upsert repository: root path is required")
 	}
@@ -104,7 +113,7 @@ func (s *Store) UpsertRepository(ctx context.Context, root repository.Repository
 	}
 
 	timestamp := now.UTC().Format(time.RFC3339)
-	if _, err := s.db.ExecContext(
+	if _, err := execer.ExecContext(
 		ctx,
 		`INSERT INTO repositories (
 			root_path, root_real_path, detection_mode, git_common_dir, git_head_ref, git_head_commit, created_at, updated_at
@@ -129,7 +138,7 @@ func (s *Store) UpsertRepository(ctx context.Context, root repository.Repository
 	}
 
 	var record RepositoryRecord
-	if err := s.db.QueryRowContext(ctx, `SELECT id FROM repositories WHERE root_path = ?`, root.RootPath).Scan(&record.ID); err != nil {
+	if err := execer.QueryRowContext(ctx, `SELECT id FROM repositories WHERE root_path = ?`, root.RootPath).Scan(&record.ID); err != nil {
 		return RepositoryRecord{}, fmt.Errorf("load repository %q: %w", root.RootPath, err)
 	}
 
