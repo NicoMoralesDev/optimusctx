@@ -523,6 +523,487 @@ func TestDegradedRefreshMetadata(t *testing.T) {
 	}
 }
 
+func TestStructuralArtifactReadModels(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	run := createTestRefreshRun(t, ctx, store, repoID, 7)
+	goFileID := insertTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{
+		Path:           "internal/app/service.go",
+		DirectoryPath:  "internal/app",
+		Extension:      ".go",
+		Language:       "go",
+		ContentHash:    "hash-go-1",
+		LastGeneration: 7,
+	})
+	unsupportedFileID := insertTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{
+		Path:           "scripts/tool.py",
+		DirectoryPath:  "scripts",
+		Extension:      ".py",
+		Language:       "python",
+		ContentHash:    "hash-py-1",
+		LastGeneration: 7,
+	})
+
+	candidates, err := store.ListExtractionCandidates(ctx, repoID)
+	if err != nil {
+		t.Fatalf("ListExtractionCandidates() error = %v", err)
+	}
+	if len(candidates) != 2 {
+		t.Fatalf("candidate count = %d, want 2", len(candidates))
+	}
+	if candidates[0].Path != "internal/app/service.go" || candidates[0].Language != "go" {
+		t.Fatalf("first candidate = %+v", candidates[0])
+	}
+	if candidates[1].Path != "scripts/tool.py" || candidates[1].Language != "python" {
+		t.Fatalf("second candidate = %+v", candidates[1])
+	}
+
+	supportedExtraction := repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:        repoID,
+			FileID:              goFileID,
+			Path:                "internal/app/service.go",
+			Language:            "go",
+			AdapterName:         "tree-sitter-go",
+			GrammarVersion:      "v0.25.0",
+			SourceContentHash:   "hash-go-1",
+			SourceGeneration:    7,
+			CoverageState:       repository.ExtractionCoverageStateSupported,
+			SymbolCount:         2,
+			TopLevelSymbolCount: 1,
+			MaxSymbolDepth:      1,
+			ExtractedAt:         time.Date(2026, 3, 14, 18, 0, 0, 0, time.UTC),
+			RefreshRunID:        run.ID,
+		},
+		Symbols: []repository.SymbolRecord{
+			{
+				StableKey:          "function:service",
+				Path:               "internal/app/service.go",
+				Language:           "go",
+				Kind:               "function",
+				Name:               "Service",
+				QualifiedName:      "Service",
+				Ordinal:            0,
+				Depth:              0,
+				StartByte:          0,
+				EndByte:            64,
+				StartRow:           0,
+				StartColumn:        0,
+				EndRow:             4,
+				EndColumn:          1,
+				NameStartByte:      5,
+				NameEndByte:        12,
+				SignatureStartByte: 0,
+				SignatureEndByte:   18,
+				IsExported:         true,
+			},
+			{
+				StableKey:       "method:service.run",
+				ParentStableKey: "function:service",
+				Path:            "internal/app/service.go",
+				Language:        "go",
+				Kind:            "method",
+				Name:            "Run",
+				QualifiedName:   "Service.Run",
+				Ordinal:         1,
+				Depth:           1,
+				StartByte:       65,
+				EndByte:         120,
+				StartRow:        5,
+				StartColumn:     0,
+				EndRow:          8,
+				EndColumn:       1,
+				IsExported:      true,
+			},
+		},
+	}
+	if _, err := store.ReplaceFileArtifacts(ctx, supportedExtraction); err != nil {
+		t.Fatalf("ReplaceFileArtifacts() supported error = %v", err)
+	}
+
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:      repoID,
+			FileID:            unsupportedFileID,
+			Path:              "scripts/tool.py",
+			Language:          "python",
+			AdapterName:       "none",
+			GrammarVersion:    "none",
+			SourceContentHash: "hash-py-1",
+			SourceGeneration:  7,
+			CoverageState:     repository.ExtractionCoverageStateUnsupported,
+			CoverageReason:    repository.ExtractionCoverageReasonUnsupportedLanguage,
+			ExtractedAt:       time.Date(2026, 3, 14, 18, 1, 0, 0, time.UTC),
+			RefreshRunID:      run.ID,
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts() unsupported error = %v", err)
+	}
+
+	extractions, err := store.ListFileExtractions(ctx, repoID)
+	if err != nil {
+		t.Fatalf("ListFileExtractions() error = %v", err)
+	}
+	if len(extractions) != 2 {
+		t.Fatalf("extraction count = %d, want 2", len(extractions))
+	}
+	if extractions[0].Path != "internal/app/service.go" || extractions[0].CoverageState != repository.ExtractionCoverageStateSupported {
+		t.Fatalf("supported extraction = %+v", extractions[0])
+	}
+	if extractions[1].CoverageReason != repository.ExtractionCoverageReasonUnsupportedLanguage {
+		t.Fatalf("unsupported extraction reason = %q", extractions[1].CoverageReason)
+	}
+
+	symbols, err := store.ListSymbols(ctx, repoID)
+	if err != nil {
+		t.Fatalf("ListSymbols() error = %v", err)
+	}
+	if len(symbols) != 2 {
+		t.Fatalf("symbol count = %d, want 2", len(symbols))
+	}
+	if symbols[1].ParentSymbolID == 0 {
+		t.Fatalf("nested symbol parent should be persisted: %+v", symbols[1])
+	}
+
+	summary, err := store.ReadRepositoryStructuralCoverage(ctx, repoID)
+	if err != nil {
+		t.Fatalf("ReadRepositoryStructuralCoverage() error = %v", err)
+	}
+	if summary.IncludedFileCount != 2 || summary.ExtractionCount != 2 {
+		t.Fatalf("coverage summary = %+v", summary)
+	}
+	if summary.SupportedCount != 1 || summary.UnsupportedCount != 1 || summary.FilesWithCoverageGap != 1 || summary.TotalSymbolCount != 2 {
+		t.Fatalf("coverage summary = %+v", summary)
+	}
+
+	mapRecords, err := store.LoadRepositoryMapRecords(ctx, repoID)
+	if err != nil {
+		t.Fatalf("LoadRepositoryMapRecords() error = %v", err)
+	}
+	if len(mapRecords) != 2 {
+		t.Fatalf("repository map file count = %d, want 2", len(mapRecords))
+	}
+	if len(mapRecords[0].Symbols) != 1 || mapRecords[0].Symbols[0].Name != "Service" {
+		t.Fatalf("top-level repository map symbols = %+v", mapRecords[0].Symbols)
+	}
+	if mapRecords[1].CoverageState != repository.ExtractionCoverageStateUnsupported || len(mapRecords[1].Symbols) != 0 {
+		t.Fatalf("unsupported repository map record = %+v", mapRecords[1])
+	}
+}
+
+func TestReplaceFileArtifacts(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	run := createTestRefreshRun(t, ctx, store, repoID, 8)
+	replacedFileID := insertTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{
+		Path:           "pkg/replaced.go",
+		DirectoryPath:  "pkg",
+		Extension:      ".go",
+		Language:       "go",
+		ContentHash:    "hash-v1",
+		LastGeneration: 8,
+	})
+	stableFileID := insertTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{
+		Path:           "pkg/stable.go",
+		DirectoryPath:  "pkg",
+		Extension:      ".go",
+		Language:       "go",
+		ContentHash:    "hash-stable",
+		LastGeneration: 8,
+	})
+
+	first, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:        repoID,
+			FileID:              replacedFileID,
+			Path:                "pkg/replaced.go",
+			Language:            "go",
+			AdapterName:         "tree-sitter-go",
+			GrammarVersion:      "v0.25.0",
+			SourceContentHash:   "hash-v1",
+			SourceGeneration:    8,
+			CoverageState:       repository.ExtractionCoverageStateSupported,
+			SymbolCount:         2,
+			TopLevelSymbolCount: 2,
+			MaxSymbolDepth:      0,
+			ExtractedAt:         time.Date(2026, 3, 14, 19, 0, 0, 0, time.UTC),
+			RefreshRunID:        run.ID,
+		},
+		Symbols: []repository.SymbolRecord{
+			testTopLevelSymbol("pkg/replaced.go", "go", "function", "Alpha", "alpha", 0),
+			testTopLevelSymbol("pkg/replaced.go", "go", "function", "Beta", "beta", 1),
+		},
+	})
+	if err != nil {
+		t.Fatalf("ReplaceFileArtifacts() first error = %v", err)
+	}
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:        repoID,
+			FileID:              stableFileID,
+			Path:                "pkg/stable.go",
+			Language:            "go",
+			AdapterName:         "tree-sitter-go",
+			GrammarVersion:      "v0.25.0",
+			SourceContentHash:   "hash-stable",
+			SourceGeneration:    8,
+			CoverageState:       repository.ExtractionCoverageStateSupported,
+			SymbolCount:         1,
+			TopLevelSymbolCount: 1,
+			MaxSymbolDepth:      0,
+			ExtractedAt:         time.Date(2026, 3, 14, 19, 1, 0, 0, time.UTC),
+			RefreshRunID:        run.ID,
+		},
+		Symbols: []repository.SymbolRecord{
+			testTopLevelSymbol("pkg/stable.go", "go", "type", "Stable", "stable", 0),
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts() stable error = %v", err)
+	}
+
+	second, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:        repoID,
+			FileID:              replacedFileID,
+			Path:                "pkg/replaced.go",
+			Language:            "go",
+			AdapterName:         "tree-sitter-go",
+			GrammarVersion:      "v0.25.1",
+			SourceContentHash:   "hash-v2",
+			SourceGeneration:    9,
+			CoverageState:       repository.ExtractionCoverageStateSupported,
+			SymbolCount:         1,
+			TopLevelSymbolCount: 1,
+			MaxSymbolDepth:      0,
+			ExtractedAt:         time.Date(2026, 3, 14, 19, 2, 0, 0, time.UTC),
+			RefreshRunID:        run.ID,
+		},
+		Symbols: []repository.SymbolRecord{
+			testTopLevelSymbol("pkg/replaced.go", "go", "function", "Gamma", "gamma", 0),
+		},
+	})
+	if err != nil {
+		t.Fatalf("ReplaceFileArtifacts() second error = %v", err)
+	}
+
+	if second.ID != first.ID {
+		t.Fatalf("file extraction row should be replaced in place: first=%d second=%d", first.ID, second.ID)
+	}
+
+	symbols, err := store.ListSymbols(ctx, repoID)
+	if err != nil {
+		t.Fatalf("ListSymbols() error = %v", err)
+	}
+	if len(symbols) != 2 {
+		t.Fatalf("symbol count = %d, want 2", len(symbols))
+	}
+	if symbols[0].Path != "pkg/replaced.go" || symbols[0].Name != "Gamma" {
+		t.Fatalf("replacement symbol = %+v", symbols[0])
+	}
+	if symbols[1].Path != "pkg/stable.go" || symbols[1].Name != "Stable" {
+		t.Fatalf("stable symbol = %+v", symbols[1])
+	}
+
+	extractions, err := store.ListFileExtractions(ctx, repoID)
+	if err != nil {
+		t.Fatalf("ListFileExtractions() error = %v", err)
+	}
+	if len(extractions) != 2 {
+		t.Fatalf("extraction count = %d, want 2", len(extractions))
+	}
+	if extractions[0].Path != "pkg/replaced.go" || extractions[0].SourceContentHash != "hash-v2" || extractions[0].SymbolCount != 1 {
+		t.Fatalf("replaced extraction = %+v", extractions[0])
+	}
+	if extractions[1].Path != "pkg/stable.go" || extractions[1].SourceContentHash != "hash-stable" {
+		t.Fatalf("stable extraction = %+v", extractions[1])
+	}
+}
+
+func TestUnsupportedExtractionState(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	run := createTestRefreshRun(t, ctx, store, repoID, 3)
+	fileID := insertTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{
+		Path:           "assets/template.mustache",
+		DirectoryPath:  "assets",
+		Extension:      ".mustache",
+		Language:       "mustache",
+		ContentHash:    "hash-template",
+		LastGeneration: 3,
+	})
+
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:      repoID,
+			FileID:            fileID,
+			Path:              "assets/template.mustache",
+			Language:          "mustache",
+			AdapterName:       "none",
+			GrammarVersion:    "none",
+			SourceContentHash: "hash-template",
+			SourceGeneration:  3,
+			CoverageState:     repository.ExtractionCoverageStateUnsupported,
+			CoverageReason:    repository.ExtractionCoverageReasonUnsupportedLanguage,
+			ExtractedAt:       time.Date(2026, 3, 14, 20, 0, 0, 0, time.UTC),
+			RefreshRunID:      run.ID,
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts() error = %v", err)
+	}
+
+	extractions, err := store.ListFileExtractions(ctx, repoID)
+	if err != nil {
+		t.Fatalf("ListFileExtractions() error = %v", err)
+	}
+	if len(extractions) != 1 || extractions[0].CoverageState != repository.ExtractionCoverageStateUnsupported || extractions[0].CoverageReason != repository.ExtractionCoverageReasonUnsupportedLanguage {
+		t.Fatalf("unsupported extraction = %+v", extractions)
+	}
+
+	symbols, err := store.ListSymbols(ctx, repoID)
+	if err != nil {
+		t.Fatalf("ListSymbols() error = %v", err)
+	}
+	if len(symbols) != 0 {
+		t.Fatalf("unsupported file should not persist symbols, got %d", len(symbols))
+	}
+}
+
+func TestPartialAndFailedExtractionState(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	run := createTestRefreshRun(t, ctx, store, repoID, 11)
+	partialFileID := insertTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{
+		Path:           "pkg/partial.go",
+		DirectoryPath:  "pkg",
+		Extension:      ".go",
+		Language:       "go",
+		ContentHash:    "hash-partial",
+		LastGeneration: 11,
+	})
+	failedFileID := insertTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{
+		Path:           "pkg/failed.go",
+		DirectoryPath:  "pkg",
+		Extension:      ".go",
+		Language:       "go",
+		ContentHash:    "hash-failed",
+		LastGeneration: 11,
+	})
+
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:        repoID,
+			FileID:              partialFileID,
+			Path:                "pkg/partial.go",
+			Language:            "go",
+			AdapterName:         "tree-sitter-go",
+			GrammarVersion:      "v0.25.0",
+			SourceContentHash:   "hash-partial",
+			SourceGeneration:    11,
+			CoverageState:       repository.ExtractionCoverageStatePartial,
+			CoverageReason:      repository.ExtractionCoverageReasonParseError,
+			ParserErrorCount:    2,
+			HasErrorNodes:       true,
+			SymbolCount:         1,
+			TopLevelSymbolCount: 1,
+			MaxSymbolDepth:      0,
+			ExtractedAt:         time.Date(2026, 3, 14, 20, 30, 0, 0, time.UTC),
+			RefreshRunID:        run.ID,
+		},
+		Symbols: []repository.SymbolRecord{
+			testTopLevelSymbol("pkg/partial.go", "go", "function", "Recovered", "recovered", 0),
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts() partial error = %v", err)
+	}
+
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:      repoID,
+			FileID:            failedFileID,
+			Path:              "pkg/failed.go",
+			Language:          "go",
+			AdapterName:       "tree-sitter-go",
+			GrammarVersion:    "v0.25.0",
+			SourceContentHash: "hash-failed",
+			SourceGeneration:  11,
+			CoverageState:     repository.ExtractionCoverageStateFailed,
+			CoverageReason:    repository.ExtractionCoverageReasonAdapterError,
+			ParserErrorCount:  4,
+			HasErrorNodes:     true,
+			ExtractedAt:       time.Date(2026, 3, 14, 20, 31, 0, 0, time.UTC),
+			RefreshRunID:      run.ID,
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts() failed error = %v", err)
+	}
+
+	extractions, err := store.ListFileExtractions(ctx, repoID)
+	if err != nil {
+		t.Fatalf("ListFileExtractions() error = %v", err)
+	}
+	if len(extractions) != 2 {
+		t.Fatalf("extraction count = %d, want 2", len(extractions))
+	}
+	if extractions[0].CoverageState != repository.ExtractionCoverageStateFailed || extractions[0].SymbolCount != 0 {
+		t.Fatalf("failed extraction = %+v", extractions[0])
+	}
+	if extractions[1].CoverageState != repository.ExtractionCoverageStatePartial || !extractions[1].HasErrorNodes || extractions[1].SymbolCount != 1 {
+		t.Fatalf("partial extraction = %+v", extractions[1])
+	}
+
+	symbols, err := store.ListSymbols(ctx, repoID)
+	if err != nil {
+		t.Fatalf("ListSymbols() error = %v", err)
+	}
+	if len(symbols) != 1 || symbols[0].Path != "pkg/partial.go" {
+		t.Fatalf("symbols = %+v", symbols)
+	}
+
+	summary, err := store.ReadRepositoryStructuralCoverage(ctx, repoID)
+	if err != nil {
+		t.Fatalf("ReadRepositoryStructuralCoverage() error = %v", err)
+	}
+	if summary.PartialCount != 1 || summary.FailedCount != 1 || summary.FilesWithCoverageGap != 2 || summary.TotalSymbolCount != 1 {
+		t.Fatalf("coverage summary = %+v", summary)
+	}
+}
+
 func openStoreWithRepository(t *testing.T, ctx context.Context, layout state.Layout) (*Store, int64) {
 	t.Helper()
 
@@ -602,4 +1083,107 @@ func assertIndexColumns(t *testing.T, db *sql.DB, tableName string, expected []s
 	}
 
 	t.Fatalf("index with columns %v not found on %s", expected, tableName)
+}
+
+type testFileSeed struct {
+	Path           string
+	DirectoryPath  string
+	Extension      string
+	Language       string
+	ContentHash    string
+	LastGeneration int64
+}
+
+func createTestRefreshRun(t *testing.T, ctx context.Context, store *Store, repoID, generation int64) repository.RefreshRunRecord {
+	t.Helper()
+
+	run, err := store.CreateRefreshRun(ctx, repository.RefreshRunRecord{
+		RepositoryID: repoID,
+		Generation:   generation,
+		Reason:       repository.RefreshReasonManual,
+		Status:       repository.RefreshRunStatusSuccess,
+		StartedAt:    time.Date(2026, 3, 14, 17, 0, 0, 0, time.UTC),
+		CompletedAt:  time.Date(2026, 3, 14, 17, 1, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatalf("CreateRefreshRun() error = %v", err)
+	}
+	return run
+}
+
+func insertTestFileRecord(t *testing.T, ctx context.Context, store *Store, repoID, refreshRunID int64, seed testFileSeed) int64 {
+	t.Helper()
+
+	discoveredAt := time.Date(2026, 3, 14, 16, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	updatedAt := time.Date(2026, 3, 14, 16, 5, 0, 0, time.UTC).Format(time.RFC3339)
+	result, err := store.DB().ExecContext(ctx, `
+		INSERT INTO files (
+			repository_id,
+			path,
+			directory_path,
+			extension,
+			language,
+			size_bytes,
+			content_hash,
+			last_indexed_at,
+			ignore_status,
+			ignore_reason,
+			fs_mod_time,
+			discovered_at,
+			updated_at,
+			last_seen_generation,
+			refresh_run_id,
+			updated_reason
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`,
+		repoID,
+		seed.Path,
+		seed.DirectoryPath,
+		seed.Extension,
+		seed.Language,
+		128,
+		seed.ContentHash,
+		updatedAt,
+		string(repository.IgnoreStatusIncluded),
+		nil,
+		updatedAt,
+		discoveredAt,
+		updatedAt,
+		seed.LastGeneration,
+		refreshRunID,
+		"content_changed",
+	)
+	if err != nil {
+		t.Fatalf("insert file %q error = %v", seed.Path, err)
+	}
+
+	fileID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatalf("LastInsertId() error = %v", err)
+	}
+	return fileID
+}
+
+func testTopLevelSymbol(path, language, kind, name, stableKey string, ordinal int64) repository.SymbolRecord {
+	return repository.SymbolRecord{
+		StableKey:          stableKey,
+		Path:               path,
+		Language:           language,
+		Kind:               kind,
+		Name:               name,
+		QualifiedName:      name,
+		Ordinal:            ordinal,
+		Depth:              0,
+		StartByte:          ordinal * 10,
+		EndByte:            ordinal*10 + 8,
+		StartRow:           ordinal,
+		StartColumn:        0,
+		EndRow:             ordinal,
+		EndColumn:          8,
+		NameStartByte:      ordinal*10 + 1,
+		NameEndByte:        ordinal*10 + 1 + int64(len(name)),
+		SignatureStartByte: ordinal * 10,
+		SignatureEndByte:   ordinal*10 + 8,
+		IsExported:         true,
+	}
 }

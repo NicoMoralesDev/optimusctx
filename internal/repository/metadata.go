@@ -130,3 +130,115 @@ type RefreshRunRecord struct {
 	CompletedAt   time.Time
 	MetadataJSON  string
 }
+
+type ExtractionCoverageState string
+
+const (
+	ExtractionCoverageStateSupported   ExtractionCoverageState = "supported"
+	ExtractionCoverageStatePartial     ExtractionCoverageState = "partial"
+	ExtractionCoverageStateUnsupported ExtractionCoverageState = "unsupported"
+	ExtractionCoverageStateFailed      ExtractionCoverageState = "failed"
+	ExtractionCoverageStateSkipped     ExtractionCoverageState = "skipped"
+)
+
+type ExtractionCoverageReason string
+
+const (
+	ExtractionCoverageReasonNone                ExtractionCoverageReason = ""
+	ExtractionCoverageReasonUnsupportedLanguage ExtractionCoverageReason = "unsupported_language"
+	ExtractionCoverageReasonParseError          ExtractionCoverageReason = "parse_error"
+	ExtractionCoverageReasonAdapterError        ExtractionCoverageReason = "adapter_error"
+	ExtractionCoverageReasonQueryError          ExtractionCoverageReason = "query_error"
+)
+
+type ExtractionCandidate struct {
+	RepositoryID     int64
+	FileID           int64
+	Path             string
+	Language         string
+	ContentHash      string
+	SourceGeneration int64
+	RefreshRunID     int64
+}
+
+type FileExtractionRecord struct {
+	ID                  int64
+	RepositoryID        int64
+	FileID              int64
+	Path                string
+	Language            string
+	AdapterName         string
+	GrammarVersion      string
+	SourceContentHash   string
+	SourceGeneration    int64
+	CoverageState       ExtractionCoverageState
+	CoverageReason      ExtractionCoverageReason
+	ParserErrorCount    int64
+	HasErrorNodes       bool
+	SymbolCount         int64
+	TopLevelSymbolCount int64
+	MaxSymbolDepth      int64
+	ExtractedAt         time.Time
+	RefreshRunID        int64
+}
+
+type SymbolRecord struct {
+	ID                 int64
+	RepositoryID       int64
+	FileID             int64
+	FileExtractionID   int64
+	StableKey          string
+	ParentSymbolID     int64
+	ParentStableKey    string
+	Path               string
+	Language           string
+	Kind               string
+	Name               string
+	QualifiedName      string
+	Ordinal            int64
+	Depth              int64
+	StartByte          int64
+	EndByte            int64
+	StartRow           int64
+	StartColumn        int64
+	EndRow             int64
+	EndColumn          int64
+	NameStartByte      int64
+	NameEndByte        int64
+	SignatureStartByte int64
+	SignatureEndByte   int64
+	IsExported         bool
+}
+
+type FileStructuralArtifacts struct {
+	Extraction FileExtractionRecord
+	Symbols    []SymbolRecord
+}
+
+type RepositoryStructuralCoverageSummary struct {
+	RepositoryID         int64
+	IncludedFileCount    int64
+	ExtractionCount      int64
+	SupportedCount       int64
+	PartialCount         int64
+	UnsupportedCount     int64
+	FailedCount          int64
+	SkippedCount         int64
+	FilesWithCoverageGap int64
+	TotalSymbolCount     int64
+}
+
+type RepositoryMapFileRecord struct {
+	FileID              int64
+	Path                string
+	DirectoryPath       string
+	Language            string
+	IgnoreStatus        IgnoreStatus
+	CoverageState       ExtractionCoverageState
+	CoverageReason      ExtractionCoverageReason
+	SymbolCount         int64
+	TopLevelSymbolCount int64
+	MaxSymbolDepth      int64
+	SourceGeneration    int64
+	Symbols             []SymbolRecord
+}
