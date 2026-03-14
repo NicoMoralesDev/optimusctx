@@ -7,7 +7,7 @@
 
 ### Installation and CLI
 
-- [ ] **CLI-01**: User can install the OptimusCtx runtime locally through a bootstrap path without modifying repository contents.
+- [x] **CLI-01**: User can install the OptimusCtx runtime locally through a bootstrap path without modifying repository contents.
 - [ ] **CLI-02**: User can optionally register MCP configuration for supported clients during install, with explicit consent.
 - [ ] **CLI-03**: User can run `optimusctx init` in a repository and create the local project state directory successfully.
 - [ ] **CLI-04**: User can run `optimusctx snippet` and receive a manual-copy integration snippet without any file being modified automatically.
@@ -17,8 +17,8 @@
 
 - [x] **REPO-01**: Runtime can detect the repository root for the current working directory.
 - [x] **REPO-02**: Runtime can collect indexable files while respecting ignore rules and common generated/vendor exclusions.
-- [ ] **REPO-03**: Runtime stores repository configuration, runtime metadata, and persistent index state in a project-local state directory.
-- [ ] **REPO-04**: Runtime persists repository, file, and directory metadata in SQLite with explicit schema versioning and migration support.
+- [x] **REPO-03**: Runtime stores repository configuration, runtime metadata, and persistent index state in a project-local state directory.
+- [x] **REPO-04**: Runtime persists repository, file, and directory metadata in SQLite with explicit schema versioning and migration support.
 - [x] **REPO-05**: Runtime tracks per-file language, size, hash, last indexed time, and ignore status in persistent state.
 
 ### Refresh and Change Detection
@@ -95,15 +95,15 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CLI-01 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
+| CLI-01 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | CLI-02 | Phase 5 - MCP Serving and Integration Contracts | Pending |
 | CLI-03 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
 | CLI-04 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
 | CLI-05 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
 | REPO-01 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | REPO-02 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
-| REPO-03 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
-| REPO-04 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
+| REPO-03 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
+| REPO-04 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | REPO-05 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | REFR-01 | Phase 2 - Incremental Refresh and Freshness Model | Pending |
 | REFR-02 | Phase 2 - Incremental Refresh and Freshness Model | Pending |
