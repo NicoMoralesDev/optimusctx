@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 2
 current_phase_name: Incremental Refresh and Freshness Model
-current_plan: 4
-status: verifying
-stopped_at: Completed 02-04-PLAN.md
-last_updated: "2026-03-14T22:18:09.314Z"
+current_plan: 5
+status: in_progress
+stopped_at: Completed 02-05-PLAN.md
+last_updated: "2026-03-14T23:15:35.423Z"
 last_activity: 2026-03-14
 progress:
   total_phases: 6
-  completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
+  completed_phases: 1
+  total_plans: 10
+  completed_plans: 9
+  percent: 90
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase complete — ready for verification
+**Status:** Phase in progress — continue executing remaining Phase 2 plans
 **Current Phase:** 2
 **Current Phase Name:** Incremental Refresh and Freshness Model
 **Total Phases:** 6
-**Current Plan:** 4
-**Total Plans in Phase:** 4
-**Progress:** [██████████] 100%
+**Current Plan:** 5
+**Total Plans in Phase:** 6
+**Progress:** [█████████░] 90%
 **Last Activity:** 2026-03-14
-**Last Activity Description:** Completed plan 02-04 CLI refresh integration and degraded-state reporting
+**Last Activity Description:** Completed plan 02-05 gap closure for hermetic refresh fixtures and truthful tracked-file counts
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1 foundation
 - Active phase: Phase 2 - Incremental Refresh and Freshness Model
-- Next planning action: verify Phase 2 completion and begin Phase 3 planning
+- Next planning action: execute plan 02-06 to finish Phase 2
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -90,6 +90,8 @@ progress:
 - Phase 2 planning is complete with four executable plans: `02-01` schema and freshness contracts, `02-02` snapshot diff and fingerprint engine, `02-03` transactional refresh service, and `02-04` CLI refresh integration.
 - Plan `02-04` is complete with the manual `refresh` command, shared init/refresh freshness reporting, and CLI integration coverage for no-op, mutation, degraded, and recovery flows.
 - Verification for `02-04` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go caches for targeted CLI coverage, the full Go test suite, and a temporary built binary for fixture command checks.
+- Plan `02-05` is complete with hermetic temp-repository refresh fixtures, explicit `.optimusctx` exclusion regressions, and truthful unchanged counts after ignore transitions.
+- Verification for `02-05` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go caches for targeted runtime-state, service, and CLI refresh coverage plus the full Go test suite.
 
 ## Performance Metrics
 
@@ -99,6 +101,7 @@ progress:
 | Phase 02 P02 | 8min | 3 tasks | 7 files |
 | Phase 02 P03 | 6min | 3 tasks | 7 files |
 | Phase 02 P04 | 4min | 3 tasks | 9 files |
+| Phase 02-incremental-refresh-and-freshness-model P05 | 32min | 3 tasks | 6 files |
 
 ## Decisions Made
 
@@ -111,6 +114,8 @@ progress:
 - [Phase 02]: The refresh command stays a thin CLI wrapper and delegates orchestration to internal/app.RefreshService.
 - [Phase 02]: CLI output normalizes partially_degraded to partially degraded at the render boundary for both init and refresh.
 - [Phase 02]: Manual refresh failures now print degraded freshness and generation before returning the underlying error.
+- [Phase 02]: Refresh verification now runs in temp Git repositories at the service and CLI layers so mutable worktree state cannot contaminate Phase 2 assertions.
+- [Phase 02]: Ignored-on-both-sides paths are excluded from unchanged totals so refresh counts only describe tracked repository content.
 
 ## Blockers
 
@@ -118,9 +123,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-14T22:18:09.312Z
-**Stopped At:** Completed 02-04-PLAN.md
+**Last Date:** 2026-03-14T23:15:35.420Z
+**Stopped At:** Completed 02-05-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-14 after completing plan 02-04*
+*Last updated: 2026-03-14 after completing plan 02-05*
