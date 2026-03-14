@@ -37,6 +37,12 @@ func TestInitCommandInitializesFromNestedRepositoryPath(t *testing.T) {
 		if !strings.Contains(output, "schema version: "+strconv.Itoa(migrations.CurrentVersion())) {
 			t.Fatalf("output = %q, want schema version", output)
 		}
+		if !strings.Contains(output, "refresh generation: 1") {
+			t.Fatalf("output = %q, want refresh generation", output)
+		}
+		if !strings.Contains(output, "freshness: fresh") {
+			t.Fatalf("output = %q, want freshness", output)
+		}
 		if !strings.Contains(output, "discovered files: 3") {
 			t.Fatalf("output = %q, want discovered file count", output)
 		}

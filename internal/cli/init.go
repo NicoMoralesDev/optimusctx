@@ -35,10 +35,12 @@ func newInitCommand() *Command {
 
 			_, err = fmt.Fprintf(
 				stdout,
-				"repository root: %s\nstate directory: %s\nschema version: %d\ndiscovered files: %d\n",
+				"repository root: %s\nstate directory: %s\nschema version: %d\nrefresh generation: %d\nfreshness: %s\ndiscovered files: %d\n",
 				result.RepositoryRoot,
 				result.StatePath,
 				result.SchemaVersion,
+				result.Generation,
+				renderFreshnessStatus(result.FreshnessStatus),
 				result.FileCount,
 			)
 			return err

@@ -19,13 +19,15 @@ type InitService struct {
 }
 
 type InitResult struct {
-	RepositoryRoot string
-	StatePath      string
-	SchemaVersion  int
-	FileCount      int
-	IncludedFiles  int
-	IgnoredFiles   int
-	DirectoryCount int
+	RepositoryRoot  string
+	StatePath       string
+	SchemaVersion   int
+	FileCount       int
+	IncludedFiles   int
+	IgnoredFiles    int
+	DirectoryCount  int
+	Generation      int64
+	FreshnessStatus repository.FreshnessStatus
 }
 
 func NewInitService() InitService {
@@ -97,11 +99,13 @@ func (s InitService) Init(ctx context.Context, startPath string) (InitResult, er
 	}
 
 	result := InitResult{
-		RepositoryRoot: refreshResult.RepositoryRoot,
-		StatePath:      refreshResult.StatePath,
-		SchemaVersion:  refreshResult.SchemaVersion,
-		FileCount:      len(snapshot.Files),
-		DirectoryCount: len(snapshot.Directories),
+		RepositoryRoot:  refreshResult.RepositoryRoot,
+		StatePath:       refreshResult.StatePath,
+		SchemaVersion:   refreshResult.SchemaVersion,
+		FileCount:       len(snapshot.Files),
+		DirectoryCount:  len(snapshot.Directories),
+		Generation:      refreshResult.Generation,
+		FreshnessStatus: refreshResult.FreshnessStatus,
 	}
 	for _, file := range snapshot.Files {
 		if file.IgnoreStatus == repository.IgnoreStatusIncluded {

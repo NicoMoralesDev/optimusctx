@@ -41,6 +41,12 @@ func TestInitServicePersistsRepositoryInventory(t *testing.T) {
 	if result.FileCount < 2 {
 		t.Fatalf("FileCount = %d, want at least 2", result.FileCount)
 	}
+	if result.Generation != 1 {
+		t.Fatalf("Generation = %d, want 1", result.Generation)
+	}
+	if result.FreshnessStatus != repository.FreshnessStatusFresh {
+		t.Fatalf("FreshnessStatus = %q, want %q", result.FreshnessStatus, repository.FreshnessStatusFresh)
+	}
 	if result.IncludedFiles == 0 {
 		t.Fatal("IncludedFiles should be non-zero")
 	}
@@ -80,6 +86,12 @@ func TestInitServiceIsIdempotent(t *testing.T) {
 	}
 	if firstResult.FileCount != secondResult.FileCount {
 		t.Fatalf("FileCount changed from %d to %d", firstResult.FileCount, secondResult.FileCount)
+	}
+	if secondResult.Generation <= firstResult.Generation {
+		t.Fatalf("Generation did not advance: first=%d second=%d", firstResult.Generation, secondResult.Generation)
+	}
+	if secondResult.FreshnessStatus != repository.FreshnessStatusFresh {
+		t.Fatalf("FreshnessStatus = %q, want %q", secondResult.FreshnessStatus, repository.FreshnessStatusFresh)
 	}
 
 	db := openStateDatabase(t, filepath.Join(repoRoot, ".optimusctx", "db.sqlite"))
@@ -130,6 +142,9 @@ func TestInitUsesRefreshBaseline(t *testing.T) {
 	}
 	if result.FileCount == 0 || result.IncludedFiles == 0 {
 		t.Fatalf("unexpected init result: %+v", result)
+	}
+	if result.Generation == 0 {
+		t.Fatalf("unexpected init generation: %+v", result)
 	}
 }
 
