@@ -15,11 +15,11 @@
 
 ### Repository Discovery and State
 
-- [ ] **REPO-01**: Runtime can detect the repository root for the current working directory.
-- [ ] **REPO-02**: Runtime can collect indexable files while respecting ignore rules and common generated/vendor exclusions.
+- [x] **REPO-01**: Runtime can detect the repository root for the current working directory.
+- [x] **REPO-02**: Runtime can collect indexable files while respecting ignore rules and common generated/vendor exclusions.
 - [ ] **REPO-03**: Runtime stores repository configuration, runtime metadata, and persistent index state in a project-local state directory.
 - [ ] **REPO-04**: Runtime persists repository, file, and directory metadata in SQLite with explicit schema versioning and migration support.
-- [ ] **REPO-05**: Runtime tracks per-file language, size, hash, last indexed time, and ignore status in persistent state.
+- [x] **REPO-05**: Runtime tracks per-file language, size, hash, last indexed time, and ignore status in persistent state.
 
 ### Refresh and Change Detection
 
@@ -100,11 +100,11 @@
 | CLI-03 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
 | CLI-04 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
 | CLI-05 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
-| REPO-01 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
-| REPO-02 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
+| REPO-01 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
+| REPO-02 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | REPO-03 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
 | REPO-04 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
-| REPO-05 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Pending |
+| REPO-05 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | REFR-01 | Phase 2 - Incremental Refresh and Freshness Model | Pending |
 | REFR-02 | Phase 2 - Incremental Refresh and Freshness Model | Pending |
 | REFR-03 | Phase 2 - Incremental Refresh and Freshness Model | Pending |
