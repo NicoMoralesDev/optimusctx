@@ -88,8 +88,10 @@ func (s DoctorService) Doctor(ctx context.Context, startPath string, request rep
 		return repository.DoctorReport{}, fmt.Errorf("read watch status: %w", err)
 	}
 	report.Watch = repository.DoctorWatchSection{
-		Status: doctorWatchStatus(watch),
-		Health: watch,
+		Status:   doctorWatchStatus(watch),
+		Optional: watch.Status == repository.WatchStatusKindAbsent,
+		Summary:  doctorWatchSummary(watch),
+		Health:   watch,
 	}
 
 	if health.State.DatabaseFile.Exists {
@@ -330,9 +332,20 @@ func doctorWatchStatus(result repository.WatchStatusResult) repository.DoctorSta
 	case repository.WatchStatusKindRunning:
 		return repository.DoctorStatusHealthy
 	case repository.WatchStatusKindAbsent:
-		return repository.DoctorStatusMissing
+		return repository.DoctorStatusHealthy
 	default:
 		return repository.DoctorStatusDegraded
+	}
+}
+
+func doctorWatchSummary(result repository.WatchStatusResult) string {
+	switch result.Status {
+	case repository.WatchStatusKindAbsent:
+		return "watch mode is not running; background watch is optional"
+	case repository.WatchStatusKindRunning:
+		return "watch mode is running"
+	default:
+		return result.Reason
 	}
 }
 
@@ -446,19 +459,15 @@ func doctorRefreshAction(report repository.DoctorReport) string {
 }
 
 func doctorWatchIssue(report repository.DoctorReport) string {
-	switch report.Watch.Status {
-	case repository.DoctorStatusMissing:
-		return "watch status is absent"
-	case repository.DoctorStatusDegraded:
+	if report.Watch.Status == repository.DoctorStatusDegraded {
 		return report.Watch.Health.Reason
-	default:
-		return ""
 	}
+	return ""
 }
 
 func doctorWatchAction(report repository.DoctorReport) string {
-	if report.Watch.Status == repository.DoctorStatusMissing {
-		return "start `optimusctx watch run` if you expect continuous refreshes"
+	if report.Watch.Health.Status == repository.WatchStatusKindAbsent {
+		return "start `optimusctx watch run` only if you want continuous refreshes"
 	}
 	return "restart `optimusctx watch run` so the heartbeat and refresh generation recover"
 }

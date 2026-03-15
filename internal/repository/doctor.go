@@ -74,8 +74,10 @@ type DoctorRefreshRun struct {
 }
 
 type DoctorWatchSection struct {
-	Status DoctorStatus
-	Health WatchStatusResult
+	Status   DoctorStatus
+	Optional bool
+	Summary  string
+	Health   WatchStatusResult
 }
 
 type DoctorStructuralSection struct {

@@ -81,6 +81,8 @@ func formatDoctorReport(report repository.DoctorReport) string {
 	b.WriteString("\nWatch\n")
 	writeDoctorLine(&b, "status", string(report.Watch.Status))
 	writeDoctorLine(&b, "watch state", string(report.Watch.Health.Status))
+	writeDoctorLine(&b, "summary", report.Watch.Summary)
+	writeDoctorLine(&b, "optional", formatDoctorBool(report.Watch.Optional))
 	writeDoctorLine(&b, "reason", renderDoctorValue(report.Watch.Health.Reason))
 	writeDoctorLine(&b, "status path", report.Watch.Health.StatusPath)
 	writeDoctorLine(&b, "last heartbeat", formatDoctorTime(report.Watch.Health.Record.LastHeartbeatAtTime()))
