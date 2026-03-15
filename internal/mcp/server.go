@@ -20,6 +20,7 @@ const (
 	errCodeMethodNotFound   = -32601
 	errCodeInternal         = -32603
 	errCodeUnknownTool      = -32004
+	readinessMessage        = "optimusctx mcp: ready for stdio requests"
 )
 
 type ToolHandler struct {
@@ -60,6 +61,10 @@ func (s *Server) RegisterTool(handler ToolHandler) {
 }
 
 func (s *Server) Serve(ctx context.Context) error {
+	if err := s.signalReadiness(); err != nil {
+		return err
+	}
+
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -84,6 +89,15 @@ func (s *Server) Serve(ctx context.Context) error {
 			return err
 		}
 	}
+}
+
+func (s *Server) signalReadiness() error {
+	if s.errout == nil {
+		return nil
+	}
+
+	_, err := fmt.Fprintln(s.errout, readinessMessage)
+	return err
 }
 
 func (s *Server) handlePayload(ctx context.Context, payload []byte) ([]byte, bool) {
