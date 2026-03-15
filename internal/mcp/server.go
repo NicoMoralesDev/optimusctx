@@ -37,13 +37,15 @@ type Server struct {
 }
 
 func NewServer(stdin io.Reader, stdout io.Writer, stderr io.Writer) *Server {
-	return &Server{
+	server := &Server{
 		input:   bufio.NewReader(stdin),
 		output:  stdout,
 		errout:  stderr,
 		tools:   map[string]ToolHandler{},
 		version: "0.1.0",
 	}
+	registerDefaultQueryTools(server)
+	return server
 }
 
 func (s *Server) RegisterTool(handler ToolHandler) {

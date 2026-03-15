@@ -81,14 +81,14 @@ func TestMCPServerStdioSession(t *testing.T) {
 
 	var toolsResult ToolsListResult
 	mustDecodeResult(t, responses[1].Result, &toolsResult)
-	if len(toolsResult.Tools) != 2 {
-		t.Fatalf("tool count = %d, want 2", len(toolsResult.Tools))
+	if len(toolsResult.Tools) < 2 {
+		t.Fatalf("tool count = %d, want at least 2", len(toolsResult.Tools))
 	}
-	if toolsResult.Tools[0].Name != "optimusctx.echo" {
-		t.Fatalf("tool name = %q, want optimusctx.echo", toolsResult.Tools[0].Name)
+	if !containsTool(toolsResult.Tools, "optimusctx.echo") {
+		t.Fatalf("registered tools missing optimusctx.echo: %+v", toolsResult.Tools)
 	}
-	if toolsResult.Tools[1].Name != "optimusctx.z-last" {
-		t.Fatalf("tool name = %q, want optimusctx.z-last", toolsResult.Tools[1].Name)
+	if !containsTool(toolsResult.Tools, "optimusctx.z-last") {
+		t.Fatalf("registered tools missing optimusctx.z-last: %+v", toolsResult.Tools)
 	}
 }
 
@@ -214,4 +214,13 @@ func bufioReader(reader io.Reader) *bufio.Reader {
 		return buffered
 	}
 	return bufio.NewReader(reader)
+}
+
+func containsTool(tools []Tool, name string) bool {
+	for _, tool := range tools {
+		if tool.Name == name {
+			return true
+		}
+	}
+	return false
 }
