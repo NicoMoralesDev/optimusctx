@@ -99,6 +99,64 @@ func TestPackExportCommand(t *testing.T) {
 	})
 }
 
+func TestPackExportCommandBudgetFlags(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+
+	previous := packExportCommandService
+	t.Cleanup(func() {
+		packExportCommandService = previous
+	})
+
+	packExportCommandService = func(ctx context.Context, workingDir string, stdout io.Writer, request repository.PackExportRequest) (repository.PackExportResult, error) {
+		if workingDir != repoRoot {
+			t.Fatalf("workingDir = %q, want %q", workingDir, repoRoot)
+		}
+		if request.Policy.TargetTokenBudget != 256 {
+			t.Fatalf("TargetTokenBudget = %d, want 256", request.Policy.TargetTokenBudget)
+		}
+		if len(request.Policy.IncludePaths) != 2 || request.Policy.IncludePaths[0] != "pkg" || request.Policy.IncludePaths[1] != "docs" {
+			t.Fatalf("IncludePaths = %+v, want [pkg docs]", request.Policy.IncludePaths)
+		}
+		if len(request.Policy.ExcludePaths) != 1 || request.Policy.ExcludePaths[0] != "docs/generated" {
+			t.Fatalf("ExcludePaths = %+v, want [docs/generated]", request.Policy.ExcludePaths)
+		}
+		return repository.PackExportResult{
+			Request: request,
+			Artifact: repository.PackExportArtifact{
+				Manifest: repository.PackExportManifest{
+					ExportSummary: repository.PackExportSummary{
+						IncludedSectionCount: 1,
+						EstimatedTokens:      200,
+						TargetTokenBudget:    256,
+						FitsTargetBudget:     true,
+					},
+				},
+			},
+			Output: repository.PackExportOutput{
+				Path:         "artifact.json",
+				Format:       repository.PackExportFormatJSON,
+				Compression:  repository.PackExportCompressionNone,
+				BytesWritten: 200,
+			},
+		}, nil
+	}
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{
+			"pack", "export",
+			"--output", "artifact.json",
+			"--include", "pkg",
+			"--include", "docs",
+			"--exclude", "docs/generated",
+			"--target-budget", "256",
+		}, &stdout); err != nil {
+			t.Fatalf("Execute(pack export with budget flags) error = %v", err)
+		}
+		assertContains(t, stdout.String(), "pack export path: artifact.json")
+	})
+}
+
 func TestPackExportCommandErrors(t *testing.T) {
 	repoRoot := initCLIRepo(t)
 
@@ -159,6 +217,14 @@ func TestPackExportCommandErrors(t *testing.T) {
 				t.Fatalf("Execute(pack export) error = %v, want boom", err)
 			}
 		})
+	})
+
+	t.Run("rejects invalid target budget", func(t *testing.T) {
+		var stdout bytes.Buffer
+		err := NewRootCommand().Execute([]string{"pack", "export", "--target-budget", "zero"}, &stdout)
+		if err == nil || err.Error() != "--target-budget requires a positive integer token budget" {
+			t.Fatalf("Execute(pack export --target-budget zero) error = %v", err)
+		}
 	})
 }
 

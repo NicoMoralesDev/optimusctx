@@ -314,6 +314,69 @@ func TestPackExportBudgetPolicy(t *testing.T) {
 	}
 }
 
+func TestPackExportFitsTargetBudget(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "alpha.go"), "package pkg\n\nfunc Alpha() {}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "beta.go"), "package pkg\n\nfunc Beta() {}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "gamma.go"), "package pkg\n\nfunc Gamma() {}\n")
+
+	refresh := NewRefreshService()
+	if _, err := refresh.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+
+	service := NewPackExportService()
+	full, err := service.Export(context.Background(), repoRoot, repository.PackExportRequest{
+		PackRequest: repository.PackRequest{
+			IncludeRepositoryContext: true,
+			IncludeStructuralContext: true,
+		},
+		GeneratedAt: "2026-03-15T19:20:00Z",
+		Generator:   "optimusctx test",
+	})
+	if err != nil {
+		t.Fatalf("Export(full) error = %v", err)
+	}
+	if full.Artifact.Manifest.ExportSummary.EstimatedTokens <= 1 {
+		t.Fatalf("full estimated tokens = %d, want > 1", full.Artifact.Manifest.ExportSummary.EstimatedTokens)
+	}
+
+	budget := full.Artifact.Manifest.ExportSummary.EstimatedTokens - 1
+	fitted, err := service.Export(context.Background(), repoRoot, repository.PackExportRequest{
+		PackRequest: repository.PackRequest{
+			IncludeRepositoryContext: true,
+			IncludeStructuralContext: true,
+		},
+		Policy: repository.PackExportPolicy{
+			TargetTokenBudget: budget,
+		},
+		GeneratedAt: "2026-03-15T19:21:00Z",
+		Generator:   "optimusctx test",
+	})
+	if err != nil {
+		t.Fatalf("Export(fitted) error = %v", err)
+	}
+
+	if !fitted.Artifact.Manifest.ExportSummary.FitsTargetBudget {
+		t.Fatalf("fitted summary = %+v, want FitsTargetBudget", fitted.Artifact.Manifest.ExportSummary)
+	}
+	if fitted.Artifact.Manifest.ExportSummary.EstimatedTokens > budget {
+		t.Fatalf("estimated tokens = %d, want <= %d", fitted.Artifact.Manifest.ExportSummary.EstimatedTokens, budget)
+	}
+	if fitted.Artifact.Manifest.ExportSummary.PrunedSectionCount == 0 {
+		t.Fatalf("pruned section count = 0, want > 0")
+	}
+
+	structuralRecord := findPackExportSectionRecord(t, fitted.Artifact.Manifest.IncludedSections, repository.PackExportSectionStructuralContext)
+	if !structuralRecord.Truncated && !structuralRecord.Omitted {
+		t.Fatalf("structural record = %+v, want narrowed or omitted", structuralRecord)
+	}
+}
+
 func findPackExportSectionRecord(t *testing.T, records []repository.PackExportSectionRecord, kind repository.PackExportSectionKind) repository.PackExportSectionRecord {
 	t.Helper()
 	for _, record := range records {

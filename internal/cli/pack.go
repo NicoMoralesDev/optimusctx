@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/niccrow/optimusctx/internal/app"
@@ -99,6 +101,36 @@ func parsePackExportArgs(args []string) (repository.PackExportRequest, error) {
 			request.Format = repository.PackExportFormat(args[index])
 		case "--gzip":
 			request.Compression = repository.PackExportCompressionGzip
+		case "--include":
+			index++
+			if index >= len(args) {
+				return repository.PackExportRequest{}, fmt.Errorf("%s requires a value", arg)
+			}
+			path := strings.TrimSpace(args[index])
+			if path == "" {
+				return repository.PackExportRequest{}, fmt.Errorf("%s requires a non-empty value", arg)
+			}
+			request.Policy.IncludePaths = append(request.Policy.IncludePaths, path)
+		case "--exclude":
+			index++
+			if index >= len(args) {
+				return repository.PackExportRequest{}, fmt.Errorf("%s requires a value", arg)
+			}
+			path := strings.TrimSpace(args[index])
+			if path == "" {
+				return repository.PackExportRequest{}, fmt.Errorf("%s requires a non-empty value", arg)
+			}
+			request.Policy.ExcludePaths = append(request.Policy.ExcludePaths, path)
+		case "--target-budget":
+			index++
+			if index >= len(args) {
+				return repository.PackExportRequest{}, fmt.Errorf("%s requires a value", arg)
+			}
+			budget, err := strconv.ParseInt(args[index], 10, 64)
+			if err != nil || budget <= 0 {
+				return repository.PackExportRequest{}, fmt.Errorf("%s requires a positive integer token budget", arg)
+			}
+			request.Policy.TargetTokenBudget = budget
 		default:
 			if len(arg) > 0 && arg[0] == '-' {
 				return repository.PackExportRequest{}, fmt.Errorf("unknown pack export flag %q", arg)
@@ -119,7 +151,7 @@ func writePackHelp(stdout io.Writer) {
 }
 
 func writePackExportHelp(stdout io.Writer) error {
-	_, err := io.WriteString(stdout, "Usage:\n  optimusctx pack export [--output PATH] [--format json] [--gzip]\n\nExport a deterministic repository pack to stdout or a file.\n")
+	_, err := io.WriteString(stdout, "Usage:\n  optimusctx pack export [--output PATH] [--format json] [--gzip] [--include PATH] [--exclude PATH] [--target-budget TOKENS]\n\nExport a deterministic repository pack to stdout or a file.\n")
 	return err
 }
 
