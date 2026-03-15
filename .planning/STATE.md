@@ -6,14 +6,14 @@ current_phase: 4
 current_phase_name: layered context, exact lookup, and budget analysis
 current_plan: 5
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-03-15T01:20:23.768Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-03-15T01:28:25.671Z"
 last_activity: 2026-03-15
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 20
-  completed_plans: 16
+  completed_plans: 17
   percent: 80
 ---
 
@@ -120,6 +120,7 @@ progress:
 | Phase 03-structural-extraction-and-repository-artifact-model P04 | 10min | 3 tasks | 6 files |
 | Phase 04 P01 | 25min | 3 tasks | 5 files |
 | Phase 04 P02 | 10min | 3 tasks | 5 files |
+| Phase 04 P03 | 8min | 3 tasks | 5 files |
 
 ## Decisions Made
 
@@ -154,6 +155,8 @@ progress:
 - [Phase 04]: L1 reuses the same repository identity and freshness envelope as L0 so later query layers stay on one service boundary.
 - [Phase 04]: Candidate files are ordered deterministically by coverage quality, top-level structural density, size, and path rather than ad hoc ranking.
 - [Phase 04]: Concise summaries stay template-driven and derived from persisted symbol names and directory metadata instead of free-form prose synthesis.
+- [Phase 04]: Exact symbol lookup stays name-equality only and applies optional path, language, and kind filters in SQLite.
+- [Phase 04]: Lookup matches carry stable keys plus exact row and column anchors so later L2 assembly can target persisted symbols without reparsing.
 
 ## Blockers
 
@@ -161,8 +164,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T01:20:14.451Z
-**Stopped At:** Completed 04-02-PLAN.md
+**Last Date:** 2026-03-15T01:28:25.669Z
+**Stopped At:** Completed 04-03-PLAN.md
 **Resume File:** None
 
 ---
