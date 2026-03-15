@@ -157,6 +157,11 @@
 
 **Gap closure:** Closes the audit's missing-verification blockers for completed phases.
 
+**Plan progress:**
+- Completed: `08-01`, `08-02`, `08-03`, `08-04`
+- Remaining: none
+- Summary coverage: 4 of 4 Phase 8 plans completed
+
 ## Requirement Coverage
 
 | Phase | Requirement count | Requirements |
@@ -188,4 +193,4 @@ Gap-closure phases 07 and 08 intentionally revisit already-mapped v1 requirement
 8. Phase 8 backfills milestone-grade verification evidence so the archive decision is based on current proof, not only execution summaries.
 
 ---
-*Last updated: 2026-03-15 after completing Phase 08 plan 01*
+*Last updated: 2026-03-15 after completing Phase 08 plan 04*
