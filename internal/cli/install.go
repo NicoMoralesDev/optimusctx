@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/niccrow/optimusctx/internal/app"
+	"github.com/niccrow/optimusctx/internal/repository"
 )
 
 var installExecutablePath = os.Executable
@@ -24,6 +26,7 @@ func newInstallCommand() *Command {
 
 func runInstallCommand(stdout io.Writer, args []string) error {
 	request := app.InstallRequest{}
+	binaryFlagProvided := false
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -51,6 +54,7 @@ func runInstallCommand(stdout io.Writer, args []string) error {
 				return err
 			}
 			request.BinaryPath = value
+			binaryFlagProvided = true
 			i = next
 		case "--write":
 			request.Write = true
@@ -66,12 +70,12 @@ func runInstallCommand(stdout io.Writer, args []string) error {
 		return errors.New("install requires --client")
 	}
 
-	if request.BinaryPath == "" {
+	if !binaryFlagProvided {
 		binaryPath, err := installExecutablePath()
 		if err != nil {
 			return fmt.Errorf("resolve executable path: %w", err)
 		}
-		request.BinaryPath = binaryPath
+		request.BinaryPath = normalizeInstallBinaryPath(binaryPath)
 	}
 
 	result, err := app.NewInstallService().Register(context.Background(), request)
@@ -104,4 +108,16 @@ func requireInstallValue(args []string, index int, flag string) (string, int, er
 
 func writeInstallHelp(stdout io.Writer) {
 	_, _ = io.WriteString(stdout, "Usage:\n  optimusctx install --client <client> [--config <path>] [--binary <path>] [--write]\n\nPreview the supported-client MCP config by default. Add --write to persist it.\n")
+}
+
+func normalizeInstallBinaryPath(runtimeBinaryPath string) string {
+	if looksEphemeralRuntimeBinary(runtimeBinaryPath) {
+		return repository.DefaultServeCommandName
+	}
+	return repository.CanonicalServeCommandPath("")
+}
+
+func looksEphemeralRuntimeBinary(path string) bool {
+	path = strings.ReplaceAll(strings.TrimSpace(path), "\\", "/")
+	return strings.Contains(path, "/.cache/go-build/") || strings.Contains(path, "/go-build/")
 }
