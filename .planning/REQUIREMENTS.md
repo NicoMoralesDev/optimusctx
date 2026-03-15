@@ -11,7 +11,7 @@
 - [x] **CLI-02**: User can optionally register MCP configuration for supported clients during install, with explicit consent.
 - [x] **CLI-03**: User can run `optimusctx init` in a repository and create the local project state directory successfully.
 - [x] **CLI-04**: User can run `optimusctx snippet` and receive a manual-copy integration snippet without any file being modified automatically.
-- [ ] **CLI-05**: User can run `optimusctx doctor` and receive actionable installation, repository, state, and MCP diagnostics.
+- [x] **CLI-05**: User can run `optimusctx doctor` and receive actionable installation, repository, state, and MCP diagnostics.
 
 ### Repository Discovery and State
 
@@ -59,7 +59,7 @@
 - [x] **OPS-02**: Watch mode uses the same incremental refresh pipeline as manual refresh paths.
 - [x] **OPS-03**: User can export a compact repository pack for offline or non-MCP workflows.
 - [x] **OPS-04**: Pack export can fit output to a target budget using include/exclude rules.
-- [ ] **OPS-05**: Doctor output reports repository root detection, index freshness, watch status, storage health, parsing failures, and top token-cost paths.
+- [x] **OPS-05**: Doctor output reports repository root detection, index freshness, watch status, storage health, parsing failures, and top token-cost paths.
 
 ## v1.1 Requirements
 
@@ -99,7 +99,7 @@
 | CLI-02 | Phase 5 - MCP Serving and Integration Contracts | Complete |
 | CLI-03 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | CLI-04 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
-| CLI-05 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
+| CLI-05 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Complete |
 | REPO-01 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | REPO-02 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | REPO-03 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
@@ -129,7 +129,7 @@
 | OPS-02 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Complete |
 | OPS-03 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Complete |
 | OPS-04 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Complete |
-| OPS-05 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
+| OPS-05 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Complete |
 
 **Coverage:**
 - v1 requirements: 35 total
