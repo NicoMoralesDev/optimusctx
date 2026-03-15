@@ -289,3 +289,43 @@ type RepositoryMapSymbol struct {
 	QualifiedName string
 	Ordinal       int64
 }
+
+type LayeredContextEnvelope struct {
+	RepositoryRoot string
+	Generation     int64
+	Freshness      FreshnessStatus
+}
+
+type LayeredContextL0 struct {
+	Repository LayeredContextEnvelope
+	Identity   LayeredContextRepositoryIdentity
+	Languages  []LayeredContextLanguageSummary
+	MajorAreas []LayeredContextMajorAreaSummary
+}
+
+type LayeredContextRepositoryIdentity struct {
+	RootPath      string
+	DetectionMode string
+	GitHeadRef    string
+	GitHeadCommit string
+}
+
+type LayeredContextLanguageSummary struct {
+	Language       string
+	FileCount      int64
+	TotalSizeBytes int64
+}
+
+type MajorAreaKind string
+
+const (
+	MajorAreaKindDirectory MajorAreaKind = "directory"
+	MajorAreaKindRootFiles MajorAreaKind = "root_files"
+)
+
+type LayeredContextMajorAreaSummary struct {
+	Path              string
+	Kind              MajorAreaKind
+	IncludedFileCount int64
+	TotalSizeBytes    int64
+}
