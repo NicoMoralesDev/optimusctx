@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 6
 current_phase_name: watch mode pack export and operational diagnostics
-current_plan: 4
+current_plan: 5
 status: executing
-stopped_at: Completed 06-03-PLAN.md
-last_updated: "2026-03-15T18:47:39.177Z"
+stopped_at: Completed 06-04-PLAN.md
+last_updated: "2026-03-15T19:02:56.175Z"
 last_activity: 2026-03-15
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 33
-  completed_plans: 31
-  percent: 94
+  completed_plans: 32
+  percent: 97
 ---
 
 # Planning State: OptimusCtx
@@ -27,11 +27,11 @@ progress:
 **Current Phase:** 6
 **Current Phase Name:** watch mode pack export and operational diagnostics
 **Total Phases:** 6
-**Current Plan:** 4
+**Current Plan:** 5
 **Total Plans in Phase:** 5
-**Progress:** [█████████░] 94%
+**Progress:** [██████████] 97%
 **Last Activity:** 2026-03-15
-**Last Activity Description:** Completed 06-01 watch command foundation
+**Last Activity Description:** Completed 06-04 pack export budget controls
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1 foundation
 - Active phase: Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics
-- Next planning action: execute Phase 6 plan 02
+- Next planning action: execute Phase 6 plan 05
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -152,6 +152,7 @@ progress:
 | Phase 06 P01 | 22min | 3 tasks | 6 files |
 | Phase 06-watch-mode-pack-export-and-operational-diagnostics P02 | 10min | 3 tasks | 7 files |
 | Phase 06-watch-mode-pack-export-and-operational-diagnostics P03 | 24min | 3 tasks | 6 files |
+| Phase 06-watch-mode-pack-export-and-operational-diagnostics P04 | 14min | 3 tasks | 5 files |
 
 ## Decisions Made
 
@@ -217,6 +218,12 @@ progress:
 - [Phase 06]: Pack export reuses PackService as the single retrieval pipeline and adds only manifest assembly plus output writing.
 - [Phase 06]: Portable exports default to deterministic JSON and optionally gzip the final artifact instead of changing the app-layer content model.
 - [Phase 06]: The CLI streams raw artifacts to stdout and only prints a summary when writing to an explicit output path.
+- [Phase 06-watch-mode-pack-export-and-operational-diagnostics]: Pack export policy now runs as a deterministic second pass over PackService output instead of changing the underlying retrieval pipeline.
+- [Phase 06-watch-mode-pack-export-and-operational-diagnostics]: Budget fitting reuses the shared bytes_div_4_ceiling policy and prunes lower-priority sections before higher-priority context.
+- [Phase 06-watch-mode-pack-export-and-operational-diagnostics]: Operators now configure pack export scope explicitly through repeated include and exclude path flags plus a positive integer target-budget flag.
+- [Phase 06-watch-mode-pack-export-and-operational-diagnostics]: Pack export policy now runs as a deterministic second pass over PackService output instead of changing the underlying retrieval pipeline.
+- [Phase 06-watch-mode-pack-export-and-operational-diagnostics]: Budget fitting reuses the shared bytes_div_4_ceiling policy and prunes lower-priority sections before higher-priority context.
+- [Phase 06-watch-mode-pack-export-and-operational-diagnostics]: Operators now configure pack export scope explicitly through repeated include and exclude path flags plus a positive integer target-budget flag.
 
 ## Blockers
 
@@ -224,9 +231,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T18:47:39.173Z
-**Stopped At:** Completed 06-03-PLAN.md
+**Last Date:** 2026-03-15T19:02:56.173Z
+**Stopped At:** Completed 06-04-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-15 after completing Phase 6 plan 01*
+*Last updated: 2026-03-15 after completing Phase 6 plan 04*
