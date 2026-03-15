@@ -285,6 +285,175 @@ func TestSnapshotEquivalence(t *testing.T) {
 	}
 }
 
+func TestExtractionPersistence(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "main.go"), "package main\n\nfunc Alpha() {}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "helper.go"), "package main\n\nfunc Helper() {}\n")
+
+	service := NewRefreshService()
+	if _, err := service.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() initial error = %v", err)
+	}
+
+	writeRepoFile(t, filepath.Join(repoRoot, "main.go"), "package main\n\nfunc Beta() {}\n")
+	result, err := service.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonManual,
+	})
+	if err != nil {
+		t.Fatalf("Refresh() edit error = %v", err)
+	}
+
+	artifacts := loadArtifactsForRepo(t, repoRoot)
+	if artifacts.extractions["main.go"].CoverageState != repository.ExtractionCoverageStateSupported {
+		t.Fatalf("main.go coverage = %q", artifacts.extractions["main.go"].CoverageState)
+	}
+	if !reflect.DeepEqual(symbolNamesForPath(artifacts.symbols, "main.go"), []string{"main", "Beta"}) {
+		t.Fatalf("main.go symbols = %+v", artifacts.symbols["main.go"])
+	}
+	if artifacts.extractions["helper.go"].SourceGeneration == result.Generation {
+		t.Fatalf("helper.go should remain untouched: %+v", artifacts.extractions["helper.go"])
+	}
+}
+
+func TestMoveReplacesArtifacts(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "move.go"), "package main\n\nfunc MoveMe() {}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "stable.go"), "package main\n\nfunc Stable() {}\n")
+
+	service := NewRefreshService()
+	if _, err := service.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() initial error = %v", err)
+	}
+
+	if err := os.Rename(filepath.Join(repoRoot, "move.go"), filepath.Join(repoRoot, "moved.go")); err != nil {
+		t.Fatalf("Rename() error = %v", err)
+	}
+	writeRepoFile(t, filepath.Join(repoRoot, "moved.go"), "package main\n\nfunc Moved() {}\n")
+
+	if _, err := service.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonManual,
+	}); err != nil {
+		t.Fatalf("Refresh() move error = %v", err)
+	}
+
+	artifacts := loadArtifactsForRepo(t, repoRoot)
+	if _, ok := artifacts.extractions["move.go"]; ok {
+		t.Fatalf("move.go extraction should be removed: %+v", artifacts.extractions["move.go"])
+	}
+	if !reflect.DeepEqual(symbolNamesForPath(artifacts.symbols, "moved.go"), []string{"main", "Moved"}) {
+		t.Fatalf("moved.go symbols = %+v", artifacts.symbols["moved.go"])
+	}
+	if !reflect.DeepEqual(symbolNamesForPath(artifacts.symbols, "stable.go"), []string{"main", "Stable"}) {
+		t.Fatalf("stable.go symbols = %+v", artifacts.symbols["stable.go"])
+	}
+}
+
+func TestIgnoreTransitionRemovesArtifacts(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "main.go"), "package main\n\nfunc Main() {}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "keep.go"), "package main\n\nfunc Keep() {}\n")
+
+	service := NewRefreshService()
+	if _, err := service.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() initial error = %v", err)
+	}
+
+	writeRepoFile(t, filepath.Join(repoRoot, ".gitignore"), "main.go\n")
+	if _, err := service.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonManual,
+	}); err != nil {
+		t.Fatalf("Refresh() ignore error = %v", err)
+	}
+
+	ignored := loadArtifactsForRepo(t, repoRoot)
+	if _, ok := ignored.extractions["main.go"]; ok {
+		t.Fatalf("main.go extraction should be removed when ignored: %+v", ignored.extractions["main.go"])
+	}
+
+	writeRepoFile(t, filepath.Join(repoRoot, ".gitignore"), "")
+	writeRepoFile(t, filepath.Join(repoRoot, "main.go"), "package main\n\nfunc MainAgain() {}\n")
+	if _, err := service.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonManual,
+	}); err != nil {
+		t.Fatalf("Refresh() reinclude error = %v", err)
+	}
+
+	reincluded := loadArtifactsForRepo(t, repoRoot)
+	if !reflect.DeepEqual(symbolNamesForPath(reincluded.symbols, "main.go"), []string{"main", "MainAgain"}) {
+		t.Fatalf("main.go symbols after reinclude = %+v", reincluded.symbols["main.go"])
+	}
+	if !reflect.DeepEqual(symbolNamesForPath(reincluded.symbols, "keep.go"), []string{"main", "Keep"}) {
+		t.Fatalf("keep.go symbols = %+v", reincluded.symbols["keep.go"])
+	}
+}
+
+func TestSyntaxBreakExtractionRecovery(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "main.go"), "package main\n\nfunc Healthy() {}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "helper.go"), "package main\n\nfunc Helper() {}\n")
+
+	service := NewRefreshService()
+	if _, err := service.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() initial error = %v", err)
+	}
+
+	writeRepoFile(t, filepath.Join(repoRoot, "main.go"), "package main\nfunc (\n")
+	broken, err := service.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonManual,
+	})
+	if err != nil {
+		t.Fatalf("Refresh() broken error = %v", err)
+	}
+
+	degraded := loadArtifactsForRepo(t, repoRoot)
+	if degraded.extractions["main.go"].CoverageState != repository.ExtractionCoverageStateFailed {
+		t.Fatalf("main.go broken coverage = %q", degraded.extractions["main.go"].CoverageState)
+	}
+	if broken.FailedExtractions != 1 {
+		t.Fatalf("FailedExtractions = %d, want 1", broken.FailedExtractions)
+	}
+	if !reflect.DeepEqual(symbolNamesForPath(degraded.symbols, "helper.go"), []string{"main", "Helper"}) {
+		t.Fatalf("helper.go symbols after broken refresh = %+v", degraded.symbols["helper.go"])
+	}
+
+	writeRepoFile(t, filepath.Join(repoRoot, "main.go"), "package main\n\nfunc Recovered() {}\n")
+	if _, err := service.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonManual,
+	}); err != nil {
+		t.Fatalf("Refresh() recovery error = %v", err)
+	}
+
+	recovered := loadArtifactsForRepo(t, repoRoot)
+	if recovered.extractions["main.go"].CoverageState != repository.ExtractionCoverageStateSupported {
+		t.Fatalf("main.go recovered coverage = %q", recovered.extractions["main.go"].CoverageState)
+	}
+	if !reflect.DeepEqual(symbolNamesForPath(recovered.symbols, "main.go"), []string{"main", "Recovered"}) {
+		t.Fatalf("main.go recovered symbols = %+v", recovered.symbols["main.go"])
+	}
+}
+
 func loadSnapshotForRepo(t *testing.T, repoRoot string) repository.RepositorySnapshot {
 	t.Helper()
 
@@ -309,6 +478,52 @@ func loadSnapshotForRepo(t *testing.T, repoRoot string) repository.RepositorySna
 		t.Fatalf("LoadRepositorySnapshot() error = %v", err)
 	}
 	return snapshot
+}
+
+type repoArtifacts struct {
+	extractions map[string]repository.FileExtractionRecord
+	symbols     map[string][]repository.SymbolRecord
+}
+
+func loadArtifactsForRepo(t *testing.T, repoRoot string) repoArtifacts {
+	t.Helper()
+
+	layout, err := state.ResolveLayout(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, err := sqlite.OpenOrCreateStore(context.Background(), layout, repository.DetectionModeGit)
+	if err != nil {
+		t.Fatalf("OpenOrCreateStore() error = %v", err)
+	}
+	defer store.Close()
+
+	record, err := store.UpsertRepository(context.Background(), testRepoRoot(repoRoot), serviceNow())
+	if err != nil {
+		t.Fatalf("UpsertRepository() error = %v", err)
+	}
+
+	extractions, err := store.ListFileExtractions(context.Background(), record.ID)
+	if err != nil {
+		t.Fatalf("ListFileExtractions() error = %v", err)
+	}
+	symbols, err := store.ListSymbols(context.Background(), record.ID)
+	if err != nil {
+		t.Fatalf("ListSymbols() error = %v", err)
+	}
+
+	result := repoArtifacts{
+		extractions: make(map[string]repository.FileExtractionRecord, len(extractions)),
+		symbols:     make(map[string][]repository.SymbolRecord),
+	}
+	for _, extraction := range extractions {
+		result.extractions[extraction.Path] = extraction
+	}
+	for _, symbol := range symbols {
+		result.symbols[symbol.Path] = append(result.symbols[symbol.Path], symbol)
+	}
+	return result
 }
 
 func normalizeSnapshot(snapshot repository.RepositorySnapshot) repository.RepositorySnapshot {
@@ -347,6 +562,15 @@ func persistedSnapshotFileByPath(files []repository.PersistedFileSnapshotRecord,
 		}
 	}
 	return repository.PersistedFileSnapshotRecord{}
+}
+
+func symbolNamesForPath(symbols map[string][]repository.SymbolRecord, path string) []string {
+	records := symbols[path]
+	names := make([]string, 0, len(records))
+	for _, symbol := range records {
+		names = append(names, symbol.Name)
+	}
+	return names
 }
 
 func testRepoRoot(repoRoot string) repository.RepositoryRoot {
