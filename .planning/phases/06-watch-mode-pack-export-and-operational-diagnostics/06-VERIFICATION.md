@@ -277,6 +277,10 @@ Notes:
 - This backfill uses the current `/usr/local/go/bin/go` toolchain path.
 - The current Phase 08 plan specifies `GOMODCACHE=/tmp/optimusctx-gomodcache`, so this
   report records that exact command as the verification truth for this artifact.
+- In this session the `/tmp/optimusctx-gomodcache` directory initially lacked the
+  required offline modules, so the local cache at `/home/nico/go/pkg/mod` was copied
+  into `/tmp/optimusctx-gomodcache` before rerunning the exact verification command
+  unchanged with `GOPROXY=off`.
 - The report intentionally avoids doctor test anchors because those belong to the Phase
   7 ownership repair, not the surviving Phase 6 backfill scope.
 
