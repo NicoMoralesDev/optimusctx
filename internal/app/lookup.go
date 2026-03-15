@@ -42,6 +42,21 @@ func (s LookupService) SymbolLookup(ctx context.Context, startPath string, reque
 	return result, nil
 }
 
+func (s LookupService) StructureLookup(ctx context.Context, startPath string, request repository.StructureLookupRequest) (repository.StructureLookupResult, error) {
+	store, repositoryID, err := s.openLookupStore(ctx, startPath)
+	if err != nil {
+		return repository.StructureLookupResult{}, err
+	}
+	defer store.Close()
+
+	result, err := store.ReadStructureLookup(ctx, repositoryID, request)
+	if err != nil {
+		return repository.StructureLookupResult{}, fmt.Errorf("load structure lookup: %w", err)
+	}
+
+	return result, nil
+}
+
 func (s LookupService) openLookupStore(ctx context.Context, startPath string) (*sqlite.Store, int64, error) {
 	root, err := s.Locator.Resolve(startPath)
 	if err != nil {

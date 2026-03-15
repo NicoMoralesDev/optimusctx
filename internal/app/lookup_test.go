@@ -137,7 +137,66 @@ func TestSymbolLookupFilters(t *testing.T) {
 	}
 }
 
+func TestStructureLookup(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "alpha.go"), "package pkg\n\ntype Alpha struct{}\n\nfunc (Alpha) Run() {}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "docs", "alpha.go"), "package docs\n\ntype Alpha struct{}\n\nfunc (Alpha) Run() {}\n")
+
+	refresh := NewRefreshService()
+	if _, err := refresh.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+
+	got, err := NewLookupService().StructureLookup(context.Background(), repoRoot, repository.StructureLookupRequest{
+		Kind:       "method",
+		ParentName: "Alpha",
+		PathPrefix: "pkg/",
+	})
+	if err != nil {
+		t.Fatalf("StructureLookup() error = %v", err)
+	}
+	if got.Limit != 10 {
+		t.Fatalf("Limit = %d, want 10", got.Limit)
+	}
+	if gotPaths := structureLookupPaths(got.Matches); !reflect.DeepEqual(gotPaths, []string{"pkg/alpha.go"}) {
+		t.Fatalf("match paths = %v", gotPaths)
+	}
+	if got.Matches[0].ParentName != "Alpha" || got.Matches[0].Kind != "method" {
+		t.Fatalf("match = %+v", got.Matches[0])
+	}
+}
+
+func TestStructureLookupValidation(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "alpha.go"), "package pkg\n\ntype Alpha struct{}\n")
+
+	refresh := NewRefreshService()
+	if _, err := refresh.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+
+	if _, err := NewLookupService().StructureLookup(context.Background(), repoRoot, repository.StructureLookupRequest{Kind: "method"}); err == nil {
+		t.Fatal("StructureLookup() expected error for underspecified request")
+	}
+}
+
 func symbolLookupPaths(matches []repository.SymbolLookupMatch) []string {
+	paths := make([]string, 0, len(matches))
+	for _, match := range matches {
+		paths = append(paths, match.Path)
+	}
+	return paths
+}
+
+func structureLookupPaths(matches []repository.StructureLookupMatch) []string {
 	paths := make([]string, 0, len(matches))
 	for _, match := range matches {
 		paths = append(paths, match.Path)
