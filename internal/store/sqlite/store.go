@@ -23,6 +23,7 @@ const (
 	defaultLayeredContextL1FileLimit    = 6
 	defaultLayeredContextL1SymbolLimit  = 4
 	defaultSymbolLookupLimit            = 10
+	defaultStructureLookupLimit         = 10
 )
 
 type Store struct {
@@ -1374,6 +1375,119 @@ func (s *Store) ReadSymbolLookup(ctx context.Context, repositoryID int64, reques
 	}
 	if err := rows.Err(); err != nil {
 		return repository.SymbolLookupResult{}, fmt.Errorf("iterate symbol lookup for repository %d: %w", repositoryID, err)
+	}
+
+	return result, nil
+}
+
+func (s *Store) ReadStructureLookup(ctx context.Context, repositoryID int64, request repository.StructureLookupRequest) (repository.StructureLookupResult, error) {
+	if s == nil || s.db == nil {
+		return repository.StructureLookupResult{}, fmt.Errorf("read structure lookup: store is not initialized")
+	}
+	request.Kind = strings.TrimSpace(request.Kind)
+	request.ParentName = strings.TrimSpace(request.ParentName)
+	request.Name = strings.TrimSpace(request.Name)
+	request.PathPrefix = strings.TrimSpace(request.PathPrefix)
+	request.Language = strings.TrimSpace(request.Language)
+	if request.Kind == "" {
+		return repository.StructureLookupResult{}, fmt.Errorf("read structure lookup: kind is required")
+	}
+	if request.Name == "" && request.ParentName == "" && request.PathPrefix == "" {
+		return repository.StructureLookupResult{}, fmt.Errorf("read structure lookup: at least one of name, parent name, or path prefix is required")
+	}
+	if request.Limit <= 0 {
+		request.Limit = defaultStructureLookupLimit
+	}
+
+	freshness, err := s.ReadRepositoryFreshness(ctx, repositoryID)
+	if err != nil {
+		return repository.StructureLookupResult{}, fmt.Errorf("read structure lookup freshness: %w", err)
+	}
+
+	query := `
+		SELECT
+			s.stable_key,
+			COALESCE(parent.stable_key, '') AS parent_stable_key,
+			s.path,
+			COALESCE(NULLIF(s.language, ''), 'unknown') AS language,
+			s.kind,
+			s.name,
+			COALESCE(parent.name, '') AS parent_name,
+			COALESCE(s.qualified_name, '') AS qualified_name,
+			s.ordinal,
+			s.start_row,
+			s.start_column,
+			s.end_row,
+			s.end_column
+		FROM symbols s
+		LEFT JOIN symbols parent ON parent.id = s.parent_symbol_id
+		WHERE s.repository_id = ? AND s.kind = ?
+	`
+	args := []any{repositoryID, request.Kind}
+	if request.Name != "" {
+		query += ` AND s.name = ?`
+		args = append(args, request.Name)
+	}
+	if request.ParentName != "" {
+		query += ` AND COALESCE(parent.name, '') = ?`
+		args = append(args, request.ParentName)
+	}
+	if request.PathPrefix != "" {
+		query += ` AND s.path LIKE ?`
+		args = append(args, request.PathPrefix+"%")
+	}
+	if request.Language != "" {
+		query += ` AND COALESCE(NULLIF(s.language, ''), 'unknown') = ?`
+		args = append(args, request.Language)
+	}
+	query += ` ORDER BY s.path ASC, s.ordinal ASC, s.stable_key ASC LIMIT ?`
+	args = append(args, request.Limit)
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return repository.StructureLookupResult{}, fmt.Errorf("load structure lookup for repository %d: %w", repositoryID, err)
+	}
+	defer rows.Close()
+
+	result := repository.StructureLookupResult{
+		Repository: repository.LayeredContextEnvelope{
+			RepositoryRoot: freshness.RootPath,
+			Generation:     freshness.LastRefreshGeneration,
+			Freshness:      freshness.FreshnessStatus,
+		},
+		Identity: repository.LayeredContextRepositoryIdentity{
+			RootPath:      freshness.RootPath,
+			DetectionMode: freshness.DetectionMode,
+			GitHeadRef:    freshness.GitHeadRef,
+			GitHeadCommit: freshness.GitHeadCommit,
+		},
+		Request: request,
+		Limit:   request.Limit,
+	}
+
+	for rows.Next() {
+		var match repository.StructureLookupMatch
+		if err := rows.Scan(
+			&match.StableKey,
+			&match.ParentStableKey,
+			&match.Path,
+			&match.Language,
+			&match.Kind,
+			&match.Name,
+			&match.ParentName,
+			&match.QualifiedName,
+			&match.Ordinal,
+			&match.StartRow,
+			&match.StartColumn,
+			&match.EndRow,
+			&match.EndColumn,
+		); err != nil {
+			return repository.StructureLookupResult{}, fmt.Errorf("scan structure lookup for repository %d: %w", repositoryID, err)
+		}
+		result.Matches = append(result.Matches, match)
+	}
+	if err := rows.Err(); err != nil {
+		return repository.StructureLookupResult{}, fmt.Errorf("iterate structure lookup for repository %d: %w", repositoryID, err)
 	}
 
 	return result, nil

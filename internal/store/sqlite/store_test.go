@@ -1487,6 +1487,170 @@ func TestSymbolLookupFilters(t *testing.T) {
 	}
 }
 
+func TestStructureLookup(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	refreshedAt := time.Date(2026, 3, 14, 19, 15, 0, 0, time.UTC)
+	if err := store.WriteRepositoryFreshness(ctx, repository.RepositoryFreshness{
+		RepositoryID:           repoID,
+		RootPath:               layout.RepoRoot,
+		DetectionMode:          repository.DetectionModeGit,
+		LastRefreshStartedAt:   refreshedAt,
+		LastRefreshCompletedAt: refreshedAt.Add(2 * time.Minute),
+		LastRefreshReason:      repository.RefreshReasonManual,
+		LastRefreshStatus:      repository.RefreshRunStatusSuccess,
+		FreshnessStatus:        repository.FreshnessStatusFresh,
+		CurrentGeneration:      7,
+		LastRefreshGeneration:  7,
+	}); err != nil {
+		t.Fatalf("WriteRepositoryFreshness() error = %v", err)
+	}
+
+	run := createTestRefreshRun(t, ctx, store, repoID, 7)
+	alphaID := insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "pkg/alpha.go", DirectoryPath: "pkg", Extension: ".go", Language: "go", ContentHash: "go-alpha", LastGeneration: 7}, 200)
+	docsID := insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "docs/alpha.go", DirectoryPath: "docs", Extension: ".go", Language: "go", ContentHash: "go-docs-alpha", LastGeneration: 7}, 140)
+
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:        repoID,
+			FileID:              alphaID,
+			Path:                "pkg/alpha.go",
+			Language:            "go",
+			AdapterName:         "tree-sitter-go",
+			GrammarVersion:      "v0.25.0",
+			SourceContentHash:   "go-alpha",
+			SourceGeneration:    7,
+			CoverageState:       repository.ExtractionCoverageStateSupported,
+			SymbolCount:         2,
+			TopLevelSymbolCount: 2,
+			MaxSymbolDepth:      1,
+			ExtractedAt:         refreshedAt,
+			RefreshRunID:        run.ID,
+		},
+		Symbols: []repository.SymbolRecord{
+			testTopLevelSymbol("pkg/alpha.go", "go", "type", "Alpha", "type-alpha", 0),
+			{
+				StableKey:          "method-run",
+				ParentStableKey:    "type-alpha",
+				Path:               "pkg/alpha.go",
+				Language:           "go",
+				Kind:               "method",
+				Name:               "Run",
+				QualifiedName:      "Alpha.Run",
+				Ordinal:            1,
+				Depth:              1,
+				StartByte:          10,
+				EndByte:            18,
+				StartRow:           6,
+				StartColumn:        0,
+				EndRow:             6,
+				EndColumn:          8,
+				NameStartByte:      11,
+				NameEndByte:        14,
+				SignatureStartByte: 10,
+				SignatureEndByte:   18,
+				IsExported:         true,
+			},
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts(alpha) error = %v", err)
+	}
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:        repoID,
+			FileID:              docsID,
+			Path:                "docs/alpha.go",
+			Language:            "go",
+			AdapterName:         "tree-sitter-go",
+			GrammarVersion:      "v0.25.0",
+			SourceContentHash:   "go-docs-alpha",
+			SourceGeneration:    7,
+			CoverageState:       repository.ExtractionCoverageStateSupported,
+			SymbolCount:         2,
+			TopLevelSymbolCount: 2,
+			MaxSymbolDepth:      1,
+			ExtractedAt:         refreshedAt,
+			RefreshRunID:        run.ID,
+		},
+		Symbols: []repository.SymbolRecord{
+			testTopLevelSymbol("docs/alpha.go", "go", "type", "Alpha", "docs-type-alpha", 0),
+			{
+				StableKey:          "docs-method-run",
+				ParentStableKey:    "docs-type-alpha",
+				Path:               "docs/alpha.go",
+				Language:           "go",
+				Kind:               "method",
+				Name:               "Run",
+				QualifiedName:      "Alpha.Run",
+				Ordinal:            1,
+				Depth:              1,
+				StartByte:          10,
+				EndByte:            18,
+				StartRow:           6,
+				StartColumn:        0,
+				EndRow:             6,
+				EndColumn:          8,
+				NameStartByte:      11,
+				NameEndByte:        14,
+				SignatureStartByte: 10,
+				SignatureEndByte:   18,
+				IsExported:         true,
+			},
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts(docs) error = %v", err)
+	}
+
+	got, err := store.ReadStructureLookup(ctx, repoID, repository.StructureLookupRequest{
+		Kind:       "method",
+		ParentName: "Alpha",
+		PathPrefix: "pkg/",
+		Limit:      1,
+	})
+	if err != nil {
+		t.Fatalf("ReadStructureLookup() error = %v", err)
+	}
+
+	if got.Limit != 1 {
+		t.Fatalf("Limit = %d, want 1", got.Limit)
+	}
+	if len(got.Matches) != 1 {
+		t.Fatalf("match count = %d, want 1", len(got.Matches))
+	}
+	if got.Matches[0].StableKey != "method-run" || got.Matches[0].ParentName != "Alpha" {
+		t.Fatalf("match = %+v", got.Matches[0])
+	}
+}
+
+func TestStructureLookupValidation(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	if _, err := store.ReadStructureLookup(ctx, repoID, repository.StructureLookupRequest{}); err == nil {
+		t.Fatal("ReadStructureLookup() expected error for empty request")
+	}
+	if _, err := store.ReadStructureLookup(ctx, repoID, repository.StructureLookupRequest{Kind: "method"}); err == nil {
+		t.Fatal("ReadStructureLookup() expected error for underspecified request")
+	}
+}
+
 func TestUnsupportedExtractionState(t *testing.T) {
 	t.Parallel()
 
