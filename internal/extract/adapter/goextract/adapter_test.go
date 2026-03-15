@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -85,6 +86,60 @@ func TestGoSymbolOwnership(t *testing.T) {
 	}
 	if handlerMethod.ParentStableKey == "" || handlerMethod.Depth != 1 {
 		t.Fatalf("interface method ownership = %+v", handlerMethod)
+	}
+}
+
+func TestPartialExtraction(t *testing.T) {
+	t.Parallel()
+
+	source := readFixture(t, "syntax_error.go")
+	artifacts := extractFixture(t, "syntax_error.go", source)
+
+	if artifacts.Extraction.CoverageState != repository.ExtractionCoverageStatePartial {
+		t.Fatalf("coverage state = %q", artifacts.Extraction.CoverageState)
+	}
+	if artifacts.Extraction.CoverageReason != repository.ExtractionCoverageReasonParseError {
+		t.Fatalf("coverage reason = %q", artifacts.Extraction.CoverageReason)
+	}
+	if artifacts.Extraction.ParserErrorCount == 0 || !artifacts.Extraction.HasErrorNodes {
+		t.Fatalf("parse diagnostics = %+v", artifacts.Extraction)
+	}
+
+	names := make([]string, 0, len(artifacts.Symbols))
+	for _, symbol := range artifacts.Symbols {
+		names = append(names, symbol.Name)
+	}
+	if !slices.Contains(names, "stable") || slices.Contains(names, "broken") {
+		t.Fatalf("partial symbols = %+v", artifacts.Symbols)
+	}
+}
+
+func TestFailedExtraction(t *testing.T) {
+	t.Parallel()
+
+	source := []byte("package broken\nfunc (\n")
+	artifacts := extractFixture(t, "broken.go", source)
+
+	if artifacts.Extraction.CoverageState != repository.ExtractionCoverageStateFailed {
+		t.Fatalf("coverage state = %q", artifacts.Extraction.CoverageState)
+	}
+	if artifacts.Extraction.CoverageReason != repository.ExtractionCoverageReasonParseError {
+		t.Fatalf("coverage reason = %q", artifacts.Extraction.CoverageReason)
+	}
+	if len(artifacts.Symbols) != 0 || artifacts.Extraction.SymbolCount != 0 {
+		t.Fatalf("failed extraction should not retain symbols: %+v", artifacts)
+	}
+}
+
+func TestExtractionDeterminism(t *testing.T) {
+	t.Parallel()
+
+	source := readFixture(t, "syntax_error.go")
+	first := extractFixture(t, "syntax_error.go", source)
+	second := extractFixture(t, "syntax_error.go", source)
+
+	if !reflect.DeepEqual(first, second) {
+		t.Fatalf("partial extraction differs across runs\nfirst=%+v\nsecond=%+v", first, second)
 	}
 }
 

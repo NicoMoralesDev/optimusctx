@@ -72,9 +72,11 @@ func (a *Adapter) Extract(ctx context.Context, req extract.Request) (extract.Res
 		HasErrorNodes:    root.HasError(),
 		Symbols:          state.symbols,
 	}
+	meaningfulSymbols := countMeaningfulSymbols(state.symbols)
 
 	switch {
-	case root.HasError() && len(state.symbols) == 0:
+	case root.HasError() && meaningfulSymbols == 0:
+		result.Symbols = nil
 		result.CoverageState = repository.ExtractionCoverageStateFailed
 		result.CoverageReason = repository.ExtractionCoverageReasonParseError
 	case root.HasError():
@@ -357,7 +359,7 @@ func countErrorNodes(node *sitter.Node) int {
 	}
 	cursor := node.Walk()
 	defer cursor.Close()
-	for _, child := range node.NamedChildren(cursor) {
+	for _, child := range node.Children(cursor) {
 		count += countErrorNodes(&child)
 	}
 	return count
@@ -392,6 +394,17 @@ func receiverTypeName(node *sitter.Node, source []byte) string {
 		}
 	}
 	return ""
+}
+
+func countMeaningfulSymbols(symbols []repository.SymbolRecord) int {
+	count := 0
+	for _, symbol := range symbols {
+		if symbol.Kind == "package" {
+			continue
+		}
+		count++
+	}
+	return count
 }
 
 func normalizeTypeName(raw string) string {
