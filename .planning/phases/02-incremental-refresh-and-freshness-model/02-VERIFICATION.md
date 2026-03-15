@@ -193,6 +193,16 @@ Notes:
 - A cold empty `/tmp/optimusctx-gomodcache` plus `GOPROXY=off` could not resolve existing module dependencies, so the report records the successful offline-local cache path instead of restating a stale cache setting.
 - The older mutable-worktree failures in `02-UAT.md` are historical evidence inputs, not the present proof of Phase 02 behavior.
 
+## Historical UAT Reconciliation
+
+The failing checks in `02-UAT.md` came from exploratory runs in the mutable project worktree before Phase 2 added hermetic temp repo coverage. Those failures were useful signals, but they are not a blocker for milestone closure now because later Phase 2 work changed the evidence quality:
+
+- `02-05-SUMMARY.md` moved no-op and mutation assertions onto hermetic temp repo fixtures at both the service and CLI layers.
+- `02-05-SUMMARY.md` also fixed the ignored-on-both-sides count defect exposed by those fixtures.
+- `02-06-SUMMARY.md` added degraded rollback and recovery coverage on the same repository plus supported temp repo smoke guidance in `README.md`.
+
+For milestone verification, the truth is the current code plus the current hermetic tests and supported temp repo operator path. The historical UAT failures remain part of the audit trail, but they are not a blocker after the later fixture-backed fixes and current targeted test pass.
+
 ## Final Verdict
 
 Phase 02 is verified as `passed`.
