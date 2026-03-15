@@ -446,28 +446,3 @@ type StructureLookupMatch struct {
 	EndRow          int64
 	EndColumn       int64
 }
-
-type TargetedContextRequest struct {
-	StableKey   string
-	Path        string
-	StartLine   int
-	EndLine     int
-	BeforeLines int
-	AfterLines  int
-}
-
-type TargetedContextResult struct {
-	Repository     LayeredContextEnvelope
-	Identity       LayeredContextRepositoryIdentity
-	Request        TargetedContextRequest
-	Path           string
-	AnchorStart    int
-	AnchorEnd      int
-	StartLine      int
-	EndLine        int
-	BeforeLines    int
-	AfterLines     int
-	TruncatedStart bool
-	TruncatedEnd   bool
-	Source         []string
-}
