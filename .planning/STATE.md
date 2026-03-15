@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 5
 current_phase_name: mcp serving and integration contracts
-current_plan: 3
+current_plan: 5
 status: executing
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-03-15T15:07:08.636Z"
+stopped_at: Completed 05-04-PLAN.md
+last_updated: "2026-03-15T15:10:41.576Z"
 last_activity: 2026-03-15
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 26
-  completed_plans: 22
-  percent: 85
+  completed_plans: 24
+  percent: 92
 ---
 
 # Planning State: OptimusCtx
@@ -27,9 +27,9 @@ progress:
 **Current Phase:** 5
 **Current Phase Name:** mcp serving and integration contracts
 **Total Phases:** 6
-**Current Plan:** 3
+**Current Plan:** 5
 **Total Plans in Phase:** 6
-**Progress:** [█████████░] 85%
+**Progress:** [█████████░] 92%
 **Last Activity:** 2026-03-15
 **Last Activity Description:** Completed 05-03 token tree contracts and persisted analysis service
 
@@ -138,6 +138,8 @@ progress:
 | Phase 04 P06 | 14min | 3 tasks | 5 files |
 | Phase 05 P01 | 3min | 3 tasks | 6 files |
 | Phase 05-mcp-serving-and-integration-contracts P03 | 6min | 3 tasks | 5 files |
+| Phase 05 P02 | 2min | 3 tasks | 6 files |
+| Phase 05 P04 | 8min | 3 tasks | 5 files |
 
 ## Decisions Made
 
@@ -184,6 +186,11 @@ progress:
 - [Phase 05]: Tool discovery is deterministic and unavailable or unimplemented tool slots fail with structured error payloads instead of silent success.
 - [Phase 05-mcp-serving-and-integration-contracts]: Token tree estimation reuses the existing bytes_div_4_ceiling policy instead of introducing a model-specific tokenizer.
 - [Phase 05-mcp-serving-and-integration-contracts]: Hierarchical token tree results order directories before files, then sort each group deterministically by size and path.
+- [Phase 05]: Read-only MCP tools now return one shared structuredContent envelope that wraps existing app-layer result structs with freshness, cache status, and bounds metadata.
+- [Phase 05]: Read-only MCP query handlers enforce field-specific required, minimum, maximum, and conflict errors at the transport boundary before delegating to app services.
+- [Phase 05]: The default MCP server now registers the read-only query tools eagerly so tools/list reflects the true query surface.
+- [Phase 05]: Health probes stay read-only by inspecting state layout and opening SQLite in read-only mode instead of using the mutating store bootstrap path.
+- [Phase 05]: Pack requests normalize onto explicit section, lookup, and target-window bounds while reusing LayeredContext, Lookup, and TargetedContext services rather than introducing a separate query engine.
 
 ## Blockers
 
@@ -191,8 +198,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T15:07:08.632Z
-**Stopped At:** Completed 05-03-PLAN.md
+**Last Date:** 2026-03-15T15:10:41.573Z
+**Stopped At:** Completed 05-04-PLAN.md
 **Resume File:** None
 
 ---
