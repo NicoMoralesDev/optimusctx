@@ -34,6 +34,17 @@ func TestMCPServerStdioSession(t *testing.T) {
 	server := NewServer(&input, &output, io.Discard)
 	server.RegisterTool(ToolHandler{
 		Tool: Tool{
+			Name:        "optimusctx.z-last",
+			Description: "Registered out of order to prove deterministic listing",
+		},
+		Call: func(ctx context.Context, params CallToolParams) (CallToolResult, *ResponseError) {
+			return CallToolResult{
+				Content: []ToolContent{{Type: "text", Text: "z"}},
+			}, nil
+		},
+	})
+	server.RegisterTool(ToolHandler{
+		Tool: Tool{
 			Name:        "optimusctx.echo",
 			Description: "Echo input during MCP session tests",
 			InputSchema: map[string]any{
@@ -70,11 +81,14 @@ func TestMCPServerStdioSession(t *testing.T) {
 
 	var toolsResult ToolsListResult
 	mustDecodeResult(t, responses[1].Result, &toolsResult)
-	if len(toolsResult.Tools) != 1 {
-		t.Fatalf("tool count = %d, want 1", len(toolsResult.Tools))
+	if len(toolsResult.Tools) != 2 {
+		t.Fatalf("tool count = %d, want 2", len(toolsResult.Tools))
 	}
 	if toolsResult.Tools[0].Name != "optimusctx.echo" {
 		t.Fatalf("tool name = %q, want optimusctx.echo", toolsResult.Tools[0].Name)
+	}
+	if toolsResult.Tools[1].Name != "optimusctx.z-last" {
+		t.Fatalf("tool name = %q, want optimusctx.z-last", toolsResult.Tools[1].Name)
 	}
 }
 
@@ -107,6 +121,45 @@ func TestMCPServerRejectsUnknownTool(t *testing.T) {
 	}
 	if responses[0].Error.Data["tool"] != "optimusctx.missing" {
 		t.Fatalf("error data tool = %#v, want optimusctx.missing", responses[0].Error.Data["tool"])
+	}
+}
+
+func TestMCPServerRejectsUnimplementedTool(t *testing.T) {
+	var input bytes.Buffer
+	writeTestFrame(t, &input, Request{
+		JSONRPC: jsonRPCVersion,
+		ID:      8,
+		Method:  "tools/call",
+		Params: CallToolParams{
+			Name: "optimusctx.pending",
+		},
+	})
+
+	var output bytes.Buffer
+	server := NewServer(&input, &output, io.Discard)
+	server.RegisterTool(ToolHandler{
+		Tool: Tool{
+			Name:        "optimusctx.pending",
+			Description: "Placeholder slot for future MCP plan slices",
+		},
+	})
+
+	if err := server.Serve(context.Background()); err != nil {
+		t.Fatalf("Serve() error = %v", err)
+	}
+
+	responses := readTestResponses(t, &output)
+	if len(responses) != 1 {
+		t.Fatalf("response count = %d, want 1", len(responses))
+	}
+	if responses[0].Error == nil {
+		t.Fatal("expected structured error response")
+	}
+	if responses[0].Error.Code != errCodeMethodNotFound {
+		t.Fatalf("error code = %d, want %d", responses[0].Error.Code, errCodeMethodNotFound)
+	}
+	if responses[0].Error.Data["tool"] != "optimusctx.pending" {
+		t.Fatalf("error data tool = %#v, want optimusctx.pending", responses[0].Error.Data["tool"])
 	}
 }
 
