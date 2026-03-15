@@ -1,9 +1,9 @@
 ---
 phase: 04
 slug: layered-context-exact-lookup-and-budget-analysis
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: ready
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-15
 ---
 
@@ -43,7 +43,8 @@ created: 2026-03-15
 | 04-03-01 | 03 | 3 | CTX-04 | unit | `env GOCACHE=/tmp/optimusctx-gocache GOMODCACHE=/tmp/optimusctx-gomodcache /tmp/optimusctx-go/go/bin/go test ./... -run 'TestSymbolLookup|TestSymbolLookupFilters'` | ✅ | ⬜ pending |
 | 04-04-01 | 04 | 4 | CTX-05 | unit | `env GOCACHE=/tmp/optimusctx-gocache GOMODCACHE=/tmp/optimusctx-gomodcache /tmp/optimusctx-go/go/bin/go test ./... -run 'TestStructureLookup|TestStructureLookupValidation'` | ✅ | ⬜ pending |
 | 04-05-01 | 05 | 5 | CTX-03 | integration | `env GOCACHE=/tmp/optimusctx-gocache GOMODCACHE=/tmp/optimusctx-gomodcache /tmp/optimusctx-go/go/bin/go test ./... -run 'TestTargetedContextBlock|TestTargetedContextBlockFileAvailability'` | ✅ | ⬜ pending |
-| 04-06-01 | 06 | 6 | CTX-06 | unit | `env GOCACHE=/tmp/optimusctx-gocache GOMODCACHE=/tmp/optimusctx-gomodcache /tmp/optimusctx-go/go/bin/go test ./... -run 'TestBudgetAnalysis|TestBudgetHotspots'` | ✅ | ⬜ pending |
+| 04-06-01 | 06 | 3 | CTX-06 | unit | `env GOCACHE=/tmp/optimusctx-gocache GOMODCACHE=/tmp/optimusctx-gomodcache /tmp/optimusctx-go/go/bin/go test ./... -run 'TestBudgetAnalysis|TestBudgetHotspots'` | ✅ | ⬜ pending |
+| 04-05-02 | 05 | 5 | CTX-03, CTX-04 | integration | `env GOCACHE=/tmp/optimusctx-gocache GOMODCACHE=/tmp/optimusctx-gomodcache /tmp/optimusctx-go/go/bin/go test ./... -run 'TestLookupDrivenContextBlock|TestLayeredContextFreshnessContract'` | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -51,25 +52,37 @@ created: 2026-03-15
 
 ## Wave 0 Requirements
 
-- [ ] Existing infrastructure covers all phase requirements.
+- [x] `/tmp/optimusctx-go/go/bin/go` is the pinned Phase 1-3 toolchain used for all Phase 4 quick and full suite commands.
+- [x] Existing temp-repository helpers in `internal/app/refresh_test.go` and `internal/app/repository_map_test.go` are reused for persisted-read and live-file L2 fixtures.
+- [x] Existing SQLite-backed store test patterns in `internal/store/sqlite/store_test.go` cover deterministic ordering, filter semantics, and persisted-only query assertions.
+- [x] Existing app-service patterns for repository resolution and injected file reads in `internal/app/repository_map.go` and `internal/app/refresh.go` are the required shared contracts for Phase 4 services.
 
 ---
 
 ## Manual-Only Verifications
 
-| Behavior | Requirement | Why Manual | Test Instructions |
-|----------|-------------|------------|-------------------|
-| Cross-check L2 output readability for representative symbol and line-range queries | CTX-03 | Exact anchors and surrounding context may be correct mechanically but still need a human scan for usefulness | Run the future L2 query path against a temp repo fixture, inspect returned anchors, line windows, and stale-file errors for clarity |
+All Phase 4 core behaviors are expected to have automated verification. Optional operator review can inspect one representative L2 block after execution, but Phase 4 planning does not require a manual checkpoint.
+
+---
+
+## Phase-Level Integration Proof
+
+- Verify L0, L1, and L2 all carry the same repository identity and freshness contract across one indexed temp repository.
+- Verify exact symbol lookup returns stable identity that can drive L2 symbol-targeted context assembly without reparsing or fuzzy matching.
+- Verify the end-to-end layered surface remains persisted-first: L0, L1, exact lookup, and structure lookup succeed from SQLite alone, while only L2 performs live file reads for final code windows.
+- Verify budget analysis reports deterministic file and directory hotspots from persisted size metadata and stays aligned with the same repository/freshness contract used by L0 and L1 outputs.
+- Recommended integrated command:
+  `env GOCACHE=/tmp/optimusctx-gocache GOMODCACHE=/tmp/optimusctx-gomodcache /tmp/optimusctx-go/go/bin/go test ./... -run 'TestLayeredContextFreshnessContract|TestLookupDrivenContextBlock|TestPersistedFirstQuerySurface|TestBudgetHotspots'`
 
 ---
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-03-15
