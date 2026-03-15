@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 5
 current_phase_name: mcp serving and integration contracts
-current_plan: 6
-status: verifying
-stopped_at: Completed 05-06-PLAN.md
-last_updated: "2026-03-15T15:37:27.852Z"
+current_plan: 7
+status: in_progress
+stopped_at: Completed 05-08-PLAN.md
+last_updated: "2026-03-15T16:51:50.877Z"
 last_activity: 2026-03-15
 progress:
   total_phases: 6
-  completed_phases: 5
-  total_plans: 26
-  completed_plans: 26
+  completed_phases: 4
+  total_plans: 28
+  completed_plans: 27
   percent: 96
 ---
 
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase complete — ready for verification
+**Status:** Phase in progress
 **Current Phase:** 5
 **Current Phase Name:** mcp serving and integration contracts
 **Total Phases:** 6
-**Current Plan:** 6
-**Total Plans in Phase:** 6
+**Current Plan:** 7
+**Total Plans in Phase:** 8
 **Progress:** [██████████] 96%
 **Last Activity:** 2026-03-15
-**Last Activity Description:** Completed 05-05 full MCP registry and integration boundary coverage
+**Last Activity Description:** Completed 05-08 canonical executable-path contract alignment for snippet and install
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1 foundation
 - Active phase: Phase 5 - MCP Serving and Integration Contracts
-- Next planning action: execute Phase 5 plan 06 for install registration and client integration follow-through
+- Next planning action: execute Phase 5 plan 07 to close the remaining Phase 5 UAT gap
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -143,6 +143,7 @@ progress:
 | Phase 05 P02 | 2min | 3 tasks | 6 files |
 | Phase 05 P04 | 8min | 3 tasks | 5 files |
 | Phase 05-mcp-serving-and-integration-contracts P05 | 12min | 3 tasks | 8 files |
+| Phase 05-mcp-serving-and-integration-contracts P08 | 1min | 3 tasks | 6 files |
 
 ## Decisions Made
 
@@ -199,6 +200,7 @@ progress:
 - [Phase 05]: Supported-client registration is adapter-based and preview-first, with writes allowed only behind --write.
 - [Phase 05]: Snippet and install registration share the same rendered MCP JSON contract so manual and automated guidance cannot drift.
 - [Phase 05]: Claude Desktop is the initial supported client, with explicit --config override support for hermetic tests and transparent platform behavior.
+- [Phase 05-mcp-serving-and-integration-contracts]: Omitted --binary now renders the reusable optimusctx command name instead of any runtime-resolved executable path.
 
 ## Blockers
 
@@ -206,8 +208,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T15:37:17.971Z
-**Stopped At:** Completed 05-06-PLAN.md
+**Last Date:** 2026-03-15T16:51:50.873Z
+**Stopped At:** Completed 05-08-PLAN.md
 **Resume File:** None
 
 ---

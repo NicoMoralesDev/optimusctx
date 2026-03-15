@@ -99,9 +99,9 @@
 - Install flow can optionally register supported client MCP configuration only when the user explicitly opts in.
 
 **Plan progress:**
-- Completed: `05-01`, `05-02`, `05-03`, `05-04`, `05-05`
-- Remaining: `05-06`
-- Summary coverage: 5 of 6 Phase 5 plans completed
+- Completed: `05-01`, `05-02`, `05-03`, `05-04`, `05-05`, `05-06`, `05-08`
+- Remaining: `05-07`
+- Summary coverage: 7 of 8 Phase 5 plans completed
 
 ## Phase 6: Watch Mode, Pack Export, and Operational Diagnostics
 
@@ -122,8 +122,7 @@
 | Phase | Requirement count | Requirements |
 |-------|-------------------|--------------|
 | Phase 1 | 8 | CLI-01, CLI-03, CLI-04, REPO-01, REPO-02, REPO-03, REPO-04, REPO-05 |
-| Phase 2 | 5 | REFR-01, REFR-02, REFR-03, REFR-04, REFR-05 |
-| Phase 3 | 5 | EXTR-01, EXTR-02, EXTR-03, EXTR-04, EXTR-05 |
+| Phase 2 | 5 | 7/8 | In Progress|  | 5 | EXTR-01, EXTR-02, EXTR-03, EXTR-04, EXTR-05 |
 | Phase 4 | 6 | CTX-01, CTX-02, CTX-03, CTX-04, CTX-05, CTX-06 |
 | Phase 5 | 5 | CLI-02, MCP-01, MCP-02, MCP-03, MCP-04 |
 | Phase 6 | 6 | CLI-05, OPS-01, OPS-02, OPS-03, OPS-04, OPS-05 |
