@@ -92,6 +92,25 @@ func (s *Store) DB() *sql.DB {
 	return s.db
 }
 
+func (s *Store) LookupRepositoryID(ctx context.Context, rootPath string) (int64, error) {
+	if s == nil || s.db == nil {
+		return 0, fmt.Errorf("lookup repository ID: store is not initialized")
+	}
+	if rootPath == "" {
+		return 0, fmt.Errorf("lookup repository ID: root path is required")
+	}
+
+	var repositoryID int64
+	if err := s.db.QueryRowContext(ctx, `SELECT id FROM repositories WHERE root_path = ?`, rootPath).Scan(&repositoryID); err != nil {
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("lookup repository ID for %q: %w", rootPath, err)
+		}
+		return 0, fmt.Errorf("lookup repository ID for %q: %w", rootPath, err)
+	}
+
+	return repositoryID, nil
+}
+
 func (s *Store) UpsertRepository(ctx context.Context, root repository.RepositoryRoot, now time.Time) (RepositoryRecord, error) {
 	if s == nil || s.db == nil {
 		return RepositoryRecord{}, fmt.Errorf("upsert repository: store is not initialized")
@@ -815,11 +834,64 @@ func (s *Store) LoadRepositoryMapRecords(ctx context.Context, repositoryID int64
 		record.TopLevelSymbolCount = topLevelSymbolCount.Int64
 		record.MaxSymbolDepth = maxSymbolDepth.Int64
 		record.SourceGeneration = sourceGeneration.Int64
-		record.Symbols = symbolsByFileID[record.FileID]
+		if record.CoverageState == "" {
+			record.CoverageState = repository.ExtractionCoverageStateSkipped
+		}
+		if record.CoverageState == repository.ExtractionCoverageStateSupported || record.CoverageState == repository.ExtractionCoverageStatePartial {
+			record.Symbols = symbolsByFileID[record.FileID]
+		}
 		records = append(records, record)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate repository map records for repository %d: %w", repositoryID, err)
+	}
+
+	return records, nil
+}
+
+func (s *Store) LoadRepositoryMapDirectories(ctx context.Context, repositoryID int64) ([]repository.RepositoryMapDirectoryRecord, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("load repository map directories: store is not initialized")
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			path,
+			parent_path,
+			included_file_count,
+			included_directory_count,
+			total_size_bytes,
+			last_refresh_generation
+		FROM directories
+		WHERE repository_id = ? AND ignore_status = ?
+		ORDER BY path
+	`, repositoryID, string(repository.IgnoreStatusIncluded))
+	if err != nil {
+		return nil, fmt.Errorf("load repository map directories for repository %d: %w", repositoryID, err)
+	}
+	defer rows.Close()
+
+	var records []repository.RepositoryMapDirectoryRecord
+	for rows.Next() {
+		var record repository.RepositoryMapDirectoryRecord
+		var parentPath sql.NullString
+		if err := rows.Scan(
+			&record.Path,
+			&parentPath,
+			&record.IncludedFileCount,
+			&record.IncludedDirectoryCount,
+			&record.TotalSizeBytes,
+			&record.LastRefreshGeneration,
+		); err != nil {
+			return nil, fmt.Errorf("scan repository map directory for repository %d: %w", repositoryID, err)
+		}
+
+		record.Path = normalizeStoredDirectoryPath(record.Path)
+		record.ParentPath = normalizeNullablePath(parentPath)
+		records = append(records, record)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate repository map directories for repository %d: %w", repositoryID, err)
 	}
 
 	return records, nil

@@ -837,6 +837,213 @@ func TestReplaceFileArtifacts(t *testing.T) {
 	}
 }
 
+func TestRepositoryMapReadModels(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	refreshedAt := time.Date(2026, 3, 14, 19, 30, 0, 0, time.UTC)
+	for _, directory := range []struct {
+		path           string
+		parent         any
+		fileCount      int64
+		directoryCount int64
+		totalSize      int64
+	}{
+		{path: ".", parent: nil, fileCount: 1, directoryCount: 1, totalSize: 64},
+		{path: "pkg", parent: ".", fileCount: 3, directoryCount: 0, totalSize: 192},
+	} {
+		if _, err := store.DB().ExecContext(ctx, `
+			INSERT INTO directories (
+				repository_id,
+				path,
+				parent_path,
+				discovered_at,
+				ignore_status,
+				subtree_fingerprint,
+				included_file_count,
+				included_directory_count,
+				total_size_bytes,
+				last_refreshed_at,
+				last_refresh_generation
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`,
+			repoID,
+			directory.path,
+			directory.parent,
+			refreshedAt.Format(time.RFC3339),
+			string(repository.IgnoreStatusIncluded),
+			directory.path+"-fingerprint",
+			directory.fileCount,
+			directory.directoryCount,
+			directory.totalSize,
+			refreshedAt.Format(time.RFC3339),
+			9,
+		); err != nil {
+			t.Fatalf("insert directory %q error = %v", directory.path, err)
+		}
+	}
+
+	run := createTestRefreshRun(t, ctx, store, repoID, 9)
+	rootFileID := insertTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{
+		Path:           "README.md",
+		DirectoryPath:  ".",
+		Extension:      ".md",
+		Language:       "markdown",
+		ContentHash:    "hash-readme",
+		LastGeneration: 9,
+	})
+	partialFileID := insertTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{
+		Path:           "pkg/partial.go",
+		DirectoryPath:  "pkg",
+		Extension:      ".go",
+		Language:       "go",
+		ContentHash:    "hash-partial",
+		LastGeneration: 9,
+	})
+	supportedFileID := insertTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{
+		Path:           "pkg/supported.go",
+		DirectoryPath:  "pkg",
+		Extension:      ".go",
+		Language:       "go",
+		ContentHash:    "hash-supported",
+		LastGeneration: 9,
+	})
+	unsupportedFileID := insertTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{
+		Path:           "pkg/template.mustache",
+		DirectoryPath:  "pkg",
+		Extension:      ".mustache",
+		Language:       "mustache",
+		ContentHash:    "hash-template",
+		LastGeneration: 9,
+	})
+
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:        repoID,
+			FileID:              supportedFileID,
+			Path:                "pkg/supported.go",
+			Language:            "go",
+			AdapterName:         "tree-sitter-go",
+			GrammarVersion:      "v0.25.0",
+			SourceContentHash:   "hash-supported",
+			SourceGeneration:    9,
+			CoverageState:       repository.ExtractionCoverageStateSupported,
+			SymbolCount:         3,
+			TopLevelSymbolCount: 2,
+			MaxSymbolDepth:      1,
+			ExtractedAt:         refreshedAt,
+			RefreshRunID:        run.ID,
+		},
+		Symbols: []repository.SymbolRecord{
+			testTopLevelSymbol("pkg/supported.go", "go", "type", "Alpha", "alpha", 0),
+			testTopLevelSymbol("pkg/supported.go", "go", "function", "Beta", "beta", 1),
+			{
+				StableKey:       "beta.nested",
+				ParentStableKey: "beta",
+				Path:            "pkg/supported.go",
+				Language:        "go",
+				Kind:            "field",
+				Name:            "nested",
+				QualifiedName:   "Beta.nested",
+				Ordinal:         2,
+				Depth:           1,
+			},
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts() supported error = %v", err)
+	}
+
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:        repoID,
+			FileID:              partialFileID,
+			Path:                "pkg/partial.go",
+			Language:            "go",
+			AdapterName:         "tree-sitter-go",
+			GrammarVersion:      "v0.25.0",
+			SourceContentHash:   "hash-partial",
+			SourceGeneration:    9,
+			CoverageState:       repository.ExtractionCoverageStatePartial,
+			CoverageReason:      repository.ExtractionCoverageReasonParseError,
+			ParserErrorCount:    1,
+			HasErrorNodes:       true,
+			SymbolCount:         1,
+			TopLevelSymbolCount: 1,
+			MaxSymbolDepth:      0,
+			ExtractedAt:         refreshedAt,
+			RefreshRunID:        run.ID,
+		},
+		Symbols: []repository.SymbolRecord{
+			testTopLevelSymbol("pkg/partial.go", "go", "function", "Recovered", "recovered", 0),
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts() partial error = %v", err)
+	}
+
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:      repoID,
+			FileID:            unsupportedFileID,
+			Path:              "pkg/template.mustache",
+			Language:          "mustache",
+			AdapterName:       "none",
+			GrammarVersion:    "none",
+			SourceContentHash: "hash-template",
+			SourceGeneration:  9,
+			CoverageState:     repository.ExtractionCoverageStateUnsupported,
+			CoverageReason:    repository.ExtractionCoverageReasonUnsupportedLanguage,
+			ExtractedAt:       refreshedAt,
+			RefreshRunID:      run.ID,
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts() unsupported error = %v", err)
+	}
+
+	directories, err := store.LoadRepositoryMapDirectories(ctx, repoID)
+	if err != nil {
+		t.Fatalf("LoadRepositoryMapDirectories() error = %v", err)
+	}
+	if got := []string{directories[0].Path, directories[1].Path}; !reflect.DeepEqual(got, []string{".", "pkg"}) {
+		t.Fatalf("directory ordering = %v", got)
+	}
+	if directories[1].ParentPath != "." || directories[1].IncludedFileCount != 3 {
+		t.Fatalf("pkg directory = %+v", directories[1])
+	}
+
+	mapRecords, err := store.LoadRepositoryMapRecords(ctx, repoID)
+	if err != nil {
+		t.Fatalf("LoadRepositoryMapRecords() error = %v", err)
+	}
+	if len(mapRecords) != 4 {
+		t.Fatalf("repository map file count = %d, want 4", len(mapRecords))
+	}
+
+	if mapRecords[0].Path != "README.md" || mapRecords[0].CoverageState != repository.ExtractionCoverageStateSkipped || len(mapRecords[0].Symbols) != 0 {
+		t.Fatalf("root README map record = %+v", mapRecords[0])
+	}
+	if mapRecords[1].CoverageState != repository.ExtractionCoverageStatePartial || mapRecords[1].Symbols[0].Name != "Recovered" {
+		t.Fatalf("partial map record = %+v", mapRecords[1])
+	}
+	if got := []string{mapRecords[2].Symbols[0].Name, mapRecords[2].Symbols[1].Name}; !reflect.DeepEqual(got, []string{"Alpha", "Beta"}) {
+		t.Fatalf("supported symbols = %v", got)
+	}
+	if mapRecords[3].CoverageState != repository.ExtractionCoverageStateUnsupported || len(mapRecords[3].Symbols) != 0 {
+		t.Fatalf("unsupported map record = %+v", mapRecords[3])
+	}
+
+	if rootFileID == 0 {
+		t.Fatal("root file ID should be non-zero")
+	}
+}
+
 func TestUnsupportedExtractionState(t *testing.T) {
 	t.Parallel()
 

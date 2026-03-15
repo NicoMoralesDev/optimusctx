@@ -242,3 +242,49 @@ type RepositoryMapFileRecord struct {
 	SourceGeneration    int64
 	Symbols             []SymbolRecord
 }
+
+type RepositoryMapDirectoryRecord struct {
+	Path                   string
+	ParentPath             string
+	IncludedFileCount      int64
+	IncludedDirectoryCount int64
+	TotalSizeBytes         int64
+	LastRefreshGeneration  int64
+}
+
+type RepositoryMap struct {
+	RepositoryRoot string
+	Generation     int64
+	Freshness      FreshnessStatus
+	Directories    []RepositoryMapDirectory
+}
+
+type RepositoryMapDirectory struct {
+	Path                   string
+	ParentPath             string
+	IncludedFileCount      int64
+	IncludedDirectoryCount int64
+	TotalSizeBytes         int64
+	LastRefreshGeneration  int64
+	Files                  []RepositoryMapFile
+}
+
+type RepositoryMapFile struct {
+	Path                string
+	DirectoryPath       string
+	Language            string
+	CoverageState       ExtractionCoverageState
+	CoverageReason      ExtractionCoverageReason
+	SymbolCount         int64
+	TopLevelSymbolCount int64
+	MaxSymbolDepth      int64
+	SourceGeneration    int64
+	Symbols             []RepositoryMapSymbol
+}
+
+type RepositoryMapSymbol struct {
+	Kind          string
+	Name          string
+	QualifiedName string
+	Ordinal       int64
+}
