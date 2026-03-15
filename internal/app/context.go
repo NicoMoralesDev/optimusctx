@@ -28,12 +28,42 @@ func NewRepositoryContextService() RepositoryContextService {
 }
 
 func (s RepositoryContextService) LayeredContextL0(ctx context.Context, startPath string) (repository.LayeredContextL0, error) {
+	store, repositoryID, err := s.openRepositoryContextStore(ctx, startPath)
+	if err != nil {
+		return repository.LayeredContextL0{}, err
+	}
+	defer store.Close()
+
+	result, err := store.ReadLayeredContextL0(ctx, repositoryID)
+	if err != nil {
+		return repository.LayeredContextL0{}, fmt.Errorf("load layered context l0: %w", err)
+	}
+
+	return result, nil
+}
+
+func (s RepositoryContextService) LayeredContextL1(ctx context.Context, startPath string) (repository.LayeredContextL1, error) {
+	store, repositoryID, err := s.openRepositoryContextStore(ctx, startPath)
+	if err != nil {
+		return repository.LayeredContextL1{}, err
+	}
+	defer store.Close()
+
+	result, err := store.ReadLayeredContextL1(ctx, repositoryID)
+	if err != nil {
+		return repository.LayeredContextL1{}, fmt.Errorf("load layered context l1: %w", err)
+	}
+
+	return result, nil
+}
+
+func (s RepositoryContextService) openRepositoryContextStore(ctx context.Context, startPath string) (*sqlite.Store, int64, error) {
 	root, err := s.Locator.Resolve(startPath)
 	if err != nil {
 		if errors.Is(err, repository.ErrRepositoryNotFound) {
-			return repository.LayeredContextL0{}, fmt.Errorf("resolve repository root: %w", err)
+			return nil, 0, fmt.Errorf("resolve repository root: %w", err)
 		}
-		return repository.LayeredContextL0{}, fmt.Errorf("resolve repository root: %w", err)
+		return nil, 0, fmt.Errorf("resolve repository root: %w", err)
 	}
 
 	layoutResolver := s.ResolveLayout
@@ -42,7 +72,7 @@ func (s RepositoryContextService) LayeredContextL0(ctx context.Context, startPat
 	}
 	layout, err := layoutResolver(root.RootPath)
 	if err != nil {
-		return repository.LayeredContextL0{}, fmt.Errorf("resolve state layout: %w", err)
+		return nil, 0, fmt.Errorf("resolve state layout: %w", err)
 	}
 
 	openStore := s.OpenStore
@@ -53,22 +83,17 @@ func (s RepositoryContextService) LayeredContextL0(ctx context.Context, startPat
 	}
 	store, err := openStore(ctx, layout, root.DetectionMode)
 	if err != nil {
-		return repository.LayeredContextL0{}, fmt.Errorf("open state store: %w", err)
+		return nil, 0, fmt.Errorf("open state store: %w", err)
 	}
-	defer store.Close()
 
 	repositoryID, err := store.LookupRepositoryID(ctx, root.RootPath)
 	if err != nil {
+		_ = store.Close()
 		if errors.Is(err, sql.ErrNoRows) {
-			return repository.LayeredContextL0{}, fmt.Errorf("load repository metadata: %w", err)
+			return nil, 0, fmt.Errorf("load repository metadata: %w", err)
 		}
-		return repository.LayeredContextL0{}, fmt.Errorf("load repository metadata: %w", err)
+		return nil, 0, fmt.Errorf("load repository metadata: %w", err)
 	}
 
-	result, err := store.ReadLayeredContextL0(ctx, repositoryID)
-	if err != nil {
-		return repository.LayeredContextL0{}, fmt.Errorf("load layered context l0: %w", err)
-	}
-
-	return result, nil
+	return store, repositoryID, nil
 }
