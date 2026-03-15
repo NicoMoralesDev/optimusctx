@@ -50,8 +50,8 @@
 
 - [x] **MCP-01**: Runtime can serve MCP requests over STDIO as the primary integration mode.
 - [ ] **MCP-02**: MCP tools return structured machine-readable payloads with freshness metadata and cache-versus-refresh status.
-- [ ] **MCP-03**: MCP surface includes repository map, symbol lookup, structure lookup, context block, token tree, refresh, pack, and health capabilities.
-- [ ] **MCP-04**: MCP handlers enforce bounded payload defaults and return transparent actionable failures.
+- [x] **MCP-03**: MCP surface includes repository map, symbol lookup, structure lookup, context block, token tree, refresh, pack, and health capabilities.
+- [x] **MCP-04**: MCP handlers enforce bounded payload defaults and return transparent actionable failures.
 
 ### Watch, Export, and Operations
 
@@ -123,8 +123,8 @@
 | CTX-06 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Complete |
 | MCP-01 | Phase 5 - MCP Serving and Integration Contracts | Complete |
 | MCP-02 | Phase 5 - MCP Serving and Integration Contracts | Pending |
-| MCP-03 | Phase 5 - MCP Serving and Integration Contracts | Pending |
-| MCP-04 | Phase 5 - MCP Serving and Integration Contracts | Pending |
+| MCP-03 | Phase 5 - MCP Serving and Integration Contracts | Complete |
+| MCP-04 | Phase 5 - MCP Serving and Integration Contracts | Complete |
 | OPS-01 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
 | OPS-02 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
 | OPS-03 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
