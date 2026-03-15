@@ -220,7 +220,48 @@ func TestEvalFixtureReferences(t *testing.T) {
 		t.Fatal("LoadEvalScenarios() returned no scenarios")
 	}
 
+	gotIDs := []string{scenarios[0].ID, scenarios[1].ID}
+	wantIDs := []string{"cli-go-basic-v1", "cli-go-worktree-v1"}
+	if !reflect.DeepEqual(gotIDs, wantIDs) {
+		t.Fatalf("loaded scenario IDs = %v, want %v", gotIDs, wantIDs)
+	}
+
 	if err := ValidateEvalFixtureReferences(scenarios, fixturesRoot); err != nil {
 		t.Fatalf("ValidateEvalFixtureReferences() error = %v", err)
+	}
+
+	expectedFixtures := map[string]EvalFixtureRef{
+		"cli-go-basic-v1": {
+			ID:           "go-basic",
+			Version:      "v1",
+			Path:         "go-basic/v1/repository",
+			Materialize:  EvalFixtureModeCopyTree,
+			WorkspaceDir: "workspace",
+		},
+		"cli-go-worktree-v1": {
+			ID:           "go-worktree",
+			Version:      "v1",
+			Path:         "go-worktree/v1/repository",
+			Materialize:  EvalFixtureModeCopyTree,
+			WorkspaceDir: "workspace",
+		},
+	}
+	expectedCommands := map[string][]EvalCommandName{
+		"cli-go-basic-v1":    {EvalCommandInit, EvalCommandRefresh, EvalCommandDoctor, EvalCommandPackExport},
+		"cli-go-worktree-v1": {EvalCommandInit, EvalCommandRefresh, EvalCommandDoctor, EvalCommandPackExport},
+	}
+
+	for _, scenario := range scenarios {
+		if got := scenario.Fixture; !reflect.DeepEqual(got, expectedFixtures[scenario.ID]) {
+			t.Fatalf("scenario %q fixture = %#v, want %#v", scenario.ID, got, expectedFixtures[scenario.ID])
+		}
+
+		var commands []EvalCommandName
+		for _, step := range scenario.Steps {
+			commands = append(commands, step.Expect.Command)
+		}
+		if !reflect.DeepEqual(commands, expectedCommands[scenario.ID]) {
+			t.Fatalf("scenario %q commands = %v, want %v", scenario.ID, commands, expectedCommands[scenario.ID])
+		}
 	}
 }
