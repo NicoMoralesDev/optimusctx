@@ -87,8 +87,8 @@ func TestSnippetCommandPrintsStdoutOnlyWithoutCreatingState(t *testing.T) {
 		if !strings.Contains(output, "# OptimusCtx manual integration snippet") {
 			t.Fatalf("output = %q, want snippet header", output)
 		}
-		if !strings.Contains(output, "MCP serving is not implemented yet in Phase 1.") {
-			t.Fatalf("output = %q, want truthful MCP placeholder", output)
+		if !strings.Contains(output, "OptimusCtx now serves MCP over `optimusctx mcp serve`.") {
+			t.Fatalf("output = %q, want real MCP contract", output)
 		}
 	})
 
