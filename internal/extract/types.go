@@ -67,14 +67,19 @@ func NormalizeSymbols(path string, language string, symbols []repository.SymbolR
 }
 
 func BuildArtifacts(candidate repository.ExtractionCandidate, adapterName string, grammarVersion string, result Result, extractedAt time.Time) repository.FileStructuralArtifacts {
-	symbols := NormalizeSymbols(candidate.Path, candidate.Language, result.Symbols)
+	language := candidate.Language
+	if language == "" {
+		language = "unknown"
+	}
+
+	symbols := NormalizeSymbols(candidate.Path, language, result.Symbols)
 
 	artifacts := repository.FileStructuralArtifacts{
 		Extraction: repository.FileExtractionRecord{
 			RepositoryID:        candidate.RepositoryID,
 			FileID:              candidate.FileID,
 			Path:                candidate.Path,
-			Language:            candidate.Language,
+			Language:            language,
 			AdapterName:         adapterName,
 			GrammarVersion:      grammarVersion,
 			SourceContentHash:   candidate.ContentHash,
