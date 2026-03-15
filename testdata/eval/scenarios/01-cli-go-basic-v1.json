@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "optimusctx/eval-scenario@v1",
+  "id": "cli-go-basic-v1",
+  "version": "v1",
+  "name": "CLI flow on basic Go fixture",
+  "description": "Runs the canonical shipped CLI flow on the smallest committed evaluation fixture.",
+  "fixture": {
+    "id": "go-basic",
+    "version": "v1",
+    "path": "go-basic/v1/repository",
+    "materialize": "copy_tree",
+    "workspaceDir": "workspace"
+  },
+  "steps": [
+    {
+      "id": "init",
+      "name": "Initialize repository state",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "init",
+        "exitCode": 0
+      },
+      "captureArtifact": [
+        "init-stdout"
+      ]
+    },
+    {
+      "id": "refresh",
+      "name": "Refresh repository snapshot",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "refresh",
+        "exitCode": 0
+      },
+      "captureArtifact": [
+        "refresh-stdout"
+      ]
+    },
+    {
+      "id": "doctor",
+      "name": "Check repository health",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "doctor",
+        "exitCode": 0
+      },
+      "captureArtifact": [
+        "doctor-stdout"
+      ]
+    },
+    {
+      "id": "pack-export",
+      "name": "Export packed repository context",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "pack_export",
+        "args": [
+          "--format",
+          "json"
+        ],
+        "exitCode": 0
+      },
+      "captureArtifact": [
+        "pack-output"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "init-stdout",
+      "kind": "stdout",
+      "required": true
+    },
+    {
+      "id": "refresh-stdout",
+      "kind": "stdout",
+      "required": true
+    },
+    {
+      "id": "doctor-stdout",
+      "kind": "stdout",
+      "required": true
+    },
+    {
+      "id": "pack-output",
+      "kind": "file",
+      "path": "artifacts/pack-basic.json",
+      "required": true
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+pack export should include this deterministic fixture content

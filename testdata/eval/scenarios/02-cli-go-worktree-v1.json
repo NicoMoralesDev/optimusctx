@@ -1,0 +1,89 @@
+{
+  "schemaVersion": "optimusctx/eval-scenario@v1",
+  "id": "cli-go-worktree-v1",
+  "version": "v1",
+  "name": "CLI flow on nested worktree fixture",
+  "description": "Exercises the same shipped CLI commands on a slightly richer fixture tree.",
+  "fixture": {
+    "id": "go-worktree",
+    "version": "v1",
+    "path": "go-worktree/v1/repository",
+    "materialize": "copy_tree",
+    "workspaceDir": "workspace"
+  },
+  "steps": [
+    {
+      "id": "init",
+      "name": "Initialize repository state",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "init",
+        "exitCode": 0
+      },
+      "captureArtifact": [
+        "init-stdout"
+      ]
+    },
+    {
+      "id": "refresh",
+      "name": "Refresh repository snapshot",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "refresh",
+        "exitCode": 0
+      },
+      "captureArtifact": [
+        "refresh-stdout"
+      ]
+    },
+    {
+      "id": "doctor",
+      "name": "Check repository health",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "doctor",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "pack-export",
+      "name": "Export packed repository context",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "pack_export",
+        "args": [
+          "--format",
+          "json",
+          "--output",
+          "artifacts/pack-worktree.json"
+        ],
+        "exitCode": 0
+      },
+      "captureArtifact": [
+        "pack-output"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "init-stdout",
+      "kind": "stdout",
+      "required": true
+    },
+    {
+      "id": "refresh-stdout",
+      "kind": "stdout",
+      "required": true
+    },
+    {
+      "id": "pack-output",
+      "kind": "file",
+      "path": "artifacts/pack-worktree.json",
+      "required": true
+    }
+  ]
+}
