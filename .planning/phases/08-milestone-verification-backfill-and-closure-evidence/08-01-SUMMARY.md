@@ -24,7 +24,7 @@ patterns-established:
   - "Every downstream verification file should map each in-scope requirement to concrete summaries, implementation anchors, test names, and command groups."
   - "Requirement ownership boundaries must be restated explicitly before phase-level verification backfill begins."
 requirements-completed: [REFR-01, REFR-02, REFR-03, REFR-04, REFR-05, CLI-02, MCP-01, MCP-02, MCP-03, MCP-04, OPS-02, OPS-03, OPS-04]
-duration: in_progress
+duration: 2min
 completed: 2026-03-15
 ---
 
@@ -34,9 +34,9 @@ completed: 2026-03-15
 
 ## Performance
 
-- **Duration:** in progress
+- **Duration:** 2 min
 - **Started:** 2026-03-15T22:07:58Z
-- **Completed:** in progress
+- **Completed:** 2026-03-15T22:09:45Z
 - **Tasks:** 3
 - **Files modified:** 1
 
@@ -186,12 +186,45 @@ Use the targeted watch and export command set from `08-VALIDATION.md` for requir
 - Do not restate the Phase 7 doctor/watch repair inside Phase 06 verification beyond the explicit scope boundary.
 - Prefer requirement-by-requirement proofs over plan-by-plan recaps.
 
+## Task 3 Publication Guidance
+
+### Downstream Writing Contract
+
+The remaining Phase 8 plans should use this summary as the single inventory source before drafting:
+
+- `08-02` should produce `02-VERIFICATION.md` from the Phase 02 matrix rows and explicitly reconcile earlier `02-UAT.md` failures against later hermetic temp-repository coverage.
+- `08-03` should produce `05-VERIFICATION.md` from the Phase 05 matrix rows and synthesize eight summaries into one MCP contract argument.
+- `08-04` should produce `06-VERIFICATION.md` from the Phase 06 matrix rows and re-check milestone closure only for `OPS-02`, `OPS-03`, and `OPS-04`.
+
+### Required Evidence Standards
+
+- Every verification file must name all in-scope requirement IDs in its `Scope` section.
+- Every requirement subsection must identify at least one summary anchor and at least one implementation or test anchor.
+- Every file must record the current `/usr/local/go/bin/go` plus `/tmp` cache command truth, not older summary-era paths.
+- Phase 06 must explicitly state that `CLI-05`, `OPS-01`, and `OPS-05` were repaired and verified in Phase 7.
+
+### Unresolved Evidence Risks
+
+These are documentation risks for downstream plans, not implementation blockers:
+
+1. Phase 02 has older `02-UAT.md` history that predates hermetic temp-repo fixes; `02-VERIFICATION.md` needs to explain why the later summaries and current tests are the milestone-grade truth.
+2. Some older verification examples still mention `/tmp/optimusctx-go/go/bin/go`; downstream files must avoid copying that stale path into present-day test commands.
+3. Phase 05 and Phase 06 each span multiple summaries with overlapping requirement coverage, so downstream write-ups must synthesize rather than duplicate evidence.
+
+### Verification Checklist Outcome
+
+- Requirement inventory: complete for all Phase 8 in-scope IDs
+- Phase 7 boundary: explicit for `CLI-05`, `OPS-01`, and `OPS-05`
+- Template contract: locked to the established `Status` through `Final Verdict` shape
+- Command truth: locked to `/usr/local/go/bin/go` with `GOCACHE=/tmp/optimusctx-gocache` and `GOMODCACHE=/tmp/optimusctx-gomodcache`
+- Downstream scope: bounded to verification and traceability, not new feature work
+
 ## Task Commits
 
 Each task was committed atomically:
 
-1. **Task 1: Build the Phase 8 requirement-to-evidence inventory** - pending
-2. **Task 2: Lock the verification document template and current command truth** - pending
+1. **Task 1: Build the Phase 8 requirement-to-evidence inventory** - `fa7ffde` (feat)
+2. **Task 2: Lock the verification document template and current command truth** - `3b0e2fe` (feat)
 3. **Task 3: Publish the inventory summary for downstream plans** - pending
 
 ## Files Created/Modified
@@ -205,7 +238,7 @@ Each task was committed atomically:
 
 ## Deviations from Plan
 
-None so far.
+None - plan executed exactly as written.
 
 ## Issues Encountered
 
@@ -217,5 +250,18 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 
-- Task 2 will convert this inventory into a fixed verification template and one current command set for all downstream write-ups.
-- Task 3 will finalize downstream risks, self-checks, and publication details once the contract text is complete.
+- `08-02` can now write `02-VERIFICATION.md` from a stable requirement matrix, a fixed artifact shape, and a current command set.
+- `08-03` and `08-04` can reuse the same verification contract without re-deciding scope or template rules.
+
+## Self-Check
+
+PASSED
+
+- Verified the summary names every Phase 8 in-scope requirement: `REFR-01..05`, `CLI-02`, `MCP-01..04`, and `OPS-02..04`.
+- Verified the summary explicitly excludes the Phase 7-owned requirements `CLI-05`, `OPS-01`, and `OPS-05` from later Phase 06 verification.
+- Verified Task 1 commit `fa7ffde` exists in git history.
+- Verified Task 2 commit `3b0e2fe` exists in git history.
+
+---
+*Phase: 08-milestone-verification-backfill-and-closure-evidence*
+*Completed: 2026-03-15*
