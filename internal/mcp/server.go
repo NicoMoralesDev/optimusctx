@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -30,6 +32,7 @@ type Server struct {
 	output  io.Writer
 	errout  io.Writer
 	tools   map[string]ToolHandler
+	order   []string
 	version string
 }
 
@@ -44,6 +47,9 @@ func NewServer(stdin io.Reader, stdout io.Writer, stderr io.Writer) *Server {
 }
 
 func (s *Server) RegisterTool(handler ToolHandler) {
+	if _, exists := s.tools[handler.Tool.Name]; !exists {
+		s.order = append(s.order, handler.Tool.Name)
+	}
 	s.tools[handler.Tool.Name] = handler
 }
 
@@ -57,6 +63,9 @@ func (s *Server) Serve(ctx context.Context) error {
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil
+			}
+			if s.errout != nil {
+				log.New(s.errout, "optimusctx mcp: ", 0).Printf("session ended with transport error: %v", err)
 			}
 			return err
 		}
@@ -112,7 +121,7 @@ func (s *Server) handleRequest(ctx context.Context, request Request) *Response {
 			JSONRPC: jsonRPCVersion,
 			ID:      request.ID,
 			Result: InitializeResult{
-				ProtocolVersion: "2026-03-15",
+				ProtocolVersion: protocolVersion,
 				Capabilities: ServerCapabilities{
 					Tools: ToolsCapabilities{ListChanged: false},
 				},
@@ -124,8 +133,10 @@ func (s *Server) handleRequest(ctx context.Context, request Request) *Response {
 		}
 	case "tools/list":
 		tools := make([]Tool, 0, len(s.tools))
-		for _, handler := range s.tools {
-			tools = append(tools, handler.Tool)
+		names := append([]string(nil), s.order...)
+		sort.Strings(names)
+		for _, name := range names {
+			tools = append(tools, s.tools[name].Tool)
 		}
 		return &Response{
 			JSONRPC: jsonRPCVersion,

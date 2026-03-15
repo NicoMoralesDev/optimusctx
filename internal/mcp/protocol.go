@@ -1,6 +1,9 @@
 package mcp
 
-const jsonRPCVersion = "2.0"
+const (
+	jsonRPCVersion  = "2.0"
+	protocolVersion = "2026-03-15"
+)
 
 type Request struct {
 	JSONRPC string `json:"jsonrpc"`
