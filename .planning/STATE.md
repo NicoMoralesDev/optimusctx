@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 4
 current_phase_name: layered context, exact lookup, and budget analysis
-current_plan: 2
+current_plan: 5
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-15T01:10:55.298Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-15T01:20:23.768Z"
 last_activity: 2026-03-15
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 20
-  completed_plans: 15
-  percent: 75
+  completed_plans: 16
+  percent: 80
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Executing Phase 4
+**Status:** Ready to execute
 **Current Phase:** 4
 **Current Phase Name:** layered context, exact lookup, and budget analysis
 **Total Phases:** 6
-**Current Plan:** 04-02-PLAN.md
+**Current Plan:** 5
 **Total Plans in Phase:** 6
-**Progress:** [████████░░] 75%
+**Progress:** [████████░░] 80%
 **Last Activity:** 2026-03-15
-**Last Activity Description:** Completed 04-01-PLAN.md and advanced Phase 4 execution
+**Last Activity Description:** Completed 04-02-PLAN.md and advanced Phase 4 execution
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1 foundation
 - Active phase: Phase 4 - Layered Context, Exact Lookup, and Budget Analysis
-- Next planning action: execute 04-02-PLAN.md
+- Next planning action: execute 04-03-PLAN.md
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -102,6 +102,8 @@ progress:
 - Verification for `03-04` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go cache settings for targeted repository-map coverage and the full Go test suite.
 - Plan `04-01` is complete with shared layered-context L0 types, persisted SQLite repository summaries, and an app-layer repository context service.
 - Verification for `04-01` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go cache settings for targeted L0 repository-summary coverage and the full Go test suite.
+- Plan `04-02` is complete with bounded L1 candidate-file models, persisted SQLite structural context queries, and an app-layer L1 repository context service.
+- Verification for `04-02` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted L1 coverage and the full Go test suite.
 
 ## Performance Metrics
 
@@ -117,6 +119,7 @@ progress:
 | Phase 03-structural-extraction-and-repository-artifact-model P03 | 12min | 3 tasks | 7 files |
 | Phase 03-structural-extraction-and-repository-artifact-model P04 | 10min | 3 tasks | 6 files |
 | Phase 04 P01 | 25min | 3 tasks | 5 files |
+| Phase 04 P02 | 10min | 3 tasks | 5 files |
 
 ## Decisions Made
 
@@ -148,6 +151,9 @@ progress:
 - [Phase 04]: L0 reuses a shared repository envelope carrying root path, last refresh generation, and freshness so later context layers can extend one query surface.
 - [Phase 04]: Major areas are a deterministic mix of top-level directories plus a synthetic root-files bucket ordered by size and path.
 - [Phase 04]: Language summaries normalize blank persisted language hints to unknown instead of dropping those files from repository-level accounting.
+- [Phase 04]: L1 reuses the same repository identity and freshness envelope as L0 so later query layers stay on one service boundary.
+- [Phase 04]: Candidate files are ordered deterministically by coverage quality, top-level structural density, size, and path rather than ad hoc ranking.
+- [Phase 04]: Concise summaries stay template-driven and derived from persisted symbol names and directory metadata instead of free-form prose synthesis.
 
 ## Blockers
 
@@ -155,9 +161,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T01:10:45.542Z
-**Stopped At:** Completed 04-01-PLAN.md
+**Last Date:** 2026-03-15T01:20:14.451Z
+**Stopped At:** Completed 04-02-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-15 after completing plan 03-04*
+*Last updated: 2026-03-15 after completing plan 04-02*
