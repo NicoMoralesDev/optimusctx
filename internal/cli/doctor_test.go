@@ -246,7 +246,7 @@ func TestDoctorCommandHealthyWithoutWatch(t *testing.T) {
 		"watch state: absent",
 		"summary: watch mode is not running; background watch is optional",
 		"optional: yes",
-		"reason: watch status file not found",
+		"reason: watch status file not found because watch mode is not running",
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output missing %q:\n%s", want, output)

@@ -83,7 +83,7 @@ func formatDoctorReport(report repository.DoctorReport) string {
 	writeDoctorLine(&b, "watch state", string(report.Watch.Health.Status))
 	writeDoctorLine(&b, "summary", report.Watch.Summary)
 	writeDoctorLine(&b, "optional", formatDoctorBool(report.Watch.Optional))
-	writeDoctorLine(&b, "reason", renderDoctorValue(report.Watch.Health.Reason))
+	writeDoctorLine(&b, "reason", doctorWatchReason(report))
 	writeDoctorLine(&b, "status path", report.Watch.Health.StatusPath)
 	writeDoctorLine(&b, "last heartbeat", formatDoctorTime(report.Watch.Health.Record.LastHeartbeatAtTime()))
 	writeDoctorLine(&b, "last refresh generation", formatDoctorInt64(report.Watch.Health.Record.LastRefreshGeneration))
@@ -166,4 +166,11 @@ func formatDoctorInt(value int) string {
 
 func formatDoctorInt64(value int64) string {
 	return fmt.Sprintf("%d", value)
+}
+
+func doctorWatchReason(report repository.DoctorReport) string {
+	if report.Watch.Optional && report.Watch.Health.Status == repository.WatchStatusKindAbsent {
+		return "watch status file not found because watch mode is not running"
+	}
+	return report.Watch.Health.Reason
 }
