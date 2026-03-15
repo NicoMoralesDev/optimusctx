@@ -21,9 +21,9 @@ Phase 05 verification is requirement-driven:
   with the same `optimusctx mcp serve` contract shown by `optimusctx snippet`.
 
 The canonical current verification command path for this milestone backfill is
-`/usr/local/go/bin/go`. Historical summary-era references to `/tmp/optimusctx-go`
-remain useful as development history, but they are not treated as current proof in
-this verification artifact.
+`/usr/local/go/bin/go`. Historical summary-era toolchain references remain useful as
+development history, but they are not treated as current proof in this verification
+artifact.
 
 This artifact is intentionally bounded to verification and traceability. It does not
 reopen Phase 05 design choices, propose new MCP features, or create follow-on backlog
