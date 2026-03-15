@@ -275,6 +275,7 @@ type RepositoryMapFile struct {
 	Language            string
 	CoverageState       ExtractionCoverageState
 	CoverageReason      ExtractionCoverageReason
+	HasCoverageGap      bool
 	SymbolCount         int64
 	TopLevelSymbolCount int64
 	MaxSymbolDepth      int64

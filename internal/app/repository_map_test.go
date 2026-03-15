@@ -49,6 +49,9 @@ func TestRepositoryMap(t *testing.T) {
 	if alphaFile.CoverageState != repository.ExtractionCoverageStateSupported {
 		t.Fatalf("alpha coverage = %q", alphaFile.CoverageState)
 	}
+	if alphaFile.HasCoverageGap {
+		t.Fatalf("alpha coverage gap = %t, want false", alphaFile.HasCoverageGap)
+	}
 	if alphaFile.TopLevelSymbolCount != 3 {
 		t.Fatalf("alpha top-level count = %d", alphaFile.TopLevelSymbolCount)
 	}
@@ -60,6 +63,9 @@ func TestRepositoryMap(t *testing.T) {
 	readmeFile := repositoryMapFileByPath(t, got, "README.md")
 	if !containsFile(rootDir.Files, "README.md") || readmeFile.CoverageState != repository.ExtractionCoverageStateUnsupported {
 		t.Fatalf("root README map = %+v", readmeFile)
+	}
+	if !readmeFile.HasCoverageGap {
+		t.Fatalf("README coverage gap = %t, want true", readmeFile.HasCoverageGap)
 	}
 }
 
@@ -93,15 +99,24 @@ func TestRepositoryMapCoverageStates(t *testing.T) {
 	if partial.CoverageState != repository.ExtractionCoverageStatePartial || len(partial.Symbols) == 0 {
 		t.Fatalf("partial map file = %+v", partial)
 	}
+	if !partial.HasCoverageGap {
+		t.Fatalf("partial coverage gap = %t, want true", partial.HasCoverageGap)
+	}
 
 	failed := repositoryMapFileByPath(t, mapResult, "failed.go")
 	if failed.CoverageState != repository.ExtractionCoverageStateFailed || len(failed.Symbols) != 0 {
 		t.Fatalf("failed map file = %+v", failed)
 	}
+	if !failed.HasCoverageGap {
+		t.Fatalf("failed coverage gap = %t, want true", failed.HasCoverageGap)
+	}
 
 	unsupported := repositoryMapFileByPath(t, mapResult, "notes.txt")
 	if unsupported.CoverageState != repository.ExtractionCoverageStateUnsupported || len(unsupported.Symbols) != 0 {
 		t.Fatalf("unsupported map file = %+v", unsupported)
+	}
+	if !unsupported.HasCoverageGap {
+		t.Fatalf("unsupported coverage gap = %t, want true", unsupported.HasCoverageGap)
 	}
 }
 

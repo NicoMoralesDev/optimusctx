@@ -86,6 +86,7 @@ func (s RepositoryMapService) RepositoryMap(ctx context.Context, startPath strin
 			Language:            record.Language,
 			CoverageState:       record.CoverageState,
 			CoverageReason:      record.CoverageReason,
+			HasCoverageGap:      hasRepositoryMapCoverageGap(record.CoverageState),
 			SymbolCount:         record.SymbolCount,
 			TopLevelSymbolCount: record.TopLevelSymbolCount,
 			MaxSymbolDepth:      record.MaxSymbolDepth,
@@ -130,4 +131,11 @@ func compactRepositoryMapSymbols(symbols []repository.SymbolRecord) []repository
 		})
 	}
 	return compact
+}
+
+func hasRepositoryMapCoverageGap(state repository.ExtractionCoverageState) bool {
+	return state == repository.ExtractionCoverageStatePartial ||
+		state == repository.ExtractionCoverageStateUnsupported ||
+		state == repository.ExtractionCoverageStateFailed ||
+		state == repository.ExtractionCoverageStateSkipped
 }
