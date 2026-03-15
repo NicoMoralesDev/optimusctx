@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 6
-current_phase_name: watch mode pack export and operational diagnostics
-current_plan: 5
-status: verifying
-stopped_at: Completed 06-05-PLAN.md
-last_updated: "2026-03-15T19:14:57.138Z"
+current_phase: 7
+current_phase_name: doctor health semantics and milestone state repair
+current_plan: 2
+status: in_progress
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-03-15T19:46:29Z"
 last_activity: 2026-03-15
 progress:
-  total_phases: 6
+  total_phases: 8
   completed_phases: 6
-  total_plans: 33
-  completed_plans: 33
-  percent: 100
+  total_plans: 35
+  completed_plans: 34
+  percent: 97
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase complete — ready for verification
-**Current Phase:** 6
-**Current Phase Name:** watch mode pack export and operational diagnostics
-**Total Phases:** 6
-**Current Plan:** 5
-**Total Plans in Phase:** 5
-**Progress:** [██████████] 100%
+**Status:** Phase in progress
+**Current Phase:** 7
+**Current Phase Name:** doctor health semantics and milestone state repair
+**Total Phases:** 8
+**Current Plan:** 2
+**Total Plans in Phase:** 2
+**Progress:** [██████████] 97%
 **Last Activity:** 2026-03-15
-**Last Activity Description:** Completed 06-04 pack export budget controls
+**Last Activity Description:** Completed 07-01 doctor healthy-without-watch semantics repair
 
 ## Project Memory
 
@@ -39,13 +39,13 @@ progress:
 - Core promise: repository understanding should be persistent, deterministic, incremental, and reusable across agent clients.
 - v1 stack direction: Go runtime, SQLite persistence, Tree-sitter structural extraction, MCP-over-STDIO integration.
 - v1 guardrails: no hosted dependency, no default semantic retrieval, no automatic instruction-file edits, no IDE/LSP replacement scope.
-- Roadmap shape: six standard-granularity phases ordered by dependency from state foundation through refresh, extraction, query surface, MCP contracts, and operational hardening.
+- Roadmap shape: eight phases, with gap-closure Phases 7 and 8 extending the original six-phase v1 foundation sequence.
 
 ## Current Planning Context
 
 - Active milestone: v1 foundation
-- Active phase: Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics
-- Next planning action: execute Phase 6 plan 05
+- Active phase: Phase 7 - Doctor Health Semantics and Milestone State Repair
+- Next planning action: execute Phase 7 plan 02
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -154,6 +154,7 @@ progress:
 | Phase 06-watch-mode-pack-export-and-operational-diagnostics P03 | 24min | 3 tasks | 6 files |
 | Phase 06-watch-mode-pack-export-and-operational-diagnostics P04 | 14min | 3 tasks | 5 files |
 | Phase 06-watch-mode-pack-export-and-operational-diagnostics P05 | 529 | 3 tasks | 6 files |
+| Phase 07 P01 | 12min | 3 tasks | 5 files |
 
 ## Decisions Made
 
@@ -227,6 +228,8 @@ progress:
 - [Phase 06-watch-mode-pack-export-and-operational-diagnostics]: Operators now configure pack export scope explicitly through repeated include and exclude path flags plus a positive integer target-budget flag.
 - [Phase 06-watch-mode-pack-export-and-operational-diagnostics]: Doctor reuses existing health, watch, and budget seams and adds only minimal read-only SQL for latest refresh-run and structural coverage details.
 - [Phase 06-watch-mode-pack-export-and-operational-diagnostics]: Operator output reports section-specific root causes and next actions instead of exposing raw database jargon.
+- [Phase 07]: Doctor now treats absent watch as a healthy optional state while preserving raw watch status as absent for operator visibility.
+- [Phase 07]: CLI wording translates absent watch into optional-background-watch guidance instead of implying repository failure.
 
 ## Blockers
 
@@ -234,9 +237,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T19:14:57.133Z
-**Stopped At:** Completed 06-05-PLAN.md
+**Last Date:** 2026-03-15T19:46:29Z
+**Stopped At:** Completed 07-01-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-15 after completing Phase 6 plan 04*
+*Last updated: 2026-03-15 after completing Phase 07 plan 01*
