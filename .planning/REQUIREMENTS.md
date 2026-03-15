@@ -39,7 +39,7 @@
 
 ### Context and Query Surface
 
-- [ ] **CTX-01**: Runtime can return an L0 repository snapshot with repository identity, dominant languages, major areas, and freshness metadata.
+- [x] **CTX-01**: Runtime can return an L0 repository snapshot with repository identity, dominant languages, major areas, and freshness metadata.
 - [ ] **CTX-02**: Runtime can return an L1 structural map with candidate files, symbols, concise summaries, and relevance-limiting metadata.
 - [ ] **CTX-03**: Runtime can return an L2 targeted context block with exact file paths, symbol or line-range targeting, and bounded surrounding code context.
 - [ ] **CTX-04**: Runtime can resolve exact symbol lookups by symbol name with optional path and language scoping.
@@ -115,7 +115,7 @@
 | EXTR-03 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
 | EXTR-04 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
 | EXTR-05 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
-| CTX-01 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
+| CTX-01 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Complete |
 | CTX-02 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
 | CTX-03 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
 | CTX-04 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |

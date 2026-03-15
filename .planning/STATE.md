@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 4
 current_phase_name: layered context, exact lookup, and budget analysis
-current_plan: Not started
-status: planning
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-03-15T00:38:00.272Z"
+current_plan: 2
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-15T01:10:55.298Z"
 last_activity: 2026-03-15
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 14
-  completed_plans: 14
-  percent: 100
+  total_plans: 20
+  completed_plans: 15
+  percent: 75
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to plan
+**Status:** Executing Phase 4
 **Current Phase:** 4
 **Current Phase Name:** layered context, exact lookup, and budget analysis
 **Total Phases:** 6
-**Current Plan:** Not started
+**Current Plan:** 04-02-PLAN.md
 **Total Plans in Phase:** 6
-**Progress:** [██████████] 100%
+**Progress:** [████████░░] 75%
 **Last Activity:** 2026-03-15
-**Last Activity Description:** Phase 03 complete, transitioned to Phase 4
+**Last Activity Description:** Completed 04-01-PLAN.md and advanced Phase 4 execution
 
 ## Project Memory
 
@@ -44,8 +44,8 @@ progress:
 ## Current Planning Context
 
 - Active milestone: v1 foundation
-- Active phase: Phase 3 - Structural Extraction and Repository Artifact Model
-- Next planning action: plan Phase 4 now that Phase 3 is complete
+- Active phase: Phase 4 - Layered Context, Exact Lookup, and Budget Analysis
+- Next planning action: execute 04-02-PLAN.md
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -100,6 +100,8 @@ progress:
 - Verification for `03-03` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go cache settings for targeted extraction-refresh coverage and the full Go test suite.
 - Plan `03-04` is complete with persisted-only repository-map read models, explicit coverage-gap metadata, and deterministic SQLite-backed repository-map coverage after worktree deletion.
 - Verification for `03-04` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go cache settings for targeted repository-map coverage and the full Go test suite.
+- Plan `04-01` is complete with shared layered-context L0 types, persisted SQLite repository summaries, and an app-layer repository context service.
+- Verification for `04-01` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go cache settings for targeted L0 repository-summary coverage and the full Go test suite.
 
 ## Performance Metrics
 
@@ -114,6 +116,7 @@ progress:
 | Phase 03-structural-extraction-and-repository-artifact-model P02 | 13min | 3 tasks | 10 files |
 | Phase 03-structural-extraction-and-repository-artifact-model P03 | 12min | 3 tasks | 7 files |
 | Phase 03-structural-extraction-and-repository-artifact-model P04 | 10min | 3 tasks | 6 files |
+| Phase 04 P01 | 25min | 3 tasks | 5 files |
 
 ## Decisions Made
 
@@ -142,6 +145,9 @@ progress:
 - [Phase 03]: Repository-map queries now resolve repository identity from persisted sqlite metadata instead of mutating repository rows during reads.
 - [Phase 03]: Repository-map payloads expose unsupported, partial, failed, and skipped files explicitly while only supported and partial files surface top-level symbols.
 - [Phase 03]: Repository-map output stays compact and deterministic by grouping files under persisted directories and returning ordinal-ordered top-level symbols only.
+- [Phase 04]: L0 reuses a shared repository envelope carrying root path, last refresh generation, and freshness so later context layers can extend one query surface.
+- [Phase 04]: Major areas are a deterministic mix of top-level directories plus a synthetic root-files bucket ordered by size and path.
+- [Phase 04]: Language summaries normalize blank persisted language hints to unknown instead of dropping those files from repository-level accounting.
 
 ## Blockers
 
@@ -149,8 +155,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T00:31:07.635Z
-**Stopped At:** Completed 03-04-PLAN.md
+**Last Date:** 2026-03-15T01:10:45.542Z
+**Stopped At:** Completed 04-01-PLAN.md
 **Resume File:** None
 
 ---
