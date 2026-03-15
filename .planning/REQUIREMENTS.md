@@ -43,7 +43,7 @@
 - [x] **CTX-02**: Runtime can return an L1 structural map with candidate files, symbols, concise summaries, and relevance-limiting metadata.
 - [ ] **CTX-03**: Runtime can return an L2 targeted context block with exact file paths, symbol or line-range targeting, and bounded surrounding code context.
 - [x] **CTX-04**: Runtime can resolve exact symbol lookups by symbol name with optional path and language scoping.
-- [ ] **CTX-05**: Runtime can resolve exact structural lookups by supported pattern or normalized structural query.
+- [x] **CTX-05**: Runtime can resolve exact structural lookups by supported pattern or normalized structural query.
 - [ ] **CTX-06**: Runtime can estimate token cost by file and directory and expose ranked context-budget hotspots.
 
 ### MCP Integration
@@ -119,7 +119,7 @@
 | CTX-02 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Complete |
 | CTX-03 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
 | CTX-04 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Complete |
-| CTX-05 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
+| CTX-05 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Complete |
 | CTX-06 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
 | MCP-01 | Phase 5 - MCP Serving and Integration Contracts | Pending |
 | MCP-02 | Phase 5 - MCP Serving and Integration Contracts | Pending |

@@ -6,15 +6,15 @@ current_phase: 4
 current_phase_name: layered context, exact lookup, and budget analysis
 current_plan: 5
 status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-03-15T01:28:25.671Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-03-15T01:35:55.030Z"
 last_activity: 2026-03-15
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 20
-  completed_plans: 17
-  percent: 80
+  completed_plans: 18
+  percent: 90
 ---
 
 # Planning State: OptimusCtx
@@ -29,7 +29,7 @@ progress:
 **Total Phases:** 6
 **Current Plan:** 5
 **Total Plans in Phase:** 6
-**Progress:** [████████░░] 80%
+**Progress:** [█████████░] 90%
 **Last Activity:** 2026-03-15
 **Last Activity Description:** Completed 04-02-PLAN.md and advanced Phase 4 execution
 
@@ -121,6 +121,7 @@ progress:
 | Phase 04 P01 | 25min | 3 tasks | 5 files |
 | Phase 04 P02 | 10min | 3 tasks | 5 files |
 | Phase 04 P03 | 8min | 3 tasks | 5 files |
+| Phase 04 P04 | 12min | 3 tasks | 5 files |
 
 ## Decisions Made
 
@@ -157,6 +158,9 @@ progress:
 - [Phase 04]: Concise summaries stay template-driven and derived from persisted symbol names and directory metadata instead of free-form prose synthesis.
 - [Phase 04]: Exact symbol lookup stays name-equality only and applies optional path, language, and kind filters in SQLite.
 - [Phase 04]: Lookup matches carry stable keys plus exact row and column anchors so later L2 assembly can target persisted symbols without reparsing.
+- [Phase 04]: Structural lookup requires kind plus at least one narrowing selector so the query surface stays exact and bounded.
+- [Phase 04]: Structural filters execute entirely in SQLite over persisted symbol rows with deterministic ordering by path, ordinal, and stable key.
+- [Phase 04]: Targeted context request and result models stay out of 04-04 so L2 context work remains isolated to plan 04-05.
 
 ## Blockers
 
@@ -164,8 +168,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T01:28:25.669Z
-**Stopped At:** Completed 04-03-PLAN.md
+**Last Date:** 2026-03-15T01:35:55.028Z
+**Stopped At:** Completed 04-04-PLAN.md
 **Resume File:** None
 
 ---
