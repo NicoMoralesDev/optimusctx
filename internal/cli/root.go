@@ -33,6 +33,8 @@ func (c *Command) Execute(args []string, stdout io.Writer) error {
 		return nil
 	case "init":
 		return newInitCommand().Run(stdout, args[1:])
+	case "mcp":
+		return newMCPCommand().Run(stdout, args[1:])
 	case "refresh":
 		return newRefreshCommand().Run(stdout, args[1:])
 	case "snippet":
@@ -46,11 +48,12 @@ func (c *Command) Execute(args []string, stdout io.Writer) error {
 }
 
 func (c *Command) printHelp(stdout io.Writer) {
-	_, _ = fmt.Fprintf(stdout, "%s\n\n%s\n\nUsage:\n  %s <command>\n\nAvailable Commands:\n  init      %s\n  refresh   %s\n  snippet   %s\n  version   %s\n\nFlags:\n  -h, --help   Show help for optimusctx\n",
+	_, _ = fmt.Fprintf(stdout, "%s\n\n%s\n\nUsage:\n  %s <command>\n\nAvailable Commands:\n  init      %s\n  mcp       %s\n  refresh   %s\n  snippet   %s\n  version   %s\n\nFlags:\n  -h, --help   Show help for optimusctx\n",
 		c.Name,
 		c.Description,
 		c.Name,
 		newInitCommand().Summary,
+		newMCPCommand().Summary,
 		newRefreshCommand().Summary,
 		newSnippetCommand().Summary,
 		newVersionCommand().Summary,
