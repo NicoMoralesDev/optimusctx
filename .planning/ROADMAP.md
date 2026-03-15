@@ -118,9 +118,9 @@
 - Recovery and diagnostics flows make degraded parser, storage, and refresh states visible without requiring database inspection.
 
 **Plan progress:**
-- Completed: `06-01`, `06-02`
-- Remaining: `06-03`, `06-04`, `06-05`
-- Summary coverage: 2 of 5 Phase 6 plans completed
+- Completed: `06-01`, `06-02`, `06-03`
+- Remaining: `06-04`, `06-05`
+- Summary coverage: 3 of 5 Phase 6 plans completed
 
 ## Requirement Coverage
 
