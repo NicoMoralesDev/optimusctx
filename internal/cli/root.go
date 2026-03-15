@@ -41,6 +41,8 @@ func (c *Command) Execute(args []string, stdout io.Writer) error {
 		return newRefreshCommand().Run(stdout, args[1:])
 	case "snippet":
 		return newSnippetCommand().Run(stdout, args[1:])
+	case "watch":
+		return newWatchCommand().Run(stdout, args[1:])
 	case "version":
 		return newVersionCommand().Run(stdout, args[1:])
 	default:
@@ -50,7 +52,7 @@ func (c *Command) Execute(args []string, stdout io.Writer) error {
 }
 
 func (c *Command) printHelp(stdout io.Writer) {
-	_, _ = fmt.Fprintf(stdout, "%s\n\n%s\n\nUsage:\n  %s <command>\n\nAvailable Commands:\n  init      %s\n  install   %s\n  mcp       %s\n  refresh   %s\n  snippet   %s\n  version   %s\n\nFlags:\n  -h, --help   Show help for optimusctx\n",
+	_, _ = fmt.Fprintf(stdout, "%s\n\n%s\n\nUsage:\n  %s <command>\n\nAvailable Commands:\n  init      %s\n  install   %s\n  mcp       %s\n  refresh   %s\n  snippet   %s\n  watch     %s\n  version   %s\n\nFlags:\n  -h, --help   Show help for optimusctx\n",
 		c.Name,
 		c.Description,
 		c.Name,
@@ -59,6 +61,7 @@ func (c *Command) printHelp(stdout io.Writer) {
 		newMCPCommand().Summary,
 		newRefreshCommand().Summary,
 		newSnippetCommand().Summary,
+		newWatchCommand().Summary,
 		newVersionCommand().Summary,
 	)
 }
