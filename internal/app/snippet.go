@@ -1,6 +1,10 @@
 package app
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/niccrow/optimusctx/internal/repository"
+)
 
 type SnippetGenerator struct{}
 
@@ -9,22 +13,25 @@ func NewSnippetGenerator() SnippetGenerator {
 }
 
 func (SnippetGenerator) Render() string {
+	document, err := repository.MergeClientConfig(nil, repository.DefaultMCPServerName, repository.NewServeCommand("/absolute/path/to/optimusctx"))
+	if err != nil {
+		panic(err)
+	}
+	rendered, err := repository.RenderClientConfig(document)
+	if err != nil {
+		panic(err)
+	}
+
 	lines := []string{
 		"# OptimusCtx manual integration snippet",
-		"# MCP serving is not implemented yet in Phase 1.",
-		"# Keep this as a placeholder for future client registration once `optimusctx mcp serve` exists.",
+		"# OptimusCtx now serves MCP over `optimusctx mcp serve`.",
+		"# You can paste this into a supported client config or preview the same contract with:",
+		"#   optimusctx install --client claude-desktop --config /path/to/claude_desktop_config.json",
 		"",
-		"{",
-		"  \"mcpServers\": {",
-		"    \"optimusctx\": {",
-		"      \"command\": \"/absolute/path/to/optimusctx\",",
-		"      \"args\": [\"mcp\", \"serve\"]",
-		"    }",
-		"  }",
-		"}",
+		strings.TrimSuffix(rendered, "\n"),
 		"",
-		"# Today you can bootstrap repository-local state manually:",
-		"#   optimusctx init",
+		"# Write the same registration explicitly with:",
+		"#   optimusctx install --client claude-desktop --config /path/to/claude_desktop_config.json --write",
 	}
 
 	return strings.Join(lines, "\n") + "\n"

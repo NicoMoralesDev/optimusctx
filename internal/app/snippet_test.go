@@ -10,11 +10,14 @@ func TestSnippetGeneratorRender(t *testing.T) {
 
 	required := []string{
 		"# OptimusCtx manual integration snippet",
-		"MCP serving is not implemented yet in Phase 1.",
+		"OptimusCtx now serves MCP over `optimusctx mcp serve`.",
+		"optimusctx install --client claude-desktop",
 		"\"mcpServers\"",
 		"\"command\": \"/absolute/path/to/optimusctx\"",
-		"\"args\": [\"mcp\", \"serve\"]",
-		"#   optimusctx init",
+		"\"args\": [",
+		"\"mcp\"",
+		"\"serve\"",
+		"\"optimusctx\": {",
 	}
 	for _, fragment := range required {
 		if !strings.Contains(output, fragment) {
