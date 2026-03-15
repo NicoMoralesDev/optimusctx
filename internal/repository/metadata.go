@@ -413,3 +413,61 @@ type SymbolLookupMatch struct {
 	EndRow        int64
 	EndColumn     int64
 }
+
+type StructureLookupRequest struct {
+	Kind       string
+	ParentName string
+	Name       string
+	PathPrefix string
+	Language   string
+	Limit      int
+}
+
+type StructureLookupResult struct {
+	Repository LayeredContextEnvelope
+	Identity   LayeredContextRepositoryIdentity
+	Request    StructureLookupRequest
+	Limit      int
+	Matches    []StructureLookupMatch
+}
+
+type StructureLookupMatch struct {
+	StableKey       string
+	ParentStableKey string
+	Path            string
+	Language        string
+	Kind            string
+	Name            string
+	ParentName      string
+	QualifiedName   string
+	Ordinal         int64
+	StartRow        int64
+	StartColumn     int64
+	EndRow          int64
+	EndColumn       int64
+}
+
+type TargetedContextRequest struct {
+	StableKey   string
+	Path        string
+	StartLine   int
+	EndLine     int
+	BeforeLines int
+	AfterLines  int
+}
+
+type TargetedContextResult struct {
+	Repository     LayeredContextEnvelope
+	Identity       LayeredContextRepositoryIdentity
+	Request        TargetedContextRequest
+	Path           string
+	AnchorStart    int
+	AnchorEnd      int
+	StartLine      int
+	EndLine        int
+	BeforeLines    int
+	AfterLines     int
+	TruncatedStart bool
+	TruncatedEnd   bool
+	Source         []string
+}
