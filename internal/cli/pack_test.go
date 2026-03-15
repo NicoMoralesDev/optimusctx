@@ -127,6 +127,22 @@ func TestPackExportCommandErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects missing output value", func(t *testing.T) {
+		var stdout bytes.Buffer
+		err := NewRootCommand().Execute([]string{"pack", "export", "--output"}, &stdout)
+		if err == nil || err.Error() != "--output requires a value" {
+			t.Fatalf("Execute(pack export --output) error = %v", err)
+		}
+	})
+
+	t.Run("rejects unknown flag", func(t *testing.T) {
+		var stdout bytes.Buffer
+		err := NewRootCommand().Execute([]string{"pack", "export", "--verbose"}, &stdout)
+		if err == nil || err.Error() != "unknown pack export flag \"--verbose\"" {
+			t.Fatalf("Execute(pack export --verbose) error = %v", err)
+		}
+	})
+
 	t.Run("returns service error", func(t *testing.T) {
 		previous := packExportCommandService
 		t.Cleanup(func() {

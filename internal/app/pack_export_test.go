@@ -218,6 +218,18 @@ func TestPackExportWritesPortableArtifact(t *testing.T) {
 		}
 	})
 
+	t.Run("rejects unsupported format", func(t *testing.T) {
+		_, err := service.Write(context.Background(), repoRoot, repository.PackExportRequest{
+			PackRequest: repository.PackRequest{
+				IncludeRepositoryContext: true,
+			},
+			Format: repository.PackExportFormat("yaml"),
+		}, io.Discard)
+		if err == nil || !strings.Contains(err.Error(), "unsupported export format") {
+			t.Fatalf("Write(unsupported format) error = %v, want unsupported export format", err)
+		}
+	})
+
 	t.Run("returns invalid destination error", func(t *testing.T) {
 		_, err := service.Write(context.Background(), repoRoot, repository.PackExportRequest{
 			PackRequest: repository.PackRequest{
