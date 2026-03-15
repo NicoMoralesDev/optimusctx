@@ -14,7 +14,7 @@ var (
 	mcpServeInput  io.Reader = os.Stdin
 	mcpServeStderr io.Writer = os.Stderr
 	mcpServeServer           = func(ctx context.Context, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
-		return mcp.NewServer(stdin, stdout, stderr).Serve(ctx)
+		return mcp.ServeStdio(ctx, stdin, stdout, stderr)
 	}
 )
 

@@ -6,11 +6,31 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/niccrow/optimusctx/internal/app"
 	"github.com/niccrow/optimusctx/internal/repository"
 )
+
+func TestMCPToolRegistry(t *testing.T) {
+	got := toolRegistryNames(defaultToolRegistryServices())
+	want := []string{
+		toolHealth,
+		toolLayeredContextL0,
+		toolLayeredContextL1,
+		toolPack,
+		toolRefresh,
+		toolRepositoryMap,
+		toolStructureLookup,
+		toolSymbolLookup,
+		toolTargetedContext,
+		toolTokenTree,
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("tool registry = %v, want %v", got, want)
+	}
+}
 
 func TestMCPRepositoryQueries(t *testing.T) {
 	repoRoot := initRepo(t)
@@ -180,6 +200,44 @@ func TestMCPBoundedFailures(t *testing.T) {
 	}
 	if contextError.Data["field"] != "beforeLines" {
 		t.Fatalf("context error field = %#v, want beforeLines", contextError.Data["field"])
+	}
+
+	tokenTreeError := callToolError(t, server, CallToolParams{
+		Name: toolTokenTree,
+		Arguments: map[string]any{
+			"startPath": repoRoot,
+			"maxNodes":  maxTokenTreeMaxNodes + 1,
+		},
+	})
+	if tokenTreeError.Code != errCodeBounds {
+		t.Fatalf("token tree error code = %d, want %d", tokenTreeError.Code, errCodeBounds)
+	}
+	if tokenTreeError.Data["field"] != "maxNodes" {
+		t.Fatalf("token tree error field = %#v, want maxNodes", tokenTreeError.Data["field"])
+	}
+
+	packError := callToolError(t, server, CallToolParams{
+		Name: toolPack,
+		Arguments: map[string]any{
+			"startPath":                repoRoot,
+			"includeRepositoryContext": true,
+			"includeStructuralContext": true,
+			"symbolLookups": []map[string]any{
+				{"name": "Alpha", "limit": 1},
+				{"name": "Alpha", "limit": 1},
+				{"name": "Alpha", "limit": 1},
+				{"name": "Alpha", "limit": 1},
+				{"name": "Alpha", "limit": 1},
+				{"name": "Alpha", "limit": 1},
+				{"name": "Alpha", "limit": 1},
+			},
+		},
+	})
+	if packError.Code != errCodeBounds {
+		t.Fatalf("pack error code = %d, want %d", packError.Code, errCodeBounds)
+	}
+	if packError.Data["field"] != "sections" {
+		t.Fatalf("pack error field = %#v, want sections", packError.Data["field"])
 	}
 }
 

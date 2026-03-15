@@ -44,8 +44,12 @@ func NewServer(stdin io.Reader, stdout io.Writer, stderr io.Writer) *Server {
 		tools:   map[string]ToolHandler{},
 		version: "0.1.0",
 	}
-	registerDefaultQueryTools(server)
+	registerDefaultTools(server)
 	return server
+}
+
+func ServeStdio(ctx context.Context, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
+	return NewServer(stdin, stdout, stderr).Serve(ctx)
 }
 
 func (s *Server) RegisterTool(handler ToolHandler) {

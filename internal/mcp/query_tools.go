@@ -43,21 +43,14 @@ func defaultQueryToolServices() queryToolServices {
 	}
 }
 
-func registerDefaultQueryTools(server *Server) {
-	registerQueryTools(server, defaultQueryToolServices())
-}
-
-func registerQueryTools(server *Server, services queryToolServices) {
-	tools := []ToolHandler{
+func queryToolHandlers(services queryToolServices) []ToolHandler {
+	return []ToolHandler{
 		newRepositoryMapTool(services),
 		newLayeredContextL0Tool(services),
 		newLayeredContextL1Tool(services),
 		newSymbolLookupTool(services),
 		newStructureLookupTool(services),
 		newTargetedContextTool(services),
-	}
-	for _, tool := range tools {
-		server.RegisterTool(tool)
 	}
 }
 
