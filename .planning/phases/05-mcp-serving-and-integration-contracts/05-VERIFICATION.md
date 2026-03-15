@@ -25,6 +25,10 @@ The canonical current verification command path for this milestone backfill is
 remain useful as development history, but they are not treated as current proof in
 this verification artifact.
 
+This artifact is intentionally bounded to verification and traceability. It does not
+reopen Phase 05 design choices, propose new MCP features, or create follow-on backlog
+scope unless current evidence fails to satisfy a declared requirement.
+
 ## Evidence Inputs
 
 This report draws from:
