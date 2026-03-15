@@ -1,5 +1,5 @@
 ---
-status: testing
+status: complete
 phase: 05-mcp-serving-and-integration-contracts
 source:
   - 05-01-SUMMARY.md
@@ -9,16 +9,12 @@ source:
   - 05-05-SUMMARY.md
   - 05-06-SUMMARY.md
 started: 2026-03-15T15:44:24+00:00
-updated: 2026-03-15T17:13:30+00:00
+updated: 2026-03-15T17:45:09+00:00
 ---
 
 ## Current Test
 
-number: 7
-name: Install Preview And Snippet Alignment
-expected: |
-  `optimusctx install` in preview mode should show the same MCP serve contract that `optimusctx snippet` advertises, without writing client configuration unless explicit write mode is requested.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -48,9 +44,7 @@ result: pass
 
 ### 7. Install Preview And Snippet Alignment
 expected: `optimusctx install` in preview mode should show the same MCP serve contract that `optimusctx snippet` advertises, without writing client configuration unless explicit write mode is requested.
-result: issue
-reported: "snippet prints `/absolute/path/to/optimusctx` while `go run ./cmd/optimusctx install --client claude-desktop` previews a Go build cache binary path under `/home/nico/.cache/go-build/.../optimusctx`."
-severity: major
+result: pass
 
 ### 8. Consent-Gated Client Registration
 expected: A supported client registration write should only happen when explicitly requested, succeed for a supported target, and fail transparently for unsupported or ambiguous targets.
@@ -59,30 +53,10 @@ result: pass
 ## Summary
 
 total: 8
-passed: 7
-issues: 1
+passed: 8
+issues: 0
 pending: 0
 skipped: 0
 
 ## Gaps
-
-- truth: "`optimusctx install` preview and `optimusctx snippet` should present a consistent, reusable MCP registration contract without placeholder or ephemeral executable paths."
-  status: failed
-  reason: "User reported: snippet prints `/absolute/path/to/optimusctx` while `go run ./cmd/optimusctx install --client claude-desktop` previews a Go build cache binary path under `/home/nico/.cache/go-build/.../optimusctx`."
-  severity: major
-  test: 7
-  root_cause: "`snippet` hardcodes a placeholder binary path while `install` defaults to `os.Executable()`, which under `go run` resolves to an ephemeral Go build-cache binary; tests currently only align args, not the executable path contract."
-  artifacts:
-    - path: "internal/app/snippet.go"
-      issue: "Builds the MCP config with a placeholder executable path instead of a stable reusable contract."
-    - path: "internal/cli/install.go"
-      issue: "Defaults preview/write output to `os.Executable()`, which becomes a cache path under `go run`."
-    - path: "internal/app/install.go"
-      issue: "Renders whatever binary path it receives without normalizing unstable runtime-derived paths."
-    - path: "internal/cli/install_test.go"
-      issue: "Only asserts arg alignment with snippet, not command-path alignment or reusability."
-  missing:
-    - "Define one canonical executable-path policy for snippet and install preview output."
-    - "Normalize or reject ephemeral `go run` executable paths when generating reusable client config."
-    - "Add tests that assert command-path alignment and stable preview semantics."
-  debug_session: .planning/debug/install-snippet-path-mismatch.md
+[none]
