@@ -15,12 +15,20 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 - Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `doctor`
 - Product state: all 35 v1 requirements shipped and milestone audit passed
 
+## Current Milestone: v1.1 Validation, Benchmarking, and Distribution
+
+**Goal:** Prove the real-world value of OptimusCtx with functional evaluation, measurable A/B token and workflow savings, and a credible distribution plan.
+
+**Target features:**
+- Functional test flows that validate the runtime end to end in realistic agent workflows
+- A/B benchmarking for token savings and work-speed improvements versus baseline repository exploration
+- A solid technical distribution plan for adoption beyond the current local development setup
+
 ## Next Milestone Goals
 
-- Improve output optimization and compaction for large repositories
-- Add richer repository-level budget analysis and exclusion suggestions
-- Introduce stronger export presets and packaging ergonomics for target token budgets
-- Expand symbol and relationship richness without weakening the exact-first product promise
+- Prove functional correctness in end-to-end user and agent flows
+- Quantify token savings and search-time reduction with repeatable benchmarks
+- Define the distribution strategy, packaging shape, and rollout path for the tool
 
 ## Requirements
 
@@ -32,10 +40,9 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 ### Active
 
-- [ ] Compact verbose tool outputs with stronger deduplication, truncation, and line-focused extraction
-- [ ] Produce richer repository-level context-budget analysis and exclusion guidance
-- [ ] Offer improved pack/export presets optimized for target token budgets
-- [ ] Expose richer symbol and reference relationships where extraction support is feasible
+- [ ] Validate the shipped runtime through realistic functional and workflow-level testing
+- [ ] Measure whether OptimusCtx reduces token usage and agent search effort in repeatable A/B comparisons
+- [ ] Turn the shipped runtime into a distribution-ready product with a clear packaging and adoption plan
 
 ### Out of Scope
 
@@ -86,4 +93,4 @@ This repository is greenfield. The development process is expected to be heavily
 | Never auto-modify agent instruction files | Integration must remain explicit and non-invasive to preserve user control | ✓ Shipped in v1.0 |
 
 ---
-*Last updated: 2026-03-15 after v1.0 milestone*
+*Last updated: 2026-03-15 after starting v1.1 milestone*
