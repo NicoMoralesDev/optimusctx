@@ -6,7 +6,10 @@ import (
 	"strings"
 )
 
-const DefaultMCPServerName = "optimusctx"
+const (
+	DefaultMCPServerName    = "optimusctx"
+	DefaultServeCommandName = "optimusctx"
+)
 
 type ClientID string
 
@@ -57,10 +60,19 @@ func LookupSupportedClient(name string) (SupportedClient, bool) {
 }
 
 func NewServeCommand(binaryPath string) ServeCommand {
+	binaryPath = CanonicalServeCommandPath(binaryPath)
 	return ServeCommand{
 		Command: binaryPath,
 		Args:    []string{"mcp", "serve"},
 	}
+}
+
+func CanonicalServeCommandPath(binaryPath string) string {
+	binaryPath = strings.TrimSpace(binaryPath)
+	if binaryPath == "" {
+		return DefaultServeCommandName
+	}
+	return binaryPath
 }
 
 func MergeClientConfig(existing []byte, serverName string, command ServeCommand) (ClientConfigDocument, error) {

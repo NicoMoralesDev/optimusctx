@@ -13,7 +13,7 @@ func NewSnippetGenerator() SnippetGenerator {
 }
 
 func (SnippetGenerator) Render() string {
-	document, err := repository.MergeClientConfig(nil, repository.DefaultMCPServerName, repository.NewServeCommand("/absolute/path/to/optimusctx"))
+	document, err := repository.MergeClientConfig(nil, repository.DefaultMCPServerName, repository.NewServeCommand(""))
 	if err != nil {
 		panic(err)
 	}

@@ -61,9 +61,6 @@ func (s InstallService) Register(ctx context.Context, request InstallRequest) (I
 	if request.ClientID == "" {
 		return InstallResult{}, errors.New("client is required")
 	}
-	if request.BinaryPath == "" {
-		return InstallResult{}, errors.New("binary path is required")
-	}
 
 	adapter, ok := s.adapters[repository.ClientID(request.ClientID)]
 	if !ok {
