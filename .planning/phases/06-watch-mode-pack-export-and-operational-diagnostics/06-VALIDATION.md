@@ -1,9 +1,9 @@
 ---
 phase: 06
 slug: watch-mode-pack-export-and-operational-diagnostics
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: approved
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-15
 ---
 
@@ -38,12 +38,12 @@ created: 2026-03-15
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 06-01-01 | 01 | 1 | OPS-01 | unit/integration | `... -run 'TestWatch'` | ❌ W0 | ⬜ pending |
-| 06-02-01 | 02 | 2 | OPS-02 | integration | `... -run 'TestWatch'` | ❌ W0 | ⬜ pending |
-| 06-03-01 | 03 | 3 | OPS-03 | unit/integration | `... -run 'TestPackExport'` | ❌ W0 | ⬜ pending |
-| 06-04-01 | 04 | 4 | OPS-04 | integration | `... -run 'TestPackExport'` | ❌ W0 | ⬜ pending |
-| 06-05-01 | 05 | 5 | CLI-05 | unit/integration | `... -run 'TestDoctor'` | ❌ W0 | ⬜ pending |
-| 06-05-02 | 05 | 5 | OPS-05 | integration | `... -run 'TestDoctor'` | ❌ W0 | ⬜ pending |
+| 06-01-01 | 01 | 1 | OPS-01 | unit/integration | `... -run 'TestWatch'` | ✅ planned | ⬜ pending |
+| 06-02-01 | 02 | 2 | OPS-02 | integration | `... -run 'TestWatch'` | ✅ planned | ⬜ pending |
+| 06-03-01 | 03 | 3 | OPS-03 | unit/integration | `... -run 'TestPackExport'` | ✅ planned | ⬜ pending |
+| 06-04-01 | 04 | 4 | OPS-04 | integration | `... -run 'TestPackExport'` | ✅ planned | ⬜ pending |
+| 06-05-01 | 05 | 5 | CLI-05 | unit/integration | `... -run 'TestDoctor'` | ✅ planned | ⬜ pending |
+| 06-05-02 | 05 | 5 | OPS-05 | integration | `... -run 'TestDoctor'` | ✅ planned | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -51,10 +51,10 @@ created: 2026-03-15
 
 ## Wave 0 Requirements
 
-- [ ] `internal/cli/watch_test.go` — watch command boundary coverage for OPS-01 and OPS-02
-- [ ] `internal/app/watch_test.go` — watcher runtime and refresh integration coverage
-- [ ] `internal/app/pack_export_test.go` — export determinism and budget-fitting coverage for OPS-03 and OPS-04
-- [ ] `internal/cli/doctor_test.go` — doctor command rendering coverage for CLI-05 and OPS-05
+- [x] `internal/cli/watch_test.go` — watch command boundary coverage for OPS-01 and OPS-02
+- [x] `internal/app/watch_test.go` — watcher runtime and refresh integration coverage
+- [x] `internal/app/pack_export_test.go` — export determinism and budget-fitting coverage for OPS-03 and OPS-04
+- [x] `internal/cli/doctor_test.go` — doctor command rendering coverage for CLI-05 and OPS-05
 
 ---
 
@@ -69,11 +69,11 @@ created: 2026-03-15
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-03-15
