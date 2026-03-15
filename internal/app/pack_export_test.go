@@ -1,8 +1,12 @@
 package app
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -132,4 +136,97 @@ func TestPackExportManifest(t *testing.T) {
 			t.Fatalf("output = %s, want fragment %q", output, fragment)
 		}
 	}
+}
+
+func TestPackExportWritesPortableArtifact(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "alpha.go"), "package pkg\n\nfunc Alpha() {}\n")
+
+	refresh := NewRefreshService()
+	if _, err := refresh.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+
+	service := NewPackExportService()
+
+	t.Run("writes json to stdout", func(t *testing.T) {
+		var stdout bytes.Buffer
+		result, err := service.Write(context.Background(), repoRoot, repository.PackExportRequest{
+			PackRequest: repository.PackRequest{
+				IncludeRepositoryContext: true,
+				IncludeStructuralContext: true,
+			},
+			GeneratedAt: "2026-03-15T18:45:00Z",
+			Generator:   "optimusctx test",
+		}, &stdout)
+		if err != nil {
+			t.Fatalf("Write(stdout) error = %v", err)
+		}
+		if result.Output.BytesWritten == 0 {
+			t.Fatalf("BytesWritten = 0, want > 0")
+		}
+		var artifact repository.PackExportArtifact
+		if err := json.Unmarshal(stdout.Bytes(), &artifact); err != nil {
+			t.Fatalf("Unmarshal(stdout) error = %v", err)
+		}
+		if artifact.Manifest.Repository.RepositoryRoot != repoRoot {
+			t.Fatalf("RepositoryRoot = %q, want %q", artifact.Manifest.Repository.RepositoryRoot, repoRoot)
+		}
+	})
+
+	t.Run("writes gzip to file", func(t *testing.T) {
+		outputPath := filepath.Join(t.TempDir(), "pack.json.gz")
+		result, err := service.Write(context.Background(), repoRoot, repository.PackExportRequest{
+			PackRequest: repository.PackRequest{
+				IncludeRepositoryContext: true,
+			},
+			OutputPath:  outputPath,
+			Compression: repository.PackExportCompressionGzip,
+			GeneratedAt: "2026-03-15T18:46:00Z",
+			Generator:   "optimusctx test",
+		}, io.Discard)
+		if err != nil {
+			t.Fatalf("Write(file) error = %v", err)
+		}
+		if result.Output.Path != outputPath {
+			t.Fatalf("Output.Path = %q, want %q", result.Output.Path, outputPath)
+		}
+		file, err := os.Open(outputPath)
+		if err != nil {
+			t.Fatalf("Open(%q) error = %v", outputPath, err)
+		}
+		defer file.Close()
+		stream, err := gzip.NewReader(file)
+		if err != nil {
+			t.Fatalf("gzip.NewReader() error = %v", err)
+		}
+		defer stream.Close()
+		payload, err := io.ReadAll(stream)
+		if err != nil {
+			t.Fatalf("ReadAll(gzip) error = %v", err)
+		}
+		var artifact repository.PackExportArtifact
+		if err := json.Unmarshal(payload, &artifact); err != nil {
+			t.Fatalf("Unmarshal(gzip payload) error = %v", err)
+		}
+		if artifact.Manifest.Compression != repository.PackExportCompressionGzip {
+			t.Fatalf("Compression = %q, want gzip", artifact.Manifest.Compression)
+		}
+	})
+
+	t.Run("returns invalid destination error", func(t *testing.T) {
+		_, err := service.Write(context.Background(), repoRoot, repository.PackExportRequest{
+			PackRequest: repository.PackRequest{
+				IncludeRepositoryContext: true,
+			},
+			OutputPath: filepath.Join(repoRoot, "missing", "pack.json"),
+		}, io.Discard)
+		if err == nil || !strings.Contains(err.Error(), "create export output") {
+			t.Fatalf("Write(invalid path) error = %v, want create export output failure", err)
+		}
+	})
 }
