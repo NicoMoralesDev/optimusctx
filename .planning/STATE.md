@@ -46,6 +46,7 @@ progress:
 - Active milestone: v1 foundation
 - Active phase: Phase 7 - Doctor Health Semantics and Milestone State Repair
 - Next planning action: execute Phase 7 plan 02
+- Phase 7 scope: doctor/watch semantics repair is complete in plan 01; plan 02 repairs current planning-state artifacts only.
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -242,4 +243,4 @@ None
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-15 after completing Phase 07 plan 01*
+*Last updated: 2026-03-15 during Phase 07 plan 02 execution*
