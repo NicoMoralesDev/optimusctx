@@ -102,3 +102,207 @@ This report draws from:
 | Token tree request bounds stay explicit | `05-03-SUMMARY.md`, `internal/app/token_tree_test.go::TestTokenTreeBounds`, `internal/mcp/integration_test.go::TestMCPServerStdioSession` | Oversized `maxNodes` requests produce explicit bounded failures instead of silent truncation. |
 | Pack request scope remains bounded and deterministic | `05-04-SUMMARY.md`, `internal/app/health_pack_test.go::TestPackService` | Oversized pack section requests fail with a clear max-sections error while healthy results remain deterministic across repeated reads. |
 | Unknown or missing MCP surface requests fail transparently | `05-01-SUMMARY.md`, `internal/mcp/server_test.go::TestMCPServerRejectsUnknownTool`, `internal/mcp/server_test.go::TestMCPServerRejectsUnimplementedTool` | The transport contract preserves explicit failures for unsupported registry states. |
+
+## Current Command Truth
+
+The current automated proof command for this report is:
+
+```sh
+env GOCACHE=/tmp/optimusctx-gocache \
+  GOMODCACHE=/home/nico/go/pkg/mod \
+  GOPROXY=off \
+  /usr/local/go/bin/go test ./... -run 'TestMCPServeCommand|TestMCPServeReadinessSignalUsesStderr|TestMCPServerBasicSession|TestMCPServerRejectsUnknownTool|TestMCPServerRejectsUnimplementedTool|TestMCPRepositoryQueries|TestMCPLookupQueries|TestMCPBoundedFailures|TestMCPStructuredErrors|TestTokenTree|TestTokenTreeBounds|TestHealthService|TestPackService|TestMCPToolRegistry|TestMCPRefreshPackHealth|TestMCPServerStdioSession|TestSnippetGeneratorRender|TestSnippetInstallCommandAlignment|TestInstallRegistrationDryRun|TestInstallRegistrationConsent|TestInstallNormalizesEphemeralExecutablePath|TestInstallWriteNormalizesEphemeralExecutablePath|TestInstallCommandRejectsUnsupportedClient'
+```
+
+This command is intentionally written with the current `/usr/local/go/bin/go` path and
+the existing offline module cache at `/home/nico/go/pkg/mod`. The cold-cache variant
+that points `GOMODCACHE` at `/tmp/optimusctx-gomodcache` is not used as current proof
+because `GOPROXY=off` prevents dependency resolution there when the cache starts
+empty.
+
+## Verified Current Behavior
+
+### MCP-01 Passed: stdio serving and server-boundary contract
+
+The current implementation in `internal/mcp/server.go` still exposes one stdio-based
+server loop that reads header-framed requests from stdin and writes header-framed
+JSON-RPC responses to stdout. `ServeStdio` remains the canonical server entrypoint,
+and `internal/cli/mcp_test.go::TestMCPServeCommand` proves the CLI `optimusctx mcp
+serve` path delegates to that server boundary without leaking output onto stdout.
+
+`internal/mcp/server_test.go::TestMCPServerBasicSession` proves the basic session
+contract from initialize through `tools/list`, while
+`internal/mcp/integration_test.go::TestMCPServerStdioSession` verifies the end-to-end
+stdio flow against a live repository-backed session. That test confirms:
+
+- initialize succeeds over framed stdio transport
+- `tools/list` exposes the actual tool registry
+- repository-map and refresh requests can run through the same session
+- invalid token-tree bounds fail with structured MCP errors
+
+The readiness gap closed in Phase 05 is still verified in current code. The server
+emits `optimusctx mcp: ready for stdio requests` on stderr, and both
+`TestMCPServeReadinessSignalUsesStderr` and `TestMCPServerStdioSession` assert that
+the readiness string stays off stdout. That matters because stdout is reserved for MCP
+framing bytes; any operator-facing output there would corrupt the protocol stream.
+
+Verdict: `MCP-01` is currently satisfied by a real stdio command path, deterministic
+tool discovery, and server-boundary error handling that is proven by current tests.
+
+### MCP-02 Passed: machine-readable envelopes with freshness metadata
+
+The current MCP query layer in `internal/mcp/query_tools.go` still adapts app-layer
+results into one shared structured envelope rather than creating per-tool prose
+payloads. The evidence from `internal/mcp/query_tools_test.go::TestMCPRepositoryQueries`
+shows repository queries carry machine-readable metadata for repository root,
+generation, freshness, cache status, and bounds.
+
+The current integration coverage also shows that refresh-style tools do not pretend to
+be persisted-only reads. `internal/mcp/integration_test.go::TestMCPRefreshPackHealth`
+asserts that refresh responses set `cacheStatus` to `refresh_attempted`, while pack
+and health results continue to expose the same envelope structure. This is important
+because Phase 05 promised not just structured payloads, but structured payloads whose
+metadata correctly describes how the result was produced.
+
+`internal/mcp/integration_test.go::TestMCPServerStdioSession` closes the last gap by
+decoding structured content after the full stdio routing path. That makes the proof
+stronger than unit-level adaptation checks alone: the structured envelope survives the
+full MCP framing, dispatch, and response path used by real clients.
+
+Verdict: `MCP-02` is currently satisfied. The live tool surface returns
+machine-readable envelopes with freshness and cache-status metadata, and the metadata
+changes appropriately for refresh-oriented calls.
+
+### MCP-03 Passed: complete shipped tool surface
+
+Phase 05 promised a complete MCP surface spanning repository map, layered context,
+lookup, targeted context, token tree, refresh, health, and pack. The current evidence
+shows those capabilities are present in one registry rather than split across
+unrelated seams.
+
+`internal/mcp/query_tools.go` defines the read-only capability set for repository map,
+L0 context, L1 context, symbol lookup, structure lookup, and targeted context. The
+tests `TestMCPRepositoryQueries` and `TestMCPLookupQueries` cover the query side of
+that registry. `internal/app/token_tree_test.go::TestTokenTree` and
+`TestTokenTreeBounds` prove the token-tree service still returns deterministic
+hierarchical results with explicit truncation behavior. `internal/app/health_pack_test.go`
+shows health and pack remain transport-neutral app services with deterministic outputs
+before the transport adapter is applied.
+
+The integration proof in `internal/mcp/integration_test.go::TestMCPRefreshPackHealth`
+demonstrates that refresh, token tree, health, and pack are all callable through the
+current MCP surface. `TestMCPServerStdioSession` then verifies that the same
+operational tools appear in `tools/list`, confirming that discovery and invocation
+agree on the shipped surface.
+
+Verdict: `MCP-03` is currently satisfied. The current server exposes the full promised
+Phase 05 capability set through one discoverable MCP contract.
+
+### MCP-04 Passed: bounded defaults and structured failures
+
+Phase 05 also promised that the MCP surface would stay bounded and fail transparently.
+The current code still enforces that discipline at the transport edge. In
+`internal/mcp/query_tools.go`, repository-map and other query handlers normalize
+limits before delegating to app services. `internal/mcp/query_tools_test.go::TestMCPBoundedFailures`
+and `TestMCPStructuredErrors` verify that failures carry field-specific metadata
+instead of generic transport errors.
+
+The token-tree and pack services preserve that same bounded behavior. On the service
+side, `internal/app/token_tree_test.go::TestTokenTreeBounds` proves that token-tree
+responses remain deterministic and explicitly marked as truncated when appropriate.
+At the MCP boundary, `internal/mcp/integration_test.go::TestMCPServerStdioSession`
+asserts that oversized `maxNodes` input fails with a structured bounds error naming
+the offending field. `internal/app/health_pack_test.go::TestPackService` similarly
+proves pack requests reject oversized section counts rather than silently stretching
+scope.
+
+The base server transport also keeps failure behavior explicit for unsupported tool
+states. `TestMCPServerRejectsUnknownTool` and `TestMCPServerRejectsUnimplementedTool`
+show that missing or placeholder tools do not produce false-positive success results.
+
+Verdict: `MCP-04` is currently satisfied. Bounds are enforced at the MCP edge and the
+resulting failures are explicit, machine-readable, and actionable.
+
+### CLI-02 Passed: consent-gated registration and snippet parity
+
+Phase 05 made install registration an optional wedge, not a silent mutation path.
+That contract still holds in the current CLI and snippet code. `internal/app/snippet.go`
+renders the manual integration snippet using the same `repository.NewServeCommand("")`
+helper that install uses to build client configuration, and
+`internal/app/snippet_test.go::TestSnippetGeneratorRender` plus
+`TestSnippetInstallCommandAlignment` confirm the snippet advertises the canonical
+`optimusctx mcp serve` contract rather than placeholder or stale command text.
+
+At the command boundary, `internal/cli/install_test.go::TestInstallRegistrationDryRun`
+proves preview mode is the default and that no config file is written during dry-run.
+`TestInstallRegistrationConsent` proves writes happen only with `--write`, preserving
+the explicit-consent requirement. `TestInstallCommandRejectsUnsupportedClient` proves
+unsupported targets fail transparently rather than creating ambiguous config output.
+
+The executable-path drift closed in Phase 05 also remains covered. Both
+`TestInstallNormalizesEphemeralExecutablePath` and
+`TestInstallWriteNormalizesEphemeralExecutablePath` prove that omitted `--binary`
+flows normalize unstable runtime paths onto the canonical reusable `optimusctx`
+command. That keeps install preview, install write, and snippet output aligned around
+the same serve command and prevents a `go run` cache binary from being written into
+client configuration.
+
+Verdict: `CLI-02` is currently satisfied. Registration is preview-first, explicit,
+consent-gated, and contract-aligned with the manual snippet guidance.
+
+## Automated Verification Run
+
+This backfill relies on the following current test anchors. The full targeted run
+passed with `/usr/local/go/bin/go`, `GOCACHE=/tmp/optimusctx-gocache`,
+`GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off`.
+
+- `TestMCPServeCommand`
+- `TestMCPServeReadinessSignalUsesStderr`
+- `TestMCPServerBasicSession`
+- `TestMCPServerRejectsUnknownTool`
+- `TestMCPServerRejectsUnimplementedTool`
+- `TestMCPRepositoryQueries`
+- `TestMCPLookupQueries`
+- `TestMCPBoundedFailures`
+- `TestMCPStructuredErrors`
+- `TestTokenTree`
+- `TestTokenTreeBounds`
+- `TestHealthService`
+- `TestPackService`
+- `TestMCPToolRegistry`
+- `TestMCPRefreshPackHealth`
+- `TestMCPServerStdioSession`
+- `TestSnippetGeneratorRender`
+- `TestSnippetInstallCommandAlignment`
+- `TestInstallRegistrationDryRun`
+- `TestInstallRegistrationConsent`
+- `TestInstallNormalizesEphemeralExecutablePath`
+- `TestInstallWriteNormalizesEphemeralExecutablePath`
+- `TestInstallCommandRejectsUnsupportedClient`
+
+These tests collectively prove:
+
+- the current CLI entrypoint exists and delegates correctly
+- the server preserves a clean stdio transport contract
+- the live registry exposes the shipped query and operational tools
+- structured machine-readable envelopes survive live routing
+- bounds failures stay explicit and field-specific
+- token tree, health, and pack remain deterministic and bounded
+- install registration stays preview-first, consent-gated, and aligned with snippet
+
+## Final Verdict
+
+Phase 05 now has current milestone-grade verification evidence.
+
+- `CLI-02`: passed
+- `MCP-01`: passed
+- `MCP-02`: passed
+- `MCP-03`: passed
+- `MCP-04`: passed
+
+The current implementation and tests support one coherent MCP product story:
+`optimusctx mcp serve` is a real stdio MCP server; `tools/list` reflects the actual
+registry; query and operational tools return structured machine-readable envelopes;
+bounded failures are explicit; and supported-client registration is opt-in, preview
+first, and aligned with the same `optimusctx mcp serve` contract shown by
+`optimusctx snippet`.
