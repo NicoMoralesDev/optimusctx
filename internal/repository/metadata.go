@@ -339,11 +339,11 @@ type LayeredContextMajorAreaSummary struct {
 }
 
 type LayeredContextL1LimitMetadata struct {
-	FileLimit          int
-	ReturnedFileCount  int
+	FileLimit           int
+	ReturnedFileCount   int
 	TotalCandidateCount int64
-	FileTruncated      bool
-	PerFileSymbolLimit int
+	FileTruncated       bool
+	PerFileSymbolLimit  int
 }
 
 type LayeredContextL1CandidateFile struct {
@@ -382,4 +382,34 @@ type LayeredContextL1Symbol struct {
 	Name          string
 	QualifiedName string
 	Ordinal       int64
+}
+
+type SymbolLookupRequest struct {
+	Name       string
+	PathPrefix string
+	Language   string
+	Kind       string
+	Limit      int
+}
+
+type SymbolLookupResult struct {
+	Repository LayeredContextEnvelope
+	Identity   LayeredContextRepositoryIdentity
+	Request    SymbolLookupRequest
+	Limit      int
+	Matches    []SymbolLookupMatch
+}
+
+type SymbolLookupMatch struct {
+	StableKey     string
+	Path          string
+	Language      string
+	Kind          string
+	Name          string
+	QualifiedName string
+	Ordinal       int64
+	StartRow      int64
+	StartColumn   int64
+	EndRow        int64
+	EndColumn     int64
 }

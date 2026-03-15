@@ -22,6 +22,7 @@ const (
 	defaultLayeredContextMajorAreaLimit = 5
 	defaultLayeredContextL1FileLimit    = 6
 	defaultLayeredContextL1SymbolLimit  = 4
+	defaultSymbolLookupLimit            = 10
 )
 
 type Store struct {
@@ -1276,6 +1277,106 @@ func buildLayeredContextL1Summary(candidate repository.LayeredContextL1Candidate
 		summary += fmt.Sprintf(" coverage=%s", candidate.CoverageState)
 	}
 	return summary
+}
+
+func (s *Store) ReadSymbolLookup(ctx context.Context, repositoryID int64, request repository.SymbolLookupRequest) (repository.SymbolLookupResult, error) {
+	if s == nil || s.db == nil {
+		return repository.SymbolLookupResult{}, fmt.Errorf("read symbol lookup: store is not initialized")
+	}
+	if strings.TrimSpace(request.Name) == "" {
+		return repository.SymbolLookupResult{}, fmt.Errorf("read symbol lookup: name is required")
+	}
+	request.Name = strings.TrimSpace(request.Name)
+	request.PathPrefix = strings.TrimSpace(request.PathPrefix)
+	request.Language = strings.TrimSpace(request.Language)
+	request.Kind = strings.TrimSpace(request.Kind)
+	if request.Limit <= 0 {
+		request.Limit = defaultSymbolLookupLimit
+	}
+
+	freshness, err := s.ReadRepositoryFreshness(ctx, repositoryID)
+	if err != nil {
+		return repository.SymbolLookupResult{}, fmt.Errorf("read symbol lookup freshness: %w", err)
+	}
+
+	query := `
+		SELECT
+			stable_key,
+			path,
+			COALESCE(NULLIF(language, ''), 'unknown') AS language,
+			kind,
+			name,
+			COALESCE(qualified_name, '') AS qualified_name,
+			ordinal,
+			start_row,
+			start_column,
+			end_row,
+			end_column
+		FROM symbols
+		WHERE repository_id = ? AND name = ?
+	`
+	args := []any{repositoryID, request.Name}
+	if request.PathPrefix != "" {
+		query += ` AND path LIKE ?`
+		args = append(args, request.PathPrefix+"%")
+	}
+	if request.Language != "" {
+		query += ` AND COALESCE(NULLIF(language, ''), 'unknown') = ?`
+		args = append(args, request.Language)
+	}
+	if request.Kind != "" {
+		query += ` AND kind = ?`
+		args = append(args, request.Kind)
+	}
+	query += ` ORDER BY path ASC, ordinal ASC, stable_key ASC LIMIT ?`
+	args = append(args, request.Limit)
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return repository.SymbolLookupResult{}, fmt.Errorf("load symbol lookup for repository %d: %w", repositoryID, err)
+	}
+	defer rows.Close()
+
+	result := repository.SymbolLookupResult{
+		Repository: repository.LayeredContextEnvelope{
+			RepositoryRoot: freshness.RootPath,
+			Generation:     freshness.LastRefreshGeneration,
+			Freshness:      freshness.FreshnessStatus,
+		},
+		Identity: repository.LayeredContextRepositoryIdentity{
+			RootPath:      freshness.RootPath,
+			DetectionMode: freshness.DetectionMode,
+			GitHeadRef:    freshness.GitHeadRef,
+			GitHeadCommit: freshness.GitHeadCommit,
+		},
+		Request: request,
+		Limit:   request.Limit,
+	}
+
+	for rows.Next() {
+		var match repository.SymbolLookupMatch
+		if err := rows.Scan(
+			&match.StableKey,
+			&match.Path,
+			&match.Language,
+			&match.Kind,
+			&match.Name,
+			&match.QualifiedName,
+			&match.Ordinal,
+			&match.StartRow,
+			&match.StartColumn,
+			&match.EndRow,
+			&match.EndColumn,
+		); err != nil {
+			return repository.SymbolLookupResult{}, fmt.Errorf("scan symbol lookup for repository %d: %w", repositoryID, err)
+		}
+		result.Matches = append(result.Matches, match)
+	}
+	if err := rows.Err(); err != nil {
+		return repository.SymbolLookupResult{}, fmt.Errorf("iterate symbol lookup for repository %d: %w", repositoryID, err)
+	}
+
+	return result, nil
 }
 
 func hasCoverageGap(state repository.ExtractionCoverageState) bool {

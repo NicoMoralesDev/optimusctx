@@ -1261,6 +1261,232 @@ func TestLayeredContextL1(t *testing.T) {
 	}
 }
 
+func TestSymbolLookup(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	refreshedAt := time.Date(2026, 3, 14, 18, 45, 0, 0, time.UTC)
+	if err := store.WriteRepositoryFreshness(ctx, repository.RepositoryFreshness{
+		RepositoryID:           repoID,
+		RootPath:               layout.RepoRoot,
+		DetectionMode:          repository.DetectionModeGit,
+		GitHeadRef:             "refs/heads/main",
+		GitHeadCommit:          "fedcba9876543210fedcba9876543210fedcba98",
+		LastRefreshStartedAt:   refreshedAt,
+		LastRefreshCompletedAt: refreshedAt.Add(2 * time.Minute),
+		LastRefreshReason:      repository.RefreshReasonManual,
+		LastRefreshStatus:      repository.RefreshRunStatusSuccess,
+		FreshnessStatus:        repository.FreshnessStatusFresh,
+		CurrentGeneration:      5,
+		LastRefreshGeneration:  5,
+	}); err != nil {
+		t.Fatalf("WriteRepositoryFreshness() error = %v", err)
+	}
+
+	run := createTestRefreshRun(t, ctx, store, repoID, 5)
+	alphaID := insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "pkg/alpha.go", DirectoryPath: "pkg", Extension: ".go", Language: "go", ContentHash: "go-alpha", LastGeneration: 5}, 220)
+	guideID := insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "docs/guide.go", DirectoryPath: "docs", Extension: ".go", Language: "go", ContentHash: "go-guide", LastGeneration: 5}, 160)
+
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:        repoID,
+			FileID:              alphaID,
+			Path:                "pkg/alpha.go",
+			Language:            "go",
+			AdapterName:         "tree-sitter-go",
+			GrammarVersion:      "v0.25.0",
+			SourceContentHash:   "go-alpha",
+			SourceGeneration:    5,
+			CoverageState:       repository.ExtractionCoverageStateSupported,
+			SymbolCount:         2,
+			TopLevelSymbolCount: 2,
+			MaxSymbolDepth:      0,
+			ExtractedAt:         refreshedAt,
+			RefreshRunID:        run.ID,
+		},
+		Symbols: []repository.SymbolRecord{
+			testTopLevelSymbol("pkg/alpha.go", "go", "type", "Alpha", "alpha-type", 0),
+			testTopLevelSymbol("pkg/alpha.go", "go", "function", "Beta", "beta", 1),
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts(alpha) error = %v", err)
+	}
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:        repoID,
+			FileID:              guideID,
+			Path:                "docs/guide.go",
+			Language:            "go",
+			AdapterName:         "tree-sitter-go",
+			GrammarVersion:      "v0.25.0",
+			SourceContentHash:   "go-guide",
+			SourceGeneration:    5,
+			CoverageState:       repository.ExtractionCoverageStateSupported,
+			SymbolCount:         1,
+			TopLevelSymbolCount: 1,
+			MaxSymbolDepth:      0,
+			ExtractedAt:         refreshedAt,
+			RefreshRunID:        run.ID,
+		},
+		Symbols: []repository.SymbolRecord{
+			testTopLevelSymbol("docs/guide.go", "go", "function", "Alpha", "alpha", 0),
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts(guide) error = %v", err)
+	}
+
+	got, err := store.ReadSymbolLookup(ctx, repoID, repository.SymbolLookupRequest{Name: "Alpha"})
+	if err != nil {
+		t.Fatalf("ReadSymbolLookup() error = %v", err)
+	}
+
+	if got.Repository.RepositoryRoot != layout.RepoRoot {
+		t.Fatalf("RepositoryRoot = %q, want %q", got.Repository.RepositoryRoot, layout.RepoRoot)
+	}
+	if got.Limit != defaultSymbolLookupLimit {
+		t.Fatalf("Limit = %d, want %d", got.Limit, defaultSymbolLookupLimit)
+	}
+	if gotPaths := symbolLookupMatchPaths(got.Matches); !reflect.DeepEqual(gotPaths, []string{"docs/guide.go", "pkg/alpha.go"}) {
+		t.Fatalf("match paths = %v", gotPaths)
+	}
+	if got.Matches[1].StableKey != "alpha-type" || got.Matches[1].Kind != "type" {
+		t.Fatalf("alpha type match = %+v", got.Matches[1])
+	}
+}
+
+func TestSymbolLookupFilters(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	refreshedAt := time.Date(2026, 3, 14, 19, 0, 0, 0, time.UTC)
+	if err := store.WriteRepositoryFreshness(ctx, repository.RepositoryFreshness{
+		RepositoryID:           repoID,
+		RootPath:               layout.RepoRoot,
+		DetectionMode:          repository.DetectionModeGit,
+		LastRefreshStartedAt:   refreshedAt,
+		LastRefreshCompletedAt: refreshedAt.Add(2 * time.Minute),
+		LastRefreshReason:      repository.RefreshReasonManual,
+		LastRefreshStatus:      repository.RefreshRunStatusSuccess,
+		FreshnessStatus:        repository.FreshnessStatusFresh,
+		CurrentGeneration:      6,
+		LastRefreshGeneration:  6,
+	}); err != nil {
+		t.Fatalf("WriteRepositoryFreshness() error = %v", err)
+	}
+
+	run := createTestRefreshRun(t, ctx, store, repoID, 6)
+	goAlphaID := insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "pkg/alpha.go", DirectoryPath: "pkg", Extension: ".go", Language: "go", ContentHash: "go-alpha", LastGeneration: 6}, 200)
+	pyAlphaID := insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "pkg/alpha.py", DirectoryPath: "pkg", Extension: ".py", Language: "python", ContentHash: "py-alpha", LastGeneration: 6}, 180)
+	docsAlphaID := insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "docs/alpha.go", DirectoryPath: "docs", Extension: ".go", Language: "go", ContentHash: "go-docs-alpha", LastGeneration: 6}, 140)
+
+	for _, artifacts := range []repository.FileStructuralArtifacts{
+		{
+			Extraction: repository.FileExtractionRecord{
+				RepositoryID:        repoID,
+				FileID:              goAlphaID,
+				Path:                "pkg/alpha.go",
+				Language:            "go",
+				AdapterName:         "tree-sitter-go",
+				GrammarVersion:      "v0.25.0",
+				SourceContentHash:   "go-alpha",
+				SourceGeneration:    6,
+				CoverageState:       repository.ExtractionCoverageStateSupported,
+				SymbolCount:         1,
+				TopLevelSymbolCount: 1,
+				MaxSymbolDepth:      0,
+				ExtractedAt:         refreshedAt,
+				RefreshRunID:        run.ID,
+			},
+			Symbols: []repository.SymbolRecord{
+				testTopLevelSymbol("pkg/alpha.go", "go", "type", "Alpha", "go-alpha", 0),
+			},
+		},
+		{
+			Extraction: repository.FileExtractionRecord{
+				RepositoryID:        repoID,
+				FileID:              pyAlphaID,
+				Path:                "pkg/alpha.py",
+				Language:            "python",
+				AdapterName:         "tree-sitter-python",
+				GrammarVersion:      "v0.25.0",
+				SourceContentHash:   "py-alpha",
+				SourceGeneration:    6,
+				CoverageState:       repository.ExtractionCoverageStateSupported,
+				SymbolCount:         1,
+				TopLevelSymbolCount: 1,
+				MaxSymbolDepth:      0,
+				ExtractedAt:         refreshedAt,
+				RefreshRunID:        run.ID,
+			},
+			Symbols: []repository.SymbolRecord{
+				testTopLevelSymbol("pkg/alpha.py", "python", "class", "Alpha", "py-alpha", 0),
+			},
+		},
+		{
+			Extraction: repository.FileExtractionRecord{
+				RepositoryID:        repoID,
+				FileID:              docsAlphaID,
+				Path:                "docs/alpha.go",
+				Language:            "go",
+				AdapterName:         "tree-sitter-go",
+				GrammarVersion:      "v0.25.0",
+				SourceContentHash:   "go-docs-alpha",
+				SourceGeneration:    6,
+				CoverageState:       repository.ExtractionCoverageStateSupported,
+				SymbolCount:         1,
+				TopLevelSymbolCount: 1,
+				MaxSymbolDepth:      0,
+				ExtractedAt:         refreshedAt,
+				RefreshRunID:        run.ID,
+			},
+			Symbols: []repository.SymbolRecord{
+				testTopLevelSymbol("docs/alpha.go", "go", "function", "Alpha", "docs-alpha", 0),
+			},
+		},
+	} {
+		if _, err := store.ReplaceFileArtifacts(ctx, artifacts); err != nil {
+			t.Fatalf("ReplaceFileArtifacts(%s) error = %v", artifacts.Extraction.Path, err)
+		}
+	}
+
+	got, err := store.ReadSymbolLookup(ctx, repoID, repository.SymbolLookupRequest{
+		Name:       "Alpha",
+		PathPrefix: "pkg/",
+		Language:   "go",
+		Kind:       "type",
+		Limit:      1,
+	})
+	if err != nil {
+		t.Fatalf("ReadSymbolLookup() error = %v", err)
+	}
+
+	if got.Limit != 1 {
+		t.Fatalf("Limit = %d, want 1", got.Limit)
+	}
+	if gotPaths := symbolLookupMatchPaths(got.Matches); !reflect.DeepEqual(gotPaths, []string{"pkg/alpha.go"}) {
+		t.Fatalf("filtered match paths = %v", gotPaths)
+	}
+	if _, err := store.ReadSymbolLookup(ctx, repoID, repository.SymbolLookupRequest{}); err == nil {
+		t.Fatal("ReadSymbolLookup() expected error for empty name")
+	}
+}
+
 func TestUnsupportedExtractionState(t *testing.T) {
 	t.Parallel()
 
@@ -1717,6 +1943,14 @@ func layeredContextL1SymbolNames(symbols []repository.LayeredContextL1Symbol) []
 		names = append(names, symbol.Name)
 	}
 	return names
+}
+
+func symbolLookupMatchPaths(matches []repository.SymbolLookupMatch) []string {
+	paths := make([]string, 0, len(matches))
+	for _, match := range matches {
+		paths = append(paths, match.Path)
+	}
+	return paths
 }
 
 func testTopLevelSymbol(path, language, kind, name, stableKey string, ordinal int64) repository.SymbolRecord {
