@@ -35,7 +35,7 @@
 - [x] **EXTR-02**: Runtime can extract structural blocks and symbols from supported languages using deterministic parser-backed analysis.
 - [x] **EXTR-03**: Runtime stores exact symbol spans, kinds, names, and parent relationships for supported files.
 - [x] **EXTR-04**: Runtime degrades gracefully for unsupported or partially parsed files and surfaces coverage state in diagnostics.
-- [ ] **EXTR-05**: Runtime can generate a compact repository map from persisted structural artifacts.
+- [x] **EXTR-05**: Runtime can generate a compact repository map from persisted structural artifacts.
 
 ### Context and Query Surface
 
@@ -114,7 +114,7 @@
 | EXTR-02 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
 | EXTR-03 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
 | EXTR-04 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
-| EXTR-05 | Phase 3 - Structural Extraction and Repository Artifact Model | Pending |
+| EXTR-05 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
 | CTX-01 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
 | CTX-02 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |
 | CTX-03 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Pending |

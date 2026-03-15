@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 3
 current_phase_name: Structural Extraction and Repository Artifact Model
-current_plan: 3
-status: executing
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-03-15T00:20:09.392Z"
+current_plan: 4
+status: ready
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-03-15T00:31:07.638Z"
 last_activity: 2026-03-15
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 14
-  completed_plans: 13
-  percent: 93
+  completed_plans: 14
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -27,11 +27,11 @@ progress:
 **Current Phase:** 3
 **Current Phase Name:** Structural Extraction and Repository Artifact Model
 **Total Phases:** 6
-**Current Plan:** 3
+**Current Plan:** 4
 **Total Plans in Phase:** 6
-**Progress:** [█████████░] 93%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-15
-**Last Activity Description:** Completed plan 03-03 refresh-integrated structural extraction persistence and mutation progression coverage
+**Last Activity Description:** Completed plan 03-04 persisted-only repository map composition and deterministic coverage-aware reads
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1 foundation
 - Active phase: Phase 3 - Structural Extraction and Repository Artifact Model
-- Next planning action: plan Phase 3 now that Phase 2 is complete
+- Next planning action: plan Phase 4 now that Phase 3 is complete
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -98,6 +98,8 @@ progress:
 - Verification for `02-06` used `/tmp/optimusctx-go/go/bin/go` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted degraded-refresh coverage and the full Go test suite.
 - Plan `03-03` is complete with refresh-scoped structural artifact replacement, unsupported/degraded coverage persistence, and temp-repository mutation progression tests.
 - Verification for `03-03` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go cache settings for targeted extraction-refresh coverage and the full Go test suite.
+- Plan `03-04` is complete with persisted-only repository-map read models, explicit coverage-gap metadata, and deterministic SQLite-backed repository-map coverage after worktree deletion.
+- Verification for `03-04` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go cache settings for targeted repository-map coverage and the full Go test suite.
 
 ## Performance Metrics
 
@@ -111,6 +113,7 @@ progress:
 | Phase 02-incremental-refresh-and-freshness-model P06 | 5min | 3 tasks | 4 files |
 | Phase 03-structural-extraction-and-repository-artifact-model P02 | 13min | 3 tasks | 10 files |
 | Phase 03-structural-extraction-and-repository-artifact-model P03 | 12min | 3 tasks | 7 files |
+| Phase 03-structural-extraction-and-repository-artifact-model P04 | 10min | 3 tasks | 6 files |
 
 ## Decisions Made
 
@@ -136,6 +139,9 @@ progress:
 - [Phase 03]: Structural artifact writes now run inside ApplyRefreshPlan through a SQLite callback instead of a second post-refresh transaction.
 - [Phase 03]: Refresh derives extraction work strictly from diff-affected included paths and leaves unchanged artifact rows untouched on no-op runs.
 - [Phase 03]: Files with no persisted language hint normalize to unknown when persisted as unsupported artifacts so coverage remains explicit.
+- [Phase 03]: Repository-map queries now resolve repository identity from persisted sqlite metadata instead of mutating repository rows during reads.
+- [Phase 03]: Repository-map payloads expose unsupported, partial, failed, and skipped files explicitly while only supported and partial files surface top-level symbols.
+- [Phase 03]: Repository-map output stays compact and deterministic by grouping files under persisted directories and returning ordinal-ordered top-level symbols only.
 
 ## Blockers
 
@@ -143,9 +149,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T00:20:09.390Z
-**Stopped At:** Completed 03-03-PLAN.md
+**Last Date:** 2026-03-15T00:31:07.635Z
+**Stopped At:** Completed 03-04-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-15 after completing plan 03-02*
+*Last updated: 2026-03-15 after completing plan 03-04*
