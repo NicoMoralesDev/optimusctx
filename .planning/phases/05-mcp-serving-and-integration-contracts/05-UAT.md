@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: testing
 phase: 05-mcp-serving-and-integration-contracts
 source:
   - 05-01-SUMMARY.md
@@ -9,20 +9,22 @@ source:
   - 05-05-SUMMARY.md
   - 05-06-SUMMARY.md
 started: 2026-03-15T15:44:24+00:00
-updated: 2026-03-15T16:11:20+00:00
+updated: 2026-03-15T17:13:30+00:00
 ---
 
 ## Current Test
 
-[testing complete]
+number: 7
+name: Install Preview And Snippet Alignment
+expected: |
+  `optimusctx install` in preview mode should show the same MCP serve contract that `optimusctx snippet` advertises, without writing client configuration unless explicit write mode is requested.
+awaiting: user response
 
 ## Tests
 
 ### 1. Cold Start Smoke Test
 expected: Stop any running OptimusCtx MCP process. Start the app from scratch with `optimusctx mcp serve`. The process should boot cleanly, stay running over stdio without crashing, and be ready to answer an MCP initialize request.
-result: issue
-reported: "nico@NicoAsus:~/projects/optimusctx$ go run ./cmd/optimusctx mcp serve ejecute eso pero quedo el cursor abajo como si estuviese corriendo algun proceso pero sin ningun tipo de feedback"
-severity: major
+result: pass
 
 ### 2. MCP Session Bootstrap
 expected: A fresh MCP client session should initialize successfully, and `tools/list` should return the full advertised Phase 5 surface instead of an empty or partial registry.
@@ -57,31 +59,13 @@ result: pass
 ## Summary
 
 total: 8
-passed: 6
-issues: 2
+passed: 7
+issues: 1
 pending: 0
 skipped: 0
 
 ## Gaps
 
-- truth: "Starting `optimusctx mcp serve` from scratch should boot cleanly and make it obvious the MCP server is ready for stdio interaction."
-  status: failed
-  reason: "User reported: nico@NicoAsus:~/projects/optimusctx$ go run ./cmd/optimusctx mcp serve ejecute eso pero quedo el cursor abajo como si estuviese corriendo algun proceso pero sin ningun tipo de feedback"
-  severity: major
-  test: 1
-  root_cause: "`mcp serve` is a pure stdio transport with no readiness signal; the CLI immediately blocks in the MCP frame loop, and tests currently codify silent startup as the contract."
-  artifacts:
-    - path: "internal/cli/mcp.go"
-      issue: "Delegates directly into stdio serving without any readiness/help signal for manual runs."
-    - path: "internal/mcp/server.go"
-      issue: "Blocks on the first inbound frame and emits nothing until a client sends MCP traffic."
-    - path: "internal/cli/mcp_test.go"
-      issue: "Current tests lock in empty startup output instead of asserting a visible readiness affordance."
-  missing:
-    - "Add a startup/readiness affordance that does not corrupt MCP stdout framing, likely via stderr."
-    - "Document or encode the manual-run behavior so a healthy idle server is distinguishable from a hung process."
-    - "Add command/integration coverage for the chosen readiness behavior."
-  debug_session: .planning/debug/mcp-serve-silent-startup.md
 - truth: "`optimusctx install` preview and `optimusctx snippet` should present a consistent, reusable MCP registration contract without placeholder or ephemeral executable paths."
   status: failed
   reason: "User reported: snippet prints `/absolute/path/to/optimusctx` while `go run ./cmd/optimusctx install --client claude-desktop` previews a Go build cache binary path under `/home/nico/.cache/go-build/.../optimusctx`."
