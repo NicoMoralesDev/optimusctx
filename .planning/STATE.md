@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 5
 current_phase_name: mcp serving and integration contracts
-current_plan: 5
+current_plan: 6
 status: executing
-stopped_at: Completed 05-04-PLAN.md
-last_updated: "2026-03-15T15:10:41.576Z"
+stopped_at: Completed 05-05-PLAN.md
+last_updated: "2026-03-15T15:23:27.022Z"
 last_activity: 2026-03-15
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 26
-  completed_plans: 24
-  percent: 92
+  completed_plans: 25
+  percent: 96
 ---
 
 # Planning State: OptimusCtx
@@ -27,11 +27,11 @@ progress:
 **Current Phase:** 5
 **Current Phase Name:** mcp serving and integration contracts
 **Total Phases:** 6
-**Current Plan:** 5
+**Current Plan:** 6
 **Total Plans in Phase:** 6
-**Progress:** [█████████░] 92%
+**Progress:** [██████████] 96%
 **Last Activity:** 2026-03-15
-**Last Activity Description:** Completed 05-03 token tree contracts and persisted analysis service
+**Last Activity Description:** Completed 05-05 full MCP registry and integration boundary coverage
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1 foundation
 - Active phase: Phase 5 - MCP Serving and Integration Contracts
-- Next planning action: execute Phase 5 plan 04 for MCP query tool exposure
+- Next planning action: execute Phase 5 plan 06 for install registration and client integration follow-through
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -116,6 +116,8 @@ progress:
 - Verification for `05-01` used `/usr/local/go/bin/go` and `/usr/local/go/bin/gofmt` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted MCP serve/session coverage, the full Go test suite, and a `go run ./cmd/optimusctx mcp serve --help` smoke check.
 - Plan `05-03` is complete with transport-neutral token-tree contracts, persisted SQLite tree assembly, and an app-layer token-tree service built on the shared bytes-to-token policy.
 - Verification for `05-03` used `/usr/local/go/bin/go` and `/usr/local/go/bin/gofmt` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted token-tree coverage; the full `go test ./...` suite remains blocked by unrelated in-progress MCP tool changes already present in the worktree.
+- Plan `05-05` is complete with a canonical MCP registry, operational refresh/token-tree/pack/health handlers, and real stdio session coverage across the full Phase 5 tool surface.
+- Verification for `05-05` used `/usr/local/go/bin/go` and `/usr/local/go/bin/gofmt` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted MCP registry and server-boundary coverage plus the full Go test suite.
 
 ## Performance Metrics
 
@@ -140,6 +142,7 @@ progress:
 | Phase 05-mcp-serving-and-integration-contracts P03 | 6min | 3 tasks | 5 files |
 | Phase 05 P02 | 2min | 3 tasks | 6 files |
 | Phase 05 P04 | 8min | 3 tasks | 5 files |
+| Phase 05-mcp-serving-and-integration-contracts P05 | 12min | 3 tasks | 8 files |
 
 ## Decisions Made
 
@@ -191,6 +194,8 @@ progress:
 - [Phase 05]: The default MCP server now registers the read-only query tools eagerly so tools/list reflects the true query surface.
 - [Phase 05]: Health probes stay read-only by inspecting state layout and opening SQLite in read-only mode instead of using the mutating store bootstrap path.
 - [Phase 05]: Pack requests normalize onto explicit section, lookup, and target-window bounds while reusing LayeredContext, Lookup, and TargetedContext services rather than introducing a separate query engine.
+- [Phase 05]: Refresh, token tree, pack, and health reuse the shared QueryEnvelope contract; refresh reports cache status as refresh_attempted.
+- [Phase 05]: Server-boundary verification uses real stdio framing and repository-backed tool calls instead of handler-only assertions.
 
 ## Blockers
 
@@ -198,8 +203,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T15:10:41.573Z
-**Stopped At:** Completed 05-04-PLAN.md
+**Last Date:** 2026-03-15T15:23:10.768Z
+**Stopped At:** Completed 05-05-PLAN.md
 **Resume File:** None
 
 ---
