@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
+milestone: v1.1
 milestone_name: validation-benchmarking-and-distribution
 current_phase: null
-current_phase_name: defining requirements
+current_phase_name: roadmap defined
 current_plan: null
-status: defining_requirements
-stopped_at: Started milestone v1.1
-last_updated: "2026-03-15T23:20:00.000Z"
+status: ready_for_phase_planning
+stopped_at: Milestone v1.1 roadmap defined
+last_updated: "2026-03-15T23:32:46.000Z"
 last_activity: 2026-03-15
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 39
-  completed_plans: 39
-  percent: 100
+  total_phases: 5
+  completed_phases: 0
+  total_plans: 20
+  completed_plans: 0
+  percent: 0
 ---
 
 # Planning State: OptimusCtx
@@ -22,16 +22,16 @@ progress:
 **Initialized:** 2026-03-14
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
-**Requirements reference:** pending new `.planning/REQUIREMENTS.md` for v1.1
-**Status:** Defining requirements
+**Requirements reference:** `.planning/REQUIREMENTS.md`
+**Status:** Ready for phase planning
 **Current Phase:** not started
-**Current Phase Name:** defining requirements
-**Total Phases:** 8
+**Current Phase Name:** roadmap defined
+**Total Phases:** 5
 **Current Plan:** —
-**Total Plans in Phase:** 0
+**Total Plans in Phase:** 4
 **Progress:** [░░░░░░░░░░] 0%
 **Last Activity:** 2026-03-15
-**Last Activity Description:** Milestone v1.1 started for validation, A/B benchmarking, and distribution planning
+**Last Activity Description:** Milestone v1.1 requirements and roadmap defined for validation, A/B benchmarking, and distribution planning
 
 ## Project Memory
 
@@ -44,12 +44,17 @@ progress:
 ## Current Planning Context
 
 - Active milestone: v1.1 validation, benchmarking, and distribution
-- Active phase: defining requirements
-- Next planning action: decide research scope, define scoped requirements, and create the v1.1 roadmap
+- Active phase: roadmap defined; execution planning not started
+- Next planning action: run `$gsd-plan-phase 9` to detail the evaluation harness and fixture foundation
 - Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
-- Coverage status: v1.0 shipped; v1.1 is focused on proving value and preparing distribution
+- Coverage status: v1.0 shipped; v1.1 requirements are mapped across Phases 09-13
 
 ## Recent Decisions
+
+- v1.1 will stay a proof-and-distribution milestone, not a new runtime-capability milestone.
+- Functional validation will use versioned fixture repositories, rerunnable scenario definitions, and the real shipped CLI and MCP surfaces.
+- Benchmark claims will use a fixed baseline-vs-OptimusCtx methodology with one token estimator and explicit artifact attribution.
+- Distribution will stay narrow: cross-platform archives, first package-manager channels, install verification, and a written rollout plan.
 
 - Repository root detection now canonicalizes the start path, prefers Git top-level discovery, and falls back to an existing `.optimusctx` directory only when Git metadata is absent.
 - Repository discovery walks directories in lexical order, records explicit ignore reasons, and does not traverse symlinks in Phase 1.
@@ -255,7 +260,7 @@ None
 ## Session
 
 **Last Date:** 2026-03-15T22:44:05.542Z
-**Stopped At:** Completed 08-04-PLAN.md
+**Stopped At:** Milestone v1.1 roadmap defined
 **Resume File:** None
 
 ---
