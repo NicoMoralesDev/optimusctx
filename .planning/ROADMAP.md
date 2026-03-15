@@ -117,6 +117,11 @@
 - `optimusctx doctor` reports installation, repository detection, freshness, watch status, storage health, parsing failures, and top token-cost paths in one actionable output.
 - Recovery and diagnostics flows make degraded parser, storage, and refresh states visible without requiring database inspection.
 
+**Plan progress:**
+- Completed: `06-01`
+- Remaining: `06-02`, `06-03`, `06-04`, `06-05`
+- Summary coverage: 1 of 5 Phase 6 plans completed
+
 ## Requirement Coverage
 
 | Phase | Requirement count | Requirements |
@@ -143,4 +148,4 @@
 6. Phase 6 adds watch, export, and operator hardening without using them to compensate for missing correctness.
 
 ---
-*Last updated: 2026-03-15 after completing plan 05-03*
+*Last updated: 2026-03-15 after completing plan 06-01*

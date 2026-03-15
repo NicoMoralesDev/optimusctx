@@ -55,7 +55,7 @@
 
 ### Watch, Export, and Operations
 
-- [ ] **OPS-01**: User can optionally run watch mode to keep the index fresh in the background without it being required for normal use.
+- [x] **OPS-01**: User can optionally run watch mode to keep the index fresh in the background without it being required for normal use.
 - [ ] **OPS-02**: Watch mode uses the same incremental refresh pipeline as manual refresh paths.
 - [ ] **OPS-03**: User can export a compact repository pack for offline or non-MCP workflows.
 - [ ] **OPS-04**: Pack export can fit output to a target budget using include/exclude rules.
@@ -125,7 +125,7 @@
 | MCP-02 | Phase 5 - MCP Serving and Integration Contracts | Complete |
 | MCP-03 | Phase 5 - MCP Serving and Integration Contracts | Complete |
 | MCP-04 | Phase 5 - MCP Serving and Integration Contracts | Complete |
-| OPS-01 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
+| OPS-01 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Complete |
 | OPS-02 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
 | OPS-03 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |
 | OPS-04 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |

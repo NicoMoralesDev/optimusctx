@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 5
-current_phase_name: mcp serving and integration contracts
-current_plan: 8
-status: verifying
-stopped_at: Completed 05-07-PLAN.md
-last_updated: "2026-03-15T17:10:09Z"
+current_phase: 6
+current_phase_name: watch mode pack export and operational diagnostics
+current_plan: 2
+status: executing
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-03-15T18:24:18.944Z"
 last_activity: 2026-03-15
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 28
-  completed_plans: 28
-  percent: 96
+  total_plans: 33
+  completed_plans: 29
+  percent: 88
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase complete - ready for verification
-**Current Phase:** 5
-**Current Phase Name:** mcp serving and integration contracts
+**Status:** executing
+**Current Phase:** 6
+**Current Phase Name:** watch mode pack export and operational diagnostics
 **Total Phases:** 6
-**Current Plan:** 8
-**Total Plans in Phase:** 8
-**Progress:** [██████████] 96%
+**Current Plan:** 2
+**Total Plans in Phase:** 5
+**Progress:** [█████████░] 88%
 **Last Activity:** 2026-03-15
-**Last Activity Description:** Completed 05-07 MCP serve readiness contract gap closure
+**Last Activity Description:** Completed 06-01 watch command foundation
 
 ## Project Memory
 
@@ -44,8 +44,8 @@ progress:
 ## Current Planning Context
 
 - Active milestone: v1 foundation
-- Active phase: Phase 5 - MCP Serving and Integration Contracts
-- Next planning action: verify Phase 5 deliverables and close remaining UAT gaps if any
+- Active phase: Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics
+- Next planning action: execute Phase 6 plan 02
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -120,6 +120,8 @@ progress:
 - Verification for `05-05` used `/usr/local/go/bin/go` and `/usr/local/go/bin/gofmt` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted MCP registry and server-boundary coverage plus the full Go test suite.
 - Plan `05-07` is complete with a transport-safe stderr readiness signal for `optimusctx mcp serve` and test-backed ready-then-block semantics at the CLI and server boundary.
 - Verification for `05-07` used `/usr/local/go/bin/go` and `/usr/local/go/bin/gofmt` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/tmp/optimusctx-gomodcache`, and `GOPROXY=off` for targeted MCP serve readiness coverage and the full Go test suite.
+- Plan `06-01` is complete with the optional `watch` CLI surface, repo-local heartbeat status tracking, and lifecycle coverage for stale versus absent watch state.
+- Verification for `06-01` used `/usr/local/go/bin/go` and `/usr/local/go/bin/gofmt` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/tmp/optimusctx-gomodcache`, and `GOPROXY=off` for targeted watch coverage and the full Go test suite.
 
 ## Performance Metrics
 
@@ -147,6 +149,7 @@ progress:
 | Phase 05-mcp-serving-and-integration-contracts P05 | 12min | 3 tasks | 8 files |
 | Phase 05-mcp-serving-and-integration-contracts P07 | 3min | 3 tasks | 4 files |
 | Phase 05-mcp-serving-and-integration-contracts P08 | 1min | 3 tasks | 6 files |
+| Phase 06 P01 | 22min | 3 tasks | 6 files |
 
 ## Decisions Made
 
@@ -205,6 +208,8 @@ progress:
 - [Phase 05]: Claude Desktop is the initial supported client, with explicit --config override support for hermetic tests and transparent platform behavior.
 - [Phase 05-mcp-serving-and-integration-contracts]: `optimusctx mcp serve` now emits one operator-facing readiness line on stderr before blocking for stdio traffic, leaving stdout reserved for framed MCP responses.
 - [Phase 05-mcp-serving-and-integration-contracts]: Omitted --binary now renders the reusable optimusctx command name instead of any runtime-resolved executable path.
+- [Phase 06]: Watch liveness stays in .optimusctx/tmp JSON while SQLite remains the source of refresh freshness truth.
+- [Phase 06]: The initial watch runtime uses a transport-neutral polling observer seam and debounced refresh triggering instead of daemon management.
 
 ## Blockers
 
@@ -212,9 +217,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T16:51:50.873Z
-**Stopped At:** Completed 05-07-PLAN.md
+**Last Date:** 2026-03-15T18:24:08.868Z
+**Stopped At:** Completed 06-01-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-15 after completing Phase 5 gap-closure plans 07 and 08*
+*Last updated: 2026-03-15 after completing Phase 6 plan 01*
