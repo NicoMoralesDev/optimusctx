@@ -56,7 +56,8 @@ func TestDoctorCommand(t *testing.T) {
 				},
 			},
 			Watch: repository.DoctorWatchSection{
-				Status: repository.DoctorStatusHealthy,
+				Status:  repository.DoctorStatusHealthy,
+				Summary: "watch mode is running",
 				Health: repository.WatchStatusResult{
 					Status:     repository.WatchStatusKindRunning,
 					Reason:     "watch process heartbeat is current",
@@ -105,6 +106,8 @@ func TestDoctorCommand(t *testing.T) {
 		"overall status: healthy",
 		"repository root: /repo",
 		"watch state: running",
+		"summary: watch mode is running",
+		"optional: no",
 		"hotspot: pkg/alpha.go tokens=120 files=1 bytes=480",
 		"item: none",
 		"step: none",
@@ -149,7 +152,8 @@ func TestDoctorCommandRendersDegradedAndMissingSignals(t *testing.T) {
 			},
 		},
 		Watch: repository.DoctorWatchSection{
-			Status: repository.DoctorStatusDegraded,
+			Status:  repository.DoctorStatusDegraded,
+			Summary: "watch heartbeat is stale",
 			Health: repository.WatchStatusResult{
 				Status:     repository.WatchStatusKindStale,
 				Reason:     "watch heartbeat is stale",
@@ -198,10 +202,51 @@ func TestDoctorCommandRendersDegradedAndMissingSignals(t *testing.T) {
 		"overall status: degraded",
 		"status: missing",
 		"latest run failure: forced after file updates",
+		"summary: watch heartbeat is stale",
 		"reason: watch heartbeat is stale",
 		"gap: pkg/partial.go (partial, reason=parse_error, symbols=1)",
 		"item: state: repository state directory is not initialized; next action: run `optimusctx init` from the repository root to create `.optimusctx/`",
 		"step: run `optimusctx refresh` and inspect `.optimusctx/logs/` if refresh stays degraded",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output missing %q:\n%s", want, output)
+		}
+	}
+}
+
+func TestDoctorCommandHealthyWithoutWatch(t *testing.T) {
+	report := repository.DoctorReport{
+		Identity: repository.LayeredContextRepositoryIdentity{
+			RootPath:      "/repo",
+			DetectionMode: "git",
+		},
+		Install: repository.DoctorInstallSection{
+			BinaryVersion: "dev",
+			WorkingDir:    "/repo",
+		},
+		Watch: repository.DoctorWatchSection{
+			Status:   repository.DoctorStatusHealthy,
+			Optional: true,
+			Summary:  "watch mode is not running; background watch is optional",
+			Health: repository.WatchStatusResult{
+				Status:     repository.WatchStatusKindAbsent,
+				Reason:     "watch status file not found",
+				StatusPath: "/repo/.optimusctx/tmp/watch-status.json",
+			},
+		},
+		Summary: repository.DoctorSummary{
+			Status: repository.DoctorStatusHealthy,
+		},
+	}
+
+	output := formatDoctorReport(report)
+	for _, want := range []string{
+		"overall status: healthy",
+		"status: healthy",
+		"watch state: absent",
+		"summary: watch mode is not running; background watch is optional",
+		"optional: yes",
+		"reason: watch status file not found",
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output missing %q:\n%s", want, output)

@@ -169,6 +169,92 @@ func TestDoctorDetectsDegradedState(t *testing.T) {
 	}
 }
 
+func TestDoctorHealthyWithoutWatch(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "alpha.go"), "package pkg\n\nfunc Alpha() {}\n")
+
+	if _, err := NewRefreshService().Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+
+	service := NewDoctorService()
+	service.Getwd = func() (string, error) { return repoRoot, nil }
+
+	report, err := service.Doctor(context.Background(), repoRoot, repository.DoctorRequest{BudgetLimit: 2})
+	if err != nil {
+		t.Fatalf("Doctor() error = %v", err)
+	}
+
+	if report.Summary.Status != repository.DoctorStatusHealthy {
+		t.Fatalf("Summary.Status = %q, want healthy", report.Summary.Status)
+	}
+	if report.Watch.Status != repository.DoctorStatusHealthy {
+		t.Fatalf("Watch.Status = %q, want healthy", report.Watch.Status)
+	}
+	if report.Watch.Health.Status != repository.WatchStatusKindAbsent {
+		t.Fatalf("Watch.Health.Status = %q, want absent", report.Watch.Health.Status)
+	}
+	if !report.Watch.Optional {
+		t.Fatal("Watch.Optional = false, want true")
+	}
+	if got, want := report.Watch.Summary, "watch mode is not running; background watch is optional"; got != want {
+		t.Fatalf("Watch.Summary = %q, want %q", got, want)
+	}
+	if len(report.Summary.Issues) != 0 {
+		t.Fatalf("Issues = %+v, want none", report.Summary.Issues)
+	}
+}
+
+func TestDoctorDetectsStaleWatch(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "alpha.go"), "package pkg\n\nfunc Alpha() {}\n")
+
+	refreshed, err := NewRefreshService().Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	})
+	if err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+
+	staleAt := time.Date(2026, 3, 15, 18, 0, 0, 0, time.UTC)
+	record := repository.NewWatchStatusRecord(777, repoRoot, "dev", staleAt)
+	record = record.WithHeartbeat(repository.WatchHeartbeat{
+		At:                    staleAt,
+		LastRefreshDoneAt:     staleAt,
+		LastRefreshGeneration: refreshed.Generation,
+	})
+	writeDoctorWatchStatus(t, repoRoot, record)
+
+	service := NewDoctorService()
+	service.Getwd = func() (string, error) { return repoRoot, nil }
+	service.WatchService.Now = func() time.Time { return staleAt.Add(20 * time.Second) }
+	service.WatchService.ProcessRunning = func(pid int) bool { return true }
+
+	report, err := service.Doctor(context.Background(), repoRoot, repository.DoctorRequest{BudgetLimit: 2})
+	if err != nil {
+		t.Fatalf("Doctor() error = %v", err)
+	}
+
+	if report.Summary.Status != repository.DoctorStatusDegraded {
+		t.Fatalf("Summary.Status = %q, want degraded", report.Summary.Status)
+	}
+	if report.Watch.Status != repository.DoctorStatusDegraded {
+		t.Fatalf("Watch.Status = %q, want degraded", report.Watch.Status)
+	}
+	if report.Watch.Health.Status != repository.WatchStatusKindStale {
+		t.Fatalf("Watch.Health.Status = %q, want stale", report.Watch.Health.Status)
+	}
+	if report.Watch.Optional {
+		t.Fatal("Watch.Optional = true, want false")
+	}
+}
+
 func writeDoctorWatchStatus(t *testing.T, repoRoot string, record repository.WatchStatusRecord) {
 	t.Helper()
 
