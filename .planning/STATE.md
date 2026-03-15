@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 5
 current_phase_name: mcp serving and integration contracts
-current_plan: Not started
-status: planning
-stopped_at: Completed 04-06-PLAN.md
-last_updated: "2026-03-15T01:48:31.692Z"
+current_plan: "02"
+status: executing
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-15T14:53:27Z"
 last_activity: 2026-03-15
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 20
-  completed_plans: 20
-  percent: 100
+  total_plans: 26
+  completed_plans: 21
+  percent: 81
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to plan
+**Status:** Executing Phase 5
 **Current Phase:** 5
 **Current Phase Name:** mcp serving and integration contracts
 **Total Phases:** 6
-**Current Plan:** Not started
+**Current Plan:** 02
 **Total Plans in Phase:** 6
-**Progress:** [██████████] 100%
+**Progress:** [████████░░] 81%
 **Last Activity:** 2026-03-15
-**Last Activity Description:** Phase 04 complete, transitioned to Phase 5
+**Last Activity Description:** Completed 05-01 MCP server foundation and CLI serve entrypoint
 
 ## Project Memory
 
@@ -44,8 +44,8 @@ progress:
 ## Current Planning Context
 
 - Active milestone: v1 foundation
-- Active phase: Phase 4 - Layered Context, Exact Lookup, and Budget Analysis
-- Next planning action: verify Phase 4 execution or begin Phase 5 planning/execution
+- Active phase: Phase 5 - MCP Serving and Integration Contracts
+- Next planning action: execute Phase 5 plan 02 for read-only MCP query tools
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -112,6 +112,8 @@ progress:
 - Verification for `04-05` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted context-block coverage and the full Go test suite.
 - Plan `04-06` is complete with deterministic file and directory budget hotspots plus a shared app-layer budget analysis service.
 - Verification for `04-06` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted budget-analysis coverage and the full Go test suite.
+- Plan `05-01` is complete with a real `optimusctx mcp serve` entrypoint, a dedicated `internal/mcp` STDIO server foundation, and deterministic tool-registry coverage.
+- Verification for `05-01` used `/usr/local/go/bin/go` and `/usr/local/go/bin/gofmt` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted MCP serve/session coverage, the full Go test suite, and a `go run ./cmd/optimusctx mcp serve --help` smoke check.
 
 ## Performance Metrics
 
@@ -132,6 +134,7 @@ progress:
 | Phase 04 P04 | 12min | 3 tasks | 5 files |
 | Phase 04 P05 | 12min | 3 tasks | 4 files |
 | Phase 04 P06 | 14min | 3 tasks | 5 files |
+| Phase 05 P01 | 3min | 3 tasks | 6 files |
 
 ## Decisions Made
 
@@ -173,6 +176,9 @@ progress:
 - [Phase 04]: Targeted context request and result models stay out of 04-04 so L2 context work remains isolated to plan 04-05.
 - [Phase 04]: L2 targeting accepts either a stable symbol key or an explicit line range, but not both at once.
 - [Phase 04]: Budget analysis uses one explicit v1 policy of ceiling(bytes/4) instead of a model-specific tokenizer.
+- [Phase 05]: The `mcp serve` command stays a thin CLI shim and delegates STDIO session lifecycle to `internal/mcp`.
+- [Phase 05]: The Phase 5 MCP transport uses header-framed JSON-RPC responses with shared initialize, tools/list, and tools/call payload primitives.
+- [Phase 05]: Tool discovery is deterministic and unavailable or unimplemented tool slots fail with structured error payloads instead of silent success.
 
 ## Blockers
 
@@ -180,9 +186,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T01:47:55.116Z
-**Stopped At:** Completed 04-06-PLAN.md
+**Last Date:** 2026-03-15T14:53:27Z
+**Stopped At:** Completed 05-01-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-15 after completing Phase 4 execution*
+*Last updated: 2026-03-15 after completing Phase 5 plan 01 execution*

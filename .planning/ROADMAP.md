@@ -98,6 +98,11 @@
 - Payload defaults are bounded and oversized requests fail with transparent actionable errors instead of silent truncation or unstable output.
 - Install flow can optionally register supported client MCP configuration only when the user explicitly opts in.
 
+**Plan progress:**
+- Completed: `05-01`
+- Remaining: `05-02`, `05-03`, `05-04`, `05-05`, `05-06`
+- Summary coverage: 1 of 6 Phase 5 plans completed
+
 ## Phase 6: Watch Mode, Pack Export, and Operational Diagnostics
 
 **Goal:** Harden the operator experience with optional background freshness, portable export workflows, and comprehensive diagnostics.
@@ -139,4 +144,4 @@
 6. Phase 6 adds watch, export, and operator hardening without using them to compensate for missing correctness.
 
 ---
-*Last updated: 2026-03-15 after completing plan 03-03*
+*Last updated: 2026-03-15 after completing plan 05-01*

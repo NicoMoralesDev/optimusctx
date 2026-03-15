@@ -48,7 +48,7 @@
 
 ### MCP Integration
 
-- [ ] **MCP-01**: Runtime can serve MCP requests over STDIO as the primary integration mode.
+- [x] **MCP-01**: Runtime can serve MCP requests over STDIO as the primary integration mode.
 - [ ] **MCP-02**: MCP tools return structured machine-readable payloads with freshness metadata and cache-versus-refresh status.
 - [ ] **MCP-03**: MCP surface includes repository map, symbol lookup, structure lookup, context block, token tree, refresh, pack, and health capabilities.
 - [ ] **MCP-04**: MCP handlers enforce bounded payload defaults and return transparent actionable failures.
@@ -121,7 +121,7 @@
 | CTX-04 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Complete |
 | CTX-05 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Complete |
 | CTX-06 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Complete |
-| MCP-01 | Phase 5 - MCP Serving and Integration Contracts | Pending |
+| MCP-01 | Phase 5 - MCP Serving and Integration Contracts | Complete |
 | MCP-02 | Phase 5 - MCP Serving and Integration Contracts | Pending |
 | MCP-03 | Phase 5 - MCP Serving and Integration Contracts | Pending |
 | MCP-04 | Phase 5 - MCP Serving and Integration Contracts | Pending |
@@ -139,4 +139,4 @@
 
 ---
 *Requirements defined: 2026-03-14*
-*Last updated: 2026-03-14 after roadmap traceability mapping*
+*Last updated: 2026-03-15 after completing plan 05-01*
