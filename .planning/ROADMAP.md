@@ -118,16 +118,47 @@
 - Recovery and diagnostics flows make degraded parser, storage, and refresh states visible without requiring database inspection.
 
 **Plan progress:**
-- Completed: `06-01`, `06-02`, `06-03`, `06-04`
-- Remaining: `06-05`
-- Summary coverage: 4 of 5 Phase 6 plans completed
+- Completed: `06-01`, `06-02`, `06-03`, `06-04`, `06-05`
+- Remaining: none
+- Summary coverage: 5 of 5 Phase 6 plans completed
+
+## Phase 7: Doctor Health Semantics and Milestone State Repair
+
+**Goal:** Close the Phase 6 audit regression by making doctor treat absent watch state as optional while bringing milestone planning artifacts back into sync with executed work.
+
+**Why now:** The milestone audit found a real end-to-end product bug in the operator diagnostics path. That regression blocks milestone closure and should be fixed before verification backfill.
+
+**Mapped gap-closure requirements:** CLI-05, OPS-01, OPS-05
+
+**Success criteria:**
+- `optimusctx doctor` reports watch as absent or inactive without downgrading overall repository health when the repo is otherwise healthy.
+- The flow `optimusctx init` -> `optimusctx refresh` -> `optimusctx doctor` passes on a healthy repo with no watch process.
+- Planning artifacts (`ROADMAP.md`, `REQUIREMENTS.md`, `STATE.md`) reflect actual Phase 6 completion and milestone-audit follow-up state.
+
+**Gap closure:** Closes the audit's Phase 6 doctor/watch integration and healthy-repo flow gaps.
+
+## Phase 8: Milestone Verification Backfill and Closure Evidence
+
+**Goal:** Backfill milestone-grade verification evidence for completed Phases 2, 5, and 6 so all v1 requirements are backed by current verification files rather than only plan summaries.
+
+**Why now:** The milestone audit cannot pass while completed phases lack `VERIFICATION.md`, even when summaries and tests exist.
+
+**Mapped gap-closure requirements:** REFR-01, REFR-02, REFR-03, REFR-04, REFR-05, CLI-02, MCP-01, MCP-02, MCP-03, MCP-04, OPS-02, OPS-03, OPS-04
+
+**Success criteria:**
+- Phases 2, 5, and 6 each have current `VERIFICATION.md` evidence tied to implementation and test results.
+- Requirement traceability and verification evidence agree for all v1 requirements.
+- Milestone audit can re-run without verification-file blockers.
+
+**Gap closure:** Closes the audit's missing-verification blockers for completed phases.
 
 ## Requirement Coverage
 
 | Phase | Requirement count | Requirements |
 |-------|-------------------|--------------|
 | Phase 1 | 8 | CLI-01, CLI-03, CLI-04, REPO-01, REPO-02, REPO-03, REPO-04, REPO-05 |
-| Phase 2 | 5 | 7/8 | In Progress|  | 5 | EXTR-01, EXTR-02, EXTR-03, EXTR-04, EXTR-05 |
+| Phase 2 | 5 | REFR-01, REFR-02, REFR-03, REFR-04, REFR-05 |
+| Phase 3 | 5 | EXTR-01, EXTR-02, EXTR-03, EXTR-04, EXTR-05 |
 | Phase 4 | 6 | CTX-01, CTX-02, CTX-03, CTX-04, CTX-05, CTX-06 |
 | Phase 5 | 5 | CLI-02, MCP-01, MCP-02, MCP-03, MCP-04 |
 | Phase 6 | 6 | CLI-05, OPS-01, OPS-02, OPS-03, OPS-04, OPS-05 |
@@ -138,6 +169,8 @@
 - Unmapped v1 requirements: 0
 - Multi-mapped v1 requirements: 0
 
+Gap-closure phases 07 and 08 intentionally revisit already-mapped v1 requirements; authoritative reassignment for closure work lives in [REQUIREMENTS.md](/home/nico/projects/optimusctx/.planning/REQUIREMENTS.md).
+
 ## Phase Order Rationale
 
 1. Phase 1 establishes repository identity, state layout, and storage contracts.
@@ -146,6 +179,8 @@
 4. Phase 4 exposes exact-first query and context products from those persisted artifacts.
 5. Phase 5 freezes the MCP-facing contract only after the underlying semantics are stable.
 6. Phase 6 adds watch, export, and operator hardening without using them to compensate for missing correctness.
+7. Phase 7 closes the audit-discovered doctor/watch regression and restores planning-state accuracy before milestone closure work continues.
+8. Phase 8 backfills milestone-grade verification evidence so the archive decision is based on current proof, not only execution summaries.
 
 ---
-*Last updated: 2026-03-15 after completing plan 06-04*
+*Last updated: 2026-03-15 after planning gap closure phases 07-08*

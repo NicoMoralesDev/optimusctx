@@ -11,7 +11,7 @@
 - [x] **CLI-02**: User can optionally register MCP configuration for supported clients during install, with explicit consent.
 - [x] **CLI-03**: User can run `optimusctx init` in a repository and create the local project state directory successfully.
 - [x] **CLI-04**: User can run `optimusctx snippet` and receive a manual-copy integration snippet without any file being modified automatically.
-- [x] **CLI-05**: User can run `optimusctx doctor` and receive actionable installation, repository, state, and MCP diagnostics.
+- [ ] **CLI-05**: User can run `optimusctx doctor` and receive actionable installation, repository, state, and MCP diagnostics.
 
 ### Repository Discovery and State
 
@@ -55,11 +55,11 @@
 
 ### Watch, Export, and Operations
 
-- [x] **OPS-01**: User can optionally run watch mode to keep the index fresh in the background without it being required for normal use.
+- [ ] **OPS-01**: User can optionally run watch mode to keep the index fresh in the background without it being required for normal use.
 - [x] **OPS-02**: Watch mode uses the same incremental refresh pipeline as manual refresh paths.
 - [x] **OPS-03**: User can export a compact repository pack for offline or non-MCP workflows.
 - [x] **OPS-04**: Pack export can fit output to a target budget using include/exclude rules.
-- [x] **OPS-05**: Doctor output reports repository root detection, index freshness, watch status, storage health, parsing failures, and top token-cost paths.
+- [ ] **OPS-05**: Doctor output reports repository root detection, index freshness, watch status, storage health, parsing failures, and top token-cost paths.
 
 ## v1.1 Requirements
 
@@ -96,20 +96,20 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | CLI-01 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
-| CLI-02 | Phase 5 - MCP Serving and Integration Contracts | Complete |
+| CLI-02 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
 | CLI-03 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | CLI-04 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
-| CLI-05 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Complete |
+| CLI-05 | Phase 7 - Doctor Health Semantics and Milestone State Repair | Pending |
 | REPO-01 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | REPO-02 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | REPO-03 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | REPO-04 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | REPO-05 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
-| REFR-01 | Phase 2 - Incremental Refresh and Freshness Model | Complete |
-| REFR-02 | Phase 2 - Incremental Refresh and Freshness Model | Complete |
-| REFR-03 | Phase 2 - Incremental Refresh and Freshness Model | Complete |
-| REFR-04 | Phase 2 - Incremental Refresh and Freshness Model | Complete |
-| REFR-05 | Phase 2 - Incremental Refresh and Freshness Model | Complete |
+| REFR-01 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
+| REFR-02 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
+| REFR-03 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
+| REFR-04 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
+| REFR-05 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
 | EXTR-01 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
 | EXTR-02 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
 | EXTR-03 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
@@ -121,15 +121,15 @@
 | CTX-04 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Complete |
 | CTX-05 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Complete |
 | CTX-06 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Complete |
-| MCP-01 | Phase 5 - MCP Serving and Integration Contracts | Complete |
-| MCP-02 | Phase 5 - MCP Serving and Integration Contracts | Complete |
-| MCP-03 | Phase 5 - MCP Serving and Integration Contracts | Complete |
-| MCP-04 | Phase 5 - MCP Serving and Integration Contracts | Complete |
-| OPS-01 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Complete |
-| OPS-02 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Complete |
-| OPS-03 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Complete |
-| OPS-04 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Complete |
-| OPS-05 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Complete |
+| MCP-01 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
+| MCP-02 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
+| MCP-03 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
+| MCP-04 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
+| OPS-01 | Phase 7 - Doctor Health Semantics and Milestone State Repair | Pending |
+| OPS-02 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
+| OPS-03 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
+| OPS-04 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
+| OPS-05 | Phase 7 - Doctor Health Semantics and Milestone State Repair | Pending |
 
 **Coverage:**
 - v1 requirements: 35 total
@@ -139,4 +139,4 @@
 
 ---
 *Requirements defined: 2026-03-14*
-*Last updated: 2026-03-15 after completing plan 05-01*
+*Last updated: 2026-03-15 after planning gap closure phases 07-08*
