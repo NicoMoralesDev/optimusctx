@@ -33,8 +33,8 @@ func TestSnippetCommandPrintsUpdatedMCPContract(t *testing.T) {
 		if !ok {
 			t.Fatalf("snippet config missing %q entry: %+v", repository.DefaultMCPServerName, document.MCPServers)
 		}
-		if command.Command != "/absolute/path/to/optimusctx" {
-			t.Fatalf("command = %q, want placeholder binary path", command.Command)
+		if command.Command != repository.DefaultServeCommandName {
+			t.Fatalf("command = %q, want canonical binary path", command.Command)
 		}
 		if strings.Join(command.Args, " ") != "mcp serve" {
 			t.Fatalf("args = %v, want [mcp serve]", command.Args)
@@ -45,12 +45,18 @@ func TestSnippetCommandPrintsUpdatedMCPContract(t *testing.T) {
 func TestInstallRegistrationDryRun(t *testing.T) {
 	configPath := filepath.Join(t.TempDir(), "Claude", "claude_desktop_config.json")
 	var stdout bytes.Buffer
+	previousExecutablePath := installExecutablePath
+	installExecutablePath = func() (string, error) {
+		return "/tmp/runtime/optimusctx", nil
+	}
+	defer func() {
+		installExecutablePath = previousExecutablePath
+	}()
 
 	if err := NewRootCommand().Execute([]string{
 		"install",
 		"--client", "claude-desktop",
 		"--config", configPath,
-		"--binary", "/tmp/optimusctx",
 	}, &stdout); err != nil {
 		t.Fatalf("Execute(install dry-run) error = %v", err)
 	}
@@ -71,16 +77,16 @@ func TestInstallRegistrationDryRun(t *testing.T) {
 
 	document := extractConfigDocument(t, output)
 	command := document.MCPServers[repository.DefaultMCPServerName]
-	if command.Command != "/tmp/optimusctx" {
-		t.Fatalf("command = %q, want /tmp/optimusctx", command.Command)
+	if command.Command != repository.DefaultServeCommandName {
+		t.Fatalf("command = %q, want %q", command.Command, repository.DefaultServeCommandName)
 	}
 	if strings.Join(command.Args, " ") != "mcp serve" {
 		t.Fatalf("args = %v, want [mcp serve]", command.Args)
 	}
 
 	snippetDocument := extractConfigDocument(t, appSnippetOutput(t))
-	if got, want := document.MCPServers[repository.DefaultMCPServerName].Args, snippetDocument.MCPServers[repository.DefaultMCPServerName].Args; strings.Join(got, " ") != strings.Join(want, " ") {
-		t.Fatalf("install args = %v, snippet args = %v", got, want)
+	if got, want := document.MCPServers[repository.DefaultMCPServerName], snippetDocument.MCPServers[repository.DefaultMCPServerName]; got.Command != want.Command || strings.Join(got.Args, " ") != strings.Join(want.Args, " ") {
+		t.Fatalf("install command = %+v, snippet command = %+v", got, want)
 	}
 }
 
@@ -127,6 +133,63 @@ func TestInstallRegistrationConsent(t *testing.T) {
 	}
 	if command.Command != "/tmp/optimusctx" {
 		t.Fatalf("command = %q, want /tmp/optimusctx", command.Command)
+	}
+}
+
+func TestInstallNormalizesEphemeralExecutablePath(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "Claude", "claude_desktop_config.json")
+	var stdout bytes.Buffer
+	previousExecutablePath := installExecutablePath
+	installExecutablePath = func() (string, error) {
+		return "/home/nico/.cache/go-build/ab/cdef/optimusctx", nil
+	}
+	defer func() {
+		installExecutablePath = previousExecutablePath
+	}()
+
+	if err := NewRootCommand().Execute([]string{
+		"install",
+		"--client", "claude-desktop",
+		"--config", configPath,
+	}, &stdout); err != nil {
+		t.Fatalf("Execute(install dry-run) error = %v", err)
+	}
+
+	document := extractConfigDocument(t, stdout.String())
+	command := document.MCPServers[repository.DefaultMCPServerName]
+	if command.Command != repository.DefaultServeCommandName {
+		t.Fatalf("command = %q, want %q", command.Command, repository.DefaultServeCommandName)
+	}
+}
+
+func TestInstallWriteNormalizesEphemeralExecutablePath(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "Claude", "claude_desktop_config.json")
+	var stdout bytes.Buffer
+	previousExecutablePath := installExecutablePath
+	installExecutablePath = func() (string, error) {
+		return "/home/nico/.cache/go-build/ab/cdef/optimusctx", nil
+	}
+	defer func() {
+		installExecutablePath = previousExecutablePath
+	}()
+
+	if err := NewRootCommand().Execute([]string{
+		"install",
+		"--client", "claude-desktop",
+		"--config", configPath,
+		"--write",
+	}, &stdout); err != nil {
+		t.Fatalf("Execute(install --write) error = %v", err)
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile(config) error = %v", err)
+	}
+	document := extractConfigDocument(t, string(content))
+	command := document.MCPServers[repository.DefaultMCPServerName]
+	if command.Command != repository.DefaultServeCommandName {
+		t.Fatalf("command = %q, want %q", command.Command, repository.DefaultServeCommandName)
 	}
 }
 

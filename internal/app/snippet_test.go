@@ -13,7 +13,7 @@ func TestSnippetGeneratorRender(t *testing.T) {
 		"OptimusCtx now serves MCP over `optimusctx mcp serve`.",
 		"optimusctx install --client claude-desktop",
 		"\"mcpServers\"",
-		"\"command\": \"/absolute/path/to/optimusctx\"",
+		"\"command\": \"optimusctx\"",
 		"\"args\": [",
 		"\"mcp\"",
 		"\"serve\"",
@@ -27,5 +27,16 @@ func TestSnippetGeneratorRender(t *testing.T) {
 
 	if !strings.HasSuffix(output, "\n") {
 		t.Fatalf("Render() should end with newline: %q", output)
+	}
+}
+
+func TestSnippetInstallCommandAlignment(t *testing.T) {
+	output := NewSnippetGenerator().Render()
+
+	if strings.Contains(output, "/absolute/path/to/optimusctx") {
+		t.Fatalf("Render() output should not contain placeholder path: %q", output)
+	}
+	if !strings.Contains(output, "\"command\": \"optimusctx\"") {
+		t.Fatalf("Render() output missing canonical command: %q", output)
 	}
 }
