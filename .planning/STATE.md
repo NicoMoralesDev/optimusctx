@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 4
 current_phase_name: layered context, exact lookup, and budget analysis
-current_plan: 5
-status: executing
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-03-15T01:35:55.030Z"
+current_plan: Complete
+status: complete
+stopped_at: Completed 04-06-PLAN.md
+last_updated: "2026-03-15T01:47:55.135Z"
 last_activity: 2026-03-15
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 20
-  completed_plans: 18
-  percent: 90
+  completed_plans: 20
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute
+**Status:** Phase 4 execution complete
 **Current Phase:** 4
 **Current Phase Name:** layered context, exact lookup, and budget analysis
 **Total Phases:** 6
-**Current Plan:** 5
+**Current Plan:** Complete
 **Total Plans in Phase:** 6
-**Progress:** [█████████░] 90%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-15
-**Last Activity Description:** Completed 04-02-PLAN.md and advanced Phase 4 execution
+**Last Activity Description:** Completed 04-06-PLAN.md and finished Phase 4 execution
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1 foundation
 - Active phase: Phase 4 - Layered Context, Exact Lookup, and Budget Analysis
-- Next planning action: execute 04-03-PLAN.md
+- Next planning action: verify Phase 4 execution or begin Phase 5 planning/execution
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
 ## Recent Decisions
@@ -104,6 +104,14 @@ progress:
 - Verification for `04-01` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go cache settings for targeted L0 repository-summary coverage and the full Go test suite.
 - Plan `04-02` is complete with bounded L1 candidate-file models, persisted SQLite structural context queries, and an app-layer L1 repository context service.
 - Verification for `04-02` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted L1 coverage and the full Go test suite.
+- Plan `04-03` is complete with exact persisted symbol lookup, stable-key anchors, and an app-layer lookup service.
+- Verification for `04-03` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted lookup coverage and the full Go test suite.
+- Plan `04-04` is complete with bounded structural lookup, SQL-enforced validation, and deterministic structural matches on the shared lookup boundary.
+- Verification for `04-04` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted structural-lookup coverage and the full Go test suite.
+- Plan `04-05` is complete with exact L2 context blocks, stable-key or line-range targeting, and explicit missing/stale-file failures.
+- Verification for `04-05` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted context-block coverage and the full Go test suite.
+- Plan `04-06` is complete with deterministic file and directory budget hotspots plus a shared app-layer budget analysis service.
+- Verification for `04-06` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted budget-analysis coverage and the full Go test suite.
 
 ## Performance Metrics
 
@@ -122,6 +130,8 @@ progress:
 | Phase 04 P02 | 10min | 3 tasks | 5 files |
 | Phase 04 P03 | 8min | 3 tasks | 5 files |
 | Phase 04 P04 | 12min | 3 tasks | 5 files |
+| Phase 04 P05 | 12min | 3 tasks | 4 files |
+| Phase 04 P06 | 14min | 3 tasks | 5 files |
 
 ## Decisions Made
 
@@ -161,6 +171,8 @@ progress:
 - [Phase 04]: Structural lookup requires kind plus at least one narrowing selector so the query surface stays exact and bounded.
 - [Phase 04]: Structural filters execute entirely in SQLite over persisted symbol rows with deterministic ordering by path, ordinal, and stable key.
 - [Phase 04]: Targeted context request and result models stay out of 04-04 so L2 context work remains isolated to plan 04-05.
+- [Phase 04]: L2 targeting accepts either a stable symbol key or an explicit line range, but not both at once.
+- [Phase 04]: Budget analysis uses one explicit v1 policy of ceiling(bytes/4) instead of a model-specific tokenizer.
 
 ## Blockers
 
@@ -168,9 +180,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T01:35:55.028Z
-**Stopped At:** Completed 04-04-PLAN.md
+**Last Date:** 2026-03-15T01:47:55.116Z
+**Stopped At:** Completed 04-06-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-15 after completing plan 04-02*
+*Last updated: 2026-03-15 after completing Phase 4 execution*
