@@ -303,6 +303,14 @@ type LayeredContextL0 struct {
 	MajorAreas []LayeredContextMajorAreaSummary
 }
 
+type LayeredContextL1 struct {
+	Repository  LayeredContextEnvelope
+	Identity    LayeredContextRepositoryIdentity
+	Limits      LayeredContextL1LimitMetadata
+	Candidates  []LayeredContextL1CandidateFile
+	Directories []LayeredContextL1DirectorySummary
+}
+
 type LayeredContextRepositoryIdentity struct {
 	RootPath      string
 	DetectionMode string
@@ -328,4 +336,50 @@ type LayeredContextMajorAreaSummary struct {
 	Kind              MajorAreaKind
 	IncludedFileCount int64
 	TotalSizeBytes    int64
+}
+
+type LayeredContextL1LimitMetadata struct {
+	FileLimit          int
+	ReturnedFileCount  int
+	TotalCandidateCount int64
+	FileTruncated      bool
+	PerFileSymbolLimit int
+}
+
+type LayeredContextL1CandidateFile struct {
+	Path                string
+	DirectoryPath       string
+	Language            string
+	CoverageState       ExtractionCoverageState
+	CoverageReason      ExtractionCoverageReason
+	HasCoverageGap      bool
+	SymbolCount         int64
+	TopLevelSymbolCount int64
+	MaxSymbolDepth      int64
+	SourceGeneration    int64
+	Summary             string
+	DirectorySummary    LayeredContextL1DirectorySummary
+	SymbolWindow        LayeredContextL1SymbolWindow
+	Symbols             []LayeredContextL1Symbol
+}
+
+type LayeredContextL1DirectorySummary struct {
+	Path                   string
+	IncludedFileCount      int64
+	IncludedDirectoryCount int64
+	TotalSizeBytes         int64
+	LastRefreshGeneration  int64
+}
+
+type LayeredContextL1SymbolWindow struct {
+	ReturnedCount int
+	TotalCount    int64
+	Truncated     bool
+}
+
+type LayeredContextL1Symbol struct {
+	Kind          string
+	Name          string
+	QualifiedName string
+	Ordinal       int64
 }
