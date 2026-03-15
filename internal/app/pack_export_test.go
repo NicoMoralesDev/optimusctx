@@ -377,6 +377,94 @@ func TestPackExportFitsTargetBudget(t *testing.T) {
 	}
 }
 
+func TestPackExportFilterRules(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "alpha.go"), "package pkg\n\nfunc Alpha() {}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "beta.go"), "package pkg\n\nfunc Beta() {}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "docs", "guide.go"), "package docs\n\nfunc Guide() {}\n")
+
+	refresh := NewRefreshService()
+	if _, err := refresh.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+
+	service := NewPackExportService()
+
+	t.Run("include only docs", func(t *testing.T) {
+		result, err := service.Export(context.Background(), repoRoot, repository.PackExportRequest{
+			PackRequest: repository.PackRequest{
+				IncludeStructuralContext: true,
+			},
+			Policy: repository.PackExportPolicy{
+				IncludePaths: []string{"docs"},
+			},
+		})
+		if err != nil {
+			t.Fatalf("Export() error = %v", err)
+		}
+		if got := result.Artifact.Bundle.StructuralContext; got == nil || len(got.Candidates) != 1 || got.Candidates[0].Path != "docs/guide.go" {
+			t.Fatalf("StructuralContext = %+v, want only docs/guide.go", got)
+		}
+		record := findPackExportSectionRecord(t, result.Artifact.Manifest.IncludedSections, repository.PackExportSectionStructuralContext)
+		if len(record.DroppedPaths) != 2 || record.DroppedPaths[0] != "pkg/alpha.go" || record.DroppedPaths[1] != "pkg/beta.go" {
+			t.Fatalf("DroppedPaths = %+v, want pkg files omitted", record.DroppedPaths)
+		}
+	})
+
+	t.Run("exclude docs", func(t *testing.T) {
+		result, err := service.Export(context.Background(), repoRoot, repository.PackExportRequest{
+			PackRequest: repository.PackRequest{
+				IncludeStructuralContext: true,
+			},
+			Policy: repository.PackExportPolicy{
+				ExcludePaths: []string{"docs"},
+			},
+		})
+		if err != nil {
+			t.Fatalf("Export() error = %v", err)
+		}
+		record := findPackExportSectionRecord(t, result.Artifact.Manifest.IncludedSections, repository.PackExportSectionStructuralContext)
+		if len(record.KeptPaths) != 2 || record.KeptPaths[0] != "pkg/alpha.go" || record.KeptPaths[1] != "pkg/beta.go" {
+			t.Fatalf("KeptPaths = %+v, want pkg files", record.KeptPaths)
+		}
+		if len(record.OmittedPaths) != 1 || record.OmittedPaths[0].Path != "docs/guide.go" || record.OmittedPaths[0].Reason != "matched exclude paths" {
+			t.Fatalf("OmittedPaths = %+v, want docs/guide.go excluded", record.OmittedPaths)
+		}
+	})
+
+	t.Run("mixed include and exclude", func(t *testing.T) {
+		result, err := service.Export(context.Background(), repoRoot, repository.PackExportRequest{
+			PackRequest: repository.PackRequest{
+				IncludeStructuralContext: true,
+			},
+			Policy: repository.PackExportPolicy{
+				IncludePaths: []string{"pkg"},
+				ExcludePaths: []string{"pkg/beta.go"},
+			},
+		})
+		if err != nil {
+			t.Fatalf("Export() error = %v", err)
+		}
+		record := findPackExportSectionRecord(t, result.Artifact.Manifest.IncludedSections, repository.PackExportSectionStructuralContext)
+		if len(record.KeptPaths) != 1 || record.KeptPaths[0] != "pkg/alpha.go" {
+			t.Fatalf("KeptPaths = %+v, want pkg/alpha.go", record.KeptPaths)
+		}
+		if len(record.OmittedPaths) != 2 {
+			t.Fatalf("OmittedPaths = %+v, want two explicit omissions", record.OmittedPaths)
+		}
+		if record.OmittedPaths[0].Path != "docs/guide.go" || record.OmittedPaths[0].Reason != "not matched by include paths" {
+			t.Fatalf("first omission = %+v, want docs omitted by include rules", record.OmittedPaths[0])
+		}
+		if record.OmittedPaths[1].Path != "pkg/beta.go" || record.OmittedPaths[1].Reason != "matched exclude paths" {
+			t.Fatalf("second omission = %+v, want pkg/beta.go omitted by exclude rules", record.OmittedPaths[1])
+		}
+	})
+}
+
 func findPackExportSectionRecord(t *testing.T, records []repository.PackExportSectionRecord, kind repository.PackExportSectionKind) repository.PackExportSectionRecord {
 	t.Helper()
 	for _, record := range records {
