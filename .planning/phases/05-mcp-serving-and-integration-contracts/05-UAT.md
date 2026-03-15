@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 05-mcp-serving-and-integration-contracts
 source:
   - 05-01-SUMMARY.md
@@ -69,12 +69,36 @@ skipped: 0
   reason: "User reported: nico@NicoAsus:~/projects/optimusctx$ go run ./cmd/optimusctx mcp serve ejecute eso pero quedo el cursor abajo como si estuviese corriendo algun proceso pero sin ningun tipo de feedback"
   severity: major
   test: 1
-  artifacts: []
-  missing: []
+  root_cause: "`mcp serve` is a pure stdio transport with no readiness signal; the CLI immediately blocks in the MCP frame loop, and tests currently codify silent startup as the contract."
+  artifacts:
+    - path: "internal/cli/mcp.go"
+      issue: "Delegates directly into stdio serving without any readiness/help signal for manual runs."
+    - path: "internal/mcp/server.go"
+      issue: "Blocks on the first inbound frame and emits nothing until a client sends MCP traffic."
+    - path: "internal/cli/mcp_test.go"
+      issue: "Current tests lock in empty startup output instead of asserting a visible readiness affordance."
+  missing:
+    - "Add a startup/readiness affordance that does not corrupt MCP stdout framing, likely via stderr."
+    - "Document or encode the manual-run behavior so a healthy idle server is distinguishable from a hung process."
+    - "Add command/integration coverage for the chosen readiness behavior."
+  debug_session: .planning/debug/mcp-serve-silent-startup.md
 - truth: "`optimusctx install` preview and `optimusctx snippet` should present a consistent, reusable MCP registration contract without placeholder or ephemeral executable paths."
   status: failed
   reason: "User reported: snippet prints `/absolute/path/to/optimusctx` while `go run ./cmd/optimusctx install --client claude-desktop` previews a Go build cache binary path under `/home/nico/.cache/go-build/.../optimusctx`."
   severity: major
   test: 7
-  artifacts: []
-  missing: []
+  root_cause: "`snippet` hardcodes a placeholder binary path while `install` defaults to `os.Executable()`, which under `go run` resolves to an ephemeral Go build-cache binary; tests currently only align args, not the executable path contract."
+  artifacts:
+    - path: "internal/app/snippet.go"
+      issue: "Builds the MCP config with a placeholder executable path instead of a stable reusable contract."
+    - path: "internal/cli/install.go"
+      issue: "Defaults preview/write output to `os.Executable()`, which becomes a cache path under `go run`."
+    - path: "internal/app/install.go"
+      issue: "Renders whatever binary path it receives without normalizing unstable runtime-derived paths."
+    - path: "internal/cli/install_test.go"
+      issue: "Only asserts arg alignment with snippet, not command-path alignment or reusability."
+  missing:
+    - "Define one canonical executable-path policy for snippet and install preview output."
+    - "Normalize or reject ephemeral `go run` executable paths when generating reusable client config."
+    - "Add tests that assert command-path alignment and stable preview semantics."
+  debug_session: .planning/debug/install-snippet-path-mismatch.md
