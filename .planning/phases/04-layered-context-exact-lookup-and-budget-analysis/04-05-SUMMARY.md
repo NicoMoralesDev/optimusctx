@@ -55,6 +55,7 @@ Each task was committed atomically:
 1. **Task 1: Define targeted-context request and result models** - `8fb21c7` (feat)
 2. **Task 2: Implement the L2 context block service with injected file reads** - `52f172f` (feat)
 3. **Task 3: Add fixture coverage for bounds, anchors, and missing-file behavior** - `2bd07d2` (feat)
+4. **Follow-up stabilization: keep the verified line-window surface after concurrent recovery edits** - `2fd443f` (fix)
 
 ## Files Created/Modified
 
@@ -71,7 +72,14 @@ Each task was committed atomically:
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+### Auto-fixed Issues
+
+**1. [Rule 3 - Blocking issue] Concurrent recovery edits changed the just-verified L2 API shape**
+- **Found during:** Phase close-out verification
+- **Issue:** A second uncommitted edit rewrote the targeted-context request/result shape after the `04-05` task commits, leaving the worktree inconsistent with the verified tests and summary contract.
+- **Fix:** Restored the passing exact line-window surface, reran the targeted and full Go test suites, and committed the stabilization explicitly.
+- **Files modified:** `internal/repository/metadata.go`, `internal/app/lookup.go`, `internal/app/context_block.go`, `internal/app/context_block_test.go`
+- **Commit:** `2fd443f`
 
 ## Issues Encountered
 
@@ -93,6 +101,7 @@ None - no external service configuration required.
 - Found commit `8fb21c7`
 - Found commit `52f172f`
 - Found commit `2bd07d2`
+- Found commit `2fd443f`
 
 ---
 *Phase: 04-layered-context-exact-lookup-and-budget-analysis*
