@@ -8,7 +8,7 @@
 ### Installation and CLI
 
 - [x] **CLI-01**: User can install the OptimusCtx runtime locally through a bootstrap path without modifying repository contents.
-- [ ] **CLI-02**: User can optionally register MCP configuration for supported clients during install, with explicit consent.
+- [x] **CLI-02**: User can optionally register MCP configuration for supported clients during install, with explicit consent.
 - [x] **CLI-03**: User can run `optimusctx init` in a repository and create the local project state directory successfully.
 - [x] **CLI-04**: User can run `optimusctx snippet` and receive a manual-copy integration snippet without any file being modified automatically.
 - [ ] **CLI-05**: User can run `optimusctx doctor` and receive actionable installation, repository, state, and MCP diagnostics.
@@ -96,7 +96,7 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | CLI-01 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
-| CLI-02 | Phase 5 - MCP Serving and Integration Contracts | Pending |
+| CLI-02 | Phase 5 - MCP Serving and Integration Contracts | Complete |
 | CLI-03 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | CLI-04 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | CLI-05 | Phase 6 - Watch Mode, Pack Export, and Operational Diagnostics | Pending |

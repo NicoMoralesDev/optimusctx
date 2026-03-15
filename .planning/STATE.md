@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 5
 current_phase_name: mcp serving and integration contracts
 current_plan: 6
-status: executing
-stopped_at: Completed 05-05-PLAN.md
-last_updated: "2026-03-15T15:23:27.022Z"
+status: verifying
+stopped_at: Completed 05-06-PLAN.md
+last_updated: "2026-03-15T15:37:27.852Z"
 last_activity: 2026-03-15
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 26
-  completed_plans: 25
+  completed_plans: 26
   percent: 96
 ---
 
@@ -23,7 +23,7 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 **Current Phase:** 5
 **Current Phase Name:** mcp serving and integration contracts
 **Total Phases:** 6
@@ -196,6 +196,9 @@ progress:
 - [Phase 05]: Pack requests normalize onto explicit section, lookup, and target-window bounds while reusing LayeredContext, Lookup, and TargetedContext services rather than introducing a separate query engine.
 - [Phase 05]: Refresh, token tree, pack, and health reuse the shared QueryEnvelope contract; refresh reports cache status as refresh_attempted.
 - [Phase 05]: Server-boundary verification uses real stdio framing and repository-backed tool calls instead of handler-only assertions.
+- [Phase 05]: Supported-client registration is adapter-based and preview-first, with writes allowed only behind --write.
+- [Phase 05]: Snippet and install registration share the same rendered MCP JSON contract so manual and automated guidance cannot drift.
+- [Phase 05]: Claude Desktop is the initial supported client, with explicit --config override support for hermetic tests and transparent platform behavior.
 
 ## Blockers
 
@@ -203,8 +206,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T15:23:10.768Z
-**Stopped At:** Completed 05-05-PLAN.md
+**Last Date:** 2026-03-15T15:37:17.971Z
+**Stopped At:** Completed 05-06-PLAN.md
 **Resume File:** None
 
 ---
