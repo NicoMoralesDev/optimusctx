@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 7
-current_phase_name: doctor health semantics and milestone state repair
-current_plan: 2
-status: verifying
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-03-15T19:50:33.748Z"
+current_phase: 8
+current_phase_name: milestone verification backfill and closure evidence
+current_plan: 1
+status: in_progress
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-03-15T22:10:58.396Z"
 last_activity: 2026-03-15
 progress:
   total_phases: 8
   completed_phases: 7
-  total_plans: 35
-  completed_plans: 35
-  percent: 100
+  total_plans: 39
+  completed_plans: 36
+  percent: 92
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase complete — ready for verification
-**Current Phase:** 7
-**Current Phase Name:** doctor health semantics and milestone state repair
+**Status:** Phase in progress
+**Current Phase:** 8
+**Current Phase Name:** milestone verification backfill and closure evidence
 **Total Phases:** 8
-**Current Plan:** 2
-**Total Plans in Phase:** 2
-**Progress:** [██████████] 100%
+**Current Plan:** 1
+**Total Plans in Phase:** 4
+**Progress:** [█████████░] 92%
 **Last Activity:** 2026-03-15
-**Last Activity Description:** Completed 07-02 planning-state repair and Phase 7 artifact alignment
+**Last Activity Description:** Completed 08-01 evidence inventory and verification contract
 
 ## Project Memory
 
@@ -44,9 +44,9 @@ progress:
 ## Current Planning Context
 
 - Active milestone: v1 foundation
-- Active phase: Phase 7 - Doctor Health Semantics and Milestone State Repair
-- Next planning action: begin Phase 8 verification backfill and closure evidence work
-- Phase 7 scope: plan 01 completed the doctor/watch semantics repair and plan 02 completed the planning-state repair.
+- Active phase: Phase 8 - Milestone Verification Backfill and Closure Evidence
+- Next planning action: execute Phase 8 plan 02 and draft `02-VERIFICATION.md` from the approved evidence inventory.
+- Phase 8 scope: plan 01 completed the shared evidence inventory, verification template, and command-truth contract for downstream backfill work.
 - Historical audit files remain unchanged evidence; current source-of-truth updates are limited to `STATE.md`, `ROADMAP.md`, and `REQUIREMENTS.md`.
 - Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
 
@@ -235,6 +235,9 @@ progress:
 - [Phase 07]: CLI wording translates absent watch into optional-background-watch guidance instead of implying repository failure.
 - [Phase 07]: Task 2 stayed footer-only because ROADMAP.md and REQUIREMENTS.md already had correct Phase 7 and Phase 8 ownership.
 - [Phase 07]: Historical milestone audit files remain immutable evidence; only current planning sources of truth were updated in this plan.
+- [Phase 08]: Phase 06 verification backfill must exclude CLI-05, OPS-01, and OPS-05 because those doctor/watch requirements moved to Phase 7.
+- [Phase 08]: Downstream Phase 8 verification files will reuse the Phase 03 and Phase 04 verification structure instead of inventing a new artifact format.
+- [Phase 08]: The canonical current verification commands use /usr/local/go/bin/go with GOCACHE and GOMODCACHE rooted in /tmp.
 
 ## Blockers
 
@@ -242,9 +245,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T19:50:33.744Z
-**Stopped At:** Completed 07-02-PLAN.md
+**Last Date:** 2026-03-15T22:10:58.392Z
+**Stopped At:** Completed 08-01-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-15 after completing Phase 07 plan 02*
+*Last updated: 2026-03-15 after completing Phase 08 plan 01*

@@ -225,7 +225,7 @@ Each task was committed atomically:
 
 1. **Task 1: Build the Phase 8 requirement-to-evidence inventory** - `fa7ffde` (feat)
 2. **Task 2: Lock the verification document template and current command truth** - `3b0e2fe` (feat)
-3. **Task 3: Publish the inventory summary for downstream plans** - pending
+3. **Task 3: Publish the inventory summary for downstream plans** - `86e3a68` (feat)
 
 ## Files Created/Modified
 - `.planning/phases/08-milestone-verification-backfill-and-closure-evidence/08-01-SUMMARY.md` - Phase 8 inventory, verification contract, downstream evidence matrix, and plan execution record.
@@ -261,6 +261,7 @@ PASSED
 - Verified the summary explicitly excludes the Phase 7-owned requirements `CLI-05`, `OPS-01`, and `OPS-05` from later Phase 06 verification.
 - Verified Task 1 commit `fa7ffde` exists in git history.
 - Verified Task 2 commit `3b0e2fe` exists in git history.
+- Verified Task 3 commit `86e3a68` exists in git history.
 
 ---
 *Phase: 08-milestone-verification-backfill-and-closure-evidence*

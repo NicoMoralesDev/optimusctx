@@ -96,7 +96,7 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | CLI-01 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
-| CLI-02 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
+| CLI-02 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Complete |
 | CLI-03 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | CLI-04 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | CLI-05 | Phase 7 - Doctor Health Semantics and Milestone State Repair | Complete |
@@ -105,11 +105,11 @@
 | REPO-03 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | REPO-04 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
 | REPO-05 | Phase 1 - Bootstrap, Repository Discovery, and Persistent State | Complete |
-| REFR-01 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
-| REFR-02 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
-| REFR-03 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
-| REFR-04 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
-| REFR-05 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
+| REFR-01 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Complete |
+| REFR-02 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Complete |
+| REFR-03 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Complete |
+| REFR-04 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Complete |
+| REFR-05 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Complete |
 | EXTR-01 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
 | EXTR-02 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
 | EXTR-03 | Phase 3 - Structural Extraction and Repository Artifact Model | Complete |
@@ -121,14 +121,14 @@
 | CTX-04 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Complete |
 | CTX-05 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Complete |
 | CTX-06 | Phase 4 - Layered Context, Exact Lookup, and Budget Analysis | Complete |
-| MCP-01 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
-| MCP-02 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
-| MCP-03 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
-| MCP-04 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
+| MCP-01 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Complete |
+| MCP-02 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Complete |
+| MCP-03 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Complete |
+| MCP-04 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Complete |
 | OPS-01 | Phase 7 - Doctor Health Semantics and Milestone State Repair | Complete |
-| OPS-02 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
-| OPS-03 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
-| OPS-04 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Pending |
+| OPS-02 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Complete |
+| OPS-03 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Complete |
+| OPS-04 | Phase 8 - Milestone Verification Backfill and Closure Evidence | Complete |
 | OPS-05 | Phase 7 - Doctor Health Semantics and Milestone State Repair | Complete |
 
 **Coverage:**
@@ -139,4 +139,4 @@
 
 ---
 *Requirements defined: 2026-03-14*
-*Last updated: 2026-03-15 after completing Phase 07 plan 02*
+*Last updated: 2026-03-15 after completing Phase 08 plan 01*

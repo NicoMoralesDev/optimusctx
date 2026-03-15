@@ -188,4 +188,4 @@ Gap-closure phases 07 and 08 intentionally revisit already-mapped v1 requirement
 8. Phase 8 backfills milestone-grade verification evidence so the archive decision is based on current proof, not only execution summaries.
 
 ---
-*Last updated: 2026-03-15 after completing Phase 07 plan 02*
+*Last updated: 2026-03-15 after completing Phase 08 plan 01*
