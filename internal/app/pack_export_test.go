@@ -242,3 +242,85 @@ func TestPackExportWritesPortableArtifact(t *testing.T) {
 		}
 	})
 }
+
+func TestPackExportBudgetPolicy(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "alpha.go"), "package pkg\n\nfunc Alpha() {}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "beta.go"), "package pkg\n\nfunc Beta() {}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "docs", "guide.go"), "package docs\n\nfunc Guide() {}\n")
+
+	refresh := NewRefreshService()
+	if _, err := refresh.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+
+	result, err := NewPackExportService().Export(context.Background(), repoRoot, repository.PackExportRequest{
+		PackRequest: repository.PackRequest{
+			IncludeRepositoryContext: true,
+			IncludeStructuralContext: true,
+			SymbolLookups: []repository.SymbolLookupRequest{{
+				Name:  "Alpha",
+				Limit: 4,
+			}},
+		},
+		Policy: repository.PackExportPolicy{
+			IncludePaths:      []string{"pkg"},
+			ExcludePaths:      []string{"pkg/beta.go"},
+			TargetTokenBudget: 1000,
+		},
+		GeneratedAt: "2026-03-15T19:10:00Z",
+		Generator:   "optimusctx test",
+	})
+	if err != nil {
+		t.Fatalf("Export() error = %v", err)
+	}
+
+	manifest := result.Artifact.Manifest
+	if manifest.Policy.EstimatePolicy.Name != "bytes_div_4_ceiling" {
+		t.Fatalf("EstimatePolicy.Name = %q, want bytes_div_4_ceiling", manifest.Policy.EstimatePolicy.Name)
+	}
+	if manifest.Policy.TargetTokenBudget != 1000 {
+		t.Fatalf("TargetTokenBudget = %d, want 1000", manifest.Policy.TargetTokenBudget)
+	}
+	if !manifest.ExportSummary.FitsTargetBudget {
+		t.Fatalf("ExportSummary = %+v, want FitsTargetBudget", manifest.ExportSummary)
+	}
+	if manifest.ExportSummary.EstimatedTokens == 0 || manifest.ExportSummary.EstimatedTokens > manifest.ExportSummary.TargetTokenBudget {
+		t.Fatalf("EstimatedTokens = %d, target = %d", manifest.ExportSummary.EstimatedTokens, manifest.ExportSummary.TargetTokenBudget)
+	}
+
+	if got := result.Artifact.Bundle.StructuralContext; got == nil || len(got.Candidates) != 1 || got.Candidates[0].Path != "pkg/alpha.go" {
+		t.Fatalf("StructuralContext = %+v, want only pkg/alpha.go", got)
+	}
+
+	structuralRecord := findPackExportSectionRecord(t, manifest.IncludedSections, repository.PackExportSectionStructuralContext)
+	if structuralRecord.ItemCount != 1 {
+		t.Fatalf("structural item count = %d, want 1", structuralRecord.ItemCount)
+	}
+	if len(structuralRecord.DroppedPaths) != 2 || structuralRecord.DroppedPaths[0] != "docs/guide.go" || structuralRecord.DroppedPaths[1] != "pkg/beta.go" {
+		t.Fatalf("structural dropped paths = %+v, want docs/guide.go and pkg/beta.go", structuralRecord.DroppedPaths)
+	}
+	if structuralRecord.Omitted {
+		t.Fatalf("structural record = %+v, want included", structuralRecord)
+	}
+
+	repositoryRecord := findPackExportSectionRecord(t, manifest.IncludedSections, repository.PackExportSectionRepositoryContext)
+	if len(repositoryRecord.OmittedPaths) != 1 || repositoryRecord.OmittedPaths[0].Path != "docs" {
+		t.Fatalf("repository omitted paths = %+v, want docs", repositoryRecord.OmittedPaths)
+	}
+}
+
+func findPackExportSectionRecord(t *testing.T, records []repository.PackExportSectionRecord, kind repository.PackExportSectionKind) repository.PackExportSectionRecord {
+	t.Helper()
+	for _, record := range records {
+		if record.Kind == kind {
+			return record
+		}
+	}
+	t.Fatalf("section %q not found", kind)
+	return repository.PackExportSectionRecord{}
+}
