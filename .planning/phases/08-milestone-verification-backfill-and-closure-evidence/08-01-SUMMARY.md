@@ -98,6 +98,94 @@ Downstream implication: `06-VERIFICATION.md` must describe watch-refresh reuse, 
 - Phase 05 evidence should collapse eight summaries into one requirement argument centered on stdio serving, structured query envelopes, bounded failures, and install registration.
 - Phase 06 evidence should separate valid watch/export work from the later doctor semantics repair so the milestone trace remains clean.
 
+## Task 2 Template And Command Contract
+
+### Reusable Verification File Shape
+
+Phase 8 downstream write-ups should reuse the same concise shape already visible in `03-VERIFICATION.md` and `04-VERIFICATION.md`:
+
+1. `Status`
+2. `Scope`
+3. `Inputs Reviewed`
+4. `Verification Summary`
+5. `Requirement Verification`
+6. `Phase Goal Verification`
+7. `Success Criteria Verification`
+8. `Test Outcome`
+9. `Final Verdict`
+
+This template choice is deliberate:
+
+- it is short enough to stay readable at milestone-audit time
+- it anchors every requirement to concrete evidence instead of narrative-only claims
+- it already matches the established verification language in completed phases
+- it leaves room for residual notes without turning the file into another execution summary
+
+### Required Content Rules For Each Downstream Verification File
+
+- State the phase goal and requirement list near the top of the file.
+- Name the planning inputs reviewed, including current `ROADMAP.md`, `REQUIREMENTS.md`, `STATE.md`, the relevant plan summaries, and the phase `VALIDATION.md`.
+- Use one subsection per requirement with `Status: satisfied` or equivalent wording plus direct evidence anchors.
+- Mention specific implementation files, test files, and command groups instead of vague references to "the suite" or "the codebase".
+- End with an explicit verdict for the phase as a whole.
+
+### Current Command Truth
+
+The current verification command truth for Phase 8 is the `/usr/local/go/bin/go` toolchain with Go build caches redirected into `/tmp`:
+
+```bash
+env GOCACHE=/tmp/optimusctx-gocache \
+    GOMODCACHE=/tmp/optimusctx-gomodcache \
+    GOPROXY=off \
+    /usr/local/go/bin/go test ./...
+```
+
+Downstream plans should treat this as the canonical current command family because:
+
+- `08-RESEARCH.md` says the current full suite is green with `/usr/local/go/bin/go`
+- `08-VALIDATION.md` uses `/usr/local/go/bin/go` plus `GOCACHE=/tmp/optimusctx-gocache` and `GOMODCACHE=/tmp/optimusctx-gomodcache` for both quick and full-suite commands
+- Phase 05 and Phase 06 later summaries already reflect the same command family
+
+Older summary-era toolchain paths such as `/tmp/optimusctx-go/go/bin/go` are historical evidence only. They can be mentioned as historical notes when needed, but they must not be copied into the new verification files as the present command truth.
+
+### Downstream Command Groups
+
+#### Phase 02
+
+Use the targeted refresh command set from `08-RESEARCH.md` for requirement-level evidence around:
+
+- migration and store contracts
+- hash reuse and diffing
+- subtree fingerprints
+- transactional refresh reconciliation
+- CLI refresh freshness and degraded recovery
+
+#### Phase 05
+
+Use the targeted MCP and install command set from `08-RESEARCH.md` for requirement-level evidence around:
+
+- stdio serve entrypoint and readiness behavior
+- registry and structured query envelopes
+- bounded failures and structured errors
+- token tree, pack, and health tool coverage
+- install registration, snippet rendering, and consent gating
+
+#### Phase 06
+
+Use the targeted watch and export command set from `08-VALIDATION.md` for requirement-level evidence around:
+
+- watch-triggered canonical refresh reuse
+- debounce and overflow fallback semantics
+- pack export manifest generation
+- budget fit and include/exclude controls
+
+### Template Guardrails
+
+- Do not turn the verification files into chronological execution logs; the summaries already serve that purpose.
+- Do not inherit stale environment notes from early phases unless a historical discrepancy matters to the milestone record.
+- Do not restate the Phase 7 doctor/watch repair inside Phase 06 verification beyond the explicit scope boundary.
+- Prefer requirement-by-requirement proofs over plan-by-plan recaps.
+
 ## Task Commits
 
 Each task was committed atomically:
@@ -112,6 +200,8 @@ Each task was committed atomically:
 ## Decisions Made
 - Phase 8 inventory is keyed to current requirement ownership in `.planning/REQUIREMENTS.md`, not to older summary-era requirement claims.
 - Phase 7 remains the sole owner of the doctor/watch regression repair, so Phase 06 verification backfill stays bounded to `OPS-02..04`.
+- Downstream Phase 8 verification files will reuse the Phase 03 and Phase 04 verification structure instead of inventing a new artifact format.
+- The canonical current verification commands use `/usr/local/go/bin/go` with `GOCACHE` and `GOMODCACHE` rooted in `/tmp`.
 
 ## Deviations from Plan
 
