@@ -3,7 +3,6 @@ package mcp
 import (
 	"bytes"
 	"context"
-	"io"
 	"path/filepath"
 	"testing"
 
@@ -140,8 +139,15 @@ func TestMCPServerStdioSession(t *testing.T) {
 	})
 
 	var output bytes.Buffer
-	if err := ServeStdio(context.Background(), &input, &output, io.Discard); err != nil {
+	var stderr bytes.Buffer
+	if err := ServeStdio(context.Background(), &input, &output, &stderr); err != nil {
 		t.Fatalf("ServeStdio() error = %v", err)
+	}
+	if stderr.String() != readinessMessage+"\n" {
+		t.Fatalf("stderr = %q, want readiness signal", stderr.String())
+	}
+	if bytes.Contains(output.Bytes(), []byte(readinessMessage)) {
+		t.Fatal("stdout included readiness signal")
 	}
 
 	responses := readTestResponses(t, &output)

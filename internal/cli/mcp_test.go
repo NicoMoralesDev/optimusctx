@@ -33,6 +33,9 @@ func TestMCPServeCommand(t *testing.T) {
 		if serveStderr != &stderr {
 			t.Fatal("mcp serve stderr did not use configured stderr")
 		}
+		if _, err := io.WriteString(serveStderr, "optimusctx mcp: ready for stdio requests\n"); err != nil {
+			t.Fatalf("WriteString(serve stderr) error = %v", err)
+		}
 		return nil
 	}
 
@@ -45,6 +48,9 @@ func TestMCPServeCommand(t *testing.T) {
 	if stdout.Len() != 0 {
 		t.Fatalf("stdout = %q, want empty", stdout.String())
 	}
+	if stderr.String() != "optimusctx mcp: ready for stdio requests\n" {
+		t.Fatalf("stderr = %q, want readiness signal", stderr.String())
+	}
 }
 
 func TestMCPServeCommandRejectsUnsupportedArguments(t *testing.T) {
@@ -56,5 +62,37 @@ func TestMCPServeCommandRejectsUnsupportedArguments(t *testing.T) {
 	}
 	if stdout.Len() != 0 {
 		t.Fatalf("stdout = %q, want empty", stdout.String())
+	}
+}
+
+func TestMCPServeReadinessSignalUsesStderr(t *testing.T) {
+	previousServe := mcpServeServer
+	previousInput := mcpServeInput
+	previousStderr := mcpServeStderr
+	t.Cleanup(func() {
+		mcpServeServer = previousServe
+		mcpServeInput = previousInput
+		mcpServeStderr = previousStderr
+	})
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	mcpServeInput = bytes.NewBufferString("")
+	mcpServeStderr = &stderr
+	mcpServeServer = func(ctx context.Context, stdin io.Reader, serveStdout io.Writer, serveStderr io.Writer) error {
+		if _, err := io.WriteString(serveStderr, "optimusctx mcp: ready for stdio requests\n"); err != nil {
+			t.Fatalf("WriteString(serve stderr) error = %v", err)
+		}
+		return nil
+	}
+
+	if err := NewRootCommand().Execute([]string{"mcp", "serve"}, &stdout); err != nil {
+		t.Fatalf("Execute(mcp serve) error = %v", err)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty", stdout.String())
+	}
+	if stderr.String() != "optimusctx mcp: ready for stdio requests\n" {
+		t.Fatalf("stderr = %q, want readiness signal", stderr.String())
 	}
 }
