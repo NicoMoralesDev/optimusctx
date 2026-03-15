@@ -27,9 +27,10 @@ type WatchRequest struct {
 }
 
 type WatchEvent struct {
-	Path string
-	Op   WatchEventOp
-	At   time.Time
+	Path      string
+	Op        WatchEventOp
+	At        time.Time
+	Uncertain bool
 }
 
 type WatchHeartbeat struct {
@@ -58,6 +59,18 @@ type WatchRunResult struct {
 	RepositoryRoot string
 	StatePath      string
 	StatusPath     string
+}
+
+type WatchRefreshReport struct {
+	Reason              RefreshReason
+	Generation          int64
+	FreshnessStatus     FreshnessStatus
+	ChangedFiles        int
+	UnchangedFiles      int
+	AffectedDirectories int
+	ForceFull           bool
+	ChangedHint         []string
+	Error               string
 }
 
 type WatchStatusResult struct {

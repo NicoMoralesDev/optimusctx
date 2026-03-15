@@ -2,11 +2,13 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/niccrow/optimusctx/internal/extract"
@@ -154,6 +156,7 @@ func (s RefreshService) Refresh(ctx context.Context, request RefreshRequest) (Re
 	affected := refreshcore.AffectedDirectories(currentSnapshot, persistedRefreshSnapshot, diff)
 	fingerprints := refreshcore.ComputeSubtreeFingerprints(currentSnapshot, persistedRefreshSnapshot, affected)
 	extractionPlan := buildExtractionPlan(diff)
+	changedHint := normalizeChangedHints(root.RootPath, request.ChangedHint)
 	var extractionStats extractionStats
 
 	applyResult, err := store.ApplyRefreshPlan(ctx, sqlite.ApplyRefreshPlanRequest{
@@ -167,6 +170,7 @@ func (s RefreshService) Refresh(ctx context.Context, request RefreshRequest) (Re
 		Diff:              diff,
 		AffectedPaths:     affected,
 		Fingerprints:      fingerprints,
+		MetadataJSON:      buildRefreshMetadataJSON(request, diff, affected, changedHint),
 		InjectFailure:     request.InjectFailure,
 		ApplyStructuralArtifacts: func(ctx context.Context, structuralStore sqlite.RefreshStructuralStore) error {
 			stats, err := s.applyStructuralArtifacts(ctx, root.RootPath, extractionPlan, structuralStore)
@@ -207,6 +211,60 @@ func (s RefreshService) Refresh(ctx context.Context, request RefreshRequest) (Re
 		Generation:          applyResult.Generation,
 		FreshnessStatus:     applyResult.FreshnessStatus,
 	}, nil
+}
+
+func normalizeChangedHints(root string, hints []string) []string {
+	if len(hints) == 0 {
+		return nil
+	}
+	unique := make(map[string]struct{}, len(hints))
+	for _, hint := range hints {
+		hint = filepath.ToSlash(strings.TrimSpace(hint))
+		if hint == "" || hint == "." {
+			continue
+		}
+		if filepath.IsAbs(hint) {
+			rel, err := filepath.Rel(root, hint)
+			if err != nil {
+				continue
+			}
+			hint = filepath.ToSlash(rel)
+		}
+		hint = filepath.ToSlash(filepath.Clean(hint))
+		if hint == "." || hint == ".." || strings.HasPrefix(hint, "../") {
+			continue
+		}
+		unique[hint] = struct{}{}
+	}
+	if len(unique) == 0 {
+		return nil
+	}
+	normalized := make([]string, 0, len(unique))
+	for hint := range unique {
+		normalized = append(normalized, hint)
+	}
+	sort.Strings(normalized)
+	return normalized
+}
+
+func buildRefreshMetadataJSON(request RefreshRequest, diff refreshcore.Diff, affected []string, changedHint []string) string {
+	payload := map[string]any{
+		"reason":               request.Reason,
+		"force_full":           request.ForceFull,
+		"changed_hint":         changedHint,
+		"added":                len(diff.Added),
+		"changed":              len(diff.Changed),
+		"deleted":              len(diff.Deleted),
+		"moved":                len(diff.Moved),
+		"newly_ignored":        len(diff.NewlyIgnored),
+		"reincluded":           len(diff.Reincluded),
+		"affected_directories": affected,
+	}
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return ""
+	}
+	return string(encoded)
 }
 
 func buildRefreshFailureResult(

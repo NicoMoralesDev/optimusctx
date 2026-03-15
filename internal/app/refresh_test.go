@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -92,6 +93,66 @@ func TestNoOpRefresh(t *testing.T) {
 	}
 	if second.Generation != first.Generation+1 {
 		t.Fatalf("generation = %d, want %d", second.Generation, first.Generation+1)
+	}
+}
+
+func TestRefreshReasonWatch(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "helper.go"), "package pkg\n")
+
+	service := NewRefreshService()
+	if _, err := service.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() baseline error = %v", err)
+	}
+
+	result, err := service.Refresh(context.Background(), RefreshRequest{
+		StartPath:   repoRoot,
+		Reason:      repository.RefreshReasonWatch,
+		ChangedHint: []string{"pkg/helper.go", filepath.Join(repoRoot, "pkg", "helper.go"), "../outside", "", "."},
+	})
+	if err != nil {
+		t.Fatalf("Refresh() watch error = %v", err)
+	}
+	if result.Reason != repository.RefreshReasonWatch {
+		t.Fatalf("result.Reason = %q, want %q", result.Reason, repository.RefreshReasonWatch)
+	}
+
+	layout, err := state.ResolveLayout(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolveLayout(%q) error = %v", repoRoot, err)
+	}
+	db := openStateDatabase(t, layout.DatabasePath)
+	defer db.Close()
+
+	var reason string
+	var metadataJSON string
+	if err := db.QueryRow(`SELECT reason, metadata_json FROM refresh_runs WHERE generation = ?`, result.Generation).Scan(&reason, &metadataJSON); err != nil {
+		t.Fatalf("query refresh_runs: %v", err)
+	}
+	if reason != string(repository.RefreshReasonWatch) {
+		t.Fatalf("refresh_runs.reason = %q, want %q", reason, repository.RefreshReasonWatch)
+	}
+
+	var metadata map[string]any
+	if err := json.Unmarshal([]byte(metadataJSON), &metadata); err != nil {
+		t.Fatalf("decode metadata_json: %v", err)
+	}
+	if metadata["reason"] != string(repository.RefreshReasonWatch) {
+		t.Fatalf("metadata reason = %#v, want %q", metadata["reason"], repository.RefreshReasonWatch)
+	}
+	if metadata["force_full"] != false {
+		t.Fatalf("metadata force_full = %#v, want false", metadata["force_full"])
+	}
+	hints, ok := metadata["changed_hint"].([]any)
+	if !ok {
+		t.Fatalf("metadata changed_hint = %#v, want []any", metadata["changed_hint"])
+	}
+	if len(hints) != 1 || hints[0] != "pkg/helper.go" {
+		t.Fatalf("metadata changed_hint = %#v, want [pkg/helper.go]", hints)
 	}
 }
 

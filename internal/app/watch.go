@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -37,6 +38,7 @@ type WatchService struct {
 	Rename            func(string, string) error
 	Remove            func(string) error
 	ProcessRunning    func(int) bool
+	ReportRefresh     func(repository.WatchRefreshReport)
 	StatusFilename    string
 	HeartbeatInterval time.Duration
 	PollInterval      time.Duration
@@ -100,6 +102,8 @@ func (s WatchService) Run(ctx context.Context, request repository.WatchRequest) 
 
 	var refreshTimer *time.Timer
 	var refreshPending bool
+	pendingHints := make(map[string]struct{})
+	pendingForceFull := false
 	stopRefreshTimer := func() {
 		if refreshTimer == nil {
 			return
@@ -127,6 +131,18 @@ func (s WatchService) Run(ctx context.Context, request repository.WatchRequest) 
 			}
 		}
 		refreshTimer.Reset(debounceWindow)
+	}
+	recordHint := func(path string) {
+		normalized, ok := normalizeWatchHint(root.RootPath, path)
+		if !ok {
+			pendingForceFull = true
+			clear(pendingHints)
+			return
+		}
+		if pendingForceFull {
+			return
+		}
+		pendingHints[normalized] = struct{}{}
 	}
 
 	for {
@@ -159,6 +175,14 @@ func (s WatchService) Run(ctx context.Context, request repository.WatchRequest) 
 			})
 			if event.Op == repository.WatchEventOpOverflow {
 				record.LastError = "watch observer overflowed; falling back to full refresh"
+				pendingForceFull = true
+				clear(pendingHints)
+			} else if event.Uncertain {
+				record.LastError = "watch observer lost path certainty; falling back to full refresh"
+				pendingForceFull = true
+				clear(pendingHints)
+			} else {
+				recordHint(event.Path)
 			}
 			if err := s.writeStatus(statusPath, record); err != nil {
 				return repository.WatchRunResult{}, fmt.Errorf("update watch event status: %w", err)
@@ -171,6 +195,10 @@ func (s WatchService) Run(ctx context.Context, request repository.WatchRequest) 
 				continue
 			}
 			refreshPending = false
+			refreshHints := sortedWatchHints(pendingHints)
+			refreshForceFull := pendingForceFull
+			clear(pendingHints)
+			pendingForceFull = false
 			startedAt := nowFn().UTC()
 			record = record.WithHeartbeat(repository.WatchHeartbeat{
 				At:                   startedAt,
@@ -180,7 +208,7 @@ func (s WatchService) Run(ctx context.Context, request repository.WatchRequest) 
 				return repository.WatchRunResult{}, fmt.Errorf("persist watch refresh start: %w", err)
 			}
 
-			refreshResult, refreshErr := s.refresh(ctx, root.RootPath)
+			refreshResult, refreshErr := s.refresh(ctx, root.RootPath, refreshForceFull, refreshHints)
 			doneAt := nowFn().UTC()
 			update := repository.WatchHeartbeat{
 				At:                doneAt,
@@ -196,6 +224,17 @@ func (s WatchService) Run(ctx context.Context, request repository.WatchRequest) 
 			if err := s.writeStatus(statusPath, record); err != nil {
 				return repository.WatchRunResult{}, fmt.Errorf("persist watch refresh result: %w", err)
 			}
+			s.reportRefresh(repository.WatchRefreshReport{
+				Reason:              repository.RefreshReasonWatch,
+				Generation:          refreshResult.Generation,
+				FreshnessStatus:     refreshResult.FreshnessStatus,
+				ChangedFiles:        refreshResult.ChangedFiles,
+				UnchangedFiles:      refreshResult.UnchangedFiles,
+				AffectedDirectories: refreshResult.AffectedDirectories,
+				ForceFull:           refreshForceFull,
+				ChangedHint:         append([]string(nil), refreshHints...),
+				Error:               update.LastError,
+			})
 			if refreshErr != nil && errors.Is(refreshErr, context.Canceled) {
 				return result, nil
 			}
@@ -322,12 +361,15 @@ func (s WatchService) pollingObserver(ctx context.Context, root string) (<-chan 
 					}
 					continue
 				}
-				if !equalWatchSnapshots(previous, current) {
+				changed := diffWatchSnapshots(previous, current)
+				if len(changed) > 0 {
 					previous = current
-					select {
-					case events <- repository.WatchEvent{Path: ".", Op: repository.WatchEventOpChange, At: s.now().UTC()}:
-					case <-ctx.Done():
-						return
+					for _, path := range changed {
+						select {
+						case events <- repository.WatchEvent{Path: path, Op: repository.WatchEventOpChange, At: s.now().UTC()}:
+						case <-ctx.Done():
+							return
+						}
 					}
 				}
 			}
@@ -380,16 +422,25 @@ func snapshotWatchTree(root string) (map[string]string, error) {
 	return snapshot, nil
 }
 
-func equalWatchSnapshots(left map[string]string, right map[string]string) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for key, leftValue := range left {
-		if right[key] != leftValue {
-			return false
+func diffWatchSnapshots(previous map[string]string, current map[string]string) []string {
+	seen := make(map[string]struct{}, len(previous)+len(current))
+	changed := make([]string, 0)
+	for path, leftValue := range previous {
+		seen[path] = struct{}{}
+		if current[path] != leftValue {
+			changed = append(changed, path)
 		}
 	}
-	return true
+	for path, rightValue := range current {
+		if _, ok := seen[path]; ok {
+			continue
+		}
+		if previous[path] != rightValue {
+			changed = append(changed, path)
+		}
+	}
+	sort.Strings(changed)
+	return changed
 }
 
 func (s WatchService) resolveLayout(root string) (state.Layout, error) {
@@ -443,16 +494,55 @@ func (s WatchService) observe(ctx context.Context, root string) (<-chan reposito
 	return s.pollingObserver(ctx, root)
 }
 
-func (s WatchService) refresh(ctx context.Context, root string) (RefreshResult, error) {
+func normalizeWatchHint(root string, hint string) (string, bool) {
+	hint = filepath.ToSlash(strings.TrimSpace(hint))
+	if hint == "" || hint == "." {
+		return "", false
+	}
+	if filepath.IsAbs(hint) {
+		rel, err := filepath.Rel(root, hint)
+		if err != nil {
+			return "", false
+		}
+		hint = filepath.ToSlash(rel)
+	}
+	cleaned := pathClean(hint)
+	if cleaned == "." || strings.HasPrefix(cleaned, "../") || cleaned == ".." {
+		return "", false
+	}
+	return cleaned, true
+}
+
+func pathClean(path string) string {
+	return strings.TrimPrefix(filepath.ToSlash(filepath.Clean(path)), "./")
+}
+
+func sortedWatchHints(hints map[string]struct{}) []string {
+	if len(hints) == 0 {
+		return nil
+	}
+	paths := make([]string, 0, len(hints))
+	for path := range hints {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	return paths
+}
+
+func (s WatchService) refresh(ctx context.Context, root string, forceFull bool, changedHint []string) (RefreshResult, error) {
 	if s.Refresh != nil {
 		return s.Refresh(ctx, RefreshRequest{
-			StartPath: root,
-			Reason:    repository.RefreshReasonWatch,
+			StartPath:   root,
+			Reason:      repository.RefreshReasonWatch,
+			ForceFull:   forceFull,
+			ChangedHint: changedHint,
 		})
 	}
 	return NewRefreshService().Refresh(ctx, RefreshRequest{
-		StartPath: root,
-		Reason:    repository.RefreshReasonWatch,
+		StartPath:   root,
+		Reason:      repository.RefreshReasonWatch,
+		ForceFull:   forceFull,
+		ChangedHint: changedHint,
 	})
 }
 
@@ -461,6 +551,12 @@ func (s WatchService) processRunning(pid int) bool {
 		return s.ProcessRunning(pid)
 	}
 	return processRunning(pid)
+}
+
+func (s WatchService) reportRefresh(report repository.WatchRefreshReport) {
+	if s.ReportRefresh != nil {
+		s.ReportRefresh(report)
+	}
 }
 
 func (s WatchService) defaultHeartbeat() time.Duration {
