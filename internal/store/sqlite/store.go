@@ -15,6 +15,11 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+const (
+	defaultLayeredContextLanguageLimit  = 5
+	defaultLayeredContextMajorAreaLimit = 5
+)
+
 type Store struct {
 	db            *sql.DB
 	layout        state.Layout
@@ -895,6 +900,132 @@ func (s *Store) LoadRepositoryMapDirectories(ctx context.Context, repositoryID i
 	}
 
 	return records, nil
+}
+
+func (s *Store) ReadLayeredContextL0(ctx context.Context, repositoryID int64) (repository.LayeredContextL0, error) {
+	if s == nil || s.db == nil {
+		return repository.LayeredContextL0{}, fmt.Errorf("read layered context l0: store is not initialized")
+	}
+
+	freshness, err := s.ReadRepositoryFreshness(ctx, repositoryID)
+	if err != nil {
+		return repository.LayeredContextL0{}, fmt.Errorf("read layered context l0 freshness: %w", err)
+	}
+
+	result := repository.LayeredContextL0{
+		Repository: repository.LayeredContextEnvelope{
+			RepositoryRoot: freshness.RootPath,
+			Generation:     freshness.LastRefreshGeneration,
+			Freshness:      freshness.FreshnessStatus,
+		},
+		Identity: repository.LayeredContextRepositoryIdentity{
+			RootPath:      freshness.RootPath,
+			DetectionMode: freshness.DetectionMode,
+			GitHeadRef:    freshness.GitHeadRef,
+			GitHeadCommit: freshness.GitHeadCommit,
+		},
+	}
+
+	languages, err := s.loadLayeredContextLanguages(ctx, repositoryID, defaultLayeredContextLanguageLimit)
+	if err != nil {
+		return repository.LayeredContextL0{}, err
+	}
+	result.Languages = languages
+
+	majorAreas, err := s.loadLayeredContextMajorAreas(ctx, repositoryID, defaultLayeredContextMajorAreaLimit)
+	if err != nil {
+		return repository.LayeredContextL0{}, err
+	}
+	result.MajorAreas = majorAreas
+
+	return result, nil
+}
+
+func (s *Store) loadLayeredContextLanguages(ctx context.Context, repositoryID int64, limit int) ([]repository.LayeredContextLanguageSummary, error) {
+	if limit <= 0 {
+		limit = defaultLayeredContextLanguageLimit
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			COALESCE(NULLIF(language, ''), 'unknown') AS language,
+			COUNT(*) AS file_count,
+			COALESCE(SUM(size_bytes), 0) AS total_size_bytes
+		FROM files
+		WHERE repository_id = ? AND ignore_status = ?
+		GROUP BY COALESCE(NULLIF(language, ''), 'unknown')
+		ORDER BY file_count DESC, total_size_bytes DESC, language ASC
+		LIMIT ?
+	`, repositoryID, string(repository.IgnoreStatusIncluded), limit)
+	if err != nil {
+		return nil, fmt.Errorf("load layered context l0 languages for repository %d: %w", repositoryID, err)
+	}
+	defer rows.Close()
+
+	var summaries []repository.LayeredContextLanguageSummary
+	for rows.Next() {
+		var summary repository.LayeredContextLanguageSummary
+		if err := rows.Scan(&summary.Language, &summary.FileCount, &summary.TotalSizeBytes); err != nil {
+			return nil, fmt.Errorf("scan layered context l0 language for repository %d: %w", repositoryID, err)
+		}
+		summaries = append(summaries, summary)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate layered context l0 languages for repository %d: %w", repositoryID, err)
+	}
+
+	return summaries, nil
+}
+
+func (s *Store) loadLayeredContextMajorAreas(ctx context.Context, repositoryID int64, limit int) ([]repository.LayeredContextMajorAreaSummary, error) {
+	if limit <= 0 {
+		limit = defaultLayeredContextMajorAreaLimit
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT path, kind, included_file_count, total_size_bytes
+		FROM (
+			SELECT
+				d.path AS path,
+				'directory' AS kind,
+				d.included_file_count,
+				d.total_size_bytes
+			FROM directories d
+			WHERE d.repository_id = ? AND d.ignore_status = ? AND d.parent_path = '.'
+			UNION ALL
+			SELECT
+				'.' AS path,
+				'root_files' AS kind,
+				COUNT(*) AS included_file_count,
+				COALESCE(SUM(size_bytes), 0) AS total_size_bytes
+			FROM files
+			WHERE repository_id = ? AND ignore_status = ? AND directory_path = '.'
+		)
+		WHERE included_file_count > 0
+		ORDER BY total_size_bytes DESC, included_file_count DESC, path ASC
+		LIMIT ?
+	`, repositoryID, string(repository.IgnoreStatusIncluded), repositoryID, string(repository.IgnoreStatusIncluded), limit)
+	if err != nil {
+		return nil, fmt.Errorf("load layered context l0 major areas for repository %d: %w", repositoryID, err)
+	}
+	defer rows.Close()
+
+	var summaries []repository.LayeredContextMajorAreaSummary
+	for rows.Next() {
+		var summary repository.LayeredContextMajorAreaSummary
+		var kind string
+		if err := rows.Scan(&summary.Path, &kind, &summary.IncludedFileCount, &summary.TotalSizeBytes); err != nil {
+			return nil, fmt.Errorf("scan layered context l0 major area for repository %d: %w", repositoryID, err)
+		}
+		summary.Path = normalizeStoredDirectoryPath(summary.Path)
+		summary.Kind = repository.MajorAreaKind(kind)
+		summaries = append(summaries, summary)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate layered context l0 major areas for repository %d: %w", repositoryID, err)
+	}
+
+	return summaries, nil
 }
 
 func (s *Store) LoadRepositorySnapshot(ctx context.Context, repositoryID int64) (repository.RepositorySnapshot, error) {

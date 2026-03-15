@@ -1044,6 +1044,70 @@ func TestRepositoryMapReadModels(t *testing.T) {
 	}
 }
 
+func TestLayeredContextL0(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	refreshedAt := time.Date(2026, 3, 14, 18, 0, 0, 0, time.UTC)
+	if err := store.WriteRepositoryFreshness(ctx, repository.RepositoryFreshness{
+		RepositoryID:           repoID,
+		RootPath:               layout.RepoRoot,
+		DetectionMode:          repository.DetectionModeGit,
+		GitHeadRef:             "refs/heads/main",
+		GitHeadCommit:          "0123456789abcdef0123456789abcdef01234567",
+		LastRefreshStartedAt:   refreshedAt,
+		LastRefreshCompletedAt: refreshedAt.Add(2 * time.Minute),
+		LastRefreshReason:      repository.RefreshReasonManual,
+		LastRefreshStatus:      repository.RefreshRunStatusSuccess,
+		FreshnessStatus:        repository.FreshnessStatusFresh,
+		CurrentGeneration:      3,
+		LastRefreshGeneration:  3,
+	}); err != nil {
+		t.Fatalf("WriteRepositoryFreshness() error = %v", err)
+	}
+
+	mustInsertDirectoryRecord(t, ctx, store, repoID, ".", nil, 5, 3, 680, 3)
+	mustInsertDirectoryRecord(t, ctx, store, repoID, "pkg", ".", 2, 0, 400, 3)
+	mustInsertDirectoryRecord(t, ctx, store, repoID, "docs", ".", 1, 0, 180, 3)
+	mustInsertDirectoryRecord(t, ctx, store, repoID, "cmd", ".", 1, 0, 120, 3)
+
+	run := createTestRefreshRun(t, ctx, store, repoID, 3)
+	insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "pkg/alpha.go", DirectoryPath: "pkg", Extension: ".go", Language: "go", ContentHash: "go-1", LastGeneration: 3}, 200)
+	insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "pkg/beta.go", DirectoryPath: "pkg", Extension: ".go", Language: "go", ContentHash: "go-2", LastGeneration: 3}, 200)
+	insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "docs/guide.md", DirectoryPath: "docs", Extension: ".md", Language: "markdown", ContentHash: "md-1", LastGeneration: 3}, 180)
+	insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "README.md", DirectoryPath: ".", Extension: ".md", Language: "markdown", ContentHash: "md-2", LastGeneration: 3}, 100)
+	insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "cmd/root.txt", DirectoryPath: "cmd", Extension: ".txt", Language: "", ContentHash: "txt-1", LastGeneration: 3}, 120)
+
+	got, err := store.ReadLayeredContextL0(ctx, repoID)
+	if err != nil {
+		t.Fatalf("ReadLayeredContextL0() error = %v", err)
+	}
+
+	if got.Repository.RepositoryRoot != layout.RepoRoot {
+		t.Fatalf("RepositoryRoot = %q, want %q", got.Repository.RepositoryRoot, layout.RepoRoot)
+	}
+	if got.Repository.Generation != 3 {
+		t.Fatalf("Generation = %d, want 3", got.Repository.Generation)
+	}
+	if got.Repository.Freshness != repository.FreshnessStatusFresh {
+		t.Fatalf("Freshness = %q, want %q", got.Repository.Freshness, repository.FreshnessStatusFresh)
+	}
+	if got := layeredContextLanguageNamesFromStore(got.Languages); !reflect.DeepEqual(got, []string{"go", "markdown", "unknown"}) {
+		t.Fatalf("language order = %v", got)
+	}
+	if got := layeredContextMajorAreaKeysFromStore(got.MajorAreas); !reflect.DeepEqual(got, []string{"pkg:directory", "docs:directory", "cmd:directory", ".:root_files"}) {
+		t.Fatalf("major area order = %v", got)
+	}
+}
+
 func TestUnsupportedExtractionState(t *testing.T) {
 	t.Parallel()
 
@@ -1366,7 +1430,50 @@ func createTestRefreshRun(t *testing.T, ctx context.Context, store *Store, repoI
 	return run
 }
 
+func mustInsertDirectoryRecord(t *testing.T, ctx context.Context, store *Store, repoID int64, path string, parent any, includedFiles, includedDirectories, totalSize, generation int64) {
+	t.Helper()
+
+	refreshedAt := time.Date(2026, 3, 14, 18, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	if _, err := store.DB().ExecContext(ctx, `
+		INSERT INTO directories (
+			repository_id,
+			path,
+			parent_path,
+			discovered_at,
+			ignore_status,
+			ignore_reason,
+			subtree_fingerprint,
+			included_file_count,
+			included_directory_count,
+			total_size_bytes,
+			last_refreshed_at,
+			last_refresh_generation
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`,
+		repoID,
+		path,
+		parent,
+		refreshedAt,
+		string(repository.IgnoreStatusIncluded),
+		nil,
+		path+"-fingerprint",
+		includedFiles,
+		includedDirectories,
+		totalSize,
+		refreshedAt,
+		generation,
+	); err != nil {
+		t.Fatalf("insert directory %q error = %v", path, err)
+	}
+}
+
 func insertTestFileRecord(t *testing.T, ctx context.Context, store *Store, repoID, refreshRunID int64, seed testFileSeed) int64 {
+	t.Helper()
+
+	return insertSizedTestFileRecord(t, ctx, store, repoID, refreshRunID, seed, 128)
+}
+
+func insertSizedTestFileRecord(t *testing.T, ctx context.Context, store *Store, repoID, refreshRunID int64, seed testFileSeed, sizeBytes int64) int64 {
 	t.Helper()
 
 	discoveredAt := time.Date(2026, 3, 14, 16, 0, 0, 0, time.UTC).Format(time.RFC3339)
@@ -1396,7 +1503,7 @@ func insertTestFileRecord(t *testing.T, ctx context.Context, store *Store, repoI
 		seed.DirectoryPath,
 		seed.Extension,
 		seed.Language,
-		128,
+		sizeBytes,
 		seed.ContentHash,
 		updatedAt,
 		string(repository.IgnoreStatusIncluded),
@@ -1417,6 +1524,22 @@ func insertTestFileRecord(t *testing.T, ctx context.Context, store *Store, repoI
 		t.Fatalf("LastInsertId() error = %v", err)
 	}
 	return fileID
+}
+
+func layeredContextLanguageNamesFromStore(summaries []repository.LayeredContextLanguageSummary) []string {
+	names := make([]string, 0, len(summaries))
+	for _, summary := range summaries {
+		names = append(names, summary.Language)
+	}
+	return names
+}
+
+func layeredContextMajorAreaKeysFromStore(summaries []repository.LayeredContextMajorAreaSummary) []string {
+	keys := make([]string, 0, len(summaries))
+	for _, summary := range summaries {
+		keys = append(keys, summary.Path+":"+string(summary.Kind))
+	}
+	return keys
 }
 
 func testTopLevelSymbol(path, language, kind, name, stableKey string, ordinal int64) repository.SymbolRecord {
