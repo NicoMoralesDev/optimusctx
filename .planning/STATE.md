@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 3
 current_phase_name: Structural Extraction and Repository Artifact Model
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-03-15T00:07:23.848Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-03-15T00:20:09.392Z"
 last_activity: 2026-03-15
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 14
-  completed_plans: 12
-  percent: 86
+  completed_plans: 13
+  percent: 93
 ---
 
 # Planning State: OptimusCtx
@@ -27,11 +27,11 @@ progress:
 **Current Phase:** 3
 **Current Phase Name:** Structural Extraction and Repository Artifact Model
 **Total Phases:** 6
-**Current Plan:** 2
+**Current Plan:** 3
 **Total Plans in Phase:** 6
-**Progress:** [█████████░] 86%
+**Progress:** [█████████░] 93%
 **Last Activity:** 2026-03-15
-**Last Activity Description:** Completed plan 03-02 deterministic extraction core, Go Tree-sitter adapter, and degraded extraction coverage
+**Last Activity Description:** Completed plan 03-03 refresh-integrated structural extraction persistence and mutation progression coverage
 
 ## Project Memory
 
@@ -96,6 +96,8 @@ progress:
 - Verification for `02-05` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go caches for targeted runtime-state, service, and CLI refresh coverage plus the full Go test suite.
 - Plan `02-06` is complete with degraded refresh rollback and recovery coverage plus supported temp-repository smoke guidance for Phase 2 operators.
 - Verification for `02-06` used `/tmp/optimusctx-go/go/bin/go` with `GOCACHE=/tmp/optimusctx-gocache`, `GOMODCACHE=/home/nico/go/pkg/mod`, and `GOPROXY=off` for targeted degraded-refresh coverage and the full Go test suite.
+- Plan `03-03` is complete with refresh-scoped structural artifact replacement, unsupported/degraded coverage persistence, and temp-repository mutation progression tests.
+- Verification for `03-03` used `/tmp/optimusctx-go/go/bin/go` and `/tmp/optimusctx-go/go/bin/gofmt` with `/tmp` Go cache settings for targeted extraction-refresh coverage and the full Go test suite.
 
 ## Performance Metrics
 
@@ -108,6 +110,7 @@ progress:
 | Phase 02-incremental-refresh-and-freshness-model P05 | 32min | 3 tasks | 6 files |
 | Phase 02-incremental-refresh-and-freshness-model P06 | 5min | 3 tasks | 4 files |
 | Phase 03-structural-extraction-and-repository-artifact-model P02 | 13min | 3 tasks | 10 files |
+| Phase 03-structural-extraction-and-repository-artifact-model P03 | 12min | 3 tasks | 7 files |
 
 ## Decisions Made
 
@@ -130,6 +133,9 @@ progress:
 - [Phase 03]: Extraction support now resolves from persisted files.language metadata plus a static adapter registry, with unsupported files recorded without parser work.
 - [Phase 03]: Tree-sitter parsers are adapter-owned and short-lived, while the extraction core normalizes lexical ordering and coverage metadata.
 - [Phase 03]: Malformed Go files are partial only when at least one non-package symbol comes from an error-free subtree; otherwise extraction fails with zero symbols.
+- [Phase 03]: Structural artifact writes now run inside ApplyRefreshPlan through a SQLite callback instead of a second post-refresh transaction.
+- [Phase 03]: Refresh derives extraction work strictly from diff-affected included paths and leaves unchanged artifact rows untouched on no-op runs.
+- [Phase 03]: Files with no persisted language hint normalize to unknown when persisted as unsupported artifacts so coverage remains explicit.
 
 ## Blockers
 
@@ -137,8 +143,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T00:07:23.848Z
-**Stopped At:** Completed 03-02-PLAN.md
+**Last Date:** 2026-03-15T00:20:09.390Z
+**Stopped At:** Completed 03-03-PLAN.md
 **Resume File:** None
 
 ---

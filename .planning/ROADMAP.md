@@ -66,9 +66,9 @@
 - A compact repository map can be generated entirely from persisted structural artifacts without reparsing the repository on demand.
 
 **Plan progress:**
-- Completed: `03-01`, `03-02`
-- Remaining: `03-03`, `03-04`
-- Summary coverage: 2 of 4 Phase 3 plans completed
+- Completed: `03-01`, `03-02`, `03-03`
+- Remaining: `03-04`
+- Summary coverage: 3 of 4 Phase 3 plans completed
 
 ## Phase 4: Layered Context, Exact Lookup, and Budget Analysis
 
@@ -139,4 +139,4 @@
 6. Phase 6 adds watch, export, and operator hardening without using them to compensate for missing correctness.
 
 ---
-*Last updated: 2026-03-14 after completing plan 02-06*
+*Last updated: 2026-03-15 after completing plan 03-03*
