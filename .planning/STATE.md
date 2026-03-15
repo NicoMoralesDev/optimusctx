@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 8
-current_phase_name: milestone verification backfill and closure evidence
-current_plan: 4
-status: executing
-stopped_at: Completed 08-04-PLAN.md
+current_phase: null
+current_phase_name: null
+current_plan: null
+status: milestone_complete
+stopped_at: Archived milestone v1.0
 last_updated: "2026-03-15T22:44:05.545Z"
 last_activity: 2026-03-15
 progress:
@@ -22,16 +22,16 @@ progress:
 **Initialized:** 2026-03-14
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
-**Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute
-**Current Phase:** 8
-**Current Phase Name:** milestone verification backfill and closure evidence
+**Requirements reference:** archived for v1.0 at `.planning/milestones/v1.0-REQUIREMENTS.md`
+**Status:** Milestone v1.0 archived
+**Current Phase:** none
+**Current Phase Name:** none
 **Total Phases:** 8
-**Current Plan:** 4
-**Total Plans in Phase:** 4
+**Current Plan:** none
+**Total Plans in Phase:** 0
 **Progress:** [██████████] 100%
 **Last Activity:** 2026-03-15
-**Last Activity Description:** Completed 08-01 evidence inventory and verification contract
+**Last Activity Description:** Archived milestone v1.0 after passed audit and full phase verification coverage
 
 ## Project Memory
 
@@ -43,12 +43,11 @@ progress:
 
 ## Current Planning Context
 
-- Active milestone: v1 foundation
-- Active phase: Phase 8 - Milestone Verification Backfill and Closure Evidence
-- Next planning action: execute Phase 8 plan 02 and draft `02-VERIFICATION.md` from the approved evidence inventory.
-- Phase 8 scope: plan 01 completed the shared evidence inventory, verification template, and command-truth contract for downstream backfill work.
-- Historical audit files remain unchanged evidence; current source-of-truth updates are limited to `STATE.md`, `ROADMAP.md`, and `REQUIREMENTS.md`.
-- Coverage status: all 35 v1 requirements are mapped exactly once in `.planning/ROADMAP.md` and `.planning/REQUIREMENTS.md`
+- Active milestone: v1.0 foundation archived
+- Active phase: none
+- Next planning action: create the next milestone with `$gsd-new-milestone`
+- Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
+- Coverage status: all 35 v1 requirements shipped and archived with passed milestone audit
 
 ## Recent Decisions
 

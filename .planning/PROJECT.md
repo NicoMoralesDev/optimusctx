@@ -2,23 +2,40 @@
 
 ## What This Is
 
-OptimusCtx is a universal context optimization runtime for coding agents. It maintains a persistent, local, incrementally updated representation of a repository and exposes that context through a vendor-neutral interface, with MCP as the primary integration layer. It is built for developers, teams, and agent systems that want repository understanding to be portable, deterministic, and cheap across Codex, Claude Code, Gemini CLI, and future MCP-compatible clients.
+OptimusCtx is a shipped local-first context runtime for coding agents. It maintains a persistent, incrementally refreshed representation of a repository and exposes that context through a vendor-neutral interface, with MCP as the primary integration layer. v1.0 ships repository discovery, persistent state, incremental refresh, structural extraction, layered exact-first context, MCP serving, optional watch mode, pack export, and doctor diagnostics.
 
 ## Core Value
 
 Make repository understanding persistent, compact, incremental, and reusable across coding agents.
 
+## Current State
+
+- Shipped version: `v1.0`
+- Runtime stack: Go, SQLite, Tree-sitter, MCP-over-STDIO
+- Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `doctor`
+- Product state: all 35 v1 requirements shipped and milestone audit passed
+
+## Next Milestone Goals
+
+- Improve output optimization and compaction for large repositories
+- Add richer repository-level budget analysis and exclusion suggestions
+- Introduce stronger export presets and packaging ergonomics for target token budgets
+- Expand symbol and relationship richness without weakening the exact-first product promise
+
 ## Requirements
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Local-first persistent repository context runtime — `v1.0`
+- ✓ MCP-first exact context delivery and bounded operational tooling — `v1.0`
+- ✓ Developer workflow support for install, init, watch, doctor, and pack/export — `v1.0`
 
 ### Active
 
-- [ ] Provide a local-first runtime that builds and maintains a persistent per-repository context index with incremental refresh.
-- [ ] Expose deterministic repository context through a small MCP-first interface that supports layered outputs, exact lookup, and health inspection.
-- [ ] Deliver a low-friction developer experience for install, repository initialization, watch mode, doctor diagnostics, and portable pack/export workflows.
+- [ ] Compact verbose tool outputs with stronger deduplication, truncation, and line-focused extraction
+- [ ] Produce richer repository-level context-budget analysis and exclusion guidance
+- [ ] Offer improved pack/export presets optimized for target token budgets
+- [ ] Expose richer symbol and reference relationships where extraction support is feasible
 
 ### Out of Scope
 
@@ -29,6 +46,13 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 ## Context
 
+OptimusCtx exists to fix a repeated failure mode in agent-driven development: repository understanding gets rebuilt from scratch across sessions, context compressions, and broad exploratory tool calls. v1.0 validated the wedge: a lightweight local runtime can precompute and serve structured repository context so agents avoid repeated scans, full-file reads, and broad traversal before doing targeted work.
+
+The product remains deliberately agent-agnostic. MCP is the universal contract, and vendor-specific instruction-file differences remain thin optional wrappers rather than separate product implementations.
+
+<details>
+<summary>Archived pre-v1.0 project context</summary>
+
 OptimusCtx exists to fix a repeated failure mode in agent-driven development: repository understanding gets rebuilt from scratch across sessions, context compressions, and broad exploratory tool calls. The intended wedge is a lightweight local runtime that precomputes and serves structured repository context so agents can avoid repeated scans, full-file reads, and broad traversal before doing targeted work.
 
 The product is deliberately agent-agnostic. MCP is the universal contract, and vendor-specific instruction-file differences are treated as thin optional wrappers rather than separate product implementations. The product must remain useful even when users never paste the optional snippet into agent instructions.
@@ -36,6 +60,8 @@ The product is deliberately agent-agnostic. MCP is the universal contract, and v
 The v1 scope centers on deterministic local indexing and delivery: repository discovery, ignore-aware traversal, hashing, structural extraction, symbol indexing, layered context outputs, token-cost analysis, exact lookup, MCP-over-STDIO serving, optional watch mode, pack/export, and operator diagnostics. The recommended implementation stack is Go for a cross-platform single-binary runtime, SQLite for persistent state, and Tree-sitter for structural extraction.
 
 This repository is greenfield. The development process is expected to be heavily agent-driven under human supervision, with strong emphasis on stable command surfaces, stable storage and MCP contracts, incremental execution, and tests accompanying every meaningful feature.
+
+</details>
 
 ## Constraints
 
@@ -51,13 +77,13 @@ This repository is greenfield. The development process is expected to be heavily
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Use MCP as the primary integration layer | A single protocol keeps the runtime portable across coding-agent ecosystems | — Pending |
-| Favor deterministic structural context over semantic retrieval in v1 | The initial wedge is precision, budget control, and predictable behavior | — Pending |
-| Build the core runtime as a local-first single binary | Low-friction installation and cross-platform operation are core product requirements | — Pending |
-| Use SQLite as the primary persistent store | The system needs structured local state, migrations, and queryable artifacts without external services | — Pending |
-| Keep command surface intentionally small | The product should be easy to adopt and reason about for both humans and agents | — Pending |
-| Make watch mode optional, not required | Daily usability should not depend on background processes or platform-specific watcher reliability | — Pending |
-| Never auto-modify agent instruction files | Integration must remain explicit and non-invasive to preserve user control | — Pending |
+| Use MCP as the primary integration layer | A single protocol keeps the runtime portable across coding-agent ecosystems | ✓ Shipped in v1.0 |
+| Favor deterministic structural context over semantic retrieval in v1 | The initial wedge is precision, budget control, and predictable behavior | ✓ Shipped in v1.0 |
+| Build the core runtime as a local-first single binary | Low-friction installation and cross-platform operation are core product requirements | ✓ Shipped in v1.0 |
+| Use SQLite as the primary persistent store | The system needs structured local state, migrations, and queryable artifacts without external services | ✓ Shipped in v1.0 |
+| Keep command surface intentionally small | The product should be easy to adopt and reason about for both humans and agents | ✓ Shipped in v1.0 |
+| Make watch mode optional, not required | Daily usability should not depend on background processes or platform-specific watcher reliability | ✓ Shipped in v1.0 |
+| Never auto-modify agent instruction files | Integration must remain explicit and non-invasive to preserve user control | ✓ Shipped in v1.0 |
 
 ---
-*Last updated: 2026-03-14 after initialization*
+*Last updated: 2026-03-15 after v1.0 milestone*
