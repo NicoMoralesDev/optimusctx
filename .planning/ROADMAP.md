@@ -99,9 +99,9 @@
 - Install flow can optionally register supported client MCP configuration only when the user explicitly opts in.
 
 **Plan progress:**
-- Completed: `05-01`, `05-02`, `05-03`, `05-04`, `05-05`, `05-06`, `05-08`
-- Remaining: `05-07`
-- Summary coverage: 7 of 8 Phase 5 plans completed
+- Completed: `05-01`, `05-02`, `05-03`, `05-04`, `05-05`, `05-06`, `05-07`, `05-08`
+- Remaining: none
+- Summary coverage: 8 of 8 Phase 5 plans completed
 
 ## Phase 6: Watch Mode, Pack Export, and Operational Diagnostics
 
