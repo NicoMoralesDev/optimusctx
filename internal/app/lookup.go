@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/niccrow/optimusctx/internal/repository"
 	"github.com/niccrow/optimusctx/internal/state"
@@ -41,65 +40,6 @@ func (s LookupService) SymbolLookup(ctx context.Context, startPath string, reque
 	}
 
 	return result, nil
-}
-
-func (s LookupService) ResolveSymbolByStableKey(ctx context.Context, startPath string, stableKey string) (repository.SymbolLookupMatch, error) {
-	store, repositoryID, err := s.openLookupStore(ctx, startPath)
-	if err != nil {
-		return repository.SymbolLookupMatch{}, err
-	}
-	defer store.Close()
-
-	return s.resolveSymbolByStableKey(ctx, store, repositoryID, stableKey)
-}
-
-func (s LookupService) resolveSymbolByStableKey(ctx context.Context, store *sqlite.Store, repositoryID int64, stableKey string) (repository.SymbolLookupMatch, error) {
-	if store == nil || store.DB() == nil {
-		return repository.SymbolLookupMatch{}, fmt.Errorf("load symbol anchor: store is not initialized")
-	}
-	stableKey = strings.TrimSpace(stableKey)
-	if stableKey == "" {
-		return repository.SymbolLookupMatch{}, fmt.Errorf("load symbol anchor: stable key is required")
-	}
-
-	var match repository.SymbolLookupMatch
-	err := store.DB().QueryRowContext(ctx, `
-		SELECT
-			stable_key,
-			path,
-			COALESCE(NULLIF(language, ''), 'unknown') AS language,
-			kind,
-			name,
-			COALESCE(qualified_name, '') AS qualified_name,
-			ordinal,
-			start_row,
-			start_column,
-			end_row,
-			end_column
-		FROM symbols
-		WHERE repository_id = ? AND stable_key = ?
-		LIMIT 1
-	`, repositoryID, stableKey).Scan(
-		&match.StableKey,
-		&match.Path,
-		&match.Language,
-		&match.Kind,
-		&match.Name,
-		&match.QualifiedName,
-		&match.Ordinal,
-		&match.StartRow,
-		&match.StartColumn,
-		&match.EndRow,
-		&match.EndColumn,
-	)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return repository.SymbolLookupMatch{}, fmt.Errorf("load symbol anchor: stable key %q not found", stableKey)
-		}
-		return repository.SymbolLookupMatch{}, fmt.Errorf("load symbol anchor: %w", err)
-	}
-
-	return match, nil
 }
 
 func (s LookupService) StructureLookup(ctx context.Context, startPath string, request repository.StructureLookupRequest) (repository.StructureLookupResult, error) {

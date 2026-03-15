@@ -448,36 +448,26 @@ type StructureLookupMatch struct {
 }
 
 type TargetedContextRequest struct {
-	SymbolStableKey string
-	Path            string
-	StartLine       int64
-	EndLine         int64
-	BeforeLines     int
-	AfterLines      int
+	StableKey   string
+	Path        string
+	StartLine   int
+	EndLine     int
+	BeforeLines int
+	AfterLines  int
 }
 
 type TargetedContextResult struct {
-	Repository LayeredContextEnvelope
-	Identity   LayeredContextRepositoryIdentity
-	Request    TargetedContextRequest
-	Target     TargetedContextTarget
-	Window     TargetedContextWindow
-	Content    string
-}
-
-type TargetedContextTarget struct {
-	StableKey string
-	Path      string
-	Kind      string
-	Name      string
-	StartLine int64
-	EndLine   int64
-}
-
-type TargetedContextWindow struct {
-	StartLine      int64
-	EndLine        int64
-	TotalLines     int64
-	StartTruncated bool
-	EndTruncated   bool
+	Repository     LayeredContextEnvelope
+	Identity       LayeredContextRepositoryIdentity
+	Request        TargetedContextRequest
+	Path           string
+	AnchorStart    int
+	AnchorEnd      int
+	StartLine      int
+	EndLine        int
+	BeforeLines    int
+	AfterLines     int
+	TruncatedStart bool
+	TruncatedEnd   bool
+	Source         []string
 }
