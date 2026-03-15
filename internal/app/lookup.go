@@ -57,6 +57,32 @@ func (s LookupService) StructureLookup(ctx context.Context, startPath string, re
 	return result, nil
 }
 
+type symbolAnchor struct {
+	Path     string
+	StartRow int64
+	EndRow   int64
+}
+
+func (s LookupService) loadSymbolAnchor(ctx context.Context, store *sqlite.Store, repositoryID int64, stableKey string) (symbolAnchor, error) {
+	if stableKey == "" {
+		return symbolAnchor{}, fmt.Errorf("load symbol anchor: stable key is required")
+	}
+
+	var anchor symbolAnchor
+	if err := store.DB().QueryRowContext(ctx, `
+		SELECT path, start_row, end_row
+		FROM symbols
+		WHERE repository_id = ? AND stable_key = ?
+	`, repositoryID, stableKey).Scan(&anchor.Path, &anchor.StartRow, &anchor.EndRow); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return symbolAnchor{}, fmt.Errorf("load symbol anchor: stable key %q not found", stableKey)
+		}
+		return symbolAnchor{}, fmt.Errorf("load symbol anchor: %w", err)
+	}
+
+	return anchor, nil
+}
+
 func (s LookupService) openLookupStore(ctx context.Context, startPath string) (*sqlite.Store, int64, error) {
 	root, err := s.Locator.Resolve(startPath)
 	if err != nil {
