@@ -14,18 +14,19 @@ import (
 )
 
 type ApplyRefreshPlanRequest struct {
-	RepositoryRoot    repository.RepositoryRoot
-	RepositoryID      int64
-	Reason            repository.RefreshReason
-	StartedAt         time.Time
-	CompletedAt       time.Time
-	CurrentResult     repository.DiscoveryResult
-	PersistedSnapshot repository.RepositorySnapshot
-	Diff              refreshcore.Diff
-	AffectedPaths     []string
-	Fingerprints      map[string]string
-	MetadataJSON      string
-	InjectFailure     func(stage string) error
+	RepositoryRoot           repository.RepositoryRoot
+	RepositoryID             int64
+	Reason                   repository.RefreshReason
+	StartedAt                time.Time
+	CompletedAt              time.Time
+	CurrentResult            repository.DiscoveryResult
+	PersistedSnapshot        repository.RepositorySnapshot
+	Diff                     refreshcore.Diff
+	AffectedPaths            []string
+	Fingerprints             map[string]string
+	MetadataJSON             string
+	InjectFailure            func(stage string) error
+	ApplyStructuralArtifacts func(context.Context, RefreshStructuralStore) error
 }
 
 type ApplyRefreshPlanResult struct {
@@ -103,6 +104,18 @@ func (s *Store) ApplyRefreshPlan(ctx context.Context, req ApplyRefreshPlanReques
 			return ApplyRefreshPlanResult{}, fmt.Errorf("apply refresh plan: %v (plus failure recording error: %w)", err, recordErr)
 		}
 		return ApplyRefreshPlanResult{}, fmt.Errorf("apply refresh plan: %w", err)
+	}
+
+	if req.ApplyStructuralArtifacts != nil {
+		if err := req.ApplyStructuralArtifacts(ctx, s.newRefreshStructuralTx(tx, req.RepositoryID)); err != nil {
+			rolledBack = true
+			_ = tx.Rollback()
+			recordErr := s.recordRefreshFailure(ctx, req, priorFreshness, generation, err)
+			if recordErr != nil {
+				return ApplyRefreshPlanResult{}, fmt.Errorf("apply refresh plan: %v (plus failure recording error: %w)", err, recordErr)
+			}
+			return ApplyRefreshPlanResult{}, fmt.Errorf("apply refresh plan: %w", err)
+		}
 	}
 
 	if err := maybeInjectRefreshFailure(req, "after_files"); err != nil {
