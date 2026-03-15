@@ -55,7 +55,7 @@ Each task was committed atomically:
 2. **Task 2: Implement repo-scoped watch runtime and ephemeral status tracking** - `3cd756c` (feat)
 3. **Task 3: Lock the watch CLI and status contract into tests** - `65f6edb` (test)
 
-**Plan metadata:** pending until state updates and final docs commit
+**Plan metadata:** `0628410` (docs)
 
 ## Files Created/Modified
 
