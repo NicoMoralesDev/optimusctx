@@ -54,7 +54,7 @@ Each task was committed atomically:
 2. **Task 2: Add the `optimusctx doctor` CLI and actionable rendering** - `08404c3` (feat)
 3. **Task 3: Add coverage for healthy and degraded diagnostics, including watch and budget signals** - `9b95ae8` (test)
 
-**Plan metadata:** pending
+**Plan metadata:** `aafe7f5` (docs)
 
 ## Files Created/Modified
 - `internal/repository/doctor.go` - Typed doctor report sections and status models.
