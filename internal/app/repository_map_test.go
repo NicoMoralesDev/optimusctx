@@ -178,7 +178,7 @@ func TestPersistedOnlyRepositoryMap(t *testing.T) {
 	}
 
 	mainFile := repositoryMapFileByPath(t, mapResult, "main.go")
-	if mainFile.CoverageState != repository.ExtractionCoverageStateSupported || len(mainFile.Symbols) != 1 {
+	if mainFile.CoverageState != repository.ExtractionCoverageStateSupported || len(mainFile.Symbols) != 2 {
 		t.Fatalf("main persisted map file = %+v", mainFile)
 	}
 	notesFile := repositoryMapFileByPath(t, mapResult, "notes.txt")

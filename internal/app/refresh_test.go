@@ -454,6 +454,46 @@ func TestSyntaxBreakExtractionRecovery(t *testing.T) {
 	}
 }
 
+func TestRefreshArtifactsRemainQueryableViaRepositoryMap(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "main.go"), "package main\n\nfunc Persisted() {}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "notes.txt"), "plain text\n")
+
+	refresh := NewRefreshService()
+	if _, err := refresh.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() initial error = %v", err)
+	}
+
+	if err := os.Remove(filepath.Join(repoRoot, "main.go")); err != nil {
+		t.Fatalf("Remove(main.go) error = %v", err)
+	}
+	if err := os.Remove(filepath.Join(repoRoot, "notes.txt")); err != nil {
+		t.Fatalf("Remove(notes.txt) error = %v", err)
+	}
+
+	repositoryMap, err := NewRepositoryMapService().RepositoryMap(context.Background(), repoRoot)
+	if err != nil {
+		t.Fatalf("RepositoryMap() error = %v", err)
+	}
+
+	mainFile := repositoryMapFileByPath(t, repositoryMap, "main.go")
+	if mainFile.CoverageState != repository.ExtractionCoverageStateSupported {
+		t.Fatalf("main.go coverage = %q", mainFile.CoverageState)
+	}
+	if !reflect.DeepEqual(repositoryMapSymbolNames(mainFile.Symbols), []string{"main", "Persisted"}) {
+		t.Fatalf("main.go symbols = %+v", mainFile.Symbols)
+	}
+
+	notesFile := repositoryMapFileByPath(t, repositoryMap, "notes.txt")
+	if notesFile.CoverageState != repository.ExtractionCoverageStateUnsupported || !notesFile.HasCoverageGap {
+		t.Fatalf("notes.txt map file = %+v", notesFile)
+	}
+}
+
 func loadSnapshotForRepo(t *testing.T, repoRoot string) repository.RepositorySnapshot {
 	t.Helper()
 
