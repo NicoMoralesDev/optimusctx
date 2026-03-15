@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestMCPServerStdioSession(t *testing.T) {
+func TestMCPServerBasicSession(t *testing.T) {
 	var input bytes.Buffer
 	writeTestFrame(t, &input, Request{
 		JSONRPC: jsonRPCVersion,
