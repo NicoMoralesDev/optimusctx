@@ -458,16 +458,15 @@ func TestWatchRefreshFailureRecovery(t *testing.T) {
 	}
 	statusPath := filepath.Join(layout.TmpDir, repository.DefaultWatchStatusFilename)
 	waitForFile(t, statusPath)
+	db := openStateDatabase(t, filepath.Join(layout.StateDir, "db.sqlite"))
+	defer db.Close()
 
 	writeRepoFile(t, filepath.Join(repoRoot, "main.go"), "package main\n\nfunc Failed() {}\n")
 	events <- repository.WatchEvent{Path: "main.go", Op: repository.WatchEventOpChange}
 	waitForCondition(t, 2*time.Second, func() bool {
-		record := loadWatchStatusRecord(t, statusPath)
-		return record.LastError == "apply refresh plan: forced watch failure"
+		return repositoryFreshnessMatches(db, repository.RefreshReasonWatch, repository.RefreshRunStatusFailed, repository.FreshnessStatusPartiallyDegraded, initial.Generation+1, initial.Generation)
 	})
 
-	db := openStateDatabase(t, filepath.Join(layout.StateDir, "db.sqlite"))
-	defer db.Close()
 	assertRepositoryFreshness(t, db, repository.RefreshReasonWatch, repository.RefreshRunStatusFailed, repository.FreshnessStatusPartiallyDegraded, initial.Generation+1, initial.Generation)
 
 	writeRepoFile(t, filepath.Join(repoRoot, "main.go"), "package main\n\nfunc Recovered() {}\n")
@@ -572,18 +571,8 @@ func writeWatchStatusRecord(t *testing.T, path string, record repository.WatchSt
 func assertRepositoryFreshness(t *testing.T, db *sql.DB, reason repository.RefreshReason, status repository.RefreshRunStatus, freshness repository.FreshnessStatus, currentGeneration int64, lastGeneration int64) {
 	t.Helper()
 
-	var storedReason string
-	var storedStatus string
-	var storedFreshness string
-	var storedCurrentGeneration int64
-	var storedLastGeneration int64
-	if err := db.QueryRow(`SELECT last_refresh_reason, last_refresh_status, freshness_status, current_refresh_generation, last_refresh_generation FROM repositories`).Scan(
-		&storedReason,
-		&storedStatus,
-		&storedFreshness,
-		&storedCurrentGeneration,
-		&storedLastGeneration,
-	); err != nil {
+	storedReason, storedStatus, storedFreshness, storedCurrentGeneration, storedLastGeneration, err := readRepositoryFreshnessRow(db)
+	if err != nil {
 		t.Fatalf("query repositories freshness: %v", err)
 	}
 	if storedReason != string(reason) {
@@ -601,6 +590,36 @@ func assertRepositoryFreshness(t *testing.T, db *sql.DB, reason repository.Refre
 	if storedLastGeneration != lastGeneration {
 		t.Fatalf("last_refresh_generation = %d, want %d", storedLastGeneration, lastGeneration)
 	}
+}
+
+func repositoryFreshnessMatches(db *sql.DB, reason repository.RefreshReason, status repository.RefreshRunStatus, freshness repository.FreshnessStatus, currentGeneration int64, lastGeneration int64) bool {
+	storedReason, storedStatus, storedFreshness, storedCurrentGeneration, storedLastGeneration, err := readRepositoryFreshnessRow(db)
+	if err != nil {
+		return false
+	}
+	return storedReason == string(reason) &&
+		storedStatus == string(status) &&
+		storedFreshness == string(freshness) &&
+		storedCurrentGeneration == currentGeneration &&
+		storedLastGeneration == lastGeneration
+}
+
+func readRepositoryFreshnessRow(db *sql.DB) (string, string, string, int64, int64, error) {
+	var storedReason string
+	var storedStatus string
+	var storedFreshness string
+	var storedCurrentGeneration int64
+	var storedLastGeneration int64
+	if err := db.QueryRow(`SELECT last_refresh_reason, last_refresh_status, freshness_status, current_refresh_generation, last_refresh_generation FROM repositories`).Scan(
+		&storedReason,
+		&storedStatus,
+		&storedFreshness,
+		&storedCurrentGeneration,
+		&storedLastGeneration,
+	); err != nil {
+		return "", "", "", 0, 0, err
+	}
+	return storedReason, storedStatus, storedFreshness, storedCurrentGeneration, storedLastGeneration, nil
 }
 
 func waitForFile(t *testing.T, path string) {

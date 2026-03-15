@@ -14,8 +14,12 @@ import (
 )
 
 var (
-	watchRunCommandService = func(ctx context.Context, workingDir string) (repository.WatchRunResult, error) {
-		return app.NewWatchService().Run(ctx, repository.WatchRequest{StartPath: workingDir})
+	watchRunCommandService = func(ctx context.Context, workingDir string, stdout io.Writer) (repository.WatchRunResult, error) {
+		service := app.NewWatchService()
+		service.ReportRefresh = func(report repository.WatchRefreshReport) {
+			_, _ = io.WriteString(stdout, formatWatchRefreshReport(report))
+		}
+		return service.Run(ctx, repository.WatchRequest{StartPath: workingDir})
 	}
 	watchStatusCommandService = func(ctx context.Context, workingDir string) (repository.WatchStatusResult, error) {
 		return app.NewWatchService().Status(ctx, workingDir, 0)
@@ -69,7 +73,7 @@ func runWatchRunCommand(stdout io.Writer, args []string) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	_, err = watchRunCommandService(ctx, workingDir)
+	_, err = watchRunCommandService(ctx, workingDir, stdout)
 	return err
 }
 
@@ -120,6 +124,20 @@ func formatWatchStatus(result repository.WatchStatusResult) string {
 		renderWatchValue(record.LastRefreshDoneAt),
 		record.LastRefreshGeneration,
 		renderWatchValue(record.LastError),
+	)
+}
+
+func formatWatchRefreshReport(report repository.WatchRefreshReport) string {
+	return fmt.Sprintf(
+		"watch refresh: reason=%s generation=%d freshness=%s changed=%d unchanged=%d affected_directories=%d force_full=%t error=%s\n",
+		report.Reason,
+		report.Generation,
+		report.FreshnessStatus,
+		report.ChangedFiles,
+		report.UnchangedFiles,
+		report.AffectedDirectories,
+		report.ForceFull,
+		renderWatchValue(report.Error),
 	)
 }
 

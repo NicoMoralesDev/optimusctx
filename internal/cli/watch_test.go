@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"strings"
 	"testing"
 
@@ -28,11 +29,17 @@ func TestWatchCommand(t *testing.T) {
 		})
 
 		called := false
-		watchRunCommandService = func(ctx context.Context, workingDir string) (repository.WatchRunResult, error) {
+		watchRunCommandService = func(ctx context.Context, workingDir string, stdout io.Writer) (repository.WatchRunResult, error) {
 			called = true
 			if workingDir != repoRoot {
 				t.Fatalf("workingDir = %q, want %q", workingDir, repoRoot)
 			}
+			_, _ = io.WriteString(stdout, formatWatchRefreshReport(repository.WatchRefreshReport{
+				Reason:          repository.RefreshReasonWatch,
+				Generation:      7,
+				FreshnessStatus: repository.FreshnessStatusFresh,
+				ChangedFiles:    1,
+			}))
 			return repository.WatchRunResult{RepositoryRoot: repoRoot}, nil
 		}
 
@@ -44,9 +51,7 @@ func TestWatchCommand(t *testing.T) {
 			if !called {
 				t.Fatal("watch run service was not called")
 			}
-			if stdout.Len() != 0 {
-				t.Fatalf("stdout = %q, want empty", stdout.String())
-			}
+			assertContains(t, stdout.String(), "watch refresh: reason=watch generation=7 freshness=fresh changed=1")
 		})
 	})
 
@@ -155,6 +160,33 @@ func TestRenderWatchValue(t *testing.T) {
 	}
 	if got := renderWatchValue("value"); got != "value" {
 		t.Fatalf("renderWatchValue(value) = %q, want value", got)
+	}
+}
+
+func TestFormatWatchRefreshReport(t *testing.T) {
+	output := formatWatchRefreshReport(repository.WatchRefreshReport{
+		Reason:              repository.RefreshReasonWatch,
+		Generation:          9,
+		FreshnessStatus:     repository.FreshnessStatusPartiallyDegraded,
+		ChangedFiles:        2,
+		UnchangedFiles:      4,
+		AffectedDirectories: 3,
+		ForceFull:           true,
+		Error:               "forced watch failure",
+	})
+	for _, fragment := range []string{
+		"reason=watch",
+		"generation=9",
+		"freshness=partially_degraded",
+		"changed=2",
+		"unchanged=4",
+		"affected_directories=3",
+		"force_full=true",
+		"error=forced watch failure",
+	} {
+		if !strings.Contains(output, fragment) {
+			t.Fatalf("output = %q, want fragment %q", output, fragment)
+		}
 	}
 }
 
