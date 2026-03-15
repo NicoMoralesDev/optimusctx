@@ -48,9 +48,12 @@ completed: 2026-03-15
 
 ## Task Commits
 
-Execution completed in the shared recovery commit:
+Each task was committed atomically:
 
-1. **Plan 04-04 implementation** - `5d27605` (feat)
+1. **Task 1: Define a normalized structural-lookup contract** - `98cdf11` (feat)
+2. **Task 2: Add persisted structural lookup queries and validation-backed tests** - `981f0cb` (feat)
+3. **Task 3: Extend the lookup service for structural queries** - `9e61e3a` (feat)
+4. **Scope correction: remove early 04-05 request/result scaffolding from 04-04** - `0645da3` (fix)
 
 ## Files Created/Modified
 
@@ -72,8 +75,8 @@ Execution completed in the shared recovery commit:
 
 **1. [Rule 3 - Blocking issue] Wave 4 executor handoff became unreliable**
 - **Found during:** Plan execution orchestration
-- **Issue:** The structural lookup implementation landed inside the prior recovery commit while the dedicated `04-04` executor failed to finish summary and state updates.
-- **Fix:** Verified the committed structural lookup code against targeted and full Go test runs, then finalized the missing plan summary in this turn.
+- **Issue:** The dedicated `04-04` executor failed to finish summary and state updates after shipping the task commits.
+- **Fix:** Verified the committed structural lookup code against targeted and full Go test runs, corrected the out-of-scope metadata spillover, and finalized the missing summary in this turn.
 - **Files modified:** `.planning/phases/04-layered-context-exact-lookup-and-budget-analysis/04-04-SUMMARY.md`
 - **Commit:** pending docs commit
 
@@ -95,7 +98,9 @@ None - no external service configuration required.
 - Found `internal/repository/metadata.go`
 - Found `internal/store/sqlite/store.go`
 - Found `internal/app/lookup.go`
-- Found commit `5d27605`
+- Found commit `98cdf11`
+- Found commit `981f0cb`
+- Found commit `9e61e3a`
 
 ---
 *Phase: 04-layered-context-exact-lookup-and-budget-analysis*
