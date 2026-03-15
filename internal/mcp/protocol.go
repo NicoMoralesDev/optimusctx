@@ -70,11 +70,41 @@ type CallToolParams struct {
 }
 
 type CallToolResult struct {
-	Content []ToolContent `json:"content"`
-	IsError bool          `json:"isError,omitempty"`
+	Content           []ToolContent `json:"content"`
+	StructuredContent any           `json:"structuredContent,omitempty"`
+	IsError           bool          `json:"isError,omitempty"`
 }
 
 type ToolContent struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+	Type     string `json:"type"`
+	Text     string `json:"text,omitempty"`
+	MIMEType string `json:"mimeType,omitempty"`
+}
+
+const cacheStatusPersistedOnly = "persisted_only"
+
+type QueryEnvelope struct {
+	Meta QueryResultMetadata `json:"meta"`
+	Data any                 `json:"data"`
+}
+
+type QueryResultMetadata struct {
+	RepositoryRoot string              `json:"repositoryRoot"`
+	Generation     int64               `json:"generation"`
+	Freshness      string              `json:"freshness"`
+	CacheStatus    string              `json:"cacheStatus"`
+	Bounds         QueryBoundsMetadata `json:"bounds,omitempty"`
+}
+
+type QueryBoundsMetadata struct {
+	DefaultLimit   int   `json:"defaultLimit,omitempty"`
+	MaxLimit       int   `json:"maxLimit,omitempty"`
+	RequestedLimit int   `json:"requestedLimit,omitempty"`
+	AppliedLimit   int   `json:"appliedLimit,omitempty"`
+	ReturnedCount  int   `json:"returnedCount,omitempty"`
+	TotalCount     int64 `json:"totalCount,omitempty"`
+	Truncated      bool  `json:"truncated,omitempty"`
+	LimitReached   bool  `json:"limitReached,omitempty"`
+	BeforeLines    int   `json:"beforeLines,omitempty"`
+	AfterLines     int   `json:"afterLines,omitempty"`
 }
