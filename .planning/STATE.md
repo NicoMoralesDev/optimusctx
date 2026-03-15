@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 3
 current_phase_name: Structural Extraction and Repository Artifact Model
-current_plan: 1
+current_plan: 2
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-03-14T23:52:15.920Z"
-last_activity: 2026-03-14
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-15T00:07:23.848Z"
+last_activity: 2026-03-15
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 14
-  completed_plans: 11
-  percent: 79
+  completed_plans: 12
+  percent: 86
 ---
 
 # Planning State: OptimusCtx
@@ -27,11 +27,11 @@ progress:
 **Current Phase:** 3
 **Current Phase Name:** Structural Extraction and Repository Artifact Model
 **Total Phases:** 6
-**Current Plan:** 1
+**Current Plan:** 2
 **Total Plans in Phase:** 6
-**Progress:** [████████░░] 79%
-**Last Activity:** 2026-03-14
-**Last Activity Description:** Completed plan 02-06 gap closure for degraded refresh rollback, recovery, and smoke guidance
+**Progress:** [█████████░] 86%
+**Last Activity:** 2026-03-15
+**Last Activity Description:** Completed plan 03-02 deterministic extraction core, Go Tree-sitter adapter, and degraded extraction coverage
 
 ## Project Memory
 
@@ -107,6 +107,7 @@ progress:
 | Phase 02 P04 | 4min | 3 tasks | 9 files |
 | Phase 02-incremental-refresh-and-freshness-model P05 | 32min | 3 tasks | 6 files |
 | Phase 02-incremental-refresh-and-freshness-model P06 | 5min | 3 tasks | 4 files |
+| Phase 03-structural-extraction-and-repository-artifact-model P02 | 13min | 3 tasks | 10 files |
 
 ## Decisions Made
 
@@ -126,6 +127,9 @@ progress:
 - [Phase 03]: Persist structural coverage in file_extractions while keeping files.language as the routing hint and single file-inventory source of truth.
 - [Phase 03]: Replace per-file symbols transactionally inside SQLite so later generations cannot mix stale and current artifacts.
 - [Phase 03]: Build repository-map inputs from top-level persisted symbols and explicit coverage states instead of parser-owned blobs.
+- [Phase 03]: Extraction support now resolves from persisted files.language metadata plus a static adapter registry, with unsupported files recorded without parser work.
+- [Phase 03]: Tree-sitter parsers are adapter-owned and short-lived, while the extraction core normalizes lexical ordering and coverage metadata.
+- [Phase 03]: Malformed Go files are partial only when at least one non-package symbol comes from an error-free subtree; otherwise extraction fails with zero symbols.
 
 ## Blockers
 
@@ -133,9 +137,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-14T23:52:15.917Z
-**Stopped At:** Completed 03-01-PLAN.md
+**Last Date:** 2026-03-15T00:07:23.848Z
+**Stopped At:** Completed 03-02-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-14 after completing plan 02-06*
+*Last updated: 2026-03-15 after completing plan 03-02*
