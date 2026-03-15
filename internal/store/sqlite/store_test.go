@@ -1108,6 +1108,159 @@ func TestLayeredContextL0(t *testing.T) {
 	}
 }
 
+func TestLayeredContextL1(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	refreshedAt := time.Date(2026, 3, 14, 18, 30, 0, 0, time.UTC)
+	if err := store.WriteRepositoryFreshness(ctx, repository.RepositoryFreshness{
+		RepositoryID:           repoID,
+		RootPath:               layout.RepoRoot,
+		DetectionMode:          repository.DetectionModeGit,
+		GitHeadRef:             "refs/heads/main",
+		GitHeadCommit:          "89abcdef0123456789abcdef0123456789abcdef",
+		LastRefreshStartedAt:   refreshedAt,
+		LastRefreshCompletedAt: refreshedAt.Add(2 * time.Minute),
+		LastRefreshReason:      repository.RefreshReasonManual,
+		LastRefreshStatus:      repository.RefreshRunStatusSuccess,
+		FreshnessStatus:        repository.FreshnessStatusFresh,
+		CurrentGeneration:      4,
+		LastRefreshGeneration:  4,
+	}); err != nil {
+		t.Fatalf("WriteRepositoryFreshness() error = %v", err)
+	}
+
+	mustInsertDirectoryRecord(t, ctx, store, repoID, ".", nil, 2, 2, 140, 4)
+	mustInsertDirectoryRecord(t, ctx, store, repoID, "pkg", ".", 2, 0, 420, 4)
+	mustInsertDirectoryRecord(t, ctx, store, repoID, "docs", ".", 1, 0, 80, 4)
+	mustInsertDirectoryRecord(t, ctx, store, repoID, "assets", ".", 1, 0, 60, 4)
+
+	run := createTestRefreshRun(t, ctx, store, repoID, 4)
+	alphaID := insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "pkg/alpha.go", DirectoryPath: "pkg", Extension: ".go", Language: "go", ContentHash: "go-alpha", LastGeneration: 4}, 220)
+	partialID := insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "pkg/partial.go", DirectoryPath: "pkg", Extension: ".go", Language: "go", ContentHash: "go-partial", LastGeneration: 4}, 200)
+	guideID := insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "docs/guide.go", DirectoryPath: "docs", Extension: ".go", Language: "go", ContentHash: "go-guide", LastGeneration: 4}, 160)
+	insertSizedTestFileRecord(t, ctx, store, repoID, run.ID, testFileSeed{Path: "assets/readme.txt", DirectoryPath: "assets", Extension: ".txt", Language: "", ContentHash: "txt-readme", LastGeneration: 4}, 60)
+
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:        repoID,
+			FileID:              alphaID,
+			Path:                "pkg/alpha.go",
+			Language:            "go",
+			AdapterName:         "tree-sitter-go",
+			GrammarVersion:      "v0.25.0",
+			SourceContentHash:   "go-alpha",
+			SourceGeneration:    4,
+			CoverageState:       repository.ExtractionCoverageStateSupported,
+			SymbolCount:         3,
+			TopLevelSymbolCount: 3,
+			MaxSymbolDepth:      0,
+			ExtractedAt:         refreshedAt,
+			RefreshRunID:        run.ID,
+		},
+		Symbols: []repository.SymbolRecord{
+			testTopLevelSymbol("pkg/alpha.go", "go", "type", "Alpha", "alpha", 0),
+			testTopLevelSymbol("pkg/alpha.go", "go", "function", "Beta", "beta", 1),
+			testTopLevelSymbol("pkg/alpha.go", "go", "function", "Gamma", "gamma", 2),
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts(alpha) error = %v", err)
+	}
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:        repoID,
+			FileID:              partialID,
+			Path:                "pkg/partial.go",
+			Language:            "go",
+			AdapterName:         "tree-sitter-go",
+			GrammarVersion:      "v0.25.0",
+			SourceContentHash:   "go-partial",
+			SourceGeneration:    4,
+			CoverageState:       repository.ExtractionCoverageStatePartial,
+			CoverageReason:      repository.ExtractionCoverageReasonParseError,
+			SymbolCount:         1,
+			TopLevelSymbolCount: 1,
+			MaxSymbolDepth:      0,
+			ExtractedAt:         refreshedAt,
+			RefreshRunID:        run.ID,
+		},
+		Symbols: []repository.SymbolRecord{
+			testTopLevelSymbol("pkg/partial.go", "go", "function", "Recovered", "recovered", 0),
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts(partial) error = %v", err)
+	}
+	if _, err := store.ReplaceFileArtifacts(ctx, repository.FileStructuralArtifacts{
+		Extraction: repository.FileExtractionRecord{
+			RepositoryID:        repoID,
+			FileID:              guideID,
+			Path:                "docs/guide.go",
+			Language:            "go",
+			AdapterName:         "tree-sitter-go",
+			GrammarVersion:      "v0.25.0",
+			SourceContentHash:   "go-guide",
+			SourceGeneration:    4,
+			CoverageState:       repository.ExtractionCoverageStateSupported,
+			SymbolCount:         1,
+			TopLevelSymbolCount: 1,
+			MaxSymbolDepth:      0,
+			ExtractedAt:         refreshedAt,
+			RefreshRunID:        run.ID,
+		},
+		Symbols: []repository.SymbolRecord{
+			testTopLevelSymbol("docs/guide.go", "go", "function", "Guide", "guide", 0),
+		},
+	}); err != nil {
+		t.Fatalf("ReplaceFileArtifacts(guide) error = %v", err)
+	}
+
+	got, err := store.readLayeredContextL1(ctx, repoID, 3, 2)
+	if err != nil {
+		t.Fatalf("readLayeredContextL1() error = %v", err)
+	}
+
+	if got.Repository.RepositoryRoot != layout.RepoRoot {
+		t.Fatalf("RepositoryRoot = %q, want %q", got.Repository.RepositoryRoot, layout.RepoRoot)
+	}
+	if !got.Limits.FileTruncated || got.Limits.TotalCandidateCount != 4 || got.Limits.ReturnedFileCount != 3 {
+		t.Fatalf("limit metadata = %+v", got.Limits)
+	}
+	if got := layeredContextL1CandidatePaths(got.Candidates); !reflect.DeepEqual(got, []string{"pkg/alpha.go", "docs/guide.go", "pkg/partial.go"}) {
+		t.Fatalf("candidate order = %v", got)
+	}
+
+	alpha := got.Candidates[0]
+	if alpha.SymbolWindow.ReturnedCount != 2 || !alpha.SymbolWindow.Truncated {
+		t.Fatalf("alpha symbol window = %+v", alpha.SymbolWindow)
+	}
+	if names := layeredContextL1SymbolNames(alpha.Symbols); !reflect.DeepEqual(names, []string{"Alpha", "Beta"}) {
+		t.Fatalf("alpha symbols = %v", names)
+	}
+	if alpha.Summary != "dir=pkg symbols=Alpha,Beta (+1 more)" {
+		t.Fatalf("alpha summary = %q", alpha.Summary)
+	}
+
+	partial := got.Candidates[2]
+	if !partial.HasCoverageGap || partial.CoverageState != repository.ExtractionCoverageStatePartial {
+		t.Fatalf("partial candidate = %+v", partial)
+	}
+	if partial.Summary != "dir=pkg symbols=Recovered coverage=partial" {
+		t.Fatalf("partial summary = %q", partial.Summary)
+	}
+
+	if got := layeredContextL1DirectoryPaths(got.Directories); !reflect.DeepEqual(got, []string{"docs", "pkg"}) {
+		t.Fatalf("directory summaries = %v", got)
+	}
+}
+
 func TestUnsupportedExtractionState(t *testing.T) {
 	t.Parallel()
 
@@ -1540,6 +1693,30 @@ func layeredContextMajorAreaKeysFromStore(summaries []repository.LayeredContextM
 		keys = append(keys, summary.Path+":"+string(summary.Kind))
 	}
 	return keys
+}
+
+func layeredContextL1CandidatePaths(candidates []repository.LayeredContextL1CandidateFile) []string {
+	paths := make([]string, 0, len(candidates))
+	for _, candidate := range candidates {
+		paths = append(paths, candidate.Path)
+	}
+	return paths
+}
+
+func layeredContextL1DirectoryPaths(directories []repository.LayeredContextL1DirectorySummary) []string {
+	paths := make([]string, 0, len(directories))
+	for _, directory := range directories {
+		paths = append(paths, directory.Path)
+	}
+	return paths
+}
+
+func layeredContextL1SymbolNames(symbols []repository.LayeredContextL1Symbol) []string {
+	names := make([]string, 0, len(symbols))
+	for _, symbol := range symbols {
+		names = append(names, symbol.Name)
+	}
+	return names
 }
 
 func testTopLevelSymbol(path, language, kind, name, stableKey string, ordinal int64) repository.SymbolRecord {

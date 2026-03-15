@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/niccrow/optimusctx/internal/repository"
@@ -18,6 +20,8 @@ import (
 const (
 	defaultLayeredContextLanguageLimit  = 5
 	defaultLayeredContextMajorAreaLimit = 5
+	defaultLayeredContextL1FileLimit    = 6
+	defaultLayeredContextL1SymbolLimit  = 4
 )
 
 type Store struct {
@@ -941,6 +945,10 @@ func (s *Store) ReadLayeredContextL0(ctx context.Context, repositoryID int64) (r
 	return result, nil
 }
 
+func (s *Store) ReadLayeredContextL1(ctx context.Context, repositoryID int64) (repository.LayeredContextL1, error) {
+	return s.readLayeredContextL1(ctx, repositoryID, defaultLayeredContextL1FileLimit, defaultLayeredContextL1SymbolLimit)
+}
+
 func (s *Store) loadLayeredContextLanguages(ctx context.Context, repositoryID int64, limit int) ([]repository.LayeredContextLanguageSummary, error) {
 	if limit <= 0 {
 		limit = defaultLayeredContextLanguageLimit
@@ -1026,6 +1034,255 @@ func (s *Store) loadLayeredContextMajorAreas(ctx context.Context, repositoryID i
 	}
 
 	return summaries, nil
+}
+
+func (s *Store) readLayeredContextL1(ctx context.Context, repositoryID int64, fileLimit, perFileSymbolLimit int) (repository.LayeredContextL1, error) {
+	if s == nil || s.db == nil {
+		return repository.LayeredContextL1{}, fmt.Errorf("read layered context l1: store is not initialized")
+	}
+	if fileLimit <= 0 {
+		fileLimit = defaultLayeredContextL1FileLimit
+	}
+	if perFileSymbolLimit <= 0 {
+		perFileSymbolLimit = defaultLayeredContextL1SymbolLimit
+	}
+
+	freshness, err := s.ReadRepositoryFreshness(ctx, repositoryID)
+	if err != nil {
+		return repository.LayeredContextL1{}, fmt.Errorf("read layered context l1 freshness: %w", err)
+	}
+
+	var totalCandidateCount int64
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM files
+		WHERE repository_id = ? AND ignore_status = ?
+	`, repositoryID, string(repository.IgnoreStatusIncluded)).Scan(&totalCandidateCount); err != nil {
+		return repository.LayeredContextL1{}, fmt.Errorf("count layered context l1 candidates for repository %d: %w", repositoryID, err)
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			f.id,
+			f.path,
+			f.directory_path,
+			COALESCE(NULLIF(f.language, ''), 'unknown') AS language,
+			COALESCE(fe.coverage_state, 'skipped') AS coverage_state,
+			COALESCE(fe.coverage_reason, '') AS coverage_reason,
+			COALESCE(fe.symbol_count, 0) AS symbol_count,
+			COALESCE(fe.top_level_symbol_count, 0) AS top_level_symbol_count,
+			COALESCE(fe.max_symbol_depth, 0) AS max_symbol_depth,
+			COALESCE(fe.source_generation, 0) AS source_generation,
+			COALESCE(d.path, f.directory_path) AS summary_directory_path,
+			COALESCE(d.included_file_count, 0) AS included_file_count,
+			COALESCE(d.included_directory_count, 0) AS included_directory_count,
+			COALESCE(d.total_size_bytes, 0) AS total_size_bytes,
+			COALESCE(d.last_refresh_generation, 0) AS last_refresh_generation
+		FROM files f
+		LEFT JOIN file_extractions fe ON fe.file_id = f.id
+		LEFT JOIN directories d ON d.repository_id = f.repository_id AND d.path = f.directory_path
+		WHERE f.repository_id = ? AND f.ignore_status = ?
+		ORDER BY
+			CASE COALESCE(fe.coverage_state, 'skipped')
+				WHEN 'supported' THEN 0
+				WHEN 'partial' THEN 1
+				WHEN 'unsupported' THEN 2
+				WHEN 'failed' THEN 3
+				ELSE 4
+			END ASC,
+			COALESCE(fe.top_level_symbol_count, 0) DESC,
+			COALESCE(fe.symbol_count, 0) DESC,
+			f.size_bytes DESC,
+			f.path ASC
+		LIMIT ?
+	`, repositoryID, string(repository.IgnoreStatusIncluded), fileLimit)
+	if err != nil {
+		return repository.LayeredContextL1{}, fmt.Errorf("load layered context l1 candidates for repository %d: %w", repositoryID, err)
+	}
+	defer rows.Close()
+
+	type l1CandidateRecord struct {
+		FileID     int64
+		Candidate  repository.LayeredContextL1CandidateFile
+		SummaryDir repository.LayeredContextL1DirectorySummary
+	}
+
+	var records []l1CandidateRecord
+	var fileIDs []int64
+	for rows.Next() {
+		var record l1CandidateRecord
+		if err := rows.Scan(
+			&record.FileID,
+			&record.Candidate.Path,
+			&record.Candidate.DirectoryPath,
+			&record.Candidate.Language,
+			&record.Candidate.CoverageState,
+			&record.Candidate.CoverageReason,
+			&record.Candidate.SymbolCount,
+			&record.Candidate.TopLevelSymbolCount,
+			&record.Candidate.MaxSymbolDepth,
+			&record.Candidate.SourceGeneration,
+			&record.SummaryDir.Path,
+			&record.SummaryDir.IncludedFileCount,
+			&record.SummaryDir.IncludedDirectoryCount,
+			&record.SummaryDir.TotalSizeBytes,
+			&record.SummaryDir.LastRefreshGeneration,
+		); err != nil {
+			return repository.LayeredContextL1{}, fmt.Errorf("scan layered context l1 candidate for repository %d: %w", repositoryID, err)
+		}
+		record.Candidate.DirectoryPath = normalizeStoredDirectoryPath(record.Candidate.DirectoryPath)
+		record.SummaryDir.Path = normalizeStoredDirectoryPath(record.SummaryDir.Path)
+		record.Candidate.HasCoverageGap = hasCoverageGap(record.Candidate.CoverageState)
+		record.Candidate.DirectorySummary = record.SummaryDir
+		records = append(records, record)
+		fileIDs = append(fileIDs, record.FileID)
+	}
+	if err := rows.Err(); err != nil {
+		return repository.LayeredContextL1{}, fmt.Errorf("iterate layered context l1 candidates for repository %d: %w", repositoryID, err)
+	}
+
+	symbolsByFileID, err := s.loadLayeredContextL1Symbols(ctx, repositoryID, fileIDs, perFileSymbolLimit)
+	if err != nil {
+		return repository.LayeredContextL1{}, err
+	}
+
+	result := repository.LayeredContextL1{
+		Repository: repository.LayeredContextEnvelope{
+			RepositoryRoot: freshness.RootPath,
+			Generation:     freshness.LastRefreshGeneration,
+			Freshness:      freshness.FreshnessStatus,
+		},
+		Identity: repository.LayeredContextRepositoryIdentity{
+			RootPath:      freshness.RootPath,
+			DetectionMode: freshness.DetectionMode,
+			GitHeadRef:    freshness.GitHeadRef,
+			GitHeadCommit: freshness.GitHeadCommit,
+		},
+		Limits: repository.LayeredContextL1LimitMetadata{
+			FileLimit:           fileLimit,
+			ReturnedFileCount:   len(records),
+			TotalCandidateCount: totalCandidateCount,
+			FileTruncated:       totalCandidateCount > int64(len(records)),
+			PerFileSymbolLimit:  perFileSymbolLimit,
+		},
+		Candidates:  make([]repository.LayeredContextL1CandidateFile, 0, len(records)),
+		Directories: make([]repository.LayeredContextL1DirectorySummary, 0, len(records)),
+	}
+
+	directoriesByPath := make(map[string]repository.LayeredContextL1DirectorySummary, len(records))
+	for _, record := range records {
+		symbols := symbolsByFileID[record.FileID]
+		record.Candidate.Symbols = symbols
+		record.Candidate.SymbolWindow = repository.LayeredContextL1SymbolWindow{
+			ReturnedCount: len(symbols),
+			TotalCount:    record.Candidate.TopLevelSymbolCount,
+			Truncated:     int64(len(symbols)) < record.Candidate.TopLevelSymbolCount,
+		}
+		record.Candidate.Summary = buildLayeredContextL1Summary(record.Candidate, symbols)
+		result.Candidates = append(result.Candidates, record.Candidate)
+		directoriesByPath[record.SummaryDir.Path] = record.SummaryDir
+	}
+
+	directoryPaths := make([]string, 0, len(directoriesByPath))
+	for path := range directoriesByPath {
+		directoryPaths = append(directoryPaths, path)
+	}
+	slices.Sort(directoryPaths)
+	for _, path := range directoryPaths {
+		result.Directories = append(result.Directories, directoriesByPath[path])
+	}
+
+	return result, nil
+}
+
+func (s *Store) loadLayeredContextL1Symbols(ctx context.Context, repositoryID int64, fileIDs []int64, limit int) (map[int64][]repository.LayeredContextL1Symbol, error) {
+	if len(fileIDs) == 0 {
+		return map[int64][]repository.LayeredContextL1Symbol{}, nil
+	}
+	if limit <= 0 {
+		limit = defaultLayeredContextL1SymbolLimit
+	}
+
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(fileIDs)), ",")
+	args := make([]any, 0, len(fileIDs)+2)
+	args = append(args, repositoryID)
+	for _, fileID := range fileIDs {
+		args = append(args, fileID)
+	}
+	args = append(args, limit)
+
+	rows, err := s.db.QueryContext(ctx, `
+		WITH ranked_symbols AS (
+			SELECT
+				file_id,
+				kind,
+				name,
+				COALESCE(qualified_name, '') AS qualified_name,
+				ordinal,
+				ROW_NUMBER() OVER (PARTITION BY file_id ORDER BY ordinal ASC, id ASC) AS symbol_rank
+			FROM symbols
+			WHERE repository_id = ? AND depth = 0 AND file_id IN (`+placeholders+`)
+		)
+		SELECT
+			file_id,
+			kind,
+			name,
+			qualified_name,
+			ordinal
+		FROM ranked_symbols
+		WHERE symbol_rank <= ?
+		ORDER BY file_id ASC, ordinal ASC, name ASC
+	`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("load layered context l1 symbols for repository %d: %w", repositoryID, err)
+	}
+	defer rows.Close()
+
+	result := make(map[int64][]repository.LayeredContextL1Symbol, len(fileIDs))
+	for rows.Next() {
+		var fileID int64
+		var symbol repository.LayeredContextL1Symbol
+		if err := rows.Scan(&fileID, &symbol.Kind, &symbol.Name, &symbol.QualifiedName, &symbol.Ordinal); err != nil {
+			return nil, fmt.Errorf("scan layered context l1 symbol for repository %d: %w", repositoryID, err)
+		}
+		result[fileID] = append(result[fileID], symbol)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate layered context l1 symbols for repository %d: %w", repositoryID, err)
+	}
+
+	return result, nil
+}
+
+func buildLayeredContextL1Summary(candidate repository.LayeredContextL1CandidateFile, symbols []repository.LayeredContextL1Symbol) string {
+	if len(symbols) == 0 {
+		return fmt.Sprintf(
+			"dir=%s coverage=%s top_level_symbols=%d",
+			candidate.DirectorySummary.Path,
+			candidate.CoverageState,
+			candidate.TopLevelSymbolCount,
+		)
+	}
+
+	names := make([]string, 0, len(symbols))
+	for _, symbol := range symbols {
+		names = append(names, symbol.Name)
+	}
+	summary := fmt.Sprintf("dir=%s symbols=%s", candidate.DirectorySummary.Path, strings.Join(names, ","))
+	if candidate.TopLevelSymbolCount > int64(len(symbols)) {
+		summary += fmt.Sprintf(" (+%d more)", candidate.TopLevelSymbolCount-int64(len(symbols)))
+	}
+	if candidate.HasCoverageGap {
+		summary += fmt.Sprintf(" coverage=%s", candidate.CoverageState)
+	}
+	return summary
+}
+
+func hasCoverageGap(state repository.ExtractionCoverageState) bool {
+	return state == repository.ExtractionCoverageStatePartial ||
+		state == repository.ExtractionCoverageStateUnsupported ||
+		state == repository.ExtractionCoverageStateFailed ||
+		state == repository.ExtractionCoverageStateSkipped
 }
 
 func (s *Store) LoadRepositorySnapshot(ctx context.Context, repositoryID int64) (repository.RepositorySnapshot, error) {
