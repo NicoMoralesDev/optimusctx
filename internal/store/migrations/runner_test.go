@@ -27,8 +27,8 @@ func TestMigrationRunnerAppliesFreshDatabase(t *testing.T) {
 	}
 
 	versions := appliedVersions(t, db)
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6}) {
-		t.Fatalf("versions = %v, want [1 2 3 4 5 6]", versions)
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7}) {
+		t.Fatalf("versions = %v, want [1 2 3 4 5 6 7]", versions)
 	}
 
 	assertTablesExist(t, db, "schema_migrations", "repositories", "directories", "files", "refresh_runs", "refresh_file_events", "file_extractions", "symbols", "eval_runs", "eval_steps", "eval_artifacts", "benchmark_runs", "benchmark_lane_samples", "benchmark_lane_metrics", "benchmark_evidence_bundles", "benchmark_evidence_lane_summaries", "benchmark_evidence_attributions")

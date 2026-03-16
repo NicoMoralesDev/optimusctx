@@ -1143,7 +1143,7 @@ func TestBenchmarkEvidenceBundleGeneration(t *testing.T) {
 		if err := json.Unmarshal(stdout.Bytes(), &bundle); err != nil {
 			t.Fatalf("Unmarshal(bundle) error = %v", err)
 		}
-		if bundle.SchemaVersion != repository.BenchmarkEvidenceBundleSchemaV1 {
+		if bundle.SchemaVersion != repository.BenchmarkEvidenceBundleSchemaV2 {
 			t.Fatalf("SchemaVersion = %q", bundle.SchemaVersion)
 		}
 		if len(bundle.Attempts) != 2 {

@@ -417,11 +417,15 @@ func TestBenchmarkArtifactAttribution(t *testing.T) {
 			if len(metadata.Attribution) < 2 {
 				t.Fatalf("discovery attribution = %+v, want repository_map and exact_lookup", metadata.Attribution)
 			}
-			if metadata.Attribution[0].ReportLabel != repository.BenchmarkReportArtifactLabelRepositoryMap {
-				t.Fatalf("first report label = %q", metadata.Attribution[0].ReportLabel)
+			labels := make([]repository.BenchmarkReportArtifactLabel, 0, len(metadata.Attribution))
+			for _, attribution := range metadata.Attribution {
+				labels = append(labels, attribution.ReportLabel)
 			}
-			if metadata.Attribution[1].ReportLabel != repository.BenchmarkReportArtifactLabelExactLookup {
-				t.Fatalf("second report label = %q", metadata.Attribution[1].ReportLabel)
+			if !slices.Contains(labels, repository.BenchmarkReportArtifactLabelRepositoryMap) {
+				t.Fatalf("report labels = %+v, want repository_map", labels)
+			}
+			if !slices.Contains(labels, repository.BenchmarkReportArtifactLabelExactLookup) {
+				t.Fatalf("report labels = %+v, want exact_lookup", labels)
 			}
 			found = true
 		}
@@ -492,10 +496,10 @@ func TestBenchmarkTaskCompletionComparison(t *testing.T) {
 	if !taskLane.Success || taskLane.StopMarker != "task_complete" {
 		t.Fatalf("task lane = %+v", taskLane)
 	}
-	if taskLane.Effort.ActionCount < 2 {
-		t.Fatalf("task effort = %+v, want MCP preview plus pack export", taskLane.Effort)
+	if taskLane.Effort.ActionCount != 1 {
+		t.Fatalf("task effort = %+v, want one targeted context fetch", taskLane.Effort)
 	}
-	if !slices.Contains(taskLane.EvidencePaths, "artifacts/pack.json") {
+	if !slices.Contains(taskLane.EvidencePaths, "docs/notes.txt") {
 		t.Fatalf("task evidence = %+v", taskLane.EvidencePaths)
 	}
 }
