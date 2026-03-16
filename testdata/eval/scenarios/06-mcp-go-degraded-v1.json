@@ -1,0 +1,188 @@
+{
+  "schemaVersion": "optimusctx/eval-scenario@v1",
+  "id": "mcp-go-degraded-v1",
+  "version": "v1",
+  "name": "MCP degraded refresh flow on basic Go fixture",
+  "description": "Forces an MCP refresh failure after file mutation and proves health and repository-map surfaces remain partially degraded while exposing the last-good snapshot.",
+  "fixture": {
+    "id": "go-basic",
+    "version": "v1",
+    "path": "go-basic/v1/repository",
+    "materialize": "copy_tree",
+    "workspaceDir": "workspace"
+  },
+  "steps": [
+    {
+      "id": "init",
+      "name": "Initialize repository state",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "init",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "refresh",
+      "name": "Refresh repository snapshot",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "refresh",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "mcp-degraded",
+      "name": "Force a degraded refresh over MCP and inspect last-good state",
+      "kind": "mcp_session",
+      "setup": [
+        {
+          "kind": "overwrite_file",
+          "path": "internal/service/service.go",
+          "content": "package service\n\nfunc RecoveredName() string {\n\treturn \"recovered\"\n}\n"
+        },
+        {
+          "kind": "inject_refresh_failure",
+          "failureStage": "after_files",
+          "failureMessage": "forced eval failure"
+        }
+      ],
+      "session": {
+        "requests": [
+          {
+            "id": 1,
+            "method": "initialize",
+            "params": {
+              "clientInfo": {
+                "name": "eval-runner",
+                "version": "1.0.0"
+              },
+              "protocolVersion": "2026-03-15"
+            }
+          },
+          {
+            "method": "notifications/initialized",
+            "notification": true
+          },
+          {
+            "id": 2,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.refresh",
+              "arguments": {
+                "startPath": "."
+              }
+            }
+          },
+          {
+            "id": 3,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.repository_map",
+              "arguments": {
+                "startPath": "."
+              }
+            }
+          },
+          {
+            "id": 4,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.health",
+              "arguments": {
+                "startPath": "."
+              }
+            }
+          }
+        ],
+        "transcriptArtifact": "mcp-transcript",
+        "captureResponses": [
+          {
+            "requestId": 2,
+            "artifact": "refresh-error"
+          },
+          {
+            "requestId": 3,
+            "artifact": "repository-map"
+          },
+          {
+            "requestId": 4,
+            "artifact": "health-response"
+          }
+        ]
+      },
+      "assert": [
+        {
+          "kind": "contains",
+          "target": "stderr",
+          "contains": "optimusctx mcp: ready for stdio requests"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "refresh-error",
+          "contains": "forced eval failure"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "repository-map",
+          "path": "result.structuredContent.meta.freshness",
+          "equals": "partially_degraded"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "health-response",
+          "path": "result.structuredContent.meta.freshness",
+          "equals": "partially_degraded"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "repository-map",
+          "contains": "\"Name\""
+        }
+      ],
+      "captureArtifact": [
+        "mcp-stderr",
+        "mcp-transcript",
+        "refresh-error",
+        "repository-map",
+        "health-response"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "mcp-stderr",
+      "kind": "stderr",
+      "required": true
+    },
+    {
+      "id": "mcp-transcript",
+      "kind": "file",
+      "path": "artifacts/mcp-degraded-transcript.json",
+      "required": true
+    },
+    {
+      "id": "refresh-error",
+      "kind": "file",
+      "path": "artifacts/mcp-degraded-refresh.json",
+      "required": true
+    },
+    {
+      "id": "repository-map",
+      "kind": "file",
+      "path": "artifacts/mcp-degraded-repository-map.json",
+      "required": true
+    },
+    {
+      "id": "health-response",
+      "kind": "file",
+      "path": "artifacts/mcp-degraded-health.json",
+      "required": true
+    }
+  ]
+}

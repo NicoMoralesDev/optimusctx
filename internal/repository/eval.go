@@ -58,6 +58,7 @@ const (
 	EvalSetupActionDeleteFile           EvalSetupActionKind = "delete_file"
 	EvalSetupActionSeedWatchStatus      EvalSetupActionKind = "seed_watch_status"
 	EvalSetupActionInjectRefreshFailure EvalSetupActionKind = "inject_refresh_failure"
+	EvalSetupActionSetRepositoryState   EvalSetupActionKind = "set_repository_state"
 )
 
 type EvalAssertionTarget string
@@ -99,12 +100,13 @@ type EvalArtifactRef struct {
 }
 
 type EvalSetupAction struct {
-	Kind           EvalSetupActionKind  `json:"kind"`
-	Path           string               `json:"path,omitempty"`
-	Content        string               `json:"content,omitempty"`
-	WatchStatus    *EvalWatchStatusSeed `json:"watchStatus,omitempty"`
-	FailureStage   string               `json:"failureStage,omitempty"`
-	FailureMessage string               `json:"failureMessage,omitempty"`
+	Kind            EvalSetupActionKind      `json:"kind"`
+	Path            string                   `json:"path,omitempty"`
+	Content         string                   `json:"content,omitempty"`
+	WatchStatus     *EvalWatchStatusSeed     `json:"watchStatus,omitempty"`
+	RepositoryState *EvalRepositoryStateSeed `json:"repositoryState,omitempty"`
+	FailureStage    string                   `json:"failureStage,omitempty"`
+	FailureMessage  string                   `json:"failureMessage,omitempty"`
 }
 
 type EvalWatchStatusSeed struct {
@@ -117,6 +119,12 @@ type EvalWatchStatusSeed struct {
 	LastRefreshCompletedAt string `json:"lastRefreshCompletedAt,omitempty"`
 	LastRefreshGeneration  int64  `json:"lastRefreshGeneration,omitempty"`
 	LastError              string `json:"lastError,omitempty"`
+}
+
+type EvalRepositoryStateSeed struct {
+	FreshnessStatus   FreshnessStatus  `json:"freshnessStatus"`
+	FreshnessReason   string           `json:"freshnessReason,omitempty"`
+	LastRefreshStatus RefreshRunStatus `json:"lastRefreshStatus,omitempty"`
 }
 
 type EvalAssertion struct {
@@ -457,21 +465,28 @@ func validateEvalSetupActions(actions []EvalSetupAction) error {
 				return fmt.Errorf("setup[%d]: watchStatus/failureStage/failureMessage must be empty for %q", idx, action.Kind)
 			}
 		case EvalSetupActionSeedWatchStatus:
-			if action.Path != "" || action.Content != "" || action.FailureStage != "" || action.FailureMessage != "" {
-				return fmt.Errorf("setup[%d]: path/content/failureStage/failureMessage must be empty for %q", idx, action.Kind)
+			if action.Path != "" || action.Content != "" || action.RepositoryState != nil || action.FailureStage != "" || action.FailureMessage != "" {
+				return fmt.Errorf("setup[%d]: path/content/repositoryState/failureStage/failureMessage must be empty for %q", idx, action.Kind)
 			}
 			if err := validateEvalWatchStatusSeed(action.WatchStatus); err != nil {
 				return fmt.Errorf("setup[%d]: %w", idx, err)
 			}
 		case EvalSetupActionInjectRefreshFailure:
-			if action.Path != "" || action.Content != "" || action.WatchStatus != nil {
-				return fmt.Errorf("setup[%d]: path/content/watchStatus must be empty for %q", idx, action.Kind)
+			if action.Path != "" || action.Content != "" || action.WatchStatus != nil || action.RepositoryState != nil {
+				return fmt.Errorf("setup[%d]: path/content/watchStatus/repositoryState must be empty for %q", idx, action.Kind)
 			}
 			if strings.TrimSpace(action.FailureStage) == "" {
 				return fmt.Errorf("setup[%d]: failureStage is required for %q", idx, action.Kind)
 			}
 			if strings.TrimSpace(action.FailureMessage) == "" {
 				return fmt.Errorf("setup[%d]: failureMessage is required for %q", idx, action.Kind)
+			}
+		case EvalSetupActionSetRepositoryState:
+			if action.Path != "" || action.Content != "" || action.WatchStatus != nil || action.FailureStage != "" || action.FailureMessage != "" {
+				return fmt.Errorf("setup[%d]: path/content/watchStatus/failureStage/failureMessage must be empty for %q", idx, action.Kind)
+			}
+			if err := validateEvalRepositoryStateSeed(action.RepositoryState); err != nil {
+				return fmt.Errorf("setup[%d]: %w", idx, err)
 			}
 		default:
 			return fmt.Errorf("setup[%d]: unsupported kind %q", idx, action.Kind)
@@ -506,6 +521,23 @@ func validateEvalWatchStatusSeed(seed *EvalWatchStatusSeed) error {
 	}
 	if seed.LastRefreshGeneration < 0 {
 		return errors.New("watchStatus.lastRefreshGeneration must be >= 0")
+	}
+	return nil
+}
+
+func validateEvalRepositoryStateSeed(seed *EvalRepositoryStateSeed) error {
+	if seed == nil {
+		return errors.New("repositoryState is required")
+	}
+	switch seed.FreshnessStatus {
+	case FreshnessStatusFresh, FreshnessStatusStale, FreshnessStatusPartiallyDegraded:
+	default:
+		return fmt.Errorf("repositoryState.freshnessStatus must be one of %q, %q, or %q", FreshnessStatusFresh, FreshnessStatusStale, FreshnessStatusPartiallyDegraded)
+	}
+	switch seed.LastRefreshStatus {
+	case "", RefreshRunStatusPending, RefreshRunStatusRunning, RefreshRunStatusSuccess, RefreshRunStatusFailed:
+	default:
+		return fmt.Errorf("repositoryState.lastRefreshStatus %q is unsupported", seed.LastRefreshStatus)
 	}
 	return nil
 }

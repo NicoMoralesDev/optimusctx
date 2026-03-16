@@ -110,6 +110,151 @@ func TestEvalMCPArtifactsPersist(t *testing.T) {
 	assertContains(t, string(content), "\"Initialized\": true")
 }
 
+func TestEvalStaleAndDegradedScenarios(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		for _, scenarioID := range []string{"cli-go-stale-v1", "mcp-go-degraded-v1"} {
+			var stdout bytes.Buffer
+			if err := NewRootCommand().Execute([]string{"eval", "--scenario", scenarioID}, &stdout); err != nil {
+				t.Fatalf("Execute(eval %s) error = %v", scenarioID, err)
+			}
+			assertContains(t, stdout.String(), "scenario id: "+scenarioID)
+			assertContains(t, stdout.String(), "status: passed")
+		}
+	})
+
+	layout, err := state.ResolveLayout(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+	store, err := sqlite.OpenOrCreateStore(context.Background(), layout, repository.DetectionModeGit)
+	if err != nil {
+		t.Fatalf("OpenOrCreateStore() error = %v", err)
+	}
+	defer store.Close()
+
+	staleRun, _, staleArtifacts, err := store.LoadEvalRun(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("LoadEvalRun(1) error = %v", err)
+	}
+	if staleRun.ScenarioID != "cli-go-stale-v1" || !staleRun.Passed {
+		t.Fatalf("stale run = %+v", staleRun)
+	}
+	doctorArtifact, ok := findEvalArtifactRecord(staleArtifacts, "doctor-stdout")
+	if !ok {
+		t.Fatalf("missing doctor artifact: %+v", staleArtifacts)
+	}
+	doctorContent, err := os.ReadFile(doctorArtifact.StoredPath)
+	if err != nil {
+		t.Fatalf("ReadFile(doctor artifact) error = %v", err)
+	}
+	assertContains(t, string(doctorContent), "freshness: stale")
+	assertContains(t, string(doctorContent), "summary: watch heartbeat is stale")
+
+	degradedRun, _, degradedArtifacts, err := store.LoadEvalRun(context.Background(), 2)
+	if err != nil {
+		t.Fatalf("LoadEvalRun(2) error = %v", err)
+	}
+	if degradedRun.ScenarioID != "mcp-go-degraded-v1" || !degradedRun.Passed {
+		t.Fatalf("degraded run = %+v", degradedRun)
+	}
+	refreshError, ok := findEvalArtifactRecord(degradedArtifacts, "refresh-error")
+	if !ok {
+		t.Fatalf("missing refresh-error artifact: %+v", degradedArtifacts)
+	}
+	refreshErrorContent, err := os.ReadFile(refreshError.StoredPath)
+	if err != nil {
+		t.Fatalf("ReadFile(refresh-error) error = %v", err)
+	}
+	assertContains(t, string(refreshErrorContent), "forced eval failure")
+
+	healthArtifact, ok := findEvalArtifactRecord(degradedArtifacts, "health-response")
+	if !ok {
+		t.Fatalf("missing health artifact: %+v", degradedArtifacts)
+	}
+	healthContent, err := os.ReadFile(healthArtifact.StoredPath)
+	if err != nil {
+		t.Fatalf("ReadFile(health artifact) error = %v", err)
+	}
+	assertContains(t, string(healthContent), "\"freshness\": \"partially_degraded\"")
+
+	repositoryMapArtifact, ok := findEvalArtifactRecord(degradedArtifacts, "repository-map")
+	if !ok {
+		t.Fatalf("missing repository-map artifact: %+v", degradedArtifacts)
+	}
+	repositoryMapContent, err := os.ReadFile(repositoryMapArtifact.StoredPath)
+	if err != nil {
+		t.Fatalf("ReadFile(repository-map artifact) error = %v", err)
+	}
+	assertContains(t, string(repositoryMapContent), "\"Name\"")
+}
+
+func TestEvalRecoveryScenarios(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"eval", "--scenario", "mcp-go-recovery-v1"}, &stdout); err != nil {
+			t.Fatalf("Execute(eval mcp-go-recovery-v1) error = %v", err)
+		}
+		assertContains(t, stdout.String(), "scenario id: mcp-go-recovery-v1")
+		assertContains(t, stdout.String(), "status: passed")
+		assertContains(t, stdout.String(), "step mcp-recovery: passed exit=0")
+	})
+
+	layout, err := state.ResolveLayout(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+	store, err := sqlite.OpenOrCreateStore(context.Background(), layout, repository.DetectionModeGit)
+	if err != nil {
+		t.Fatalf("OpenOrCreateStore() error = %v", err)
+	}
+	defer store.Close()
+
+	run, _, artifacts, err := store.LoadEvalRun(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("LoadEvalRun(1) error = %v", err)
+	}
+	if run.ScenarioID != "mcp-go-recovery-v1" || !run.Passed {
+		t.Fatalf("run = %+v", run)
+	}
+	refreshArtifact, ok := findEvalArtifactRecord(artifacts, "refresh-recovered")
+	if !ok {
+		t.Fatalf("missing refresh-recovered artifact: %+v", artifacts)
+	}
+	refreshContent, err := os.ReadFile(refreshArtifact.StoredPath)
+	if err != nil {
+		t.Fatalf("ReadFile(refresh-recovered) error = %v", err)
+	}
+	assertContains(t, string(refreshContent), "\"generation\": 4")
+	assertContains(t, string(refreshContent), "\"freshness\": \"fresh\"")
+
+	repositoryMapArtifact, ok := findEvalArtifactRecord(artifacts, "repository-map-recovered")
+	if !ok {
+		t.Fatalf("missing repository-map-recovered artifact: %+v", artifacts)
+	}
+	repositoryMapContent, err := os.ReadFile(repositoryMapArtifact.StoredPath)
+	if err != nil {
+		t.Fatalf("ReadFile(repository-map-recovered) error = %v", err)
+	}
+	assertContains(t, string(repositoryMapContent), "\"RecoveredName\"")
+
+	healthArtifact, ok := findEvalArtifactRecord(artifacts, "health-recovered")
+	if !ok {
+		t.Fatalf("missing health-recovered artifact: %+v", artifacts)
+	}
+	healthContent, err := os.ReadFile(healthArtifact.StoredPath)
+	if err != nil {
+		t.Fatalf("ReadFile(health-recovered) error = %v", err)
+	}
+	assertContains(t, string(healthContent), "\"generation\": 4")
+	assertContains(t, string(healthContent), "\"freshness\": \"fresh\"")
+}
+
 func TestEvalMCPScenariosRerun(t *testing.T) {
 	repoRoot := initCLIRepo(t)
 	seedCommittedEvalFixtures(t, repoRoot)

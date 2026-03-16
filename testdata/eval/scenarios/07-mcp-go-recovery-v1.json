@@ -1,0 +1,276 @@
+{
+  "schemaVersion": "optimusctx/eval-scenario@v1",
+  "id": "mcp-go-recovery-v1",
+  "version": "v1",
+  "name": "MCP degraded-to-recovery flow on basic Go fixture",
+  "description": "Starts from a degraded MCP refresh, then reruns refresh after removing the injected failure and proves freshness and symbol visibility recover.",
+  "fixture": {
+    "id": "go-basic",
+    "version": "v1",
+    "path": "go-basic/v1/repository",
+    "materialize": "copy_tree",
+    "workspaceDir": "workspace"
+  },
+  "steps": [
+    {
+      "id": "init",
+      "name": "Initialize repository state",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "init",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "refresh",
+      "name": "Refresh repository snapshot",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "refresh",
+        "exitCode": 0
+      }
+    },
+    {
+      "id": "mcp-degraded",
+      "name": "Force degraded refresh over MCP",
+      "kind": "mcp_session",
+      "setup": [
+        {
+          "kind": "overwrite_file",
+          "path": "internal/service/service.go",
+          "content": "package service\n\nfunc RecoveredName() string {\n\treturn \"recovered\"\n}\n"
+        },
+        {
+          "kind": "inject_refresh_failure",
+          "failureStage": "after_files",
+          "failureMessage": "forced eval failure"
+        }
+      ],
+      "session": {
+        "requests": [
+          {
+            "id": 1,
+            "method": "initialize",
+            "params": {
+              "clientInfo": {
+                "name": "eval-runner",
+                "version": "1.0.0"
+              },
+              "protocolVersion": "2026-03-15"
+            }
+          },
+          {
+            "method": "notifications/initialized",
+            "notification": true
+          },
+          {
+            "id": 2,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.refresh",
+              "arguments": {
+                "startPath": "."
+              }
+            }
+          },
+          {
+            "id": 3,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.repository_map",
+              "arguments": {
+                "startPath": "."
+              }
+            }
+          }
+        ],
+        "transcriptArtifact": "mcp-transcript",
+        "captureResponses": [
+          {
+            "requestId": 2,
+            "artifact": "refresh-error"
+          },
+          {
+            "requestId": 3,
+            "artifact": "repository-map-degraded"
+          }
+        ]
+      },
+      "assert": [
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "refresh-error",
+          "contains": "forced eval failure"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "repository-map-degraded",
+          "path": "result.structuredContent.meta.freshness",
+          "equals": "partially_degraded"
+        }
+      ],
+      "captureArtifact": [
+        "mcp-stderr",
+        "mcp-transcript",
+        "refresh-error",
+        "repository-map-degraded"
+      ]
+    },
+    {
+      "id": "mcp-recovery",
+      "name": "Recover refresh over MCP and expose updated symbols",
+      "kind": "mcp_session",
+      "session": {
+        "requests": [
+          {
+            "id": 11,
+            "method": "initialize",
+            "params": {
+              "clientInfo": {
+                "name": "eval-runner",
+                "version": "1.0.0"
+              },
+              "protocolVersion": "2026-03-15"
+            }
+          },
+          {
+            "method": "notifications/initialized",
+            "notification": true
+          },
+          {
+            "id": 12,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.refresh",
+              "arguments": {
+                "startPath": "."
+              }
+            }
+          },
+          {
+            "id": 13,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.repository_map",
+              "arguments": {
+                "startPath": "."
+              }
+            }
+          },
+          {
+            "id": 14,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.health",
+              "arguments": {
+                "startPath": "."
+              }
+            }
+          }
+        ],
+        "captureResponses": [
+          {
+            "requestId": 12,
+            "artifact": "refresh-recovered"
+          },
+          {
+            "requestId": 13,
+            "artifact": "repository-map-recovered"
+          },
+          {
+            "requestId": 14,
+            "artifact": "health-recovered"
+          }
+        ]
+      },
+      "assert": [
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "refresh-recovered",
+          "path": "result.structuredContent.meta.freshness",
+          "equals": "fresh"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "refresh-recovered",
+          "path": "result.structuredContent.meta.generation",
+          "equals": 4
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "repository-map-recovered",
+          "path": "result.structuredContent.meta.freshness",
+          "equals": "fresh"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "health-recovered",
+          "path": "result.structuredContent.meta.generation",
+          "equals": 4
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "repository-map-recovered",
+          "contains": "\"RecoveredName\""
+        }
+      ],
+      "captureArtifact": [
+        "refresh-recovered",
+        "repository-map-recovered",
+        "health-recovered"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "mcp-stderr",
+      "kind": "stderr",
+      "required": true
+    },
+    {
+      "id": "mcp-transcript",
+      "kind": "file",
+      "path": "artifacts/mcp-recovery-transcript.json",
+      "required": true
+    },
+    {
+      "id": "refresh-error",
+      "kind": "file",
+      "path": "artifacts/mcp-recovery-refresh-error.json",
+      "required": true
+    },
+    {
+      "id": "repository-map-degraded",
+      "kind": "file",
+      "path": "artifacts/mcp-recovery-repository-map-degraded.json",
+      "required": true
+    },
+    {
+      "id": "refresh-recovered",
+      "kind": "file",
+      "path": "artifacts/mcp-recovery-refresh.json",
+      "required": true
+    },
+    {
+      "id": "repository-map-recovered",
+      "kind": "file",
+      "path": "artifacts/mcp-recovery-repository-map.json",
+      "required": true
+    },
+    {
+      "id": "health-recovered",
+      "kind": "file",
+      "path": "artifacts/mcp-recovery-health.json",
+      "required": true
+    }
+  ]
+}

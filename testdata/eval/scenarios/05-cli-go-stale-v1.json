@@ -1,0 +1,122 @@
+{
+  "schemaVersion": "optimusctx/eval-scenario@v1",
+  "id": "cli-go-stale-v1",
+  "version": "v1",
+  "name": "CLI stale and watch-diagnostic flow on basic Go fixture",
+  "description": "Seeds stale repository freshness and a stale watch heartbeat, then proves doctor reports those degraded states through the shipped CLI.",
+  "fixture": {
+    "id": "go-basic",
+    "version": "v1",
+    "path": "go-basic/v1/repository",
+    "materialize": "copy_tree",
+    "workspaceDir": "workspace"
+  },
+  "steps": [
+    {
+      "id": "init",
+      "name": "Initialize repository state",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "init",
+        "exitCode": 0
+      },
+      "captureArtifact": [
+        "init-stdout"
+      ]
+    },
+    {
+      "id": "refresh",
+      "name": "Refresh repository snapshot",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "refresh",
+        "exitCode": 0
+      },
+      "captureArtifact": [
+        "refresh-stdout"
+      ]
+    },
+    {
+      "id": "doctor-stale",
+      "name": "Report stale repository freshness and stale watch heartbeat",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "doctor",
+        "exitCode": 0
+      },
+      "setup": [
+        {
+          "kind": "set_repository_state",
+          "repositoryState": {
+            "freshnessStatus": "stale",
+            "freshnessReason": "workspace changed after the last successful refresh",
+            "lastRefreshStatus": "success"
+          }
+        },
+        {
+          "kind": "seed_watch_status",
+          "watchStatus": {
+            "pid": 777,
+            "binaryVersion": "dev",
+            "startedAt": "2026-03-15T18:00:00Z",
+            "lastHeartbeatAt": "2026-03-15T18:00:00Z",
+            "lastEventAt": "2026-03-15T18:00:00Z",
+            "lastRefreshCompletedAt": "2026-03-15T18:00:00Z",
+            "lastRefreshGeneration": 2,
+            "lastError": "watch observer overflowed; falling back to full refresh"
+          }
+        }
+      ],
+      "assert": [
+        {
+          "kind": "contains",
+          "target": "stdout",
+          "contains": "overall status: degraded"
+        },
+        {
+          "kind": "contains",
+          "target": "stdout",
+          "contains": "freshness: stale"
+        },
+        {
+          "kind": "contains",
+          "target": "stdout",
+          "contains": "freshness reason: workspace changed after the last successful refresh"
+        },
+        {
+          "kind": "contains",
+          "target": "stdout",
+          "contains": "summary: watch heartbeat is stale"
+        },
+        {
+          "kind": "contains",
+          "target": "stdout",
+          "contains": "reason: watch heartbeat is stale"
+        }
+      ],
+      "captureArtifact": [
+        "doctor-stdout"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "init-stdout",
+      "kind": "stdout",
+      "required": true
+    },
+    {
+      "id": "refresh-stdout",
+      "kind": "stdout",
+      "required": true
+    },
+    {
+      "id": "doctor-stdout",
+      "kind": "stdout",
+      "required": true
+    }
+  ]
+}

@@ -552,7 +552,15 @@ func TestEvalFixtureReferences(t *testing.T) {
 	for _, scenario := range scenarios {
 		gotIDs = append(gotIDs, scenario.ID)
 	}
-	wantIDs := []string{"cli-go-basic-v1", "cli-go-worktree-v1", "mcp-go-basic-v1", "mcp-go-worktree-v1"}
+	wantIDs := []string{
+		"cli-go-basic-v1",
+		"cli-go-stale-v1",
+		"cli-go-worktree-v1",
+		"mcp-go-basic-v1",
+		"mcp-go-degraded-v1",
+		"mcp-go-recovery-v1",
+		"mcp-go-worktree-v1",
+	}
 	if !reflect.DeepEqual(gotIDs, wantIDs) {
 		t.Fatalf("loaded scenario IDs = %v, want %v", gotIDs, wantIDs)
 	}
@@ -563,6 +571,13 @@ func TestEvalFixtureReferences(t *testing.T) {
 
 	expectedFixtures := map[string]EvalFixtureRef{
 		"cli-go-basic-v1": {
+			ID:           "go-basic",
+			Version:      "v1",
+			Path:         "go-basic/v1/repository",
+			Materialize:  EvalFixtureModeCopyTree,
+			WorkspaceDir: "workspace",
+		},
+		"cli-go-stale-v1": {
 			ID:           "go-basic",
 			Version:      "v1",
 			Path:         "go-basic/v1/repository",
@@ -583,6 +598,20 @@ func TestEvalFixtureReferences(t *testing.T) {
 			Materialize:  EvalFixtureModeCopyTree,
 			WorkspaceDir: "workspace",
 		},
+		"mcp-go-degraded-v1": {
+			ID:           "go-basic",
+			Version:      "v1",
+			Path:         "go-basic/v1/repository",
+			Materialize:  EvalFixtureModeCopyTree,
+			WorkspaceDir: "workspace",
+		},
+		"mcp-go-recovery-v1": {
+			ID:           "go-basic",
+			Version:      "v1",
+			Path:         "go-basic/v1/repository",
+			Materialize:  EvalFixtureModeCopyTree,
+			WorkspaceDir: "workspace",
+		},
 		"mcp-go-worktree-v1": {
 			ID:           "go-worktree",
 			Version:      "v1",
@@ -593,14 +622,20 @@ func TestEvalFixtureReferences(t *testing.T) {
 	}
 	expectedCommands := map[string][]EvalCommandName{
 		"cli-go-basic-v1":    {EvalCommandInit, EvalCommandRefresh, EvalCommandDoctor, EvalCommandPackExport},
+		"cli-go-stale-v1":    {EvalCommandInit, EvalCommandRefresh, EvalCommandDoctor},
 		"cli-go-worktree-v1": {EvalCommandInit, EvalCommandRefresh, EvalCommandDoctor, EvalCommandPackExport},
 		"mcp-go-basic-v1":    {EvalCommandInit, EvalCommandRefresh},
+		"mcp-go-degraded-v1": {EvalCommandInit, EvalCommandRefresh},
+		"mcp-go-recovery-v1": {EvalCommandInit, EvalCommandRefresh},
 		"mcp-go-worktree-v1": {EvalCommandInit, EvalCommandRefresh},
 	}
 	expectedKinds := map[string][]EvalStepKind{
 		"cli-go-basic-v1":    {EvalStepKindCommand, EvalStepKindCommand, EvalStepKindCommand, EvalStepKindCommand},
+		"cli-go-stale-v1":    {EvalStepKindCommand, EvalStepKindCommand, EvalStepKindCommand},
 		"cli-go-worktree-v1": {EvalStepKindCommand, EvalStepKindCommand, EvalStepKindCommand, EvalStepKindCommand},
 		"mcp-go-basic-v1":    {EvalStepKindCommand, EvalStepKindCommand, EvalStepKindMCPSession},
+		"mcp-go-degraded-v1": {EvalStepKindCommand, EvalStepKindCommand, EvalStepKindMCPSession},
+		"mcp-go-recovery-v1": {EvalStepKindCommand, EvalStepKindCommand, EvalStepKindMCPSession, EvalStepKindMCPSession},
 		"mcp-go-worktree-v1": {EvalStepKindCommand, EvalStepKindCommand, EvalStepKindMCPSession},
 	}
 
@@ -625,6 +660,9 @@ func TestEvalFixtureReferences(t *testing.T) {
 		}
 		for _, step := range scenario.Steps {
 			for _, action := range step.Setup {
+				if action.Path == "" {
+					continue
+				}
 				if err := validateEvalRelativePath(action.Path); err != nil {
 					t.Fatalf("scenario %q setup path %q invalid: %v", scenario.ID, action.Path, err)
 				}

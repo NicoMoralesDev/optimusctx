@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/niccrow/optimusctx/internal/repository"
+	"github.com/niccrow/optimusctx/internal/state"
+	"github.com/niccrow/optimusctx/internal/store/sqlite"
 )
 
 type EvalRunRequest struct {
@@ -247,6 +249,13 @@ func applyEvalSetupActions(workspaceRoot string, actions []repository.EvalSetupA
 			if err := seedEvalWatchStatus(workspaceRoot, *action.WatchStatus); err != nil {
 				return evalStepControls{}, err
 			}
+		case repository.EvalSetupActionSetRepositoryState:
+			if action.RepositoryState == nil {
+				return evalStepControls{}, errors.New("set_repository_state requires repositoryState")
+			}
+			if err := seedEvalRepositoryState(workspaceRoot, *action.RepositoryState); err != nil {
+				return evalStepControls{}, err
+			}
 		case repository.EvalSetupActionInjectRefreshFailure:
 			controls.RefreshFailure = &evalRefreshFailureControl{
 				Stage:   action.FailureStage,
@@ -388,6 +397,41 @@ func seedEvalWatchStatus(workspaceRoot string, seed repository.EvalWatchStatusSe
 	statusPath := filepath.Join(workspaceRoot, ".optimusctx", "tmp", repository.DefaultWatchStatusFilename)
 	if err := writeEvalSetupFile(statusPath, string(data)); err != nil {
 		return fmt.Errorf("seed watch status: %w", err)
+	}
+	return nil
+}
+
+func seedEvalRepositoryState(workspaceRoot string, seed repository.EvalRepositoryStateSeed) error {
+	ctx := context.Background()
+	root, err := repository.ResolveRepositoryRoot(workspaceRoot)
+	if err != nil {
+		return fmt.Errorf("resolve repository root for state seed: %w", err)
+	}
+	layout, err := state.ResolveLayout(workspaceRoot)
+	if err != nil {
+		return fmt.Errorf("resolve state layout for state seed: %w", err)
+	}
+	store, err := sqlite.OpenOrCreateStore(ctx, layout, root.DetectionMode)
+	if err != nil {
+		return fmt.Errorf("open state store for state seed: %w", err)
+	}
+	defer store.Close()
+
+	record, err := store.UpsertRepository(ctx, root, time.Now().UTC())
+	if err != nil {
+		return fmt.Errorf("upsert repository for state seed: %w", err)
+	}
+	freshness, err := store.ReadRepositoryFreshness(ctx, record.ID)
+	if err != nil {
+		return fmt.Errorf("read repository freshness for state seed: %w", err)
+	}
+	freshness.FreshnessStatus = seed.FreshnessStatus
+	freshness.FreshnessReason = seed.FreshnessReason
+	if seed.LastRefreshStatus != "" {
+		freshness.LastRefreshStatus = seed.LastRefreshStatus
+	}
+	if err := store.WriteRepositoryFreshness(ctx, freshness); err != nil {
+		return fmt.Errorf("write repository freshness seed: %w", err)
 	}
 	return nil
 }
