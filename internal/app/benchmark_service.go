@@ -51,6 +51,16 @@ type BenchmarkEvidenceBundleRequest struct {
 	Attempts      int
 }
 
+type BenchmarkHumanReportRequest struct {
+	StartPath     string
+	SuiteID       string
+	SuitePath     string
+	SuitesDir     string
+	FixturesRoot  string
+	WorkspaceRoot string
+	Attempts      int
+}
+
 type BenchmarkRepeatedRunResult struct {
 	RepositoryRoot string
 	SuiteID        string
@@ -114,6 +124,60 @@ type BenchmarkVerificationResult struct {
 	Passed        bool
 	FailureReason string
 	DriftReasons  []string
+}
+
+type BenchmarkHumanSummary struct {
+	SuiteID                string
+	SuiteVersion           string
+	FixtureID              string
+	FixturePath            string
+	AttemptCount           int
+	MethodologyFingerprint string
+	RerunCommand           string
+	EstimatorPolicy        string
+	UsageClaim             string
+	BillingDisambiguator   string
+	Verification           repository.BenchmarkEvidenceVerification
+	LaneComparisons        []BenchmarkHumanLaneComparison
+	AttributionRows        []BenchmarkHumanAttributionRow
+}
+
+type BenchmarkHumanLaneComparison struct {
+	Lane                     repository.BenchmarkLane
+	AttemptCount             int
+	BaselineElapsedMS        BenchmarkInt64Stats
+	TreatmentElapsedMS       BenchmarkInt64Stats
+	ElapsedDeltaMS           int64
+	BaselineEstimatedTokens  BenchmarkInt64Stats
+	TreatmentEstimatedTokens BenchmarkInt64Stats
+	EstimatedTokenDelta      int64
+	InvalidAttemptReasons    []string
+}
+
+type BenchmarkHumanAttributionRow struct {
+	Lane                  repository.BenchmarkLane
+	ReportLabel           repository.BenchmarkReportArtifactLabel
+	DisplayLabel          string
+	AttemptCount          int
+	MedianEstimatedTokens int64
+	TotalEstimatedTokens  int64
+	EvidenceRefs          []BenchmarkHumanEvidenceRef
+}
+
+type BenchmarkHumanEvidenceRef struct {
+	Attempt         int
+	StepID          string
+	ArtifactPath    string
+	EstimatedTokens int64
+}
+
+type benchmarkHumanLaneAccumulator struct {
+	attemptCount     int
+	baselineElapsed  []int64
+	treatmentElapsed []int64
+	baselineTokens   []int64
+	treatmentTokens  []int64
+	invalidReasons   []string
 }
 
 func NewBenchmarkService() BenchmarkService {
@@ -206,6 +270,22 @@ func (s BenchmarkService) ExportEvidenceBundle(ctx context.Context, request Benc
 	}
 	defer store.Close()
 	return s.buildAndPersistEvidenceBundle(ctx, store, repoID, root.RootPath, suite, request)
+}
+
+func (s BenchmarkService) RenderHumanReport(ctx context.Context, request BenchmarkHumanReportRequest) (string, error) {
+	bundle, err := s.ExportEvidenceBundle(ctx, BenchmarkEvidenceBundleRequest{
+		StartPath:     request.StartPath,
+		SuiteID:       request.SuiteID,
+		SuitePath:     request.SuitePath,
+		SuitesDir:     request.SuitesDir,
+		FixturesRoot:  request.FixturesRoot,
+		WorkspaceRoot: request.WorkspaceRoot,
+		Attempts:      request.Attempts,
+	})
+	if err != nil {
+		return "", err
+	}
+	return RenderBenchmarkComparisonReport(BuildBenchmarkHumanSummary(bundle)), nil
 }
 
 func (s BenchmarkService) VerifyMethodology(ctx context.Context, request BenchmarkRepeatedRunRequest) (BenchmarkVerificationResult, error) {
@@ -465,6 +545,247 @@ func summarizeInt64s(values []int64) BenchmarkInt64Stats {
 		Max:    ordered[len(ordered)-1],
 		Median: ordered[len(ordered)/2],
 		Mean:   sum / int64(len(ordered)),
+	}
+}
+
+func BuildBenchmarkHumanSummary(bundle repository.BenchmarkEvidenceBundle) BenchmarkHumanSummary {
+	bundle = repository.NormalizeBenchmarkEvidenceBundle(bundle)
+	summary := BenchmarkHumanSummary{
+		SuiteID:                bundle.SuiteID,
+		SuiteVersion:           bundle.SuiteVersion,
+		FixtureID:              bundle.FixtureID,
+		FixturePath:            bundle.FixturePath,
+		AttemptCount:           len(bundle.Attempts),
+		MethodologyFingerprint: bundle.MethodologyFingerprint,
+		RerunCommand:           bundle.RerunCommand,
+		EstimatorPolicy:        bundle.TokenEstimateContract.Policy.Name,
+		UsageClaim:             bundle.TokenEstimateContract.UsageClaim,
+		BillingDisambiguator:   bundle.TokenEstimateContract.BillingDisambiguator,
+		Verification:           bundle.Verification,
+	}
+
+	type attributionAccumulator struct {
+		attempts []int64
+		total    int64
+		refs     []BenchmarkHumanEvidenceRef
+	}
+
+	laneOrder := map[repository.BenchmarkLane]int{}
+	laneAccumulators := map[repository.BenchmarkLane]*benchmarkHumanLaneAccumulator{}
+	attributionOrder := []string{}
+	attributionAccumulators := map[string]*attributionAccumulator{}
+
+	for _, attempt := range bundle.Attempts {
+		var perAttemptBaseline = map[repository.BenchmarkLane]repository.BenchmarkEvidenceLane{}
+		var perAttemptTreatment = map[repository.BenchmarkLane]repository.BenchmarkEvidenceLane{}
+		for _, arm := range attempt.Arms {
+			for laneIndex, lane := range arm.Lanes {
+				if _, ok := laneOrder[lane.Lane]; !ok {
+					laneOrder[lane.Lane] = laneIndex
+				}
+				switch arm.Kind {
+				case repository.BenchmarkArmKindBaseline:
+					perAttemptBaseline[lane.Lane] = lane
+				case repository.BenchmarkArmKindOptimusCtx:
+					perAttemptTreatment[lane.Lane] = lane
+				}
+			}
+		}
+
+		for lane, baseline := range perAttemptBaseline {
+			acc := ensureHumanLaneAccumulator(laneAccumulators, lane)
+			acc.attemptCount++
+			acc.baselineElapsed = append(acc.baselineElapsed, baseline.ElapsedMS)
+			acc.baselineTokens = append(acc.baselineTokens, repository.EstimateBenchmarkTokensFromBytes(baseline.Effort.BytesRead))
+			if !baseline.Success {
+				acc.invalidReasons = appendIfMissing(acc.invalidReasons, fmt.Sprintf("attempt %d baseline/%s did not satisfy stop condition", attempt.Attempt, lane))
+			}
+		}
+		for lane, treatment := range perAttemptTreatment {
+			acc := ensureHumanLaneAccumulator(laneAccumulators, lane)
+			if _, ok := perAttemptBaseline[lane]; !ok {
+				acc.attemptCount++
+			}
+			acc.treatmentElapsed = append(acc.treatmentElapsed, treatment.ElapsedMS)
+			laneTreatmentTokens := int64(0)
+			for _, attribution := range treatment.Attribution {
+				laneTreatmentTokens += attribution.EstimatedTokens
+				key := string(lane) + "|" + string(attribution.ReportLabel)
+				group, ok := attributionAccumulators[key]
+				if !ok {
+					group = &attributionAccumulator{}
+					attributionAccumulators[key] = group
+					attributionOrder = append(attributionOrder, key)
+				}
+				group.total += attribution.EstimatedTokens
+				group.attempts = append(group.attempts, attribution.EstimatedTokens)
+				group.refs = append(group.refs, BenchmarkHumanEvidenceRef{
+					Attempt:         attempt.Attempt,
+					StepID:          attribution.StepID,
+					ArtifactPath:    attribution.ArtifactPath,
+					EstimatedTokens: attribution.EstimatedTokens,
+				})
+			}
+			acc.treatmentTokens = append(acc.treatmentTokens, laneTreatmentTokens)
+			if !treatment.Success {
+				acc.invalidReasons = appendIfMissing(acc.invalidReasons, fmt.Sprintf("attempt %d optimusctx/%s did not satisfy stop condition", attempt.Attempt, lane))
+			}
+			for _, reason := range bundle.Verification.InvalidRunReasons {
+				if strings.Contains(reason, string(lane)) {
+					acc.invalidReasons = appendIfMissing(acc.invalidReasons, reason)
+				}
+			}
+		}
+	}
+
+	lanes := make([]repository.BenchmarkLane, 0, len(laneAccumulators))
+	for lane := range laneAccumulators {
+		lanes = append(lanes, lane)
+	}
+	sort.SliceStable(lanes, func(i, j int) bool {
+		return benchmarkEvidenceLaneSortKey(lanes[i]) < benchmarkEvidenceLaneSortKey(lanes[j])
+	})
+	for _, lane := range lanes {
+		acc := laneAccumulators[lane]
+		baselineTokens := summarizeInt64s(acc.baselineTokens)
+		treatmentTokens := summarizeInt64s(acc.treatmentTokens)
+		baselineElapsed := summarizeInt64s(acc.baselineElapsed)
+		treatmentElapsed := summarizeInt64s(acc.treatmentElapsed)
+		summary.LaneComparisons = append(summary.LaneComparisons, BenchmarkHumanLaneComparison{
+			Lane:                     lane,
+			AttemptCount:             acc.attemptCount,
+			BaselineElapsedMS:        baselineElapsed,
+			TreatmentElapsedMS:       treatmentElapsed,
+			ElapsedDeltaMS:           baselineElapsed.Median - treatmentElapsed.Median,
+			BaselineEstimatedTokens:  baselineTokens,
+			TreatmentEstimatedTokens: treatmentTokens,
+			EstimatedTokenDelta:      baselineTokens.Median - treatmentTokens.Median,
+			InvalidAttemptReasons:    uniqueSorted(acc.invalidReasons),
+		})
+	}
+
+	for _, key := range attributionOrder {
+		parts := strings.SplitN(key, "|", 2)
+		lane := repository.BenchmarkLane(parts[0])
+		label := repository.BenchmarkReportArtifactLabel(parts[1])
+		acc := attributionAccumulators[key]
+		sort.SliceStable(acc.refs, func(i, j int) bool {
+			if acc.refs[i].Attempt == acc.refs[j].Attempt {
+				if acc.refs[i].StepID == acc.refs[j].StepID {
+					return acc.refs[i].ArtifactPath < acc.refs[j].ArtifactPath
+				}
+				return acc.refs[i].StepID < acc.refs[j].StepID
+			}
+			return acc.refs[i].Attempt < acc.refs[j].Attempt
+		})
+		summary.AttributionRows = append(summary.AttributionRows, BenchmarkHumanAttributionRow{
+			Lane:                  lane,
+			ReportLabel:           label,
+			DisplayLabel:          benchmarkReportLabelDisplay(label),
+			AttemptCount:          len(acc.attempts),
+			MedianEstimatedTokens: summarizeInt64s(acc.attempts).Median,
+			TotalEstimatedTokens:  acc.total,
+			EvidenceRefs:          acc.refs,
+		})
+	}
+
+	return summary
+}
+
+func RenderBenchmarkComparisonReport(summary BenchmarkHumanSummary) string {
+	var b strings.Builder
+	_, _ = fmt.Fprintf(&b, "benchmark report\nsuite: %s@%s\nfixture: %s (%s)\nattempts: %d\nmethodology fingerprint: %s\n",
+		summary.SuiteID,
+		summary.SuiteVersion,
+		summary.FixtureID,
+		summary.FixturePath,
+		summary.AttemptCount,
+		summary.MethodologyFingerprint,
+	)
+	if summary.Verification.Passed {
+		_, _ = fmt.Fprintf(&b, "verification: passed\n")
+	} else {
+		_, _ = fmt.Fprintf(&b, "verification: failed\nfailure reason: %s\n", summary.Verification.FailureReason)
+	}
+	_, _ = fmt.Fprintf(&b, "\nlane comparison\n")
+	for _, lane := range summary.LaneComparisons {
+		_, _ = fmt.Fprintf(&b, "- %s: timing median baseline=%dms optimusctx=%dms delta=%dms; estimated tokens median baseline=%d optimusctx=%d delta=%d\n",
+			renderBenchmarkLaneLabel(lane.Lane),
+			lane.BaselineElapsedMS.Median,
+			lane.TreatmentElapsedMS.Median,
+			lane.ElapsedDeltaMS,
+			lane.BaselineEstimatedTokens.Median,
+			lane.TreatmentEstimatedTokens.Median,
+			lane.EstimatedTokenDelta,
+		)
+		for _, reason := range lane.InvalidAttemptReasons {
+			_, _ = fmt.Fprintf(&b, "  caveat: %s\n", reason)
+		}
+	}
+	_, _ = fmt.Fprintf(&b, "\ntreatment artifact attribution\n")
+	for _, row := range summary.AttributionRows {
+		_, _ = fmt.Fprintf(&b, "- %s / %s: median estimated tokens=%d total estimated tokens=%d\n",
+			renderBenchmarkLaneLabel(row.Lane),
+			row.DisplayLabel,
+			row.MedianEstimatedTokens,
+			row.TotalEstimatedTokens,
+		)
+		for _, ref := range row.EvidenceRefs {
+			_, _ = fmt.Fprintf(&b, "  evidence: attempt=%d step=%s path=%s estimated_tokens=%d\n", ref.Attempt, ref.StepID, ref.ArtifactPath, ref.EstimatedTokens)
+		}
+	}
+	if len(summary.Verification.DriftReasons) > 0 || len(summary.Verification.InvalidRunReasons) > 0 {
+		_, _ = fmt.Fprintf(&b, "\ninvalid attempts and drift\n")
+		for _, reason := range uniqueSorted(append(append([]string(nil), summary.Verification.DriftReasons...), summary.Verification.InvalidRunReasons...)) {
+			_, _ = fmt.Fprintf(&b, "- %s\n", reason)
+		}
+	}
+	_, _ = fmt.Fprintf(&b, "\ncaveats\n")
+	_, _ = fmt.Fprintf(&b, "- estimated tokens use %s\n", summary.EstimatorPolicy)
+	_, _ = fmt.Fprintf(&b, "- %s are %s\n", summary.UsageClaim, summary.BillingDisambiguator)
+	_, _ = fmt.Fprintf(&b, "- results describe only the recorded frozen-suite attempts and explicit estimator output\n")
+	_, _ = fmt.Fprintf(&b, "\nrerun\n%s\n", summary.RerunCommand)
+	return b.String()
+}
+
+func ensureHumanLaneAccumulator(items map[repository.BenchmarkLane]*benchmarkHumanLaneAccumulator, lane repository.BenchmarkLane) *benchmarkHumanLaneAccumulator {
+	if item, ok := items[lane]; ok {
+		return item
+	}
+	item := &benchmarkHumanLaneAccumulator{}
+	items[lane] = item
+	return item
+}
+
+func benchmarkReportLabelDisplay(label repository.BenchmarkReportArtifactLabel) string {
+	switch label {
+	case repository.BenchmarkReportArtifactLabelRepositoryMap:
+		return "Repository Map"
+	case repository.BenchmarkReportArtifactLabelExactLookup:
+		return "Exact Lookup"
+	case repository.BenchmarkReportArtifactLabelL2Context:
+		return "L2 Context"
+	case repository.BenchmarkReportArtifactLabelPackExport:
+		return "Pack Export"
+	case repository.BenchmarkReportArtifactLabelOperational:
+		return "Operational"
+	default:
+		return "Unlabeled"
+	}
+}
+
+func renderBenchmarkLaneLabel(lane repository.BenchmarkLane) string {
+	switch lane {
+	case repository.BenchmarkLaneDiscovery:
+		return "Discovery"
+	case repository.BenchmarkLaneContextAssembly:
+		return "Context Assembly"
+	case repository.BenchmarkLaneRefreshReady:
+		return "Refresh After Change"
+	case repository.BenchmarkLaneTaskCompletion:
+		return "Task Completion"
+	default:
+		return string(lane)
 	}
 }
 

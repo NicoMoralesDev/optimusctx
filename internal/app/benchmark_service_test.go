@@ -101,6 +101,100 @@ func TestBenchmarkRerunCommandContract(t *testing.T) {
 	}
 }
 
+func TestBenchmarkHumanSummaryInputs(t *testing.T) {
+	t.Parallel()
+
+	bundle := buildBenchmarkEvidenceBundle("/tmp/repo", repository.DefaultBenchmarkTokenEstimateContract(), summarizeBenchmarkAttempts([]BenchmarkAttemptResult{
+		{Attempt: 1, Result: benchmarkEvidenceRunResult("/tmp/repo")},
+		{Attempt: 2, Result: benchmarkEvidenceRunResult("/tmp/repo")},
+	}, "go-benchmark-refresh-v1", "v1"), []BenchmarkAttemptResult{
+		{Attempt: 1, Result: benchmarkEvidenceRunResult("/tmp/repo")},
+		{Attempt: 2, Result: benchmarkEvidenceRunResult("/tmp/repo")},
+	}, "go run ./cmd/optimusctx eval benchmark report --suite go-benchmark-refresh-v1 --attempts 2")
+
+	summary := BuildBenchmarkHumanSummary(bundle)
+	if summary.AttemptCount != 2 {
+		t.Fatalf("AttemptCount = %d, want 2", summary.AttemptCount)
+	}
+	if got, want := len(summary.LaneComparisons), 2; got != want {
+		t.Fatalf("len(LaneComparisons) = %d, want %d", got, want)
+	}
+	var foundTaskCompletion bool
+	for _, lane := range summary.LaneComparisons {
+		if lane.Lane != repository.BenchmarkLaneTaskCompletion {
+			continue
+		}
+		foundTaskCompletion = true
+		if lane.TreatmentEstimatedTokens.Median != 128 {
+			t.Fatalf("treatment median tokens = %d, want 128", lane.TreatmentEstimatedTokens.Median)
+		}
+	}
+	if !foundTaskCompletion {
+		t.Fatalf("missing task completion lane: %+v", summary.LaneComparisons)
+	}
+	if got, want := len(summary.AttributionRows), 1; got != want {
+		t.Fatalf("len(AttributionRows) = %d, want %d", got, want)
+	}
+	if summary.AttributionRows[0].DisplayLabel != "Pack Export" {
+		t.Fatalf("DisplayLabel = %q", summary.AttributionRows[0].DisplayLabel)
+	}
+}
+
+func TestBenchmarkComparisonReportRendering(t *testing.T) {
+	t.Parallel()
+
+	bundle := buildBenchmarkEvidenceBundle("/tmp/repo", repository.DefaultBenchmarkTokenEstimateContract(), summarizeBenchmarkAttempts([]BenchmarkAttemptResult{
+		{Attempt: 1, Result: benchmarkEvidenceRunResult("/tmp/repo")},
+		{Attempt: 2, Result: benchmarkEvidenceRunResult("/tmp/repo")},
+	}, "go-benchmark-refresh-v1", "v1"), []BenchmarkAttemptResult{
+		{Attempt: 1, Result: benchmarkEvidenceRunResult("/tmp/repo")},
+		{Attempt: 2, Result: benchmarkEvidenceRunResult("/tmp/repo")},
+	}, "go run ./cmd/optimusctx eval benchmark report --suite go-benchmark-refresh-v1 --attempts 2")
+
+	report := RenderBenchmarkComparisonReport(BuildBenchmarkHumanSummary(bundle))
+	for _, fragment := range []string{
+		"benchmark report",
+		"lane comparison",
+		"Refresh After Change",
+		"Task Completion",
+		"Pack Export",
+		"estimated tokens use bytes_div_4_ceiling",
+		"not provider-billed token invoices",
+	} {
+		if !strings.Contains(report, fragment) {
+			t.Fatalf("report missing %q:\n%s", fragment, report)
+		}
+	}
+}
+
+func TestBenchmarkReportReusesPersistedEvidence(t *testing.T) {
+	t.Parallel()
+
+	repoRoot, store, repoID := initBenchmarkEvidenceStore(t)
+	defer store.Close()
+
+	service := NewBenchmarkService()
+	bundle, err := service.ExportEvidenceBundle(context.Background(), BenchmarkEvidenceBundleRequest{
+		StartPath:    repoRoot,
+		SuiteID:      "go-benchmark-refresh-v1",
+		SuitesDir:    filepath.Join("..", "..", "testdata", "eval", "benchmarks"),
+		FixturesRoot: filepath.Join("..", "..", "testdata", "eval", "fixtures"),
+	})
+	if err != nil {
+		t.Fatalf("ExportEvidenceBundle() error = %v", err)
+	}
+	fromService := RenderBenchmarkComparisonReport(BuildBenchmarkHumanSummary(bundle))
+
+	loaded, err := store.LoadLatestBenchmarkEvidenceBundle(context.Background(), repoID, bundle.SuiteID, bundle.SuiteVersion)
+	if err != nil {
+		t.Fatalf("LoadLatestBenchmarkEvidenceBundle() error = %v", err)
+	}
+	fromStore := RenderBenchmarkComparisonReport(BuildBenchmarkHumanSummary(loaded))
+	if fromStore != fromService {
+		t.Fatalf("report should reuse persisted evidence bundle\nservice:\n%s\nstore:\n%s", fromService, fromStore)
+	}
+}
+
 func initBenchmarkEvidenceStore(t *testing.T) (string, *sqlite.Store, int64) {
 	t.Helper()
 
