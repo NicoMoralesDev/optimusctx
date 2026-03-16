@@ -21,6 +21,18 @@
         "command": "init",
         "exitCode": 0
       },
+      "assert": [
+        {
+          "kind": "contains",
+          "target": "stdout",
+          "contains": "state directory:"
+        },
+        {
+          "kind": "contains",
+          "target": "stdout",
+          "contains": "freshness: fresh"
+        }
+      ],
       "captureArtifact": [
         "init-stdout"
       ]
@@ -34,6 +46,18 @@
         "command": "refresh",
         "exitCode": 0
       },
+      "assert": [
+        {
+          "kind": "contains",
+          "target": "stdout",
+          "contains": "refresh generation: 2"
+        },
+        {
+          "kind": "contains",
+          "target": "stdout",
+          "contains": "freshness: fresh"
+        }
+      ],
       "captureArtifact": [
         "refresh-stdout"
       ]
@@ -46,7 +70,19 @@
         "surface": "cli",
         "command": "doctor",
         "exitCode": 0
-      }
+      },
+      "assert": [
+        {
+          "kind": "contains",
+          "target": "stdout",
+          "contains": "overall status: healthy"
+        },
+        {
+          "kind": "contains",
+          "target": "stdout",
+          "contains": "summary: watch mode is not running; background watch is optional"
+        }
+      ]
     },
     {
       "id": "pack-export",
@@ -63,6 +99,28 @@
         ],
         "exitCode": 0
       },
+      "assert": [
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "pack-output",
+          "path": "manifest.freshness",
+          "equals": "fresh"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "pack-output",
+          "path": "manifest.exportSummary.requestedSectionCount",
+          "equals": 2
+        },
+        {
+          "kind": "json_field_present",
+          "target": "artifact",
+          "artifact": "pack-output",
+          "path": "manifest.identity.RootPath"
+        }
+      ],
       "captureArtifact": [
         "pack-output"
       ]
