@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 11
-current_phase_name: a/b benchmark methodology and workflow timing
-current_plan: 4
-status: verifying
-stopped_at: Completed 11-04-PLAN.md
-last_updated: "2026-03-16T12:56:44.091Z"
+current_phase: 12
+current_phase_name: token attribution and evidence reporting
+current_plan: 2
+status: in_progress
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-03-16T13:51:33.443Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 16
+  completed_plans: 13
   percent: 100
 ---
 
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase complete — ready for verification
-**Current Phase:** 11
-**Current Phase Name:** a/b benchmark methodology and workflow timing
+**Status:** Phase in progress
+**Current Phase:** 12
+**Current Phase Name:** token attribution and evidence reporting
 **Total Phases:** 5
-**Current Plan:** 4
+**Current Plan:** 2
 **Total Plans in Phase:** 4
 **Progress:** [██████████] 100%
 **Last Activity:** 2026-03-16
-**Last Activity Description:** Phase 11 plan 04 complete, repeated-run benchmark verification and rerun guidance shipped
+**Last Activity Description:** Phase 12 plan 01 complete, canonical token attribution and persistence evidence shipped
 
 ## Project Memory
 
@@ -44,8 +44,8 @@ progress:
 ## Current Planning Context
 
 - Active milestone: v1.1 validation, benchmarking, and distribution
-- Active phase: 11-benchmark-methodology-and-workflow-timing
-- Next planning action: execute Phase 12 plan 01
+- Active phase: 12-token-attribution-and-evidence-reporting
+- Next planning action: execute Phase 12 plan 02
 - Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
 - Coverage status: v1.0 shipped; v1.1 requirements are mapped across Phases 09-13
 
@@ -185,6 +185,7 @@ progress:
 | Phase 11-a-b-benchmark-methodology-and-workflow-timing P01 | 1m | 3 tasks | 14 files |
 | Phase 11-a-b-benchmark-methodology-and-workflow-timing P03 | 14min | 3 tasks | 9 files |
 | Phase 11-a-b-benchmark-methodology-and-workflow-timing P04 | 5min | 3 tasks | 7 files |
+| Phase 12 P01 | 364 | 3 tasks | 8 files |
 
 ## Decisions Made
 
@@ -301,6 +302,9 @@ progress:
 - [Phase 11]: Mutation-lane persistence stores setup, assertions, and evidence paths in SQLite metadata instead of introducing report-specific tables before Phase 12.
 - [Phase 11-a-b-benchmark-methodology-and-workflow-timing]: Repeated benchmark verification runs through a dedicated app-layer BenchmarkService instead of adding a new user-facing benchmark CLI command in Phase 11.
 - [Phase 11-a-b-benchmark-methodology-and-workflow-timing]: Methodology drift is rejected by comparing repeated attempts against the frozen suite and lane contract, while SQLite keeps attempt ordering stable for later Phase 12 reporting.
+- [Phase 12]: Phase 12 benchmark token math stays on the shared bytes_div_4_ceiling policy and is labeled as estimated workflow-consumed tokens, not provider billing.
+- [Phase 12]: Treatment artifact attribution is step-scoped and typed in repository contracts so runner, store, exports, and summaries reuse one canonical vocabulary.
+- [Phase 12]: Attribution evidence persists inside existing benchmark run and lane metadata JSON so reporting can read canonical inputs without recomputing from logs.
 
 ## Blockers
 
@@ -308,8 +312,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T12:56:44.088Z
-**Stopped At:** Completed 11-04-PLAN.md
+**Last Date:** 2026-03-16T13:51:25.537Z
+**Stopped At:** Completed 12-01-PLAN.md
 **Resume File:** None
 
 ---
