@@ -54,6 +54,31 @@ func TestChecksumManifest(t *testing.T) {
 	}
 }
 
+func TestGitHubReleasePublicationConfig(t *testing.T) {
+	workflow := readRepoFile(t, ".github/workflows/release.yml")
+
+	for _, want := range []string{
+		`tags:`,
+		`- "v*"`,
+		`workflow_dispatch:`,
+		`release_tag:`,
+		`uses: actions/checkout@v4`,
+		`uses: actions/setup-go@v5`,
+		`uses: goreleaser/goreleaser-action@v6`,
+		`args: release --clean`,
+		`GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}`,
+		`go test ./internal/release ./internal/cli -run 'TestArchiveMatrix|TestChecksumManifest|TestGitHubReleasePublicationConfig|TestReleaseMetadataInjection'`,
+	} {
+		if !strings.Contains(workflow, want) {
+			t.Fatalf(".github/workflows/release.yml missing %q", want)
+		}
+	}
+
+	if !strings.Contains(workflow, `ref=refs/tags/$INPUT_TAG`) {
+		t.Fatalf("manual release dispatch must resolve an existing tag ref")
+	}
+}
+
 func yamlList(content, key string) []string {
 	lines := strings.Split(content, "\n")
 	needle := key + ":"

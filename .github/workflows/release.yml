@@ -64,7 +64,7 @@ jobs:
         env:
           GOCACHE: /tmp/optimusctx-gocache
           GOMODCACHE: /tmp/optimusctx-gomodcache
-        run: go test ./internal/release -run 'TestArchiveMatrix|TestChecksumManifest'
+        run: go test ./internal/release ./internal/cli -run 'TestArchiveMatrix|TestChecksumManifest|TestGitHubReleasePublicationConfig|TestReleaseMetadataInjection'
 
       # Publish versioned archives and checksums to GitHub Releases using the
       # canonical .goreleaser.yml definition.

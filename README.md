@@ -35,6 +35,29 @@ go run ./cmd/optimusctx version
 
 The supported local install path for Phase 2 is `go install ./cmd/optimusctx`. Local development can also use `go run ./cmd/optimusctx ...` from this repository. npm or `npx` packaging is not part of the current product scope.
 
+## Release archives
+
+Phase 13 adds one truthful release publication path for end users: GitHub Releases built from [`.goreleaser.yml`](./.goreleaser.yml) through [`.github/workflows/release.yml`](./.github/workflows/release.yml).
+
+Release operators use one of these entrypoints:
+
+- push a version tag matching `v*`
+- run the `release` workflow manually and provide an existing `release_tag`
+
+The workflow publishes these versioned artifacts to GitHub Releases:
+
+- `optimusctx_<version>_darwin_amd64.tar.gz`
+- `optimusctx_<version>_darwin_arm64.tar.gz`
+- `optimusctx_<version>_linux_amd64.tar.gz`
+- `optimusctx_<version>_linux_arm64.tar.gz`
+- `optimusctx_<version>_windows_amd64.zip`
+- `optimusctx_<version>_windows_arm64.zip`
+- `optimusctx_<version>_checksums.txt`
+
+Release builds inject truthful build metadata into the shipped binary. After downloading an archive, `optimusctx version` prints the release `version`, `commit`, and `build_date` that were passed through the canonical release definition.
+
+This repository does not yet claim Homebrew, Scoop, signed artifacts, or SBOM support. Those remain future distribution work, so the current release story is only GitHub-hosted archives plus checksums for the single-binary runtime.
+
 ## Smoke test in a fresh temp repository
 
 The reproducible verification path is a disposable Git repository, not the mutable `optimusctx` checkout itself.
