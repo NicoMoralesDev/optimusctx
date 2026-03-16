@@ -123,8 +123,6 @@
         "normalization": {
           "mode": "json_fields",
           "jsonPaths": [
-            "freshness",
-            "generation",
             "targetReady"
           ]
         },
@@ -133,10 +131,6 @@
             "kind": "json_field_equals",
             "path": "targetReady",
             "equals": true
-          },
-          {
-            "kind": "json_field_present",
-            "path": "freshness"
           }
         ]
       },

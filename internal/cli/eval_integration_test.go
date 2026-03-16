@@ -460,6 +460,28 @@ func TestBenchmarkMilestoneVerification(t *testing.T) {
 	})
 }
 
+func TestBenchmarkVerifyCommittedSuites(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		for _, suiteID := range []string{"go-benchmark-discovery-v1", "go-benchmark-refresh-v1"} {
+			var stdout bytes.Buffer
+			if err := NewRootCommand().Execute([]string{"eval", "benchmark", "export", "--suite", suiteID, "--attempts", "2"}, &stdout); err != nil {
+				t.Fatalf("Execute(eval benchmark export %s) error = %v", suiteID, err)
+			}
+			stdout.Reset()
+			if err := NewRootCommand().Execute([]string{"eval", "benchmark", "verify", "--suite", suiteID, "--attempts", "2"}, &stdout); err != nil {
+				t.Fatalf("Execute(eval benchmark verify %s) error = %v", suiteID, err)
+			}
+			output := stdout.String()
+			assertContains(t, output, "status: passed")
+			assertContains(t, output, "reproducibility verification: passed")
+			assertContains(t, output, "report wording verification: passed")
+		}
+	})
+}
+
 func TestBenchmarkVerificationWordingGuards(t *testing.T) {
 	repoRoot := initCLIRepo(t)
 	seedCommittedEvalFixtures(t, repoRoot)

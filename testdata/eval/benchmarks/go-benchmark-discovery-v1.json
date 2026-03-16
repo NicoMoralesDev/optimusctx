@@ -169,10 +169,6 @@
           {
             "kind": "contains",
             "contains": "LoadRolloutConfig"
-          },
-          {
-            "kind": "contains",
-            "contains": "internal/config/loader.go"
           }
         ]
       },

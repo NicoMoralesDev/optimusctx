@@ -704,8 +704,10 @@ func benchmarkAttemptFingerprint(result repository.BenchmarkRunResult) string {
 				b.WriteString(string(attribution.Boundary))
 				b.WriteString(":")
 				b.WriteString(string(attribution.SourceKind))
-				b.WriteString(":")
-				b.WriteString(fmt.Sprint(attribution.EstimatedTokens))
+				if attribution.Boundary != repository.BenchmarkEvidenceBoundarySystemProvenance {
+					b.WriteString(":")
+					b.WriteString(fmt.Sprint(attribution.EstimatedTokens))
+				}
 			}
 		}
 	}

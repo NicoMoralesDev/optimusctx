@@ -1135,17 +1135,12 @@ func (s *benchmarkArmState) renderLaneFinalArtifact(lane repository.BenchmarkLan
 		return nil, false, nil
 	case repository.BenchmarkFinalArtifactKindReadinessSummary:
 		summary := map[string]any{"targetReady": true}
-		if value, ok, err := benchmarkLaneJSONProjection(current.steps, "freshness"); err != nil {
+		if value, ok, err := benchmarkLaneJSONProjectionAny(current.steps, "freshness", "Freshness", "refresh.freshness", "Refresh.Freshness"); err != nil {
 			return nil, false, err
 		} else if ok {
 			summary["freshness"] = value
 		}
-		if value, ok, err := benchmarkLaneJSONProjection(current.steps, "refresh.freshness"); err != nil {
-			return nil, false, err
-		} else if ok && summary["freshness"] == nil {
-			summary["freshness"] = value
-		}
-		if value, ok, err := benchmarkLaneJSONProjection(current.steps, "generation"); err != nil {
+		if value, ok, err := benchmarkLaneJSONProjectionAny(current.steps, "generation", "Generation", "currentGeneration", "CurrentGeneration", "refresh.currentGeneration", "Refresh.CurrentGeneration"); err != nil {
 			return nil, false, err
 		} else if ok {
 			summary["generation"] = value
@@ -1157,17 +1152,34 @@ func (s *benchmarkArmState) renderLaneFinalArtifact(lane repository.BenchmarkLan
 }
 
 func benchmarkTextFromLaneSteps(steps map[string]benchmarkStepObservation) (string, bool) {
+	parts := make([]string, 0, len(steps))
 	for _, key := range benchmarkSortedObservationKeys(steps) {
 		if text, ok := benchmarkProjectedText(steps[key]); ok {
-			return text, true
+			parts = append(parts, text)
 		}
 	}
-	return "", false
+	if len(parts) == 0 {
+		return "", false
+	}
+	return strings.Join(parts, "\n"), true
 }
 
 func benchmarkLaneJSONProjection(steps map[string]benchmarkStepObservation, jsonPath string) (any, bool, error) {
 	for _, key := range benchmarkSortedObservationKeys(steps) {
 		value, ok, err := benchmarkProjectedJSONField(steps[key].payload, jsonPath)
+		if err != nil {
+			return nil, false, err
+		}
+		if ok {
+			return value, true, nil
+		}
+	}
+	return nil, false, nil
+}
+
+func benchmarkLaneJSONProjectionAny(steps map[string]benchmarkStepObservation, jsonPaths ...string) (any, bool, error) {
+	for _, path := range jsonPaths {
+		value, ok, err := benchmarkLaneJSONProjection(steps, path)
 		if err != nil {
 			return nil, false, err
 		}

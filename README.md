@@ -208,6 +208,7 @@ The human-readable report is intentionally narrow and truthful:
 - counted-token deltas come only from declared agent-input projections; raw CLI and MCP provenance remains exportable evidence unless the suite explicitly promotes it into counted input
 - lane success now requires both the stop condition and comparable final-artifact validation from the committed suite contract
 - treatment-side attribution is grouped with BNCH-02-facing labels such as Repository Map, Exact Lookup, L2 Context, and Operational
+- the current Phase 14 reruns improve counted discovery and refresh-readiness totals for OptimusCtx, while raw provenance can still be materially larger and remains diagnostic evidence rather than counted cost
 - estimated tokens always use the `bytes_div_4_ceiling` policy
 - the report explains workflow-consumed evidence volume, not provider-billed token invoices
 - rerun guidance and methodology fingerprint stay visible so reviewers can inspect the same frozen suite again

@@ -218,6 +218,28 @@ func TestBenchmarkMethodologyFingerprint(t *testing.T) {
 	}
 }
 
+func TestBenchmarkAttemptFingerprintIgnoresSystemProvenanceTokenDrift(t *testing.T) {
+	t.Parallel()
+
+	left := benchmarkEvidenceRunResult("/tmp/repo-a", true)
+	right := benchmarkEvidenceRunResult("/tmp/repo-b", true)
+
+	for armIndex := range right.Arms {
+		for laneIndex := range right.Arms[armIndex].LaneResults {
+			for attrIndex := range right.Arms[armIndex].LaneResults[laneIndex].Attribution {
+				attr := &right.Arms[armIndex].LaneResults[laneIndex].Attribution[attrIndex]
+				if attr.Boundary == repository.BenchmarkEvidenceBoundarySystemProvenance {
+					attr.EstimatedTokens += 17
+				}
+			}
+		}
+	}
+
+	if got, want := benchmarkAttemptFingerprint(right), benchmarkAttemptFingerprint(left); got != want {
+		t.Fatalf("benchmarkAttemptFingerprint() = %q, want %q", got, want)
+	}
+}
+
 func TestBuildBenchmarkEvidenceBundleFromPersistedRuns(t *testing.T) {
 	t.Parallel()
 

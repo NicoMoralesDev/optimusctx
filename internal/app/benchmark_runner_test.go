@@ -728,6 +728,76 @@ func TestBenchmarkFinalArtifactValidation(t *testing.T) {
 	}
 }
 
+func TestBenchmarkTextFromLaneStepsCombinesObservations(t *testing.T) {
+	t.Parallel()
+
+	text, ok := benchmarkTextFromLaneSteps(map[string]benchmarkStepObservation{
+		"baseline-read-loader": {
+			fileSliceContent: "func LoadConfig() string {\n\treturn value\n}",
+		},
+		"baseline-read-target": {
+			fileSliceContent: "func LoadRolloutConfig() string {\n\treturn LoadConfig()\n}",
+		},
+	})
+	if !ok {
+		t.Fatal("benchmarkTextFromLaneSteps() should report combined text")
+	}
+	if !strings.Contains(text, "LoadConfig") || !strings.Contains(text, "LoadRolloutConfig") {
+		t.Fatalf("combined text = %q, want both lane observations", text)
+	}
+}
+
+func TestBenchmarkReadinessSummarySupportsCapitalizedHealthFields(t *testing.T) {
+	t.Parallel()
+
+	state := &benchmarkArmState{
+		lanes: map[repository.BenchmarkLane]*benchmarkLaneState{
+			repository.BenchmarkLaneRefreshReady: {
+				definition: repository.BenchmarkLaneDefinition{
+					FinalArtifact: &repository.BenchmarkFinalArtifactContract{
+						ID:     "refresh-readiness",
+						Name:   "Refresh readiness summary",
+						Kind:   repository.BenchmarkFinalArtifactKindReadinessSummary,
+						Path:   "artifacts/readiness.json",
+						Format: repository.BenchmarkFinalArtifactFormatJSON,
+					},
+				},
+				steps: map[string]benchmarkStepObservation{
+					"opti-health": {
+						payload: map[string]any{
+							"Refresh": map[string]any{
+								"Freshness":         "fresh",
+								"CurrentGeneration": 7,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	content, ok, err := state.renderLaneFinalArtifact(repository.BenchmarkLaneRefreshReady, *state.lanes[repository.BenchmarkLaneRefreshReady].definition.FinalArtifact)
+	if err != nil {
+		t.Fatalf("renderLaneFinalArtifact() error = %v", err)
+	}
+	if !ok {
+		t.Fatal("renderLaneFinalArtifact() should return readiness content")
+	}
+	summary, ok := content.(map[string]any)
+	if !ok {
+		t.Fatalf("content type = %T, want map[string]any", content)
+	}
+	if summary["freshness"] != "fresh" {
+		t.Fatalf("freshness = %#v, want fresh", summary["freshness"])
+	}
+	if got, ok := summary["generation"].(float64); !ok || got != 7 {
+		t.Fatalf("generation = %#v, want 7", summary["generation"])
+	}
+	if summary["targetReady"] != true {
+		t.Fatalf("targetReady = %#v, want true", summary["targetReady"])
+	}
+}
+
 func TestBenchmarkRepeatedRuns(t *testing.T) {
 	t.Parallel()
 
