@@ -22,6 +22,7 @@ import (
 var (
 	evalCommandService              func(context.Context, app.EvalRunRequest) (repository.EvalRunResult, error)
 	benchmarkEvidenceCommandService func(context.Context, app.BenchmarkEvidenceBundleRequest) (repository.BenchmarkEvidenceBundle, error)
+	benchmarkReportCommandService   func(context.Context, app.BenchmarkHumanReportRequest) (string, error)
 	evalCommandMu                   sync.Mutex
 )
 
@@ -132,6 +133,53 @@ func runBenchmarkEvidenceCommandService(ctx context.Context, request app.Benchma
 		return app.BenchmarkToolExecutionResult{Payload: payload}, nil
 	}
 	return service.ExportEvidenceBundle(ctx, request)
+}
+
+func runBenchmarkReportCommandService(ctx context.Context, request app.BenchmarkHumanReportRequest) (string, error) {
+	if benchmarkReportCommandService != nil {
+		return benchmarkReportCommandService(ctx, request)
+	}
+	service := app.NewBenchmarkService()
+	service.Runner = app.NewBenchmarkRunner()
+	service.Runner.RunCommand = func(ctx context.Context, invocation app.BenchmarkCommandInvocation) (app.BenchmarkCommandExecutionResult, error) {
+		execution, err := executeEvalCLICommand(ctx, app.EvalCommandInvocation{
+			Args:       invocation.Args,
+			WorkingDir: invocation.WorkingDir,
+		})
+		return app.BenchmarkCommandExecutionResult{
+			Stdout:   execution.Stdout,
+			Stderr:   execution.Stderr,
+			ExitCode: execution.ExitCode,
+		}, err
+	}
+	service.Runner.RunTool = func(ctx context.Context, invocation app.BenchmarkToolInvocation) (app.BenchmarkToolExecutionResult, error) {
+		session := repository.EvalMCPSession{
+			Requests: []repository.EvalMCPRequest{
+				{ID: 1, Method: "initialize", Params: mcp.InitializeParams{
+					ClientInfo:      mcp.ClientInfo{Name: "benchmark-report", Version: "1.0.0"},
+					ProtocolVersion: "2024-11-05",
+				}},
+				{Method: "notifications/initialized", Notification: true},
+				{ID: 2, Method: "tools/call", Params: mcp.CallToolParams{
+					Name:      invocation.Name,
+					Arguments: invocation.Arguments,
+				}},
+			},
+		}
+		execution, err := executeEvalCLIMCPSession(ctx, app.EvalMCPSessionInvocation{
+			WorkingDir: invocation.WorkingDir,
+			Session:    session,
+		})
+		if err != nil {
+			return app.BenchmarkToolExecutionResult{}, err
+		}
+		payload, err := decodeBenchmarkToolPayload(execution.Responses[len(execution.Responses)-1].Response)
+		if err != nil {
+			return app.BenchmarkToolExecutionResult{}, err
+		}
+		return app.BenchmarkToolExecutionResult{Payload: payload}, nil
+	}
+	return service.RenderHumanReport(ctx, request)
 }
 
 func parseEvalArgs(args []string) (app.EvalRunRequest, error) {
@@ -264,7 +312,7 @@ func executeEvalCLIMCPSession(_ context.Context, invocation app.EvalMCPSessionIn
 }
 
 func writeEvalHelp(stdout io.Writer) error {
-	_, err := io.WriteString(stdout, "Usage:\n  optimusctx eval [--scenario ID | --scenario-file PATH]\n  optimusctx eval benchmark export [--suite ID | --suite-file PATH] [--attempts N] [--output PATH]\n\nRun versioned evaluation scenarios or export deterministic benchmark evidence through the shipped CLI boundary.\n")
+	_, err := io.WriteString(stdout, "Usage:\n  optimusctx eval [--scenario ID | --scenario-file PATH]\n  optimusctx eval benchmark export [--suite ID | --suite-file PATH] [--attempts N] [--output PATH]\n  optimusctx eval benchmark report [--suite ID | --suite-file PATH] [--attempts N] [--output PATH]\n\nRun versioned evaluation scenarios or render deterministic benchmark evidence through the shipped CLI boundary.\n")
 	return err
 }
 
@@ -317,12 +365,72 @@ func runEvalBenchmarkCommand(stdout io.Writer, args []string) error {
 		}
 		_, err = stdout.Write(payload)
 		return err
+	case "report":
+		request, outputPath, err := parseBenchmarkReportArgs(args[1:])
+		if err != nil {
+			return err
+		}
+
+		workingDir, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("resolve working directory: %w", err)
+		}
+		root, err := repository.ResolveRepositoryRoot(workingDir)
+		if err != nil {
+			return fmt.Errorf("resolve source repository root: %w", err)
+		}
+		request.StartPath = workingDir
+		request.SuitesDir = filepath.Join(root.RootPath, "testdata", "eval", "benchmarks")
+		request.FixturesRoot = filepath.Join(root.RootPath, "testdata", "eval", "fixtures")
+		if request.SuitePath != "" && !filepath.IsAbs(request.SuitePath) {
+			request.SuitePath = filepath.Join(workingDir, request.SuitePath)
+		}
+
+		report, err := runBenchmarkReportCommandService(context.Background(), request)
+		if err != nil {
+			return err
+		}
+		if outputPath != "" {
+			if !filepath.IsAbs(outputPath) {
+				outputPath = filepath.Join(workingDir, outputPath)
+			}
+			if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
+				return fmt.Errorf("create benchmark report directory: %w", err)
+			}
+			if err := os.WriteFile(outputPath, []byte(report), 0o644); err != nil {
+				return fmt.Errorf("write benchmark report: %w", err)
+			}
+			_, err = fmt.Fprintf(stdout, "benchmark report written: %s\n", outputPath)
+			return err
+		}
+		_, err = io.WriteString(stdout, report)
+		return err
 	default:
 		return fmt.Errorf("unknown eval benchmark subcommand %q", args[0])
 	}
 }
 
 func parseBenchmarkExportArgs(args []string) (app.BenchmarkEvidenceBundleRequest, string, error) {
+	request, outputPath, err := parseBenchmarkArgsCommon(args, "export")
+	if err != nil {
+		return app.BenchmarkEvidenceBundleRequest{}, "", err
+	}
+	return request, outputPath, nil
+}
+
+func parseBenchmarkReportArgs(args []string) (app.BenchmarkHumanReportRequest, string, error) {
+	request, outputPath, err := parseBenchmarkArgsCommon(args, "report")
+	if err != nil {
+		return app.BenchmarkHumanReportRequest{}, "", err
+	}
+	return app.BenchmarkHumanReportRequest{
+		SuiteID:   request.SuiteID,
+		SuitePath: request.SuitePath,
+		Attempts:  request.Attempts,
+	}, outputPath, nil
+}
+
+func parseBenchmarkArgsCommon(args []string, subcommand string) (app.BenchmarkEvidenceBundleRequest, string, error) {
 	var request app.BenchmarkEvidenceBundleRequest
 	var outputPath string
 	for index := 0; index < len(args); index++ {
@@ -366,11 +474,11 @@ func parseBenchmarkExportArgs(args []string) (app.BenchmarkEvidenceBundleRequest
 				return app.BenchmarkEvidenceBundleRequest{}, "", fmt.Errorf("%s requires a non-empty value", arg)
 			}
 		default:
-			return app.BenchmarkEvidenceBundleRequest{}, "", fmt.Errorf("unknown eval benchmark export flag %q", arg)
+			return app.BenchmarkEvidenceBundleRequest{}, "", fmt.Errorf("unknown eval benchmark %s flag %q", subcommand, arg)
 		}
 	}
 	if (request.SuiteID == "") == (request.SuitePath == "") {
-		return app.BenchmarkEvidenceBundleRequest{}, "", errors.New("eval benchmark export requires exactly one of --suite or --suite-file")
+		return app.BenchmarkEvidenceBundleRequest{}, "", fmt.Errorf("eval benchmark %s requires exactly one of --suite or --suite-file", subcommand)
 	}
 	return request, outputPath, nil
 }

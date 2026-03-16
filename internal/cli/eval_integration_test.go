@@ -266,6 +266,66 @@ func TestBenchmarkVerificationWorkflow(t *testing.T) {
 	})
 }
 
+func TestBenchmarkHumanReadableReport(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "report", "--suite", "go-benchmark-refresh-v1", "--attempts", "2"}, &stdout); err != nil {
+			t.Fatalf("Execute(eval benchmark report) error = %v", err)
+		}
+		output := stdout.String()
+		assertContains(t, output, "benchmark report")
+		assertContains(t, output, "suite: go-benchmark-refresh-v1@v1")
+		assertContains(t, output, "lane comparison")
+		assertContains(t, output, "rerun")
+	})
+}
+
+func TestBenchmarkAttributionTables(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		render := func(suiteID string) string {
+			var stdout bytes.Buffer
+			if err := NewRootCommand().Execute([]string{"eval", "benchmark", "report", "--suite", suiteID, "--attempts", "2"}, &stdout); err != nil {
+				t.Fatalf("Execute(eval benchmark report %s) error = %v", suiteID, err)
+			}
+			return stdout.String()
+		}
+		refreshOutput := render("go-benchmark-refresh-v1")
+		assertContains(t, refreshOutput, "treatment artifact attribution")
+		assertContains(t, refreshOutput, "L2 Context")
+		assertContains(t, refreshOutput, "Pack Export")
+
+		discoveryOutput := render("go-benchmark-discovery-v1")
+		assertContains(t, discoveryOutput, "Repository Map")
+		assertContains(t, discoveryOutput, "Exact Lookup")
+	})
+}
+
+func TestBenchmarkReportWordingGuards(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "report", "--suite", "go-benchmark-refresh-v1", "--attempts", "2"}, &stdout); err != nil {
+			t.Fatalf("Execute(eval benchmark report) error = %v", err)
+		}
+		output := stdout.String()
+		assertContains(t, output, "estimated tokens use bytes_div_4_ceiling")
+		assertContains(t, output, "not provider-billed token invoices")
+		for _, banned := range []string{"provider billing", "statistically significant", "universal savings"} {
+			if strings.Contains(output, banned) {
+				t.Fatalf("report should not contain %q:\n%s", banned, output)
+			}
+		}
+	})
+}
+
 func TestEvalMCPArtifactsPersist(t *testing.T) {
 	repoRoot := initCLIRepo(t)
 	seedCommittedEvalFixtures(t, repoRoot)
