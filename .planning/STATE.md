@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 09
 current_phase_name: evaluation-harness-and-fixture-foundation
-current_plan: 3
-status: executing
-stopped_at: Completed 09-02-PLAN.md
-last_updated: "2026-03-16T00:13:04.040Z"
+current_plan: 4
+status: ready_for_next_phase
+stopped_at: Completed 09-04-PLAN.md
+last_updated: "2026-03-16T00:25:43.246Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 98
+  completed_plans: 4
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute
+**Status:** Ready for next phase
 **Current Phase:** 09
 **Current Phase Name:** evaluation-harness-and-fixture-foundation
 **Total Phases:** 5
-**Current Plan:** 3
+**Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 98%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-16
-**Last Activity Description:** Phase 09 plan 03 completed with deterministic eval artifact layout and dedicated eval persistence
+**Last Activity Description:** Phase 09 plan 04 completed with rerunnable fixture orchestration, persisted eval evidence, and truthful eval workflow docs
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1.1 validation, benchmarking, and distribution
 - Active phase: 09-evaluation-harness-and-fixture-foundation
-- Next planning action: execute Phase 09 plan 02
+- Next planning action: start Phase 10 plan 01
 - Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
 - Coverage status: v1.0 shipped; v1.1 requirements are mapped across Phases 09-13
 
@@ -55,6 +55,9 @@ progress:
 - Functional validation will use versioned fixture repositories, rerunnable scenario definitions, and the real shipped CLI and MCP surfaces.
 - Benchmark claims will use a fixed baseline-vs-OptimusCtx methodology with one token estimator and explicit artifact attribution.
 - Distribution will stay narrow: cross-platform archives, first package-manager channels, install verification, and a written rollout plan.
+- The default eval path now persists runs under the source repository's `.optimusctx/eval/run-<id>` tree instead of leaving evidence in temp workspaces.
+- Eval runner pre-creates file-artifact parent directories so real CLI commands can write deterministic outputs without manual setup.
+- Rerun validation now asserts deterministic repo-local paths and persisted metadata rather than byte-identical pack payloads because exports embed temp workspace roots.
 
 - Repository root detection now canonicalizes the start path, prefers Git top-level discovery, and falls back to an existing `.optimusctx` directory only when Git metadata is absent.
 - Repository discovery walks directories in lexical order, records explicit ignore reasons, and does not traverse symlinks in Phase 1.
@@ -83,6 +86,7 @@ progress:
 - Update this state whenever the active phase, milestone, or planning status changes.
 - Plan `09-01` is complete with canonical evaluation contracts, committed fixture repositories, scenario definitions, and repository-backed schema validation tests.
 - Plan `09-03` is complete with repository-local eval artifact paths, dedicated eval run persistence tables, and contract tests for rerunnable evidence storage.
+- Plan `09-04` is complete with fresh-workspace rerun coverage, persisted eval run evidence, and README guidance for the shipped `eval` workflow.
 - Plan `01-01` is complete with a working Go CLI scaffold, version output, and bootstrap documentation.
 - Plan `01-02` is complete with repository root detection, ignore-aware discovery, and persistence-ready metadata records under `internal/repository`.
 - Plan `01-03` is complete with repository-local `.optimusctx` layout helpers, SQLite migrations, and store initialization under `internal/state` and `internal/store`.
@@ -170,6 +174,7 @@ progress:
 | Phase 09-evaluation-harness-and-fixture-foundation P01 | 18min | 3 tasks | 13 files |
 | Phase 09 P03 | 8min | 3 tasks | 7 files |
 | Phase 09 P02 | 12min | 3 tasks | 5 files |
+| Phase 09-evaluation-harness-and-fixture-foundation P04 | 10min | 3 tasks | 7 files |
 
 ## Decisions Made
 
@@ -264,6 +269,9 @@ progress:
 - [Phase 09]: Evaluation steps execute through the existing root command surface in-process so scenario results match shipped CLI behavior without shell-script glue.
 - [Phase 09]: Fixture repositories are materialized by copying committed trees and initializing a fresh Git repository before scenario execution.
 - [Phase 09]: EvalRunner applies NewEvalRunner defaults to partial configurations so tests and future extensions can override only the seams they need.
+- [Phase 09-evaluation-harness-and-fixture-foundation]: The default eval path now persists runs under the source repository's .optimusctx/eval/run-<id> tree instead of leaving evidence in temp workspaces.
+- [Phase 09-evaluation-harness-and-fixture-foundation]: Eval runner pre-creates file-artifact parent directories so real CLI commands can write deterministic outputs without manual setup.
+- [Phase 09-evaluation-harness-and-fixture-foundation]: Rerun validation now asserts deterministic repo-local paths and persisted metadata rather than byte-identical pack payloads because exports embed temp workspace roots.
 
 ## Blockers
 
@@ -271,8 +279,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T00:13:04.038Z
-**Stopped At:** Completed 09-02-PLAN.md
+**Last Date:** 2026-03-16T00:25:43.243Z
+**Stopped At:** Completed 09-04-PLAN.md
 **Resume File:** None
 
 ---

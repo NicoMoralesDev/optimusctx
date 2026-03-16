@@ -25,9 +25,9 @@
 Plans:
 
 - [x] 09-01: fixture repository set and scenario schema
-- [ ] 09-02: CLI evaluation runner foundation
+- [x] 09-02: CLI evaluation runner foundation
 - [x] 09-03: evaluation artifact layout and persistence
-- [ ] 09-04: rerunnable scenario orchestration and docs
+- [x] 09-04: rerunnable scenario orchestration and docs
 
 **Requirements covered:** `EVAL-01`, `EVAL-04`  
 **Details:** Phase 9 creates the test substrate for the milestone: realistic fixture repos, reusable scenario specs, deterministic artifact locations, and one rerunnable path that later phases reuse instead of inventing ad hoc harnesses.
@@ -102,8 +102,8 @@ Active milestone: `v1.1`
 
 Next step:
 
-- Execute `09-02` — CLI evaluation runner foundation
-- After Phase 9 completes, start Phase 10 functional runtime validation plans
+- Execute `10-01` — end-to-end CLI workflow scenarios
+- Phase 9 is complete; Phase 10 now owns milestone-grade functional validation coverage
 
 ---
-*Last updated: 2026-03-16 after completing Phase 09 plan 03*
+*Last updated: 2026-03-16 after completing Phase 09 plan 04*
