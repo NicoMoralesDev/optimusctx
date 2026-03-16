@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"sort"
@@ -40,12 +41,23 @@ type BenchmarkRepeatedRunRequest struct {
 	Attempts      int
 }
 
+type BenchmarkEvidenceBundleRequest struct {
+	StartPath     string
+	SuiteID       string
+	SuitePath     string
+	SuitesDir     string
+	FixturesRoot  string
+	WorkspaceRoot string
+	Attempts      int
+}
+
 type BenchmarkRepeatedRunResult struct {
 	RepositoryRoot string
 	SuiteID        string
 	SuiteVersion   string
 	Attempts       []BenchmarkAttemptResult
 	Summary        BenchmarkComparisonSummary
+	EvidenceBundle repository.BenchmarkEvidenceBundle
 }
 
 type BenchmarkAttemptResult struct {
@@ -127,6 +139,8 @@ func (s BenchmarkService) RunRepeated(ctx context.Context, request BenchmarkRepe
 	}
 
 	summaryResult := BenchmarkRepeatedRunResult{Attempts: make([]BenchmarkAttemptResult, 0, request.Attempts)}
+	var resolvedRoot repository.RepositoryRoot
+	var resolvedSuite repository.BenchmarkSuiteDefinition
 	for attempt := 1; attempt <= request.Attempts; attempt++ {
 		result, root, suite, err := s.runAndPersist(ctx, BenchmarkRunServiceRequest{
 			StartPath:     request.StartPath,
@@ -139,6 +153,8 @@ func (s BenchmarkService) RunRepeated(ctx context.Context, request BenchmarkRepe
 		if err != nil {
 			return BenchmarkRepeatedRunResult{}, err
 		}
+		resolvedRoot = root
+		resolvedSuite = suite
 		summaryResult.RepositoryRoot = root.RootPath
 		summaryResult.SuiteID = suite.ID
 		summaryResult.SuiteVersion = suite.Version
@@ -149,8 +165,47 @@ func (s BenchmarkService) RunRepeated(ctx context.Context, request BenchmarkRepe
 	}
 
 	summaryResult.Summary = summarizeBenchmarkAttempts(summaryResult.Attempts, summaryResult.SuiteID, summaryResult.SuiteVersion)
-	summaryResult.Summary.RerunCommand = benchmarkRerunCommand(request)
+	evidenceBundle, err := s.exportEvidenceBundleFromStore(ctx, BenchmarkEvidenceBundleRequest{
+		StartPath:     request.StartPath,
+		SuiteID:       request.SuiteID,
+		SuitePath:     request.SuitePath,
+		SuitesDir:     request.SuitesDir,
+		FixturesRoot:  request.FixturesRoot,
+		WorkspaceRoot: request.WorkspaceRoot,
+		Attempts:      request.Attempts,
+	}, resolvedRoot, resolvedSuite)
+	if err != nil {
+		return BenchmarkRepeatedRunResult{}, err
+	}
+	summaryResult.EvidenceBundle = evidenceBundle
+	summaryResult.Summary.RerunCommand = evidenceBundle.RerunCommand
+	summaryResult.Summary.MethodologyFingerprint = evidenceBundle.MethodologyFingerprint
 	return summaryResult, nil
+}
+
+func (s BenchmarkService) ExportEvidenceBundle(ctx context.Context, request BenchmarkEvidenceBundleRequest) (repository.BenchmarkEvidenceBundle, error) {
+	if request.Attempts > 0 {
+		result, err := s.RunRepeated(ctx, BenchmarkRepeatedRunRequest{
+			StartPath:     request.StartPath,
+			SuiteID:       request.SuiteID,
+			SuitePath:     request.SuitePath,
+			SuitesDir:     request.SuitesDir,
+			FixturesRoot:  request.FixturesRoot,
+			WorkspaceRoot: request.WorkspaceRoot,
+			Attempts:      request.Attempts,
+		})
+		if err != nil {
+			return repository.BenchmarkEvidenceBundle{}, err
+		}
+		return result.EvidenceBundle, nil
+	}
+
+	root, suite, store, repoID, err := s.resolveBenchmarkEvidenceContext(ctx, request)
+	if err != nil {
+		return repository.BenchmarkEvidenceBundle{}, err
+	}
+	defer store.Close()
+	return s.buildAndPersistEvidenceBundle(ctx, store, repoID, root.RootPath, suite, request)
 }
 
 func (s BenchmarkService) VerifyMethodology(ctx context.Context, request BenchmarkRepeatedRunRequest) (BenchmarkVerificationResult, error) {
@@ -392,13 +447,7 @@ func benchmarkAttemptFingerprint(result repository.BenchmarkRunResult) string {
 }
 
 func benchmarkRerunCommand(request BenchmarkRepeatedRunRequest) string {
-	if strings.TrimSpace(request.SuiteID) != "" {
-		return fmt.Sprintf("go test ./internal/app ./internal/cli ./internal/mcp -run 'TestBenchmarkVerificationWorkflow|TestBenchmarkRerunsDeterministic' && go run ./cmd/optimusctx eval --scenario %s", request.SuiteID)
-	}
-	if strings.TrimSpace(request.SuitePath) != "" {
-		return fmt.Sprintf("go test ./internal/app ./internal/cli ./internal/mcp -run 'TestBenchmarkVerificationWorkflow|TestBenchmarkRerunsDeterministic' && benchmark suite file %s", request.SuitePath)
-	}
-	return "go test ./internal/app ./internal/cli ./internal/mcp -run 'TestBenchmarkVerificationWorkflow|TestBenchmarkRerunsDeterministic'"
+	return benchmarkEvidenceRerunCommand(request.SuiteID, request.SuitePath, request.Attempts)
 }
 
 func summarizeInt64s(values []int64) BenchmarkInt64Stats {
@@ -473,4 +522,352 @@ func (s BenchmarkService) nowUTC() time.Time {
 		return s.Now().UTC()
 	}
 	return time.Now().UTC()
+}
+
+func (s BenchmarkService) resolveBenchmarkEvidenceContext(ctx context.Context, request BenchmarkEvidenceBundleRequest) (repository.RepositoryRoot, repository.BenchmarkSuiteDefinition, *sqlite.Store, int64, error) {
+	root, err := s.Locator.Resolve(request.StartPath)
+	if err != nil {
+		return repository.RepositoryRoot{}, repository.BenchmarkSuiteDefinition{}, nil, 0, fmt.Errorf("resolve repository root: %w", err)
+	}
+
+	layoutResolver := s.ResolveLayout
+	if layoutResolver == nil {
+		layoutResolver = state.ResolveLayout
+	}
+	layout, err := layoutResolver(root.RootPath)
+	if err != nil {
+		return repository.RepositoryRoot{}, repository.BenchmarkSuiteDefinition{}, nil, 0, fmt.Errorf("resolve state layout: %w", err)
+	}
+
+	openStore := s.OpenStore
+	if openStore == nil {
+		openStore = func(ctx context.Context, layout state.Layout, detectionMode string) (*sqlite.Store, error) {
+			return sqlite.OpenOrCreateStore(ctx, layout, detectionMode)
+		}
+	}
+	store, err := openStore(ctx, layout, root.DetectionMode)
+	if err != nil {
+		return repository.RepositoryRoot{}, repository.BenchmarkSuiteDefinition{}, nil, 0, fmt.Errorf("open benchmark store: %w", err)
+	}
+
+	repoID, err := store.LookupRepositoryID(ctx, root.RootPath)
+	if err != nil {
+		store.Close()
+		return repository.RepositoryRoot{}, repository.BenchmarkSuiteDefinition{}, nil, 0, fmt.Errorf("lookup benchmark repository: %w", err)
+	}
+
+	runner := s.Runner.withDefaults()
+	suite, err := runner.LoadSuite(BenchmarkSuiteRequest{
+		SuiteID:      request.SuiteID,
+		SuitePath:    request.SuitePath,
+		SuitesDir:    request.SuitesDir,
+		FixturesRoot: request.FixturesRoot,
+	})
+	if err != nil {
+		store.Close()
+		return repository.RepositoryRoot{}, repository.BenchmarkSuiteDefinition{}, nil, 0, err
+	}
+	return root, suite, store, repoID, nil
+}
+
+func (s BenchmarkService) exportEvidenceBundleFromStore(ctx context.Context, request BenchmarkEvidenceBundleRequest, root repository.RepositoryRoot, suite repository.BenchmarkSuiteDefinition) (repository.BenchmarkEvidenceBundle, error) {
+	layoutResolver := s.ResolveLayout
+	if layoutResolver == nil {
+		layoutResolver = state.ResolveLayout
+	}
+	layout, err := layoutResolver(root.RootPath)
+	if err != nil {
+		return repository.BenchmarkEvidenceBundle{}, fmt.Errorf("resolve state layout: %w", err)
+	}
+	openStore := s.OpenStore
+	if openStore == nil {
+		openStore = func(ctx context.Context, layout state.Layout, detectionMode string) (*sqlite.Store, error) {
+			return sqlite.OpenOrCreateStore(ctx, layout, detectionMode)
+		}
+	}
+	store, err := openStore(ctx, layout, root.DetectionMode)
+	if err != nil {
+		return repository.BenchmarkEvidenceBundle{}, fmt.Errorf("open benchmark store: %w", err)
+	}
+	defer store.Close()
+
+	repoID, err := store.LookupRepositoryID(ctx, root.RootPath)
+	if err != nil {
+		return repository.BenchmarkEvidenceBundle{}, fmt.Errorf("lookup benchmark repository: %w", err)
+	}
+	return s.buildAndPersistEvidenceBundle(ctx, store, repoID, root.RootPath, suite, request)
+}
+
+func (s BenchmarkService) buildAndPersistEvidenceBundle(ctx context.Context, store *sqlite.Store, repositoryID int64, repositoryRoot string, suite repository.BenchmarkSuiteDefinition, request BenchmarkEvidenceBundleRequest) (repository.BenchmarkEvidenceBundle, error) {
+	persistedArms, err := store.ListBenchmarkRuns(ctx, repositoryID, suite.ID, suite.Version)
+	if err != nil {
+		return repository.BenchmarkEvidenceBundle{}, err
+	}
+	if len(persistedArms) == 0 {
+		return repository.BenchmarkEvidenceBundle{}, fmt.Errorf("no benchmark runs recorded for suite %q", suite.ID)
+	}
+
+	attempts, tokenContract, err := benchmarkAttemptsFromPersistedArms(persistedArms)
+	if err != nil {
+		return repository.BenchmarkEvidenceBundle{}, err
+	}
+	summary := summarizeBenchmarkAttempts(attempts, suite.ID, suite.Version)
+	bundle := buildBenchmarkEvidenceBundle(repositoryRoot, tokenContract, summary, attempts, benchmarkEvidenceRerunCommand(request.SuiteID, request.SuitePath, len(attempts)))
+	return store.SaveBenchmarkEvidenceBundle(ctx, repositoryID, bundle)
+}
+
+func buildBenchmarkEvidenceBundle(repositoryRoot string, tokenContract repository.BenchmarkTokenEstimateContract, summary BenchmarkComparisonSummary, attempts []BenchmarkAttemptResult, rerunCommand string) repository.BenchmarkEvidenceBundle {
+	bundle := repository.BenchmarkEvidenceBundle{
+		SchemaVersion:          repository.BenchmarkEvidenceBundleSchemaV1,
+		GeneratedAt:            time.Now().UTC(),
+		RepositoryRoot:         repositoryRoot,
+		SuiteID:                summary.SuiteID,
+		SuiteVersion:           summary.SuiteVersion,
+		TokenEstimateContract:  tokenContract,
+		MethodologyFingerprint: summary.MethodologyFingerprint,
+		RerunCommand:           rerunCommand,
+		Verification: repository.BenchmarkEvidenceVerification{
+			Passed:            summary.Verification.Passed,
+			FailureReason:     summary.Verification.FailureReason,
+			DriftReasons:      append([]string(nil), summary.Verification.DriftReasons...),
+			InvalidRunReasons: append([]string(nil), summary.InvalidRunReasons...),
+		},
+		Comparison: make([]repository.BenchmarkEvidenceArmSummary, 0, len(summary.Arms)),
+		Attempts:   make([]repository.BenchmarkEvidenceAttempt, 0, len(attempts)),
+	}
+	if len(attempts) > 0 {
+		bundle.FixtureID = attempts[0].Result.FixtureID
+		bundle.FixturePath = attempts[0].Result.FixturePath
+	}
+	for _, arm := range summary.Arms {
+		armSummary := repository.BenchmarkEvidenceArmSummary{
+			ArmKind: arm.ArmKind,
+			ArmName: arm.ArmName,
+			Lanes:   make([]repository.BenchmarkEvidenceLaneSummary, 0, len(arm.Lanes)),
+		}
+		for _, lane := range arm.Lanes {
+			armSummary.Lanes = append(armSummary.Lanes, repository.BenchmarkEvidenceLaneSummary{
+				Lane:                   lane.Lane,
+				AttemptCount:           lane.AttemptCount,
+				SuccessCount:           lane.SuccessCount,
+				InvalidAttemptCount:    lane.InvalidAttemptCount,
+				ElapsedMS:              toRepositoryEvidenceStats(lane.ElapsedMS),
+				ActionCount:            toRepositoryEvidenceStats(lane.ActionCount),
+				BroadSearchActions:     toRepositoryEvidenceStats(lane.BroadSearchActions),
+				TargetedLookupActions:  toRepositoryEvidenceStats(lane.TargetedLookupActions),
+				FileReadActions:        toRepositoryEvidenceStats(lane.FileReadActions),
+				BytesRead:              toRepositoryEvidenceStats(lane.BytesRead),
+				ConsultedArtifacts:     append([]string(nil), lane.ConsultedArtifacts...),
+				RejectedAttemptReasons: append([]string(nil), lane.RejectedAttemptReasons...),
+			})
+		}
+		bundle.Comparison = append(bundle.Comparison, armSummary)
+	}
+	for _, attempt := range attempts {
+		evidenceAttempt := repository.BenchmarkEvidenceAttempt{
+			Attempt: attempt.Attempt,
+			Arms:    make([]repository.BenchmarkEvidenceArmAttempt, 0, len(attempt.Result.Arms)),
+		}
+		for _, arm := range attempt.Result.Arms {
+			evidenceArm := repository.BenchmarkEvidenceArmAttempt{
+				Kind:          arm.Kind,
+				Name:          arm.Name,
+				WorkspacePath: arm.Workspace,
+				StartedAt:     arm.StartedAt,
+				FinishedAt:    arm.FinishedAt,
+				Lanes:         make([]repository.BenchmarkEvidenceLane, 0, len(arm.LaneResults)),
+			}
+			for _, lane := range arm.LaneResults {
+				evidenceArm.Lanes = append(evidenceArm.Lanes, repository.BenchmarkEvidenceLane{
+					Lane:           lane.Lane,
+					StartMarker:    lane.StartMarker,
+					SuccessMarker:  lane.SuccessMarker,
+					StopMarker:     lane.StopMarker,
+					SetupAppliedAt: lane.SetupAppliedAt,
+					StartedAt:      lane.StartedAt,
+					FinishedAt:     lane.FinishedAt,
+					ElapsedMS:      lane.Elapsed.Milliseconds(),
+					Success:        lane.Success,
+					EvidencePaths:  append([]string(nil), lane.EvidencePaths...),
+					Effort:         lane.Effort,
+					Attribution:    append([]repository.BenchmarkArtifactConsumption(nil), lane.Attribution...),
+				})
+			}
+			evidenceAttempt.Arms = append(evidenceAttempt.Arms, evidenceArm)
+		}
+		bundle.Attempts = append(bundle.Attempts, evidenceAttempt)
+	}
+	return repository.NormalizeBenchmarkEvidenceBundle(bundle)
+}
+
+func benchmarkAttemptsFromPersistedArms(persistedArms []sqlite.BenchmarkPersistedArm) ([]BenchmarkAttemptResult, repository.BenchmarkTokenEstimateContract, error) {
+	type laneMetadata struct {
+		SetupAppliedAt string                                    `json:"setupAppliedAt"`
+		EvidencePaths  []string                                  `json:"evidencePaths"`
+		Attribution    []repository.BenchmarkArtifactConsumption `json:"attribution"`
+	}
+	type runMetadata struct {
+		WorkspacePath         string                                    `json:"workspacePath"`
+		TokenEstimateContract repository.BenchmarkTokenEstimateContract `json:"tokenEstimateContract"`
+	}
+
+	grouped := make(map[int]*BenchmarkAttemptResult)
+	attemptOrder := make([]int, 0)
+	tokenContract := repository.DefaultBenchmarkTokenEstimateContract()
+	for _, persisted := range persistedArms {
+		result, ok := grouped[persisted.Run.Attempt]
+		if !ok {
+			grouped[persisted.Run.Attempt] = &BenchmarkAttemptResult{
+				Attempt: persisted.Run.Attempt,
+				Result: repository.BenchmarkRunResult{
+					SchemaVersion: repository.BenchmarkSuiteSchemaV1,
+					SuiteID:       persisted.Run.SuiteID,
+					SuiteVersion:  persisted.Run.SuiteVersion,
+					FixtureID:     persisted.Run.FixtureID,
+					FixturePath:   persisted.Run.FixturePath,
+					WorkspacePath: persisted.Run.WorkspacePath,
+				},
+			}
+			result = grouped[persisted.Run.Attempt]
+			attemptOrder = append(attemptOrder, persisted.Run.Attempt)
+		}
+		var metadata runMetadata
+		if persisted.Run.MetadataJSON != "" {
+			if err := json.Unmarshal([]byte(persisted.Run.MetadataJSON), &metadata); err != nil {
+				return nil, repository.BenchmarkTokenEstimateContract{}, fmt.Errorf("decode benchmark run metadata for attempt %d: %w", persisted.Run.Attempt, err)
+			}
+			if metadata.TokenEstimateContract.Policy.Name != "" {
+				tokenContract = metadata.TokenEstimateContract
+			}
+		}
+		arm := repository.BenchmarkArmRunResult{
+			Kind:        persisted.Run.ArmKind,
+			Name:        persisted.Run.ArmName,
+			Workspace:   firstNonEmpty(metadata.WorkspacePath, persisted.Run.WorkspacePath),
+			StartedAt:   persisted.Run.StartedAt.UTC(),
+			FinishedAt:  persisted.Run.CompletedAt.UTC(),
+			LaneResults: make([]repository.BenchmarkLaneRunResult, 0, len(persisted.Samples)),
+		}
+		for _, sample := range persisted.Samples {
+			var metadata laneMetadata
+			if sample.Sample.MetadataJSON != "" {
+				if err := json.Unmarshal([]byte(sample.Sample.MetadataJSON), &metadata); err != nil {
+					return nil, repository.BenchmarkTokenEstimateContract{}, fmt.Errorf("decode benchmark lane metadata for attempt %d lane %q: %w", persisted.Run.Attempt, sample.Sample.Lane, err)
+				}
+			}
+			lane := repository.BenchmarkLaneRunResult{
+				Lane:          sample.Sample.Lane,
+				StartMarker:   sample.Sample.StartMarker,
+				SuccessMarker: sample.Sample.SuccessMarker,
+				StopMarker:    sample.Sample.StopMarker,
+				StartedAt:     sample.Sample.StartedAt.UTC(),
+				FinishedAt:    sample.Sample.FinishedAt.UTC(),
+				Elapsed:       time.Duration(sample.Sample.ElapsedMS) * time.Millisecond,
+				Success:       sample.Sample.Success,
+				EvidencePaths: append([]string(nil), metadata.EvidencePaths...),
+				Attribution:   append([]repository.BenchmarkArtifactConsumption(nil), metadata.Attribution...),
+			}
+			if metadata.SetupAppliedAt != "" {
+				parsed, err := time.Parse(time.RFC3339Nano, metadata.SetupAppliedAt)
+				if err != nil {
+					return nil, repository.BenchmarkTokenEstimateContract{}, fmt.Errorf("parse setupAppliedAt for attempt %d lane %q: %w", persisted.Run.Attempt, sample.Sample.Lane, err)
+				}
+				lane.SetupAppliedAt = parsed.UTC()
+			}
+			for _, metric := range sample.Metrics {
+				switch metric.MetricName {
+				case benchmarkEvidenceMetricActionCount():
+					lane.Effort.ActionCount = metric.ValueInt
+				case string(repository.BenchmarkMetricBroadSearchActions):
+					lane.Effort.BroadSearchActions = metric.ValueInt
+				case string(repository.BenchmarkMetricTargetedLookupActions):
+					lane.Effort.TargetedLookupActions = metric.ValueInt
+				case string(repository.BenchmarkMetricFileReadActions):
+					lane.Effort.FileReadActions = metric.ValueInt
+				case string(repository.BenchmarkMetricBytesRead):
+					lane.Effort.BytesRead = metric.ValueInt
+				case string(repository.BenchmarkMetricConsultedArtifacts):
+					if metric.ValueText != "" {
+						lane.Effort.ConsultedArtifacts = append(lane.Effort.ConsultedArtifacts, metric.ValueText)
+					}
+				}
+			}
+			arm.LaneResults = append(arm.LaneResults, lane)
+		}
+		sort.SliceStable(arm.LaneResults, func(i, j int) bool {
+			return benchmarkEvidenceLaneSortKey(arm.LaneResults[i].Lane) < benchmarkEvidenceLaneSortKey(arm.LaneResults[j].Lane)
+		})
+		result.Result.Arms = append(result.Result.Arms, arm)
+	}
+	sort.Ints(attemptOrder)
+	attempts := make([]BenchmarkAttemptResult, 0, len(attemptOrder))
+	for _, attempt := range attemptOrder {
+		current := grouped[attempt]
+		sort.SliceStable(current.Result.Arms, func(i, j int) bool {
+			return benchmarkEvidenceArmSortKey(current.Result.Arms[i].Kind) < benchmarkEvidenceArmSortKey(current.Result.Arms[j].Kind)
+		})
+		attempts = append(attempts, *current)
+	}
+	return attempts, tokenContract, nil
+}
+
+func benchmarkEvidenceRerunCommand(suiteID string, suitePath string, attempts int) string {
+	base := []string{"go run ./cmd/optimusctx eval benchmark export"}
+	if strings.TrimSpace(suiteID) != "" {
+		base = append(base, "--suite "+suiteID)
+	} else if strings.TrimSpace(suitePath) != "" {
+		base = append(base, "--suite-file "+suitePath)
+	}
+	if attempts > 0 {
+		base = append(base, fmt.Sprintf("--attempts %d", attempts))
+	}
+	return strings.Join(base, " ")
+}
+
+func toRepositoryEvidenceStats(stats BenchmarkInt64Stats) repository.BenchmarkEvidenceInt64Stats {
+	return repository.BenchmarkEvidenceInt64Stats{
+		Min:    stats.Min,
+		Max:    stats.Max,
+		Median: stats.Median,
+		Mean:   stats.Mean,
+	}
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func benchmarkEvidenceMetricActionCount() string {
+	return "action_count"
+}
+
+func benchmarkEvidenceLaneSortKey(lane repository.BenchmarkLane) int {
+	switch lane {
+	case repository.BenchmarkLaneDiscovery:
+		return 0
+	case repository.BenchmarkLaneContextAssembly:
+		return 1
+	case repository.BenchmarkLaneRefreshReady:
+		return 2
+	case repository.BenchmarkLaneTaskCompletion:
+		return 3
+	default:
+		return 4
+	}
+}
+
+func benchmarkEvidenceArmSortKey(kind repository.BenchmarkArmKind) int {
+	switch kind {
+	case repository.BenchmarkArmKindBaseline:
+		return 0
+	case repository.BenchmarkArmKindOptimusCtx:
+		return 1
+	default:
+		return 2
+	}
 }

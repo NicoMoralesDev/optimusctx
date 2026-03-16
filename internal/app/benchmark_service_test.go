@@ -1,0 +1,217 @@
+package app
+
+import (
+	"context"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/niccrow/optimusctx/internal/repository"
+	"github.com/niccrow/optimusctx/internal/state"
+	"github.com/niccrow/optimusctx/internal/store/sqlite"
+)
+
+func TestBenchmarkExportPersistence(t *testing.T) {
+	t.Parallel()
+
+	repoRoot, store, repoID := initBenchmarkEvidenceStore(t)
+	defer store.Close()
+
+	service := NewBenchmarkService()
+	bundle, err := service.ExportEvidenceBundle(context.Background(), BenchmarkEvidenceBundleRequest{
+		StartPath:    repoRoot,
+		SuiteID:      "go-benchmark-refresh-v1",
+		SuitesDir:    filepath.Join("..", "..", "testdata", "eval", "benchmarks"),
+		FixturesRoot: filepath.Join("..", "..", "testdata", "eval", "fixtures"),
+	})
+	if err != nil {
+		t.Fatalf("ExportEvidenceBundle() error = %v", err)
+	}
+	if bundle.SchemaVersion != repository.BenchmarkEvidenceBundleSchemaV1 {
+		t.Fatalf("SchemaVersion = %q", bundle.SchemaVersion)
+	}
+	if bundle.MethodologyFingerprint == "" {
+		t.Fatal("MethodologyFingerprint should not be empty")
+	}
+	if !strings.Contains(bundle.RerunCommand, "optimusctx eval benchmark export --suite go-benchmark-refresh-v1 --attempts 2") {
+		t.Fatalf("RerunCommand = %q", bundle.RerunCommand)
+	}
+
+	loaded, err := store.LoadLatestBenchmarkEvidenceBundle(context.Background(), repoID, bundle.SuiteID, bundle.SuiteVersion)
+	if err != nil {
+		t.Fatalf("LoadLatestBenchmarkEvidenceBundle() error = %v", err)
+	}
+	if loaded.MethodologyFingerprint != bundle.MethodologyFingerprint {
+		t.Fatalf("loaded fingerprint = %q, want %q", loaded.MethodologyFingerprint, bundle.MethodologyFingerprint)
+	}
+}
+
+func TestBenchmarkComparisonExport(t *testing.T) {
+	t.Parallel()
+
+	repoRoot, store, _ := initBenchmarkEvidenceStore(t)
+	defer store.Close()
+
+	service := NewBenchmarkService()
+	bundle, err := service.ExportEvidenceBundle(context.Background(), BenchmarkEvidenceBundleRequest{
+		StartPath:    repoRoot,
+		SuiteID:      "go-benchmark-refresh-v1",
+		SuitesDir:    filepath.Join("..", "..", "testdata", "eval", "benchmarks"),
+		FixturesRoot: filepath.Join("..", "..", "testdata", "eval", "fixtures"),
+	})
+	if err != nil {
+		t.Fatalf("ExportEvidenceBundle() error = %v", err)
+	}
+	if got, want := len(bundle.Comparison), 2; got != want {
+		t.Fatalf("len(bundle.Comparison) = %d, want %d", got, want)
+	}
+	if bundle.TokenEstimateContract.BillingDisambiguator != repository.BenchmarkTokenEstimateBillingDisambiguator {
+		t.Fatalf("BillingDisambiguator = %q", bundle.TokenEstimateContract.BillingDisambiguator)
+	}
+	if len(bundle.Attempts) != 2 {
+		t.Fatalf("len(bundle.Attempts) = %d, want 2", len(bundle.Attempts))
+	}
+	foundPackLabel := false
+	for _, attempt := range bundle.Attempts {
+		for _, arm := range attempt.Arms {
+			for _, lane := range arm.Lanes {
+				for _, attribution := range lane.Attribution {
+					if attribution.ReportLabel == repository.BenchmarkReportArtifactLabelPackExport {
+						foundPackLabel = true
+					}
+				}
+			}
+		}
+	}
+	if !foundPackLabel {
+		t.Fatalf("bundle missing pack export attribution labels: %+v", bundle.Attempts)
+	}
+}
+
+func TestBenchmarkRerunCommandContract(t *testing.T) {
+	t.Parallel()
+
+	if got := benchmarkEvidenceRerunCommand("go-benchmark-refresh-v1", "", 2); got != "go run ./cmd/optimusctx eval benchmark export --suite go-benchmark-refresh-v1 --attempts 2" {
+		t.Fatalf("benchmarkEvidenceRerunCommand() = %q", got)
+	}
+	if got := benchmarkEvidenceRerunCommand("", "/tmp/suite.json", 3); got != "go run ./cmd/optimusctx eval benchmark export --suite-file /tmp/suite.json --attempts 3" {
+		t.Fatalf("benchmarkEvidenceRerunCommand() suite-file = %q", got)
+	}
+}
+
+func initBenchmarkEvidenceStore(t *testing.T) (string, *sqlite.Store, int64) {
+	t.Helper()
+
+	repoRoot := t.TempDir()
+	cmd := exec.Command("git", "init")
+	cmd.Dir = repoRoot
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git init failed: %v\n%s", err, output)
+	}
+
+	layout, err := state.ResolveLayout(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+	store, err := sqlite.OpenOrCreateStore(context.Background(), layout, repository.DetectionModeGit)
+	if err != nil {
+		t.Fatalf("OpenOrCreateStore() error = %v", err)
+	}
+	record, err := store.UpsertRepository(context.Background(), repository.RepositoryRoot{
+		RootPath:      repoRoot,
+		DetectionMode: repository.DetectionModeGit,
+		Fingerprint: repository.RepositoryFingerprint{
+			RootPath:     repoRoot,
+			GitCommonDir: filepath.Join(repoRoot, ".git"),
+		},
+	}, time.Date(2026, 3, 16, 20, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("UpsertRepository() error = %v", err)
+	}
+
+	for attempt := 1; attempt <= 2; attempt++ {
+		for _, persisted := range sqlite.BenchmarkPersistedArmsFromResult(record.ID, attempt, benchmarkEvidenceRunResult(repoRoot)) {
+			if _, _, err := store.SaveBenchmarkRun(context.Background(), persisted.Run, persisted.Samples); err != nil {
+				t.Fatalf("SaveBenchmarkRun(attempt=%d) error = %v", attempt, err)
+			}
+		}
+	}
+	return repoRoot, store, record.ID
+}
+
+func benchmarkEvidenceRunResult(repositoryRoot string) repository.BenchmarkRunResult {
+	return repository.BenchmarkRunResult{
+		SchemaVersion: repository.BenchmarkSuiteSchemaV1,
+		SuiteID:       "go-benchmark-refresh-v1",
+		SuiteVersion:  "v1",
+		FixtureID:     "go-worktree",
+		FixturePath:   "go-worktree/v1/repository",
+		WorkspacePath: repositoryRoot,
+		Arms: []repository.BenchmarkArmRunResult{
+			{
+				Kind:       repository.BenchmarkArmKindBaseline,
+				Name:       "Baseline",
+				Workspace:  repositoryRoot,
+				StartedAt:  time.Date(2026, 3, 16, 20, 0, 0, 0, time.UTC),
+				FinishedAt: time.Date(2026, 3, 16, 20, 0, 2, 0, time.UTC),
+				LaneResults: []repository.BenchmarkLaneRunResult{{
+					Lane:          repository.BenchmarkLaneRefreshReady,
+					StartMarker:   "refresh_after_change_started",
+					SuccessMarker: "refresh_ready",
+					StopMarker:    "refresh_ready",
+					StartedAt:     time.Date(2026, 3, 16, 20, 0, 0, 0, time.UTC),
+					FinishedAt:    time.Date(2026, 3, 16, 20, 0, 1, 0, time.UTC),
+					Elapsed:       time.Second,
+					Success:       true,
+					EvidencePaths: []string{"docs/notes.txt"},
+					Effort: repository.BenchmarkLaneEffort{
+						ActionCount:        2,
+						BytesRead:          128,
+						ConsultedArtifacts: []string{"docs/notes.txt"},
+					},
+				}},
+			},
+			{
+				Kind:       repository.BenchmarkArmKindOptimusCtx,
+				Name:       "OptimusCtx",
+				Workspace:  repositoryRoot,
+				StartedAt:  time.Date(2026, 3, 16, 20, 0, 0, 0, time.UTC),
+				FinishedAt: time.Date(2026, 3, 16, 20, 0, 2, 0, time.UTC),
+				LaneResults: []repository.BenchmarkLaneRunResult{{
+					Lane:          repository.BenchmarkLaneTaskCompletion,
+					StartMarker:   "task_completion_started",
+					SuccessMarker: "task_complete",
+					StopMarker:    "task_complete",
+					StartedAt:     time.Date(2026, 3, 16, 20, 0, 1, 0, time.UTC),
+					FinishedAt:    time.Date(2026, 3, 16, 20, 0, 2, 0, time.UTC),
+					Elapsed:       time.Second,
+					Success:       true,
+					EvidencePaths: []string{"artifacts/pack.json", "docs/notes.txt"},
+					Effort: repository.BenchmarkLaneEffort{
+						ActionCount:           2,
+						TargetedLookupActions: 1,
+						BytesRead:             512,
+						ConsultedArtifacts:    []string{"artifacts/pack.json", "docs/notes.txt"},
+					},
+					Attribution: []repository.BenchmarkArtifactConsumption{
+						{
+							StepID:          "pack-export",
+							StepName:        "Export pack",
+							Lane:            repository.BenchmarkLaneTaskCompletion,
+							Surface:         repository.BenchmarkTreatmentSurfaceCLI,
+							Command:         repository.EvalCommandPackExport,
+							ArtifactType:    repository.BenchmarkArtifactTypePackExport,
+							ReportLabel:     repository.BenchmarkReportArtifactLabelPackExport,
+							SourceKind:      repository.BenchmarkTokenEstimateSourcePackExportSection,
+							ArtifactPath:    "artifacts/pack.json",
+							EstimatedBytes:  512,
+							EstimatedTokens: 128,
+						},
+					},
+				}},
+			},
+		},
+	}
+}

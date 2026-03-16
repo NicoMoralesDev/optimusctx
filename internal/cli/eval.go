@@ -20,8 +20,9 @@ import (
 )
 
 var (
-	evalCommandService func(context.Context, app.EvalRunRequest) (repository.EvalRunResult, error)
-	evalCommandMu      sync.Mutex
+	evalCommandService              func(context.Context, app.EvalRunRequest) (repository.EvalRunResult, error)
+	benchmarkEvidenceCommandService func(context.Context, app.BenchmarkEvidenceBundleRequest) (repository.BenchmarkEvidenceBundle, error)
+	evalCommandMu                   sync.Mutex
 )
 
 func newEvalCommand() *Command {
@@ -29,6 +30,9 @@ func newEvalCommand() *Command {
 		Name:    "eval",
 		Summary: "Run versioned evaluation scenarios through the shipped CLI boundary",
 		Run: func(stdout io.Writer, args []string) error {
+			if len(args) > 0 && args[0] == "benchmark" {
+				return runEvalBenchmarkCommand(stdout, args[1:])
+			}
 			for _, arg := range args {
 				if arg == "-h" || arg == "--help" {
 					return writeEvalHelp(stdout)
@@ -81,6 +85,14 @@ func runEvalCommandService(ctx context.Context, request app.EvalRunRequest) (rep
 	service := app.NewEvalService()
 	service.Runner = runner
 	return service.Run(ctx, request)
+}
+
+func runBenchmarkEvidenceCommandService(ctx context.Context, request app.BenchmarkEvidenceBundleRequest) (repository.BenchmarkEvidenceBundle, error) {
+	if benchmarkEvidenceCommandService != nil {
+		return benchmarkEvidenceCommandService(ctx, request)
+	}
+	service := app.NewBenchmarkService()
+	return service.ExportEvidenceBundle(ctx, request)
 }
 
 func parseEvalArgs(args []string) (app.EvalRunRequest, error) {
@@ -213,8 +225,115 @@ func executeEvalCLIMCPSession(_ context.Context, invocation app.EvalMCPSessionIn
 }
 
 func writeEvalHelp(stdout io.Writer) error {
-	_, err := io.WriteString(stdout, "Usage:\n  optimusctx eval [--scenario ID | --scenario-file PATH]\n\nRun one versioned evaluation scenario through the shipped CLI boundary.\n")
+	_, err := io.WriteString(stdout, "Usage:\n  optimusctx eval [--scenario ID | --scenario-file PATH]\n  optimusctx eval benchmark export [--suite ID | --suite-file PATH] [--attempts N] [--output PATH]\n\nRun versioned evaluation scenarios or export deterministic benchmark evidence through the shipped CLI boundary.\n")
 	return err
+}
+
+func runEvalBenchmarkCommand(stdout io.Writer, args []string) error {
+	if len(args) == 0 {
+		return errors.New("eval benchmark requires a subcommand")
+	}
+	switch args[0] {
+	case "export":
+		request, outputPath, err := parseBenchmarkExportArgs(args[1:])
+		if err != nil {
+			return err
+		}
+
+		workingDir, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("resolve working directory: %w", err)
+		}
+		root, err := repository.ResolveRepositoryRoot(workingDir)
+		if err != nil {
+			return fmt.Errorf("resolve source repository root: %w", err)
+		}
+		request.StartPath = workingDir
+		request.SuitesDir = filepath.Join(root.RootPath, "testdata", "eval", "benchmarks")
+		request.FixturesRoot = filepath.Join(root.RootPath, "testdata", "eval", "fixtures")
+		if request.SuitePath != "" && !filepath.IsAbs(request.SuitePath) {
+			request.SuitePath = filepath.Join(workingDir, request.SuitePath)
+		}
+
+		bundle, err := runBenchmarkEvidenceCommandService(context.Background(), request)
+		if err != nil {
+			return err
+		}
+		payload, err := repository.MarshalBenchmarkEvidenceBundle(bundle)
+		if err != nil {
+			return fmt.Errorf("encode benchmark evidence bundle: %w", err)
+		}
+		if outputPath != "" {
+			if !filepath.IsAbs(outputPath) {
+				outputPath = filepath.Join(workingDir, outputPath)
+			}
+			if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
+				return fmt.Errorf("create benchmark export directory: %w", err)
+			}
+			if err := os.WriteFile(outputPath, payload, 0o644); err != nil {
+				return fmt.Errorf("write benchmark evidence bundle: %w", err)
+			}
+			_, err = fmt.Fprintf(stdout, "benchmark evidence written: %s\n", outputPath)
+			return err
+		}
+		_, err = stdout.Write(payload)
+		return err
+	default:
+		return fmt.Errorf("unknown eval benchmark subcommand %q", args[0])
+	}
+}
+
+func parseBenchmarkExportArgs(args []string) (app.BenchmarkEvidenceBundleRequest, string, error) {
+	var request app.BenchmarkEvidenceBundleRequest
+	var outputPath string
+	for index := 0; index < len(args); index++ {
+		arg := args[index]
+		switch arg {
+		case "--suite":
+			index++
+			if index >= len(args) {
+				return app.BenchmarkEvidenceBundleRequest{}, "", fmt.Errorf("%s requires a value", arg)
+			}
+			request.SuiteID = strings.TrimSpace(args[index])
+			if request.SuiteID == "" {
+				return app.BenchmarkEvidenceBundleRequest{}, "", fmt.Errorf("%s requires a non-empty value", arg)
+			}
+		case "--suite-file":
+			index++
+			if index >= len(args) {
+				return app.BenchmarkEvidenceBundleRequest{}, "", fmt.Errorf("%s requires a value", arg)
+			}
+			request.SuitePath = strings.TrimSpace(args[index])
+			if request.SuitePath == "" {
+				return app.BenchmarkEvidenceBundleRequest{}, "", fmt.Errorf("%s requires a non-empty value", arg)
+			}
+		case "--attempts":
+			index++
+			if index >= len(args) {
+				return app.BenchmarkEvidenceBundleRequest{}, "", fmt.Errorf("%s requires a value", arg)
+			}
+			value, err := strconv.Atoi(strings.TrimSpace(args[index]))
+			if err != nil || value <= 0 {
+				return app.BenchmarkEvidenceBundleRequest{}, "", fmt.Errorf("%s requires a positive integer", arg)
+			}
+			request.Attempts = value
+		case "--output":
+			index++
+			if index >= len(args) {
+				return app.BenchmarkEvidenceBundleRequest{}, "", fmt.Errorf("%s requires a value", arg)
+			}
+			outputPath = strings.TrimSpace(args[index])
+			if outputPath == "" {
+				return app.BenchmarkEvidenceBundleRequest{}, "", fmt.Errorf("%s requires a non-empty value", arg)
+			}
+		default:
+			return app.BenchmarkEvidenceBundleRequest{}, "", fmt.Errorf("unknown eval benchmark export flag %q", arg)
+		}
+	}
+	if (request.SuiteID == "") == (request.SuitePath == "") {
+		return app.BenchmarkEvidenceBundleRequest{}, "", errors.New("eval benchmark export requires exactly one of --suite or --suite-file")
+	}
+	return request, outputPath, nil
 }
 
 func formatEvalRunSummary(result repository.EvalRunResult) string {

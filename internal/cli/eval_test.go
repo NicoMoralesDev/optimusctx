@@ -237,6 +237,50 @@ func TestEvalCommandRejectsInvalidArgs(t *testing.T) {
 	})
 }
 
+func TestEvalBenchmarkExportCommand(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	previous := benchmarkEvidenceCommandService
+	t.Cleanup(func() {
+		benchmarkEvidenceCommandService = previous
+	})
+
+	benchmarkEvidenceCommandService = func(ctx context.Context, request app.BenchmarkEvidenceBundleRequest) (repository.BenchmarkEvidenceBundle, error) {
+		if ctx == nil {
+			t.Fatal("context should not be nil")
+		}
+		if request.SuiteID != "go-benchmark-refresh-v1" {
+			t.Fatalf("SuiteID = %q", request.SuiteID)
+		}
+		if request.Attempts != 2 {
+			t.Fatalf("Attempts = %d, want 2", request.Attempts)
+		}
+		if request.SuitesDir != filepath.Join(repoRoot, "testdata", "eval", "benchmarks") {
+			t.Fatalf("SuitesDir = %q", request.SuitesDir)
+		}
+		return repository.BenchmarkEvidenceBundle{
+			SchemaVersion:          repository.BenchmarkEvidenceBundleSchemaV1,
+			GeneratedAt:            time.Date(2026, time.March, 16, 21, 0, 0, 0, time.UTC),
+			RepositoryRoot:         repoRoot,
+			SuiteID:                request.SuiteID,
+			SuiteVersion:           "v1",
+			FixtureID:              "go-worktree",
+			FixturePath:            "go-worktree/v1/repository",
+			TokenEstimateContract:  repository.DefaultBenchmarkTokenEstimateContract(),
+			MethodologyFingerprint: "benchmark-fingerprint",
+			RerunCommand:           "go run ./cmd/optimusctx eval benchmark export --suite go-benchmark-refresh-v1 --attempts 2",
+		}, nil
+	}
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "export", "--suite", "go-benchmark-refresh-v1", "--attempts", "2"}, &stdout); err != nil {
+			t.Fatalf("Execute(eval benchmark export) error = %v", err)
+		}
+		assertContains(t, stdout.String(), `"suiteId": "go-benchmark-refresh-v1"`)
+		assertContains(t, stdout.String(), `"rerunCommand": "go run ./cmd/optimusctx eval benchmark export --suite go-benchmark-refresh-v1 --attempts 2"`)
+	})
+}
+
 func writeEvalScenarioJSON(t *testing.T, path string, scenario repository.EvalScenarioDefinition) {
 	t.Helper()
 
