@@ -195,6 +195,46 @@ func TestEvalCommandRejectsInvalidArgs(t *testing.T) {
 			assertContains(t, stdout.String(), "status: failed")
 		})
 	})
+
+	t.Run("returns a specific error for unknown scenario IDs", func(t *testing.T) {
+		repoRoot := initCLIRepo(t)
+		writeCLIFile(t, filepath.Join(repoRoot, "testdata", "eval", "fixtures", "go-basic", "v1", "repository", "main.go"), "package main\n")
+		writeEvalScenarioJSON(t, filepath.Join(repoRoot, "testdata", "eval", "scenarios", "known.json"), repository.EvalScenarioDefinition{
+			SchemaVersion: repository.EvalScenarioSchemaV1,
+			ID:            "known",
+			Version:       "v1",
+			Name:          "Known",
+			Fixture: repository.EvalFixtureRef{
+				ID:          "go-basic",
+				Version:     "v1",
+				Path:        "go-basic/v1/repository",
+				Materialize: repository.EvalFixtureModeCopyTree,
+			},
+			Steps: []repository.EvalScenarioStep{
+				{
+					ID:   "init",
+					Name: "Initialize",
+					Kind: repository.EvalStepKindCommand,
+					Expect: repository.EvalExpectedCommand{
+						Surface:  repository.EvalCommandSurfaceCLI,
+						Command:  repository.EvalCommandInit,
+						ExitCode: 0,
+					},
+				},
+			},
+		})
+
+		withWorkingDirectory(t, repoRoot, func() {
+			var stdout bytes.Buffer
+			err := NewRootCommand().Execute([]string{"eval", "--scenario", "missing"}, &stdout)
+			if err == nil || err.Error() != `unknown scenario "missing"` {
+				t.Fatalf("Execute(eval --scenario missing) error = %v", err)
+			}
+			if stdout.Len() != 0 {
+				t.Fatalf("stdout = %q, want empty", stdout.String())
+			}
+		})
+	})
 }
 
 func writeEvalScenarioJSON(t *testing.T, path string, scenario repository.EvalScenarioDefinition) {
