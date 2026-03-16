@@ -18,6 +18,10 @@ const (
 	homebrewTapDirectory       = "Formula"
 	homebrewTapBranch          = "main"
 	homebrewTapTokenEnv        = "HOMEBREW_TAP_GITHUB_TOKEN"
+	scoopBucketRepo            = "scoop-bucket"
+	scoopBucketDirectory       = "bucket"
+	scoopBucketBranch          = "main"
+	scoopBucketTokenEnv        = "SCOOP_BUCKET_GITHUB_TOKEN"
 	canonicalBinaryName        = "optimusctx"
 	canonicalWindowsBinaryName = "optimusctx.exe"
 	canonicalChecksumDelimiter = "  "
@@ -61,6 +65,17 @@ type homebrewTapTarget struct {
 	FormulaName  string
 	TokenEnvVar  string
 	InstallTap   string
+	InstallValue string
+}
+
+type scoopBucketTarget struct {
+	Repository   repositoryRef
+	Branch       string
+	Directory    string
+	ManifestName string
+	TokenEnvVar  string
+	BucketName   string
+	BucketAddURL string
 	InstallValue string
 }
 
@@ -143,6 +158,44 @@ func renderHomebrewFormula(templateText string, release packageManagerRelease, t
 
 	if err := renderer.Execute(&output, data); err != nil {
 		return "", fmt.Errorf("render homebrew template: %w", err)
+	}
+
+	return output.String(), nil
+}
+
+func defaultScoopBucketTarget() scoopBucketTarget {
+	return scoopBucketTarget{
+		Repository: repositoryRef{
+			Owner: canonicalReleaseOwner,
+			Name:  scoopBucketRepo,
+		},
+		Branch:       scoopBucketBranch,
+		Directory:    scoopBucketDirectory,
+		ManifestName: canonicalBinaryName + ".json",
+		TokenEnvVar:  scoopBucketTokenEnv,
+		BucketName:   canonicalReleaseOwner,
+		BucketAddURL: fmt.Sprintf("https://github.com/%s/%s.git", canonicalReleaseOwner, scoopBucketRepo),
+		InstallValue: fmt.Sprintf("%s/%s", canonicalReleaseOwner, canonicalBinaryName),
+	}
+}
+
+func renderScoopManifest(templateText string, release packageManagerRelease, target scoopBucketTarget) (string, error) {
+	renderer, err := template.New("scoop").Parse(templateText)
+	if err != nil {
+		return "", fmt.Errorf("parse scoop template: %w", err)
+	}
+
+	var output bytes.Buffer
+	data := struct {
+		Release     packageManagerRelease
+		Publication scoopBucketTarget
+	}{
+		Release:     release,
+		Publication: target,
+	}
+
+	if err := renderer.Execute(&output, data); err != nil {
+		return "", fmt.Errorf("render scoop template: %w", err)
 	}
 
 	return output.String(), nil

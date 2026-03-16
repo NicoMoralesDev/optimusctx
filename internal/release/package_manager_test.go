@@ -1,6 +1,7 @@
 package release
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -44,6 +45,51 @@ func TestHomebrewFormulaRendering(t *testing.T) {
 	}
 	if got != again {
 		t.Fatalf("homebrew rendering should be deterministic")
+	}
+}
+
+func TestScoopManifestRendering(t *testing.T) {
+	release := mustPackageManagerRelease(t, "1.1.0")
+	templateText := readRepoFile(t, filepath.Join("packaging", "scoop", "optimusctx.json.tmpl"))
+	target := defaultScoopBucketTarget()
+
+	got, err := renderScoopManifest(templateText, release, target)
+	if err != nil {
+		t.Fatalf("renderScoopManifest() error = %v", err)
+	}
+
+	if !json.Valid([]byte(got)) {
+		t.Fatalf("scoop manifest should be valid JSON\n%s", got)
+	}
+
+	for _, want := range []string{
+		`"version": "1.1.0"`,
+		`"homepage": "https://github.com/niccrow/optimusctx"`,
+		`"license": "MIT"`,
+		`"description": "Local-first runtime that builds and maintains persistent repository context for coding agents."`,
+		`"url": "https://github.com/niccrow/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_windows_amd64.zip"`,
+		`"hash": "5555555555555555555555555555555555555555555555555555555555555555"`,
+		`"url": "https://github.com/niccrow/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_windows_arm64.zip"`,
+		`"hash": "6666666666666666666666666666666666666666666666666666666666666666"`,
+		`"bin": "optimusctx.exe"`,
+		`Bucket add: scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git`,
+		`Install: scoop install niccrow/optimusctx`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("scoop manifest missing %q\n%s", want, got)
+		}
+	}
+
+	if strings.Contains(got, "darwin") || strings.Contains(got, "linux") {
+		t.Fatalf("scoop manifest should only reference Windows assets\n%s", got)
+	}
+
+	again, err := renderScoopManifest(templateText, release, target)
+	if err != nil {
+		t.Fatalf("renderScoopManifest(second) error = %v", err)
+	}
+	if got != again {
+		t.Fatalf("scoop rendering should be deterministic")
 	}
 }
 

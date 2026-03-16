@@ -1,0 +1,22 @@
+{
+  "version": "{{ .Release.Version }}",
+  "description": "{{ .Release.Description }}",
+  "homepage": "{{ .Release.Homepage }}",
+  "license": "{{ .Release.License }}",
+  "notes": [
+    "Published via {{ .Publication.Repository.Owner }}/{{ .Publication.Repository.Name }} on branch {{ .Publication.Branch }}",
+    "Bucket add: scoop bucket add {{ .Publication.BucketName }} {{ .Publication.BucketAddURL }}",
+    "Install: scoop install {{ .Publication.InstallValue }}"
+  ],
+  "architecture": {
+    "64bit": {
+      "url": "{{ .Release.Assets.WindowsAMD64.URL }}",
+      "hash": "{{ .Release.Assets.WindowsAMD64.SHA256 }}"
+    },
+    "arm64": {
+      "url": "{{ .Release.Assets.WindowsARM64.URL }}",
+      "hash": "{{ .Release.Assets.WindowsARM64.SHA256 }}"
+    }
+  },
+  "bin": "optimusctx.exe"
+}
