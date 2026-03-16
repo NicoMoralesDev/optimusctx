@@ -88,7 +88,7 @@ Plans:
 
 Plans:
 
-- [ ] 13-01: automated release archives and checksums
+- [x] 13-01: automated release archives and checksums
 - [ ] 13-02: primary package-manager distribution paths
 - [ ] 13-03: install-and-verify documentation and smoke flow
 - [ ] 13-04: distribution strategy, rollout, and support plan
@@ -102,8 +102,8 @@ Active milestone: `v1.1`
 
 Next step:
 
-- Continue with `13-01` — automated release archives and checksums
-- Phase 12 is complete with canonical token attribution, persisted benchmark evidence, and a shipped milestone verification command for reproducibility review
+- Continue with `13-02` — primary package-manager distribution paths
+- Phase 13 is underway with the canonical release archive, checksum, and GitHub Releases publication contract in place
 
 ---
-*Last updated: 2026-03-16 after completing Phase 12 plan 04*
+*Last updated: 2026-03-16 after completing Phase 13 plan 01*
