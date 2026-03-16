@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 10
 current_phase_name: functional-runtime-validation
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 10-02-PLAN.md
-last_updated: "2026-03-16T10:47:18.817Z"
+stopped_at: Completed 10-03-PLAN.md
+last_updated: "2026-03-16T11:09:58.226Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 8
-  completed_plans: 6
-  percent: 96
+  completed_plans: 7
+  percent: 98
 ---
 
 # Planning State: OptimusCtx
@@ -27,9 +27,9 @@ progress:
 **Current Phase:** 10
 **Current Phase Name:** functional-runtime-validation
 **Total Phases:** 5
-**Current Plan:** 2
+**Current Plan:** 3
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 96%
+**Progress:** [██████████] 98%
 **Last Activity:** 2026-03-16
 **Last Activity Description:** Phase 10 plan 02 completed with shared MCP eval sessions, full shipped tool-flow scenarios, and persisted repo-local transcript evidence
 
@@ -279,6 +279,8 @@ progress:
 - [Phase 10-functional-runtime-validation]: MCP eval coverage uses a dedicated mcp_session step in the shared eval schema instead of a second integration harness.
 - [Phase 10-functional-runtime-validation]: CLI eval runs MCP sessions through the shipped optimusctx mcp serve boundary in-process by framing JSON-RPC requests against the real command.
 - [Phase 10-functional-runtime-validation]: MCP transcript and response artifacts persist under the same run-scoped eval tree as CLI evidence, with MCP steps stored under surface mcp.
+- [Phase 10-functional-runtime-validation]: Eval scenarios now use typed state mutations and step-scoped refresh failure hooks instead of shell setup or ad hoc SQL.
+- [Phase 10-functional-runtime-validation]: Stale proof stays on doctor/watch diagnostics, while degraded and recovery proof uses shipped MCP refresh, health, and repository_map responses on the same workspace.
 
 ## Blockers
 
@@ -286,8 +288,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T10:47:18.814Z
-**Stopped At:** Completed 10-02-PLAN.md
+**Last Date:** 2026-03-16T11:09:58.223Z
+**Stopped At:** Completed 10-03-PLAN.md
 **Resume File:** None
 
 ---
