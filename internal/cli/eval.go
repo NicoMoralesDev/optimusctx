@@ -92,6 +92,45 @@ func runBenchmarkEvidenceCommandService(ctx context.Context, request app.Benchma
 		return benchmarkEvidenceCommandService(ctx, request)
 	}
 	service := app.NewBenchmarkService()
+	service.Runner = app.NewBenchmarkRunner()
+	service.Runner.RunCommand = func(ctx context.Context, invocation app.BenchmarkCommandInvocation) (app.BenchmarkCommandExecutionResult, error) {
+		execution, err := executeEvalCLICommand(ctx, app.EvalCommandInvocation{
+			Args:       invocation.Args,
+			WorkingDir: invocation.WorkingDir,
+		})
+		return app.BenchmarkCommandExecutionResult{
+			Stdout:   execution.Stdout,
+			Stderr:   execution.Stderr,
+			ExitCode: execution.ExitCode,
+		}, err
+	}
+	service.Runner.RunTool = func(ctx context.Context, invocation app.BenchmarkToolInvocation) (app.BenchmarkToolExecutionResult, error) {
+		session := repository.EvalMCPSession{
+			Requests: []repository.EvalMCPRequest{
+				{ID: 1, Method: "initialize", Params: mcp.InitializeParams{
+					ClientInfo:      mcp.ClientInfo{Name: "benchmark-export", Version: "1.0.0"},
+					ProtocolVersion: "2024-11-05",
+				}},
+				{Method: "notifications/initialized", Notification: true},
+				{ID: 2, Method: "tools/call", Params: mcp.CallToolParams{
+					Name:      invocation.Name,
+					Arguments: invocation.Arguments,
+				}},
+			},
+		}
+		execution, err := executeEvalCLIMCPSession(ctx, app.EvalMCPSessionInvocation{
+			WorkingDir: invocation.WorkingDir,
+			Session:    session,
+		})
+		if err != nil {
+			return app.BenchmarkToolExecutionResult{}, err
+		}
+		payload, err := decodeBenchmarkToolPayload(execution.Responses[len(execution.Responses)-1].Response)
+		if err != nil {
+			return app.BenchmarkToolExecutionResult{}, err
+		}
+		return app.BenchmarkToolExecutionResult{Payload: payload}, nil
+	}
 	return service.ExportEvidenceBundle(ctx, request)
 }
 

@@ -219,7 +219,7 @@ func TestBenchmarkVerificationWorkflow(t *testing.T) {
 			if got, want := len(result.Summary.Arms), 2; got != want {
 				t.Fatalf("len(summary.Arms) = %d, want %d", got, want)
 			}
-			if !strings.Contains(result.Summary.RerunCommand, "TestBenchmarkVerificationWorkflow|TestBenchmarkRerunsDeterministic") {
+			if !strings.Contains(result.Summary.RerunCommand, "optimusctx eval benchmark export --suite go-benchmark-refresh-v1 --attempts 2") {
 				t.Fatalf("rerun command = %q", result.Summary.RerunCommand)
 			}
 		})
@@ -887,6 +887,105 @@ func TestBenchmarkArtifactAttribution(t *testing.T) {
 	if !found {
 		t.Fatal("did not find persisted optimusctx context-assembly attribution")
 	}
+}
+
+func TestBenchmarkEvidenceBundleGeneration(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "export", "--suite", "go-benchmark-refresh-v1", "--attempts", "2"}, &stdout); err != nil {
+			t.Fatalf("Execute(eval benchmark export) error = %v", err)
+		}
+
+		var bundle repository.BenchmarkEvidenceBundle
+		if err := json.Unmarshal(stdout.Bytes(), &bundle); err != nil {
+			t.Fatalf("Unmarshal(bundle) error = %v", err)
+		}
+		if bundle.SchemaVersion != repository.BenchmarkEvidenceBundleSchemaV1 {
+			t.Fatalf("SchemaVersion = %q", bundle.SchemaVersion)
+		}
+		if len(bundle.Attempts) != 2 {
+			t.Fatalf("len(bundle.Attempts) = %d, want 2", len(bundle.Attempts))
+		}
+		if len(bundle.Comparison) != 2 {
+			t.Fatalf("len(bundle.Comparison) = %d, want 2", len(bundle.Comparison))
+		}
+	})
+}
+
+func TestBenchmarkExportContainsMethodologyIdentity(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "export", "--suite", "go-benchmark-refresh-v1", "--attempts", "2"}, &stdout); err != nil {
+			t.Fatalf("Execute(eval benchmark export) error = %v", err)
+		}
+
+		var bundle repository.BenchmarkEvidenceBundle
+		if err := json.Unmarshal(stdout.Bytes(), &bundle); err != nil {
+			t.Fatalf("Unmarshal(bundle) error = %v", err)
+		}
+		if bundle.SuiteID != "go-benchmark-refresh-v1" {
+			t.Fatalf("SuiteID = %q", bundle.SuiteID)
+		}
+		if bundle.FixtureID != "go-worktree" {
+			t.Fatalf("FixtureID = %q", bundle.FixtureID)
+		}
+		if bundle.MethodologyFingerprint == "" {
+			t.Fatal("MethodologyFingerprint should not be empty")
+		}
+		if bundle.TokenEstimateContract.Policy.Name != repository.BenchmarkTokenEstimatorPolicyName {
+			t.Fatalf("Policy.Name = %q", bundle.TokenEstimateContract.Policy.Name)
+		}
+		if bundle.TokenEstimateContract.BillingDisambiguator != repository.BenchmarkTokenEstimateBillingDisambiguator {
+			t.Fatalf("BillingDisambiguator = %q", bundle.TokenEstimateContract.BillingDisambiguator)
+		}
+		foundPackLabel := false
+		for _, attempt := range bundle.Attempts {
+			for _, arm := range attempt.Arms {
+				for _, lane := range arm.Lanes {
+					for _, attribution := range lane.Attribution {
+						if attribution.ReportLabel == repository.BenchmarkReportArtifactLabelPackExport {
+							foundPackLabel = true
+						}
+					}
+				}
+			}
+		}
+		if !foundPackLabel {
+			t.Fatalf("bundle missing BNCH-02 report labels: %+v", bundle.Attempts)
+		}
+	})
+}
+
+func TestBenchmarkExportCLIPath(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		outputPath := filepath.Join("artifacts", "benchmark-evidence.json")
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "export", "--suite", "go-benchmark-refresh-v1", "--attempts", "2", "--output", outputPath}, &stdout); err != nil {
+			t.Fatalf("Execute(eval benchmark export --output) error = %v", err)
+		}
+		assertContains(t, stdout.String(), "benchmark evidence written:")
+
+		data, err := os.ReadFile(filepath.Join(repoRoot, outputPath))
+		if err != nil {
+			t.Fatalf("ReadFile(outputPath) error = %v", err)
+		}
+		var bundle repository.BenchmarkEvidenceBundle
+		if err := json.Unmarshal(data, &bundle); err != nil {
+			t.Fatalf("Unmarshal(output bundle) error = %v", err)
+		}
+		if !strings.Contains(bundle.RerunCommand, "optimusctx eval benchmark export --suite go-benchmark-refresh-v1 --attempts 2") {
+			t.Fatalf("RerunCommand = %q", bundle.RerunCommand)
+		}
+	})
 }
 
 func copyCLITree(t *testing.T, src string, dst string) {
