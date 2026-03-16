@@ -48,6 +48,7 @@ func newEvalCommand() *Command {
 
 			request.ScenariosDir = filepath.Join(root.RootPath, "testdata", "eval", "scenarios")
 			request.FixturesRoot = filepath.Join(root.RootPath, "testdata", "eval", "fixtures")
+			request.StartPath = workingDir
 			if request.ScenarioPath != "" && !filepath.IsAbs(request.ScenarioPath) {
 				request.ScenarioPath = filepath.Join(workingDir, request.ScenarioPath)
 			}
@@ -73,7 +74,9 @@ func runEvalCommandService(ctx context.Context, request app.EvalRunRequest) (rep
 
 	runner := app.NewEvalRunner()
 	runner.RunCommand = executeEvalCLICommand
-	return runner.Run(ctx, request)
+	service := app.NewEvalService()
+	service.Runner = runner
+	return service.Run(ctx, request)
 }
 
 func parseEvalArgs(args []string) (app.EvalRunRequest, error) {

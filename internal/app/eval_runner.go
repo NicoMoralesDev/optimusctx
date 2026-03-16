@@ -20,6 +20,7 @@ type EvalRunRequest struct {
 	ScenariosDir  string
 	FixturesRoot  string
 	WorkspaceRoot string
+	StartPath     string
 }
 
 type EvalCommandInvocation struct {
@@ -94,6 +95,7 @@ func (r EvalRunner) Run(ctx context.Context, request EvalRunRequest) (repository
 		SchemaVersion: repository.EvalScenarioSchemaV1,
 		ScenarioID:    scenario.ID,
 		Scenario:      scenario,
+		WorkspacePath: workspaceRoot,
 		StartedAt:     runStartedAt,
 	}
 
@@ -101,6 +103,13 @@ func (r EvalRunner) Run(ctx context.Context, request EvalRunRequest) (repository
 	seenArtifacts := make(map[string]repository.EvalArtifactResult, len(artifactIndex))
 
 	for _, step := range scenario.Steps {
+		if err := prepareEvalStepArtifacts(workspaceRoot, step, artifactIndex); err != nil {
+			runResult.FinishedAt = r.Now().UTC()
+			runResult.Passed = false
+			runResult.Artifacts = collectEvalArtifacts(scenario.Artifacts, seenArtifacts)
+			return runResult, fmt.Errorf("scenario %q step %q: %w", scenario.ID, step.ID, err)
+		}
+
 		stepStartedAt := r.Now().UTC()
 		execution, execErr := r.RunCommand(ctx, EvalCommandInvocation{
 			Args:       buildEvalStepArgs(step, artifactIndex),
@@ -154,6 +163,19 @@ func (r EvalRunner) Run(ctx context.Context, request EvalRunRequest) (repository
 	runResult.Passed = true
 	runResult.Artifacts = collectEvalArtifacts(scenario.Artifacts, seenArtifacts)
 	return runResult, nil
+}
+
+func prepareEvalStepArtifacts(workspaceRoot string, step repository.EvalScenarioStep, artifactIndex map[string]repository.EvalArtifactRef) error {
+	for _, artifactID := range step.CaptureArtifact {
+		artifact, ok := artifactIndex[artifactID]
+		if !ok || artifact.Kind != repository.EvalArtifactKindFile || artifact.Path == "" {
+			continue
+		}
+		if err := os.MkdirAll(filepath.Join(workspaceRoot, filepath.Dir(filepath.FromSlash(artifact.Path))), 0o755); err != nil {
+			return fmt.Errorf("prepare artifact path %q: %w", artifact.ID, err)
+		}
+	}
+	return nil
 }
 
 func validateEvalRunRequest(request EvalRunRequest) error {

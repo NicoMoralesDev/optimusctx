@@ -109,14 +109,17 @@ type EvalStepResult struct {
 }
 
 type EvalRunResult struct {
-	SchemaVersion string                 `json:"schemaVersion"`
-	ScenarioID    string                 `json:"scenarioId"`
-	Scenario      EvalScenarioDefinition `json:"scenario"`
-	StartedAt     time.Time              `json:"startedAt"`
-	FinishedAt    time.Time              `json:"finishedAt"`
-	Passed        bool                   `json:"passed"`
-	Steps         []EvalStepResult       `json:"steps"`
-	Artifacts     []EvalArtifactResult   `json:"artifacts,omitempty"`
+	SchemaVersion         string                 `json:"schemaVersion"`
+	ScenarioID            string                 `json:"scenarioId"`
+	Scenario              EvalScenarioDefinition `json:"scenario"`
+	WorkspacePath         string                 `json:"workspacePath,omitempty"`
+	StartedAt             time.Time              `json:"startedAt"`
+	FinishedAt            time.Time              `json:"finishedAt"`
+	Passed                bool                   `json:"passed"`
+	PersistedRunID        int64                  `json:"persistedRunId,omitempty"`
+	PersistedArtifactRoot string                 `json:"persistedArtifactRoot,omitempty"`
+	Steps                 []EvalStepResult       `json:"steps"`
+	Artifacts             []EvalArtifactResult   `json:"artifacts,omitempty"`
 }
 
 func (s EvalScenarioDefinition) Validate() error {
