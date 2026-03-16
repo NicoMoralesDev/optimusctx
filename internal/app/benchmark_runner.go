@@ -350,11 +350,18 @@ func (r BenchmarkRunner) executeTreatmentStep(ctx context.Context, workspaceRoot
 			Args:       buildBenchmarkCLIArgs(step.Treatment),
 			WorkingDir: workspaceRoot,
 		}
+		if err := prepareBenchmarkCLIArtifacts(workspaceRoot, invocation.Args); err != nil {
+			return err
+		}
 		execution, err := r.RunCommand(ctx, invocation)
 		if err != nil {
 			return err
 		}
 		if execution.ExitCode != 0 {
+			detail := strings.TrimSpace(strings.Join([]string{execution.Stdout, execution.Stderr}, "\n"))
+			if detail != "" {
+				return fmt.Errorf("cli command %q exited with %d: %s", strings.Join(invocation.Args, " "), execution.ExitCode, detail)
+			}
 			return fmt.Errorf("cli command %q exited with %d", strings.Join(invocation.Args, " "), execution.ExitCode)
 		}
 		state.recordTargetedLookup(step.Lane)
@@ -402,6 +409,15 @@ func benchmarkCommandOutputArtifact(args []string) string {
 		}
 	}
 	return ""
+}
+
+func prepareBenchmarkCLIArtifacts(workspaceRoot string, args []string) error {
+	if artifactPath := benchmarkCommandOutputArtifact(args); artifactPath != "" {
+		if err := os.MkdirAll(filepath.Join(workspaceRoot, filepath.Dir(filepath.FromSlash(artifactPath))), 0o755); err != nil {
+			return fmt.Errorf("prepare benchmark artifact path %q: %w", artifactPath, err)
+		}
+	}
+	return nil
 }
 
 func buildBenchmarkCLIArgs(action *repository.BenchmarkTreatmentAction) []string {

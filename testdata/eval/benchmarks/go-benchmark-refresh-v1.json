@@ -25,6 +25,20 @@
     {
       "name": "refresh_after_change",
       "description": "Return the repository to usable state after a deterministic mutation.",
+      "setup": [
+        {
+          "kind": "overwrite_file",
+          "path": "docs/notes.txt",
+          "content": "pack export should include this deterministic fixture content after benchmark mutation\n"
+        }
+      ],
+      "assert": [
+        {
+          "file": "docs/notes.txt",
+          "kind": "contains",
+          "contains": "after benchmark mutation"
+        }
+      ],
       "stopCondition": {
         "kind": "marker",
         "marker": "refresh_ready"
@@ -37,6 +51,13 @@
     {
       "name": "task_completion",
       "description": "Produce the final task artifact once the repository is ready again.",
+      "assert": [
+        {
+          "file": "docs/notes.txt",
+          "kind": "contains",
+          "contains": "after benchmark mutation"
+        }
+      ],
       "stopCondition": {
         "kind": "marker",
         "marker": "task_complete"
@@ -66,7 +87,7 @@
           "lane": "refresh_after_change",
           "baseline": {
             "kind": "git_grep",
-            "query": "pack export should include this deterministic fixture content"
+            "query": "after benchmark mutation"
           }
         },
         {
@@ -124,11 +145,26 @@
         },
         {
           "id": "opti-pack",
-          "name": "Export bounded pack",
+          "name": "Preview bounded pack",
           "lane": "task_completion",
           "treatment": {
             "surface": "mcp",
             "tool": "optimusctx.pack"
+          }
+        },
+        {
+          "id": "opti-pack-export",
+          "name": "Export bounded pack artifact",
+          "lane": "task_completion",
+          "treatment": {
+            "surface": "cli",
+            "command": "pack_export",
+            "args": [
+              "--format",
+              "json",
+              "--output",
+              "artifacts/pack.json"
+            ]
           }
         }
       ]

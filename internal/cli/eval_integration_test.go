@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/niccrow/optimusctx/internal/app"
@@ -114,6 +115,84 @@ func TestBenchmarkDiscoveryLane(t *testing.T) {
 		}
 		if discovery.Effort.TargetedLookupActions == 0 && discovery.Effort.BroadSearchActions == 0 {
 			t.Fatalf("discovery effort = %+v", discovery.Effort)
+		}
+	})
+}
+
+func TestBenchmarkRefreshAfterChangeComparison(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		runner := app.NewBenchmarkRunner()
+		runner.RunCommand = func(ctx context.Context, invocation app.BenchmarkCommandInvocation) (app.BenchmarkCommandExecutionResult, error) {
+			execution, err := executeEvalCLICommand(ctx, app.EvalCommandInvocation{
+				Args:       invocation.Args,
+				WorkingDir: invocation.WorkingDir,
+			})
+			return app.BenchmarkCommandExecutionResult{
+				Stdout:   execution.Stdout,
+				Stderr:   execution.Stderr,
+				ExitCode: execution.ExitCode,
+			}, err
+		}
+		runner.RunTool = func(ctx context.Context, invocation app.BenchmarkToolInvocation) (app.BenchmarkToolExecutionResult, error) {
+			session := repository.EvalMCPSession{
+				Requests: []repository.EvalMCPRequest{
+					{ID: 1, Method: "initialize", Params: mcp.InitializeParams{
+						ClientInfo:      mcp.ClientInfo{Name: "benchmark-test", Version: "1.0.0"},
+						ProtocolVersion: "2024-11-05",
+					}},
+					{Method: "notifications/initialized", Notification: true},
+					{ID: 2, Method: "tools/call", Params: mcp.CallToolParams{
+						Name:      invocation.Name,
+						Arguments: invocation.Arguments,
+					}},
+				},
+			}
+			execution, err := executeEvalCLIMCPSession(ctx, app.EvalMCPSessionInvocation{
+				WorkingDir: invocation.WorkingDir,
+				Session:    session,
+			})
+			if err != nil {
+				return app.BenchmarkToolExecutionResult{}, err
+			}
+			payload, err := decodeBenchmarkToolPayload(execution.Responses[len(execution.Responses)-1].Response)
+			if err != nil {
+				return app.BenchmarkToolExecutionResult{}, err
+			}
+			return app.BenchmarkToolExecutionResult{Payload: payload}, nil
+		}
+
+		result, err := runner.Run(context.Background(), app.BenchmarkRunRequest{
+			SuiteID:      "go-benchmark-refresh-v1",
+			SuitesDir:    filepath.Join(repoRoot, "testdata", "eval", "benchmarks"),
+			FixturesRoot: filepath.Join(repoRoot, "testdata", "eval", "fixtures"),
+		})
+		if err != nil {
+			t.Fatalf("Run() error = %v", err)
+		}
+		if len(result.Arms) != 2 {
+			t.Fatalf("len(result.Arms) = %d, want 2", len(result.Arms))
+		}
+
+		baselineRefresh := result.Arms[0].LaneResults[0]
+		if !baselineRefresh.Success || baselineRefresh.StopMarker != "refresh_ready" {
+			t.Fatalf("baseline refresh lane = %+v", baselineRefresh)
+		}
+		if !strings.Contains(strings.Join(baselineRefresh.EvidencePaths, ","), "docs/notes.txt") {
+			t.Fatalf("baseline refresh evidence = %+v", baselineRefresh.EvidencePaths)
+		}
+
+		treatmentRefresh := result.Arms[1].LaneResults[0]
+		if !treatmentRefresh.Success || treatmentRefresh.StopMarker != "refresh_ready" {
+			t.Fatalf("treatment refresh lane = %+v", treatmentRefresh)
+		}
+		if treatmentRefresh.Effort.ActionCount < 2 {
+			t.Fatalf("treatment refresh effort = %+v, want cli + mcp actions", treatmentRefresh.Effort)
+		}
+		if !treatmentRefresh.SetupAppliedAt.Before(treatmentRefresh.StartedAt) {
+			t.Fatalf("refresh timing should start after mutation: setup=%s start=%s", treatmentRefresh.SetupAppliedAt, treatmentRefresh.StartedAt)
 		}
 	})
 }

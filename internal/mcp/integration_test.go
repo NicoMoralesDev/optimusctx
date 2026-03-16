@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/niccrow/optimusctx/internal/app"
@@ -257,6 +258,75 @@ func TestBenchmarkContextAssemblyLane(t *testing.T) {
 	}
 	if contextLane.Effort.FileReadActions == 0 || contextLane.Effort.BytesRead == 0 {
 		t.Fatalf("context effort = %+v", contextLane.Effort)
+	}
+}
+
+func TestBenchmarkTaskCompletionComparison(t *testing.T) {
+	runner := app.NewBenchmarkRunner()
+	runner.RunCommand = func(_ context.Context, invocation app.BenchmarkCommandInvocation) (app.BenchmarkCommandExecutionResult, error) {
+		switch {
+		case len(invocation.Args) > 0 && invocation.Args[0] == "refresh":
+			return app.BenchmarkCommandExecutionResult{ExitCode: 0}, nil
+		case len(invocation.Args) >= 5 && invocation.Args[0] == "pack" && invocation.Args[1] == "export":
+			writeRepoFile(t, filepath.Join(invocation.WorkingDir, "artifacts", "pack.json"), "{\"documents\":[\"docs/notes.txt\"],\"status\":\"ok\"}\n")
+			return app.BenchmarkCommandExecutionResult{ExitCode: 0}, nil
+		default:
+			return app.BenchmarkCommandExecutionResult{ExitCode: 0}, nil
+		}
+	}
+	bootstrapped := map[string]bool{}
+	runner.RunTool = func(_ context.Context, invocation app.BenchmarkToolInvocation) (app.BenchmarkToolExecutionResult, error) {
+		server := NewServer(nil, nil, nil)
+		if !bootstrapped[invocation.WorkingDir] {
+			refresh := callTool(t, server, CallToolParams{
+				Name: toolRefresh,
+				Arguments: map[string]any{
+					"startPath": invocation.WorkingDir,
+				},
+			})
+			if refresh.IsError {
+				t.Fatalf("refresh bootstrap failed: %+v", refresh)
+			}
+			bootstrapped[invocation.WorkingDir] = true
+		}
+		call := callTool(t, server, CallToolParams{
+			Name:      invocation.Name,
+			Arguments: invocation.Arguments,
+		})
+		payload, err := decodeMCPBenchmarkPayload(call.StructuredContent)
+		if err != nil {
+			return app.BenchmarkToolExecutionResult{}, err
+		}
+		return app.BenchmarkToolExecutionResult{Payload: payload}, nil
+	}
+	runner.MkdirTemp = func(string, string) (string, error) {
+		return t.TempDir(), nil
+	}
+	runner.CopyTree = func(src string, dst string) error {
+		return copyMCPTree(t, src, dst)
+	}
+
+	benchmarksRoot := t.TempDir()
+	copyMCPTree(t, filepath.Join("..", "..", "testdata", "eval", "fixtures"), filepath.Join(benchmarksRoot, "fixtures"))
+	copyMCPTree(t, filepath.Join("..", "..", "testdata", "eval", "benchmarks"), filepath.Join(benchmarksRoot, "benchmarks"))
+
+	result, err := runner.Run(context.Background(), app.BenchmarkRunRequest{
+		SuiteID:      "go-benchmark-refresh-v1",
+		SuitesDir:    filepath.Join(benchmarksRoot, "benchmarks"),
+		FixturesRoot: filepath.Join(benchmarksRoot, "fixtures"),
+	})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	taskLane := result.Arms[1].LaneResults[1]
+	if !taskLane.Success || taskLane.StopMarker != "task_complete" {
+		t.Fatalf("task lane = %+v", taskLane)
+	}
+	if taskLane.Effort.ActionCount < 2 {
+		t.Fatalf("task effort = %+v, want MCP preview plus pack export", taskLane.Effort)
+	}
+	if !slices.Contains(taskLane.EvidencePaths, "artifacts/pack.json") {
+		t.Fatalf("task evidence = %+v", taskLane.EvidencePaths)
 	}
 }
 
