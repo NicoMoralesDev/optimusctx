@@ -23,6 +23,7 @@ type Layout struct {
 	StateDir     string
 	DatabasePath string
 	MetadataPath string
+	EvalDir      string
 	LogsDir      string
 	TmpDir       string
 }
@@ -61,6 +62,7 @@ func ResolveLayout(repoRoot string) (Layout, error) {
 		StateDir:     stateDir,
 		DatabasePath: filepath.Join(stateDir, DatabaseFilename),
 		MetadataPath: filepath.Join(stateDir, MetadataFilename),
+		EvalDir:      filepath.Join(stateDir, "eval"),
 		LogsDir:      filepath.Join(stateDir, "logs"),
 		TmpDir:       filepath.Join(stateDir, "tmp"),
 	}, nil
@@ -80,7 +82,7 @@ func (l Layout) Ensure(repoDetectionMode string, schemaVersion int, now time.Tim
 		now = time.Now().UTC()
 	}
 
-	for _, dir := range []string{l.StateDir, l.LogsDir, l.TmpDir} {
+	for _, dir := range []string{l.StateDir, l.EvalDir, l.LogsDir, l.TmpDir} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return Metadata{}, fmt.Errorf("create %s: %w", dir, err)
 		}
@@ -96,6 +98,13 @@ func (l Layout) Ensure(repoDetectionMode string, schemaVersion int, now time.Tim
 	}
 
 	return metadata, nil
+}
+
+func (l Layout) EvalRunDir(runID int64) string {
+	if runID <= 0 {
+		return l.EvalDir
+	}
+	return filepath.Join(l.EvalDir, fmt.Sprintf("run-%06d", runID))
 }
 
 func (l Layout) readOrInitMetadata(repoDetectionMode string, schemaVersion int, now time.Time) (Metadata, error) {

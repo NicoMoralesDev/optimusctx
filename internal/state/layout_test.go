@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestStateLayoutResolve(t *testing.T) {
+func TestResolveLayout(t *testing.T) {
 	t.Parallel()
 
 	repoRoot := t.TempDir()
@@ -30,9 +30,15 @@ func TestStateLayoutResolve(t *testing.T) {
 	if layout.MetadataPath != filepath.Join(repoRoot, DirectoryName, MetadataFilename) {
 		t.Fatalf("MetadataPath = %q", layout.MetadataPath)
 	}
+	if layout.EvalDir != filepath.Join(repoRoot, DirectoryName, "eval") {
+		t.Fatalf("EvalDir = %q", layout.EvalDir)
+	}
+	if layout.EvalRunDir(12) != filepath.Join(repoRoot, DirectoryName, "eval", "run-000012") {
+		t.Fatalf("EvalRunDir = %q", layout.EvalRunDir(12))
+	}
 }
 
-func TestEnsureStateLayoutCreatesMetadata(t *testing.T) {
+func TestLayoutEnsureCreatesMetadata(t *testing.T) {
 	t.Parallel()
 
 	layout, err := ResolveLayout(t.TempDir())
@@ -46,7 +52,7 @@ func TestEnsureStateLayoutCreatesMetadata(t *testing.T) {
 		t.Fatalf("Ensure() error = %v", err)
 	}
 
-	for _, dir := range []string{layout.StateDir, layout.LogsDir, layout.TmpDir} {
+	for _, dir := range []string{layout.StateDir, layout.EvalDir, layout.LogsDir, layout.TmpDir} {
 		info, err := os.Stat(dir)
 		if err != nil {
 			t.Fatalf("Stat(%q) error = %v", dir, err)
@@ -82,7 +88,7 @@ func TestEnsureStateLayoutCreatesMetadata(t *testing.T) {
 	}
 }
 
-func TestEnsureStateLayoutIsIdempotent(t *testing.T) {
+func TestLayoutEnsureIsIdempotent(t *testing.T) {
 	t.Parallel()
 
 	layout, err := ResolveLayout(t.TempDir())
