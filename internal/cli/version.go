@@ -16,7 +16,7 @@ func newVersionCommand() *Command {
 				return fmt.Errorf("version does not accept arguments")
 			}
 
-			_, err := fmt.Fprintln(stdout, buildinfo.Summary())
+			_, err := fmt.Fprintln(stdout, buildinfo.Current().Summary())
 			return err
 		},
 	}

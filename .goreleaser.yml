@@ -1,0 +1,62 @@
+version: 2
+
+# Canonical release contract for the shipped single-binary runtime.
+project_name: optimusctx
+dist: dist
+
+# Release artifacts stay narrow: versioned archives plus checksums.
+builds:
+  - id: optimusctx
+    main: ./cmd/optimusctx
+    binary: optimusctx
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/niccrow/optimusctx/internal/buildinfo.Version={{ .Version }}
+      - -X github.com/niccrow/optimusctx/internal/buildinfo.Commit={{ .FullCommit }}
+      - -X github.com/niccrow/optimusctx/internal/buildinfo.BuildDate={{ .Date }}
+
+# Later package-manager manifests should derive from these exact names.
+archives:
+  - id: optimusctx
+    builds:
+      - optimusctx
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format: tar.gz
+    wrap_in_directory: false
+    format_overrides:
+      - goos: windows
+        format: zip
+
+# One deterministic checksum manifest per tagged release.
+checksum:
+  algorithm: sha256
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+
+# GitHub Releases is the first user-retrievable archive channel.
+release:
+  github:
+    owner: niccrow
+    name: optimusctx
+  draft: false
+  prerelease: auto
+
+# Keep generated release notes predictable and filter maintenance-only noise.
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
