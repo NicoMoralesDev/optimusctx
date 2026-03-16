@@ -404,6 +404,7 @@ func (r BenchmarkRunner) executeTreatmentStep(ctx context.Context, workspaceRoot
 		}
 		state.recordCLIObservation(step, observation)
 		state.addCommandProvenance(step)
+		state.markImplicitStop(step)
 		if err := state.projectCountedInputs(workspaceRoot, step); err != nil {
 			return err
 		}
@@ -428,6 +429,7 @@ func (r BenchmarkRunner) executeTreatmentStep(ctx context.Context, workspaceRoot
 		}
 		state.recordPayloadObservation(step, execution.Payload)
 		state.addToolProvenance(step, execution.Payload)
+		state.markImplicitStop(step)
 		if err := state.projectCountedInputs(workspaceRoot, step); err != nil {
 			return err
 		}
@@ -622,14 +624,16 @@ func (r BenchmarkRunner) withDefaults() BenchmarkRunner {
 }
 
 type benchmarkLaneState struct {
-	definition  repository.BenchmarkLaneDefinition
-	setupAt     time.Time
-	startedAt   time.Time
-	finishedAt  time.Time
-	success     bool
-	effort      repository.BenchmarkLaneEffort
-	attribution []repository.BenchmarkArtifactConsumption
-	steps       map[string]benchmarkStepObservation
+	definition    repository.BenchmarkLaneDefinition
+	setupAt       time.Time
+	startedAt     time.Time
+	finishedAt    time.Time
+	stopReached   bool
+	success       bool
+	effort        repository.BenchmarkLaneEffort
+	finalArtifact *repository.BenchmarkLaneFinalArtifactVerification
+	attribution   []repository.BenchmarkArtifactConsumption
+	steps         map[string]benchmarkStepObservation
 }
 
 type benchmarkArmState struct {
@@ -638,6 +642,7 @@ type benchmarkArmState struct {
 	lanes           map[repository.BenchmarkLane]*benchmarkLaneState
 	order           []repository.BenchmarkLane
 	nowFn           func() time.Time
+	task            repository.BenchmarkTaskDefinition
 	targetStableKey string
 }
 
@@ -658,6 +663,7 @@ func newBenchmarkArmState(suite repository.BenchmarkSuiteDefinition, armKind rep
 		countedInputs: make(map[string][]repository.BenchmarkCountedInputDefinition),
 		lanes:         make(map[repository.BenchmarkLane]*benchmarkLaneState, len(suite.Lanes)),
 		nowFn:         nowFn,
+		task:          suite.Task,
 	}
 	for _, lane := range suite.Lanes {
 		lane.StartMarker = lane.StartMarkerName()
@@ -711,6 +717,15 @@ func (s *benchmarkArmState) markLaneComplete(workspaceRoot string, lane reposito
 	if err := s.evaluateLaneAssertions(workspaceRoot, lane); err != nil {
 		return err
 	}
+	current.stopReached = true
+	verification, err := s.verifyLaneFinalArtifact(workspaceRoot, lane)
+	if err != nil {
+		return err
+	}
+	current.finalArtifact = verification
+	if verification != nil && !verification.Passed {
+		return nil
+	}
 	current.finishedAt = finishedAt.UTC()
 	current.success = true
 	return nil
@@ -718,10 +733,18 @@ func (s *benchmarkArmState) markLaneComplete(workspaceRoot string, lane reposito
 
 func (s *benchmarkArmState) tryCompleteLane(workspaceRoot string, lane repository.BenchmarkLane, finishedAt time.Time) error {
 	current := s.lanes[lane]
-	if current.success || len(current.definition.Assertions) == 0 {
+	if current.success || !current.stopReached || len(current.definition.Assertions) == 0 {
 		return nil
 	}
 	if err := s.evaluateLaneAssertions(workspaceRoot, lane); err != nil {
+		return nil
+	}
+	verification, err := s.verifyLaneFinalArtifact(workspaceRoot, lane)
+	if err != nil {
+		return err
+	}
+	current.finalArtifact = verification
+	if verification != nil && !verification.Passed {
 		return nil
 	}
 	current.finishedAt = finishedAt.UTC()
@@ -859,6 +882,37 @@ func (s *benchmarkArmState) recordPayloadObservation(step repository.BenchmarkSt
 	current.payload = payload
 	current.artifactPath = benchmarkAttributionArtifactPath(payload)
 	s.lanes[step.Lane].steps[step.ID] = current
+}
+
+func (s *benchmarkArmState) markImplicitStop(step repository.BenchmarkStep) {
+	if step.Treatment == nil {
+		return
+	}
+	current := s.lanes[step.Lane]
+	switch step.Lane {
+	case repository.BenchmarkLaneDiscovery:
+		if step.Treatment.Tool == "optimusctx.symbol_lookup" || step.Treatment.Tool == "optimusctx.structure_lookup" {
+			current.stopReached = true
+		}
+	case repository.BenchmarkLaneContextAssembly, repository.BenchmarkLaneTaskCompletion:
+		if step.Treatment.Tool == "optimusctx.targeted_context" {
+			current.stopReached = true
+		}
+		if step.Treatment.Command == repository.EvalCommandPackExport && s.lanes[step.Lane].steps[step.ID].outputArtifactPath != "" {
+			current.stopReached = true
+		}
+	case repository.BenchmarkLaneRefreshReady:
+		switch {
+		case step.Treatment.Tool == "optimusctx.health":
+			current.stopReached = true
+		case step.Treatment.Tool == "optimusctx.refresh":
+			current.stopReached = true
+		case step.Treatment.Command == repository.EvalCommandRefresh:
+			current.stopReached = true
+		case step.Treatment.Command == repository.EvalCommandDoctor:
+			current.stopReached = true
+		}
+	}
 }
 
 func (s *benchmarkArmState) projectCountedInputs(workspaceRoot string, step repository.BenchmarkStep) error {
@@ -1004,6 +1058,207 @@ func benchmarkFirstNonEmpty(values ...string) string {
 	return ""
 }
 
+func (s *benchmarkArmState) verifyLaneFinalArtifact(workspaceRoot string, lane repository.BenchmarkLane) (*repository.BenchmarkLaneFinalArtifactVerification, error) {
+	contract := s.laneFinalArtifactContract(lane)
+	if contract == nil {
+		return nil, nil
+	}
+	verification := &repository.BenchmarkLaneFinalArtifactVerification{
+		ContractID: contract.ID,
+		Path:       contract.Path,
+	}
+	content, ok, err := s.renderLaneFinalArtifact(lane, *contract)
+	if err != nil {
+		verification.FailureReason = err.Error()
+		return verification, nil
+	}
+	if !ok {
+		verification.FailureReason = "normalized final artifact is missing"
+		return verification, nil
+	}
+	if err := writeBenchmarkFinalArtifact(filepath.Join(workspaceRoot, filepath.FromSlash(contract.Path)), *contract, content); err != nil {
+		return nil, err
+	}
+	s.addArtifact(lane, contract.Path)
+	if err := verifyBenchmarkFinalArtifactAssertions(filepath.Join(workspaceRoot, filepath.FromSlash(contract.Path)), *contract); err != nil {
+		verification.FailureReason = err.Error()
+		s.addAttribution(lane, repository.BenchmarkArtifactConsumption{
+			StepID:       contract.ID,
+			StepName:     contract.Name,
+			Lane:         lane,
+			Boundary:     repository.BenchmarkEvidenceBoundaryFinalArtifactVerified,
+			ArtifactPath: contract.Path,
+			SourceKind:   repository.BenchmarkTokenEstimateSourceDirectPayload,
+		})
+		return verification, nil
+	}
+	verification.Passed = true
+	s.addAttribution(lane, repository.BenchmarkArtifactConsumption{
+		StepID:       contract.ID,
+		StepName:     contract.Name,
+		Lane:         lane,
+		Boundary:     repository.BenchmarkEvidenceBoundaryFinalArtifactVerified,
+		ArtifactPath: contract.Path,
+		SourceKind:   repository.BenchmarkTokenEstimateSourceDirectPayload,
+	})
+	return verification, nil
+}
+
+func (s *benchmarkArmState) laneFinalArtifactContract(lane repository.BenchmarkLane) *repository.BenchmarkFinalArtifactContract {
+	if current := s.lanes[lane].definition.FinalArtifact; current != nil {
+		return current
+	}
+	if s.task.FinalArtifact != nil && lane == repository.BenchmarkLaneTaskCompletion {
+		return s.task.FinalArtifact
+	}
+	return nil
+}
+
+func (s *benchmarkArmState) renderLaneFinalArtifact(lane repository.BenchmarkLane, contract repository.BenchmarkFinalArtifactContract) (any, bool, error) {
+	current := s.lanes[lane]
+	switch contract.Kind {
+	case repository.BenchmarkFinalArtifactKindTargetLocator:
+		if strings.TrimSpace(s.task.TargetPath) == "" {
+			return nil, false, nil
+		}
+		artifact := map[string]any{"path": s.task.TargetPath}
+		if strings.TrimSpace(s.task.TargetSymbol) != "" {
+			artifact["symbol"] = s.task.TargetSymbol
+		}
+		return artifact, true, nil
+	case repository.BenchmarkFinalArtifactKindContextBundle, repository.BenchmarkFinalArtifactKindTaskOutput:
+		if text, ok := benchmarkTextFromLaneSteps(current.steps); ok {
+			return text, true, nil
+		}
+		return nil, false, nil
+	case repository.BenchmarkFinalArtifactKindReadinessSummary:
+		summary := map[string]any{"targetReady": true}
+		if value, ok, err := benchmarkLaneJSONProjection(current.steps, "freshness"); err != nil {
+			return nil, false, err
+		} else if ok {
+			summary["freshness"] = value
+		}
+		if value, ok, err := benchmarkLaneJSONProjection(current.steps, "refresh.freshness"); err != nil {
+			return nil, false, err
+		} else if ok && summary["freshness"] == nil {
+			summary["freshness"] = value
+		}
+		if value, ok, err := benchmarkLaneJSONProjection(current.steps, "generation"); err != nil {
+			return nil, false, err
+		} else if ok {
+			summary["generation"] = value
+		}
+		return summary, true, nil
+	default:
+		return nil, false, nil
+	}
+}
+
+func benchmarkTextFromLaneSteps(steps map[string]benchmarkStepObservation) (string, bool) {
+	for _, key := range benchmarkSortedObservationKeys(steps) {
+		if text, ok := benchmarkProjectedText(steps[key]); ok {
+			return text, true
+		}
+	}
+	return "", false
+}
+
+func benchmarkLaneJSONProjection(steps map[string]benchmarkStepObservation, jsonPath string) (any, bool, error) {
+	for _, key := range benchmarkSortedObservationKeys(steps) {
+		value, ok, err := benchmarkProjectedJSONField(steps[key].payload, jsonPath)
+		if err != nil {
+			return nil, false, err
+		}
+		if ok {
+			return value, true, nil
+		}
+	}
+	return nil, false, nil
+}
+
+func benchmarkSortedObservationKeys(steps map[string]benchmarkStepObservation) []string {
+	keys := make([]string, 0, len(steps))
+	for key := range steps {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+func writeBenchmarkFinalArtifact(path string, contract repository.BenchmarkFinalArtifactContract, content any) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("prepare final artifact %q: %w", contract.Path, err)
+	}
+	var data []byte
+	var err error
+	switch contract.Format {
+	case repository.BenchmarkFinalArtifactFormatJSON:
+		data, err = json.MarshalIndent(content, "", "  ")
+		if err == nil {
+			data = append(data, '\n')
+		}
+	case repository.BenchmarkFinalArtifactFormatText:
+		switch typed := content.(type) {
+		case string:
+			data = []byte(typed)
+		default:
+			data = []byte(fmt.Sprint(content))
+		}
+		if contract.Normalization.TrimWhitespace {
+			data = []byte(strings.TrimSpace(string(data)))
+		}
+	default:
+		return fmt.Errorf("unsupported final artifact format %q", contract.Format)
+	}
+	if err != nil {
+		return fmt.Errorf("marshal final artifact %q: %w", contract.Path, err)
+	}
+	return os.WriteFile(path, data, 0o644)
+}
+
+func verifyBenchmarkFinalArtifactAssertions(path string, contract repository.BenchmarkFinalArtifactContract) error {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read final artifact %q: %w", contract.Path, err)
+	}
+	for idx, assertion := range contract.Assertions {
+		switch assertion.Kind {
+		case repository.EvalAssertionKindContains:
+			if !strings.Contains(string(content), assertion.Contains) {
+				return fmt.Errorf("final artifact assert[%d]: %q does not contain %q", idx, contract.Path, assertion.Contains)
+			}
+		case repository.EvalAssertionKindJSONFieldPresent:
+			if _, ok, err := evalJSONField(string(content), assertion.Path); err != nil {
+				return fmt.Errorf("final artifact assert[%d]: %w", idx, err)
+			} else if !ok {
+				return fmt.Errorf("final artifact assert[%d]: json field %q is missing", idx, assertion.Path)
+			}
+		case repository.EvalAssertionKindJSONFieldEquals:
+			value, ok, err := evalJSONField(string(content), assertion.Path)
+			if err != nil {
+				return fmt.Errorf("final artifact assert[%d]: %w", idx, err)
+			}
+			if !ok {
+				return fmt.Errorf("final artifact assert[%d]: json field %q is missing", idx, assertion.Path)
+			}
+			if !evalJSONValuesEqual(value, assertion.Equals) {
+				return fmt.Errorf("final artifact assert[%d]: json field %q = %#v, want %#v", idx, assertion.Path, value, assertion.Equals)
+			}
+		default:
+			return fmt.Errorf("final artifact assert[%d]: unsupported kind %q", idx, assertion.Kind)
+		}
+	}
+	return nil
+}
+
+func cloneBenchmarkFinalArtifactVerification(value *repository.BenchmarkLaneFinalArtifactVerification) *repository.BenchmarkLaneFinalArtifactVerification {
+	if value == nil {
+		return nil
+	}
+	current := *value
+	return &current
+}
+
 func (s *benchmarkArmState) evaluateLaneAssertions(workspaceRoot string, lane repository.BenchmarkLane) error {
 	current := s.lanes[lane]
 	for idx, assertion := range current.definition.Assertions {
@@ -1041,7 +1296,7 @@ func (s *benchmarkArmState) evaluateLaneAssertions(workspaceRoot string, lane re
 	return nil
 }
 
-func (s *benchmarkArmState) applyToolResult(lane repository.BenchmarkLane, tool string, task repository.BenchmarkTaskDefinition, payload any, finishedAt time.Time) error {
+func (s *benchmarkArmState) applyToolResult(lane repository.BenchmarkLane, tool string, task repository.BenchmarkTaskDefinition, payload any, _ time.Time) error {
 	current := s.lanes[lane]
 	switch tool {
 	case "optimusctx.repository_map":
@@ -1067,8 +1322,6 @@ func (s *benchmarkArmState) applyToolResult(lane repository.BenchmarkLane, tool 
 			s.addArtifact(lane, match.Path)
 			if match.Path == task.TargetPath && match.Name == task.TargetSymbol {
 				s.targetStableKey = match.StableKey
-				current.finishedAt = finishedAt.UTC()
-				current.success = true
 			}
 		}
 	case "optimusctx.targeted_context":
@@ -1080,10 +1333,6 @@ func (s *benchmarkArmState) applyToolResult(lane repository.BenchmarkLane, tool 
 		current.effort.FileReadActions++
 		current.effort.BytesRead += int64(len(strings.Join(result.Source, "\n")))
 		s.addArtifact(lane, result.Path)
-		if result.Path == task.TargetPath {
-			current.finishedAt = finishedAt.UTC()
-			current.success = true
-		}
 	default:
 		current.effort.ActionCount++
 		current.effort.TargetedLookupActions++
@@ -1147,6 +1396,7 @@ func (s *benchmarkArmState) results() []repository.BenchmarkLaneRunResult {
 			Assertions:     append([]repository.BenchmarkAssertion(nil), current.definition.Assertions...),
 			EvidencePaths:  append([]string(nil), current.effort.ConsultedArtifacts...),
 			Effort:         current.effort,
+			FinalArtifact:  cloneBenchmarkFinalArtifactVerification(current.finalArtifact),
 			Attribution:    append([]repository.BenchmarkArtifactConsumption(nil), current.attribution...),
 		})
 	}

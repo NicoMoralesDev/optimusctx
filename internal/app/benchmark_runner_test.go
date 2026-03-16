@@ -546,7 +546,7 @@ func TestBenchmarkAttributionBoundary(t *testing.T) {
 	}
 }
 
-func TestBenchmarkTaskCompletionLane(t *testing.T) {
+func TestBenchmarkLaneCompletionRequiresFinalArtifact(t *testing.T) {
 	t.Parallel()
 
 	runner := NewBenchmarkRunner()
@@ -577,8 +577,61 @@ func TestBenchmarkTaskCompletionLane(t *testing.T) {
 	if !taskLane.Success {
 		t.Fatalf("task lane = %+v, want success", taskLane)
 	}
+	if taskLane.FinalArtifact == nil || !taskLane.FinalArtifact.Passed {
+		t.Fatalf("task final artifact = %+v, want passing verification", taskLane.FinalArtifact)
+	}
 	if !strings.Contains(strings.Join(taskLane.EvidencePaths, ","), "docs/notes.txt") {
 		t.Fatalf("task evidence = %+v", taskLane.EvidencePaths)
+	}
+	if !strings.Contains(strings.Join(taskLane.EvidencePaths, ","), "artifacts/updated-notes.txt") {
+		t.Fatalf("task evidence = %+v, want normalized final artifact path", taskLane.EvidencePaths)
+	}
+}
+
+func TestBenchmarkFinalArtifactValidation(t *testing.T) {
+	t.Parallel()
+
+	runner := NewBenchmarkRunner()
+	runner.MkdirTemp = func(string, string) (string, error) { return t.TempDir(), nil }
+	runner.CopyTree = func(src string, dst string) error { return copyEvalTree(src, dst) }
+	runner.GitInit = func(context.Context, string) error { return nil }
+	runner.RunCommand = func(_ context.Context, invocation BenchmarkCommandInvocation) (BenchmarkCommandExecutionResult, error) {
+		return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
+	}
+	runner.RunTool = func(_ context.Context, invocation BenchmarkToolInvocation) (BenchmarkToolExecutionResult, error) {
+		switch invocation.Name {
+		case "optimusctx.health":
+			return BenchmarkToolExecutionResult{Payload: map[string]any{
+				"freshness": "fresh",
+			}}, nil
+		case "optimusctx.targeted_context":
+			return BenchmarkToolExecutionResult{Payload: repository.TargetedContextResult{
+				Path:   "docs/notes.txt",
+				Source: []string{"wrong content"},
+			}}, nil
+		default:
+			t.Fatalf("unexpected tool %q", invocation.Name)
+			return BenchmarkToolExecutionResult{}, nil
+		}
+	}
+
+	result, err := runner.Run(context.Background(), BenchmarkRunRequest{
+		SuitePath:     writeBenchmarkMutationSuite(t),
+		FixturesRoot:  filepath.Join("..", "..", "testdata", "eval", "fixtures"),
+		WorkspaceRoot: t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	taskLane := result.Arms[1].LaneResults[1]
+	if taskLane.Success {
+		t.Fatalf("task lane = %+v, want failed final-artifact validation", taskLane)
+	}
+	if taskLane.FinalArtifact == nil || taskLane.FinalArtifact.Passed {
+		t.Fatalf("task final artifact = %+v, want failure", taskLane.FinalArtifact)
+	}
+	if !strings.Contains(taskLane.FinalArtifact.FailureReason, "does not contain") {
+		t.Fatalf("failure reason = %q", taskLane.FinalArtifact.FailureReason)
 	}
 }
 
