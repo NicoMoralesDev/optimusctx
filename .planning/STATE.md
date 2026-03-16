@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 14
 current_phase_name: benchmark boundary redefinition and agent-input validation
 current_plan: 4
-status: executing
-stopped_at: Completed 14-03-PLAN.md
-last_updated: "2026-03-16T20:10:48.632Z"
+status: complete
+stopped_at: Completed 14-04-PLAN.md
+last_updated: "2026-03-16T20:25:01.415Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 24
-  completed_plans: 23
-  percent: 98
+  completed_plans: 24
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute
+**Status:** Phase 14 complete — benchmark milestone closeout verified
 **Current Phase:** 14
 **Current Phase Name:** benchmark boundary redefinition and agent-input validation
 **Total Phases:** 6
 **Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 98%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-16
-**Last Activity Description:** Phase 14 planning is complete with four execution plans for benchmark-boundary repair, suite migration, and evidence refresh
+**Last Activity Description:** Phase 14 is complete with reproducibility verification, refreshed v2 benchmark evidence, and full-suite closeout
 
 ## Project Memory
 
@@ -43,11 +43,11 @@ progress:
 
 ## Current Planning Context
 
-- Active milestone: v1.1 validation, benchmarking, and distribution
+- Active milestone: v1.1 validation, benchmarking, and distribution closeout complete
 - Active phase: 14-benchmark-boundary-redefinition-and-agent-input-validation
-- Next planning action: execute Phase 14 so benchmark suites count only agent-facing inputs, enforce comparable final artifacts, and refresh milestone evidence
+- Next planning action: no pending phase execution remains; archive the completed milestone or plan follow-up backlog work
 - Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
-- Coverage status: v1.0 shipped; v1.1 requirements are mapped across Phases 09-13
+- Coverage status: v1.0 shipped; v1.1 validation, benchmarking, and distribution closure is complete through Phase 14
 
 ## Recent Decisions
 
@@ -89,11 +89,13 @@ progress:
 
 - Phase 14 added: Benchmark boundary redefinition and agent-input validation
 - Phase 14 planned: four plans cover schema repair, runtime enforcement, suite migration, and reproducibility closeout
+- Phase 14 complete: benchmark boundary repair, suite migration, reproducibility sign-off, and milestone reclose verified on the v2 methodology
 
 ## Notes
 
 - This file initializes project memory for future planning and execution turns.
 - Update this state whenever the active phase, milestone, or planning status changes.
+- Plan `14-04` is complete with reproducibility verification, honest benchmark wording, and a passing full Go test suite on the repaired counted-input contract.
 - Plan `09-01` is complete with canonical evaluation contracts, committed fixture repositories, scenario definitions, and repository-backed schema validation tests.
 - Plan `09-03` is complete with repository-local eval artifact paths, dedicated eval run persistence tables, and contract tests for rerunnable evidence storage.
 - Plan `09-04` is complete with fresh-workspace rerun coverage, persisted eval run evidence, and README guidance for the shipped `eval` workflow.
@@ -205,6 +207,7 @@ progress:
 | Phase 14 P01 | 59min | 3 tasks | 9 files |
 | Phase 14-benchmark-boundary-redefinition-and-agent-input-validation P02 | 22min | 3 tasks | 6 files |
 | Phase 14 P03 | 25min | 3 tasks | 9 files |
+| Phase 14-benchmark-boundary-redefinition-and-agent-input-validation P04 | 13min | 3 tasks | 10 files |
 
 ## Decisions Made
 
@@ -354,6 +357,9 @@ progress:
 - [Phase 14]: Counted benchmark totals now come only from declared agent-input projections; raw CLI and MCP provenance stays exported but does not drive counted deltas.
 - [Phase 14]: Refresh readiness final artifacts normalize the shared targetReady signal, while treatment-only freshness and generation remain counted operational projections.
 - [Phase 14]: Repeated-run fingerprints ignore system-provenance token magnitudes because temp-workspace roots make those raw payload bytes path-sensitive.
+- [Phase 14]: Repeated-run benchmark exports now preserve invalid attempts in verification metadata instead of aborting on missing or drifted final-artifact records.
+- [Phase 14]: Pre-Phase-14 attribution-first benchmark evidence is now explicitly superseded by the repaired v2 counted-input methodology and reruns.
+- [Phase 14]: Full-suite benchmark verification now locks onto the active v2 evidence schema, required attribution labels, and current migration set rather than stale pre-closeout expectations.
 
 ## Blockers
 
@@ -361,8 +367,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T20:10:48.628Z
-**Stopped At:** Completed 14-03-PLAN.md
+**Last Date:** 2026-03-16T20:25:01.412Z
+**Stopped At:** Completed 14-04-PLAN.md
 **Resume File:** None
 
 ---
