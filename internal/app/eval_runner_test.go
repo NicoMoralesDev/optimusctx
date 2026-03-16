@@ -279,6 +279,107 @@ func TestEvalCLIWorkflowAssertions(t *testing.T) {
 	}
 }
 
+func TestEvalMCPSessionExecution(t *testing.T) {
+	sourceRoot := t.TempDir()
+	fixturesRoot := filepath.Join(sourceRoot, "fixtures")
+	scenarioPath := filepath.Join(sourceRoot, "scenarios", "mcp.json")
+
+	writeEvalFixtureFile(t, filepath.Join(fixturesRoot, "go-basic", "v1", "repository", "main.go"), "package main\n")
+	writeEvalScenarioFile(t, scenarioPath, repository.EvalScenarioDefinition{
+		SchemaVersion: repository.EvalScenarioSchemaV1,
+		ID:            "mcp",
+		Version:       "v1",
+		Name:          "MCP",
+		Fixture: repository.EvalFixtureRef{
+			ID:           "go-basic",
+			Version:      "v1",
+			Path:         "go-basic/v1/repository",
+			Materialize:  repository.EvalFixtureModeCopyTree,
+			WorkspaceDir: "workspace",
+		},
+		Steps: []repository.EvalScenarioStep{{
+			ID:   "mcp-serve",
+			Name: "Run MCP session",
+			Kind: repository.EvalStepKindMCPSession,
+			Session: &repository.EvalMCPSession{
+				Requests: []repository.EvalMCPRequest{
+					{ID: 1, Method: "initialize"},
+					{Method: "notifications/initialized", Notification: true},
+					{ID: 2, Method: "tools/list"},
+					{ID: 3, Method: "tools/call", Params: map[string]any{
+						"name": "optimusctx.repository_map",
+					}},
+				},
+				TranscriptArtifact: "transcript",
+				CaptureResponses: []repository.EvalMCPResponseCapture{
+					{RequestID: 2, Artifact: "tools-list"},
+					{RequestID: 3, Artifact: "repository-map"},
+				},
+			},
+			Assert: []repository.EvalAssertion{
+				{Kind: repository.EvalAssertionKindContains, Target: repository.EvalAssertionTargetStderr, Contains: "ready for stdio requests"},
+				{Kind: repository.EvalAssertionKindContains, Target: repository.EvalAssertionTargetArtifact, Artifact: "tools-list", Contains: "optimusctx.repository_map"},
+				{Kind: repository.EvalAssertionKindJSONFieldEquals, Target: repository.EvalAssertionTargetArtifact, Artifact: "repository-map", Path: "result.structuredContent.meta.cacheStatus", Equals: "persisted_only"},
+			},
+			CaptureArtifact: []string{"transcript", "tools-list", "repository-map", "session-stderr"},
+		}},
+		Artifacts: []repository.EvalArtifactRef{
+			{ID: "transcript", Kind: repository.EvalArtifactKindFile, Path: "artifacts/transcript.json", Required: true},
+			{ID: "tools-list", Kind: repository.EvalArtifactKindFile, Path: "artifacts/tools-list.json", Required: true},
+			{ID: "repository-map", Kind: repository.EvalArtifactKindFile, Path: "artifacts/repository-map.json", Required: true},
+			{ID: "session-stderr", Kind: repository.EvalArtifactKindStderr, Required: true},
+		},
+	})
+
+	runner := NewEvalRunner()
+	runner.Now = newDeterministicEvalClock()
+	runner.RunCommand = func(_ context.Context, invocation EvalCommandInvocation) (EvalCommandExecutionResult, error) {
+		t.Fatalf("RunCommand should not be called for MCP session steps: %+v", invocation)
+		return EvalCommandExecutionResult{}, nil
+	}
+	runner.RunMCPSession = func(_ context.Context, invocation EvalMCPSessionInvocation) (EvalMCPSessionExecutionResult, error) {
+		if invocation.WorkingDir == "" {
+			t.Fatal("expected working directory")
+		}
+		if len(invocation.Session.Requests) != 4 {
+			t.Fatalf("len(invocation.Session.Requests) = %d, want 4", len(invocation.Session.Requests))
+		}
+		return EvalMCPSessionExecutionResult{
+			Stdout: "",
+			Stderr: "optimusctx mcp: ready for stdio requests\n",
+			Responses: []EvalMCPSessionResponse{
+				{RequestID: 1, Response: map[string]any{"jsonrpc": "2.0", "id": float64(1), "result": map[string]any{"protocolVersion": "2026-03-15"}}},
+				{RequestID: 2, Response: map[string]any{"jsonrpc": "2.0", "id": float64(2), "result": map[string]any{"tools": []any{map[string]any{"name": "optimusctx.repository_map"}}}}},
+				{RequestID: 3, Response: map[string]any{"jsonrpc": "2.0", "id": float64(3), "result": map[string]any{"structuredContent": map[string]any{"meta": map[string]any{"cacheStatus": "persisted_only"}}}}},
+			},
+		}, nil
+	}
+
+	result, err := runner.Run(context.Background(), EvalRunRequest{
+		ScenarioPath: scenarioPath,
+		FixturesRoot: fixturesRoot,
+	})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if !result.Passed {
+		t.Fatalf("Run() passed = false, want true: %+v", result)
+	}
+	if len(result.Steps) != 1 {
+		t.Fatalf("len(result.Steps) = %d, want 1", len(result.Steps))
+	}
+	step := result.Steps[0]
+	if step.ExitCode != 0 || !step.Passed {
+		t.Fatalf("step result = %+v", step)
+	}
+	if len(step.Artifacts) != 4 {
+		t.Fatalf("len(step.Artifacts) = %d, want 4", len(step.Artifacts))
+	}
+	if _, err := os.Stat(filepath.Join(result.WorkspacePath, "artifacts", "transcript.json")); err != nil {
+		t.Fatalf("expected transcript artifact: %v", err)
+	}
+}
+
 func TestEvalRunnerPersistsCLIArtifacts(t *testing.T) {
 	sourceRoot := t.TempDir()
 	fixturesRoot := filepath.Join(sourceRoot, "fixtures")

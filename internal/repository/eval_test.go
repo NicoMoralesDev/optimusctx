@@ -172,6 +172,62 @@ func TestEvalAssertions(t *testing.T) {
 	}
 }
 
+func TestEvalMCPStepContracts(t *testing.T) {
+	t.Parallel()
+
+	scenario := EvalScenarioDefinition{
+		SchemaVersion: EvalScenarioSchemaV1,
+		ID:            "mcp-go-basic-v1",
+		Version:       "v1",
+		Name:          "MCP flow",
+		Fixture: EvalFixtureRef{
+			ID:          "go-basic",
+			Version:     "v1",
+			Path:        "go-basic/v1/repository",
+			Materialize: EvalFixtureModeCopyTree,
+		},
+		Steps: []EvalScenarioStep{{
+			ID:   "mcp-serve",
+			Name: "Run MCP session",
+			Kind: EvalStepKindMCPSession,
+			Session: &EvalMCPSession{
+				Requests: []EvalMCPRequest{
+					{ID: 1, Method: "initialize"},
+					{Method: "notifications/initialized", Notification: true},
+					{ID: 2, Method: "tools/list"},
+					{ID: 3, Method: "tools/call", Params: map[string]any{
+						"name": "optimusctx.repository_map",
+						"arguments": map[string]any{
+							"startPath": ".",
+						},
+					}},
+				},
+				TranscriptArtifact: "session-transcript",
+				CaptureResponses: []EvalMCPResponseCapture{
+					{RequestID: 2, Artifact: "tools-list"},
+					{RequestID: 3, Artifact: "repository-map"},
+				},
+			},
+			Assert: []EvalAssertion{
+				{Kind: EvalAssertionKindContains, Target: EvalAssertionTargetStderr, Contains: "ready for stdio requests"},
+				{Kind: EvalAssertionKindContains, Target: EvalAssertionTargetArtifact, Artifact: "tools-list", Contains: "optimusctx.repository_map"},
+				{Kind: EvalAssertionKindJSONFieldPresent, Target: EvalAssertionTargetArtifact, Artifact: "repository-map", Path: "result.structuredContent.meta.repositoryRoot"},
+			},
+			CaptureArtifact: []string{"session-transcript", "tools-list", "repository-map", "session-stderr"},
+		}},
+		Artifacts: []EvalArtifactRef{
+			{ID: "session-transcript", Kind: EvalArtifactKindFile, Path: "artifacts/mcp-transcript.json", Required: true},
+			{ID: "tools-list", Kind: EvalArtifactKindFile, Path: "artifacts/mcp-tools-list.json", Required: true},
+			{ID: "repository-map", Kind: EvalArtifactKindFile, Path: "artifacts/mcp-repository-map.json", Required: true},
+			{ID: "session-stderr", Kind: EvalArtifactKindStderr, Required: true},
+		},
+	}
+
+	if err := scenario.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
 func TestEvalScenarioValidation(t *testing.T) {
 	t.Parallel()
 
@@ -349,6 +405,38 @@ func TestEvalScenarioValidation(t *testing.T) {
 		err := scenario.Validate()
 		if err == nil || !strings.Contains(err.Error(), `unknown artifact "missing"`) {
 			t.Fatalf("Validate() error = %v, want missing artifact assertion error", err)
+		}
+	})
+
+	t.Run("rejects MCP transcript outside captured artifacts", func(t *testing.T) {
+		scenario := EvalScenarioDefinition{
+			SchemaVersion: EvalScenarioSchemaV1,
+			ID:            "bad-mcp-transcript-v1",
+			Version:       "v1",
+			Name:          "Bad MCP transcript",
+			Fixture: EvalFixtureRef{
+				ID:          "go-basic",
+				Version:     "v1",
+				Path:        "go-basic/v1/repository",
+				Materialize: EvalFixtureModeCopyTree,
+			},
+			Steps: []EvalScenarioStep{{
+				ID:   "mcp",
+				Name: "MCP",
+				Kind: EvalStepKindMCPSession,
+				Session: &EvalMCPSession{
+					Requests:           []EvalMCPRequest{{ID: 1, Method: "initialize"}},
+					TranscriptArtifact: "transcript",
+				},
+			}},
+			Artifacts: []EvalArtifactRef{
+				{ID: "transcript", Kind: EvalArtifactKindFile, Path: "artifacts/transcript.json", Required: true},
+			},
+		}
+
+		err := scenario.Validate()
+		if err == nil || !strings.Contains(err.Error(), `session.transcriptArtifact "transcript" must be listed in captureArtifact`) {
+			t.Fatalf("Validate() error = %v, want transcript capture error", err)
 		}
 	})
 }

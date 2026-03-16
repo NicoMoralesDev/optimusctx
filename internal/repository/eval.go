@@ -17,7 +17,8 @@ const EvalScenarioSchemaV1 = "optimusctx/eval-scenario@v1"
 type EvalStepKind string
 
 const (
-	EvalStepKindCommand EvalStepKind = "command"
+	EvalStepKindCommand    EvalStepKind = "command"
+	EvalStepKindMCPSession EvalStepKind = "mcp_session"
 )
 
 type EvalCommandSurface string
@@ -110,11 +111,30 @@ type EvalAssertion struct {
 	Equals   any                 `json:"equals,omitempty"`
 }
 
+type EvalMCPRequest struct {
+	ID           int64  `json:"id,omitempty"`
+	Method       string `json:"method"`
+	Notification bool   `json:"notification,omitempty"`
+	Params       any    `json:"params,omitempty"`
+}
+
+type EvalMCPResponseCapture struct {
+	RequestID int64  `json:"requestId"`
+	Artifact  string `json:"artifact"`
+}
+
+type EvalMCPSession struct {
+	Requests           []EvalMCPRequest         `json:"requests"`
+	CaptureResponses   []EvalMCPResponseCapture `json:"captureResponses,omitempty"`
+	TranscriptArtifact string                   `json:"transcriptArtifact,omitempty"`
+}
+
 type EvalScenarioStep struct {
 	ID              string              `json:"id"`
 	Name            string              `json:"name"`
 	Kind            EvalStepKind        `json:"kind"`
 	Expect          EvalExpectedCommand `json:"expect"`
+	Session         *EvalMCPSession     `json:"session,omitempty"`
 	Setup           []EvalSetupAction   `json:"setup,omitempty"`
 	Assert          []EvalAssertion     `json:"assert,omitempty"`
 	CaptureArtifact []string            `json:"captureArtifact,omitempty"`
@@ -254,33 +274,45 @@ func validateEvalSteps(steps []EvalScenarioStep, artifacts []EvalArtifactRef) er
 		if strings.TrimSpace(step.Name) == "" {
 			return fmt.Errorf("steps[%d]: name is required", idx)
 		}
-		if step.Kind != EvalStepKindCommand {
-			return fmt.Errorf("steps[%d]: kind must be %q", idx, EvalStepKindCommand)
-		}
-		if step.Expect.Surface != EvalCommandSurfaceCLI {
-			return fmt.Errorf("steps[%d]: surface must be %q", idx, EvalCommandSurfaceCLI)
-		}
-		if step.Expect.ExitCode < 0 {
-			return fmt.Errorf("steps[%d]: exitCode must be >= 0", idx)
-		}
-		switch step.Expect.Command {
-		case EvalCommandInit:
-			seenInit = true
-		case EvalCommandRefresh:
-			if !seenInit {
-				return fmt.Errorf("steps[%d]: refresh requires a prior init step", idx)
+		switch step.Kind {
+		case EvalStepKindCommand:
+			if step.Session != nil {
+				return fmt.Errorf("steps[%d]: session must be empty for %q", idx, step.Kind)
 			}
-			seenRefresh = true
-		case EvalCommandDoctor:
-			if !seenInit {
-				return fmt.Errorf("steps[%d]: doctor requires a prior init step", idx)
+			if step.Expect.Surface != EvalCommandSurfaceCLI {
+				return fmt.Errorf("steps[%d]: surface must be %q", idx, EvalCommandSurfaceCLI)
 			}
-		case EvalCommandPackExport:
-			if !seenRefresh {
-				return fmt.Errorf("steps[%d]: pack_export requires a prior refresh step", idx)
+			if step.Expect.ExitCode < 0 {
+				return fmt.Errorf("steps[%d]: exitCode must be >= 0", idx)
+			}
+			switch step.Expect.Command {
+			case EvalCommandInit:
+				seenInit = true
+			case EvalCommandRefresh:
+				if !seenInit {
+					return fmt.Errorf("steps[%d]: refresh requires a prior init step", idx)
+				}
+				seenRefresh = true
+			case EvalCommandDoctor:
+				if !seenInit {
+					return fmt.Errorf("steps[%d]: doctor requires a prior init step", idx)
+				}
+			case EvalCommandPackExport:
+				if !seenRefresh {
+					return fmt.Errorf("steps[%d]: pack_export requires a prior refresh step", idx)
+				}
+			default:
+				return fmt.Errorf("steps[%d]: unsupported command %q", idx, step.Expect.Command)
+			}
+		case EvalStepKindMCPSession:
+			if step.Expect.Surface != "" || step.Expect.Command != "" || len(step.Expect.Args) > 0 || step.Expect.ExitCode != 0 {
+				return fmt.Errorf("steps[%d]: expect must be empty for %q", idx, step.Kind)
+			}
+			if err := validateEvalMCPSession(step.Session, artifactIDs, step.CaptureArtifact); err != nil {
+				return fmt.Errorf("steps[%d]: %w", idx, err)
 			}
 		default:
-			return fmt.Errorf("steps[%d]: unsupported command %q", idx, step.Expect.Command)
+			return fmt.Errorf("steps[%d]: unsupported kind %q", idx, step.Kind)
 		}
 		for _, artifactID := range step.CaptureArtifact {
 			if _, ok := artifactIDs[artifactID]; !ok {
@@ -295,6 +327,86 @@ func validateEvalSteps(steps []EvalScenarioStep, artifacts []EvalArtifactRef) er
 		}
 	}
 
+	return nil
+}
+
+func validateEvalMCPSession(session *EvalMCPSession, artifactIDs map[string]struct{}, captureArtifacts []string) error {
+	if session == nil {
+		return errors.New("session is required for mcp_session steps")
+	}
+	if len(session.Requests) == 0 {
+		return errors.New("session.requests must contain at least one request")
+	}
+
+	requestIDs := make(map[int64]struct{}, len(session.Requests))
+	initialized := false
+	for idx, request := range session.Requests {
+		switch request.Method {
+		case "initialize":
+			if request.Notification {
+				return fmt.Errorf("session.requests[%d]: initialize cannot be a notification", idx)
+			}
+			if request.ID <= 0 {
+				return fmt.Errorf("session.requests[%d]: initialize requires a positive id", idx)
+			}
+			initialized = true
+		case "notifications/initialized":
+			if request.ID != 0 {
+				return fmt.Errorf("session.requests[%d]: notifications/initialized must not set an id", idx)
+			}
+			if !request.Notification {
+				return fmt.Errorf("session.requests[%d]: notifications/initialized must set notification=true", idx)
+			}
+			if !initialized {
+				return fmt.Errorf("session.requests[%d]: notifications/initialized requires a prior initialize request", idx)
+			}
+		case "tools/list", "tools/call":
+			if request.Notification {
+				return fmt.Errorf("session.requests[%d]: %s cannot be a notification", idx, request.Method)
+			}
+			if request.ID <= 0 {
+				return fmt.Errorf("session.requests[%d]: %s requires a positive id", idx, request.Method)
+			}
+			if !initialized {
+				return fmt.Errorf("session.requests[%d]: %s requires a prior initialize request", idx, request.Method)
+			}
+		default:
+			return fmt.Errorf("session.requests[%d]: unsupported method %q", idx, request.Method)
+		}
+		if request.ID > 0 {
+			if _, exists := requestIDs[request.ID]; exists {
+				return fmt.Errorf("session.requests[%d]: duplicate request id %d", idx, request.ID)
+			}
+			requestIDs[request.ID] = struct{}{}
+		}
+	}
+
+	captured := make(map[string]struct{}, len(captureArtifacts))
+	for _, artifactID := range captureArtifacts {
+		captured[artifactID] = struct{}{}
+	}
+	if session.TranscriptArtifact != "" {
+		if _, ok := artifactIDs[session.TranscriptArtifact]; !ok {
+			return fmt.Errorf("session.transcriptArtifact references unknown artifact %q", session.TranscriptArtifact)
+		}
+		if _, ok := captured[session.TranscriptArtifact]; !ok {
+			return fmt.Errorf("session.transcriptArtifact %q must be listed in captureArtifact", session.TranscriptArtifact)
+		}
+	}
+	for idx, capture := range session.CaptureResponses {
+		if capture.RequestID <= 0 {
+			return fmt.Errorf("session.captureResponses[%d]: requestId must be > 0", idx)
+		}
+		if _, ok := requestIDs[capture.RequestID]; !ok {
+			return fmt.Errorf("session.captureResponses[%d]: requestId %d does not match any request", idx, capture.RequestID)
+		}
+		if _, ok := artifactIDs[capture.Artifact]; !ok {
+			return fmt.Errorf("session.captureResponses[%d]: unknown artifact %q", idx, capture.Artifact)
+		}
+		if _, ok := captured[capture.Artifact]; !ok {
+			return fmt.Errorf("session.captureResponses[%d]: artifact %q must be listed in captureArtifact", idx, capture.Artifact)
+		}
+	}
 	return nil
 }
 

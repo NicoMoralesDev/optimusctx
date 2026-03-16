@@ -40,11 +40,30 @@ type EvalCommandExecutionResult struct {
 
 type EvalCommandExecutor func(context.Context, EvalCommandInvocation) (EvalCommandExecutionResult, error)
 
+type EvalMCPSessionInvocation struct {
+	WorkingDir string
+	Session    repository.EvalMCPSession
+}
+
+type EvalMCPSessionResponse struct {
+	RequestID int64
+	Response  any
+}
+
+type EvalMCPSessionExecutionResult struct {
+	Stdout    string
+	Stderr    string
+	Responses []EvalMCPSessionResponse
+}
+
+type EvalMCPSessionExecutor func(context.Context, EvalMCPSessionInvocation) (EvalMCPSessionExecutionResult, error)
+
 type EvalRunner struct {
 	LoadScenario              func(string) (repository.EvalScenarioDefinition, error)
 	LoadScenarios             func(string) ([]repository.EvalScenarioDefinition, error)
 	ValidateFixtureReferences func([]repository.EvalScenarioDefinition, string) error
 	RunCommand                EvalCommandExecutor
+	RunMCPSession             EvalMCPSessionExecutor
 	MkdirTemp                 func(string, string) (string, error)
 	CopyTree                  func(string, string) error
 	GitInit                   func(context.Context, string) error
@@ -58,6 +77,9 @@ func NewEvalRunner() EvalRunner {
 		ValidateFixtureReferences: repository.ValidateEvalFixtureReferences,
 		RunCommand: func(context.Context, EvalCommandInvocation) (EvalCommandExecutionResult, error) {
 			return EvalCommandExecutionResult{}, errors.New("eval runner command executor is not configured")
+		},
+		RunMCPSession: func(context.Context, EvalMCPSessionInvocation) (EvalMCPSessionExecutionResult, error) {
+			return EvalMCPSessionExecutionResult{}, errors.New("eval runner MCP session executor is not configured")
 		},
 		MkdirTemp: os.MkdirTemp,
 		CopyTree:  copyEvalTree,
@@ -121,20 +143,15 @@ func (r EvalRunner) Run(ctx context.Context, request EvalRunRequest) (repository
 		}
 
 		stepStartedAt := r.Now().UTC()
-		execution, execErr := r.RunCommand(ctx, EvalCommandInvocation{
-			Args:       buildEvalStepArgs(step, artifactIndex),
-			WorkingDir: workspaceRoot,
-		})
+		stepResult, execErr := r.executeEvalStep(ctx, workspaceRoot, step, artifactIndex)
 		stepFinishedAt := r.Now().UTC()
-
-		stepResult := repository.EvalStepResult{
-			Step:       step,
-			StartedAt:  stepStartedAt,
-			FinishedAt: stepFinishedAt,
-			ExitCode:   execution.ExitCode,
-			Passed:     execution.ExitCode == step.Expect.ExitCode,
-			Stdout:     execution.Stdout,
-			Stderr:     execution.Stderr,
+		stepResult.Step = step
+		stepResult.StartedAt = stepStartedAt
+		stepResult.FinishedAt = stepFinishedAt
+		execution := EvalCommandExecutionResult{
+			Stdout:   stepResult.Stdout,
+			Stderr:   stepResult.Stderr,
+			ExitCode: stepResult.ExitCode,
 		}
 
 		stepArtifacts, artifactErr := captureEvalArtifacts(workspaceRoot, step, artifactIndex, execution)
@@ -166,12 +183,12 @@ func (r EvalRunner) Run(ctx context.Context, request EvalRunRequest) (repository
 			runResult.Artifacts = collectEvalArtifacts(scenario.Artifacts, seenArtifacts)
 			return runResult, fmt.Errorf("scenario %q step %q: %w", scenario.ID, step.ID, execErr)
 		}
-		if execution.ExitCode != step.Expect.ExitCode {
+		if step.Kind == repository.EvalStepKindCommand && stepResult.ExitCode != step.Expect.ExitCode {
 			runResult.Steps = append(runResult.Steps, stepResult)
 			runResult.FinishedAt = r.Now().UTC()
 			runResult.Passed = false
 			runResult.Artifacts = collectEvalArtifacts(scenario.Artifacts, seenArtifacts)
-			return runResult, fmt.Errorf("scenario %q step %q failed: exit code %d, want %d", scenario.ID, step.ID, execution.ExitCode, step.Expect.ExitCode)
+			return runResult, fmt.Errorf("scenario %q step %q failed: exit code %d, want %d", scenario.ID, step.ID, stepResult.ExitCode, step.Expect.ExitCode)
 		}
 
 		runResult.Steps = append(runResult.Steps, stepResult)
@@ -260,6 +277,9 @@ func (r EvalRunner) withDefaults() EvalRunner {
 	if r.RunCommand == nil {
 		r.RunCommand = defaults.RunCommand
 	}
+	if r.RunMCPSession == nil {
+		r.RunMCPSession = defaults.RunMCPSession
+	}
 	if r.MkdirTemp == nil {
 		r.MkdirTemp = defaults.MkdirTemp
 	}
@@ -316,6 +336,50 @@ func (r EvalRunner) prepareWorkspace(ctx context.Context, request EvalRunRequest
 	return workspaceRoot, nil
 }
 
+func (r EvalRunner) executeEvalStep(ctx context.Context, workspaceRoot string, step repository.EvalScenarioStep, artifactIndex map[string]repository.EvalArtifactRef) (repository.EvalStepResult, error) {
+	switch step.Kind {
+	case repository.EvalStepKindCommand:
+		execution, err := r.RunCommand(ctx, EvalCommandInvocation{
+			Args:       buildEvalStepArgs(step, artifactIndex),
+			WorkingDir: workspaceRoot,
+		})
+		return repository.EvalStepResult{
+			ExitCode: execution.ExitCode,
+			Passed:   execution.ExitCode == step.Expect.ExitCode,
+			Stdout:   execution.Stdout,
+			Stderr:   execution.Stderr,
+		}, err
+	case repository.EvalStepKindMCPSession:
+		if step.Session == nil {
+			return repository.EvalStepResult{}, errors.New("mcp_session step is missing session configuration")
+		}
+		execution, err := r.RunMCPSession(ctx, EvalMCPSessionInvocation{
+			WorkingDir: workspaceRoot,
+			Session:    *step.Session,
+		})
+		if writeErr := persistEvalMCPSessionArtifacts(workspaceRoot, *step.Session, artifactIndex, execution); writeErr != nil {
+			return repository.EvalStepResult{
+				ExitCode: 1,
+				Passed:   false,
+				Stdout:   execution.Stdout,
+				Stderr:   execution.Stderr,
+			}, writeErr
+		}
+		result := repository.EvalStepResult{
+			ExitCode: 0,
+			Passed:   err == nil,
+			Stdout:   execution.Stdout,
+			Stderr:   execution.Stderr,
+		}
+		if err != nil {
+			result.ExitCode = 1
+		}
+		return result, err
+	default:
+		return repository.EvalStepResult{}, fmt.Errorf("unsupported step kind %q", step.Kind)
+	}
+}
+
 func buildEvalStepArgs(step repository.EvalScenarioStep, artifactIndex map[string]repository.EvalArtifactRef) []string {
 	var args []string
 	switch step.Expect.Command {
@@ -343,6 +407,52 @@ func buildEvalStepArgs(step repository.EvalScenarioStep, artifactIndex map[strin
 	}
 
 	return args
+}
+
+func persistEvalMCPSessionArtifacts(workspaceRoot string, session repository.EvalMCPSession, artifactIndex map[string]repository.EvalArtifactRef, execution EvalMCPSessionExecutionResult) error {
+	if session.TranscriptArtifact != "" {
+		artifact := artifactIndex[session.TranscriptArtifact]
+		payload := map[string]any{
+			"requests":  session.Requests,
+			"responses": execution.Responses,
+		}
+		if err := writeEvalJSONArtifact(workspaceRoot, artifact, payload); err != nil {
+			return fmt.Errorf("persist transcript artifact %q: %w", artifact.ID, err)
+		}
+	}
+
+	responsesByID := make(map[int64]any, len(execution.Responses))
+	for _, response := range execution.Responses {
+		responsesByID[response.RequestID] = response.Response
+	}
+	for _, capture := range session.CaptureResponses {
+		artifact := artifactIndex[capture.Artifact]
+		response, ok := responsesByID[capture.RequestID]
+		if !ok {
+			return fmt.Errorf("missing MCP response for request id %d", capture.RequestID)
+		}
+		if err := writeEvalJSONArtifact(workspaceRoot, artifact, response); err != nil {
+			return fmt.Errorf("persist response artifact %q: %w", artifact.ID, err)
+		}
+	}
+
+	return nil
+}
+
+func writeEvalJSONArtifact(workspaceRoot string, artifact repository.EvalArtifactRef, payload any) error {
+	if artifact.Kind != repository.EvalArtifactKindFile {
+		return fmt.Errorf("artifact %q must be a file artifact", artifact.ID)
+	}
+	data, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode artifact payload: %w", err)
+	}
+	data = append(data, '\n')
+	path := filepath.Join(workspaceRoot, filepath.FromSlash(artifact.Path))
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o644)
 }
 
 func captureEvalArtifacts(workspaceRoot string, step repository.EvalScenarioStep, artifactIndex map[string]repository.EvalArtifactRef, execution EvalCommandExecutionResult) ([]repository.EvalArtifactResult, error) {
