@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestSnippetGeneratorRender(t *testing.T) {
+func TestSnippetRender(t *testing.T) {
 	output := NewSnippetGenerator().Render()
 
 	required := []string{

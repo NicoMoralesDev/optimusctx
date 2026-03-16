@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -317,4 +318,34 @@ func TestDoctorCommandRendersStaleFreshnessSignals(t *testing.T) {
 			t.Fatalf("output missing %q:\n%s", want, output)
 		}
 	}
+}
+
+func TestDoctorSmokeVerification(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	writeCLIFile(t, filepath.Join(repoRoot, "main.go"), "package main\n\nfunc main() {}\n")
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var initStdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"init"}, &initStdout); err != nil {
+			t.Fatalf("Execute(init) error = %v", err)
+		}
+
+		var doctorStdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"doctor"}, &doctorStdout); err != nil {
+			t.Fatalf("Execute(doctor) error = %v", err)
+		}
+
+		output := doctorStdout.String()
+		for _, want := range []string{
+			"overall status: healthy",
+			"runtime version: dev",
+			"freshness: fresh",
+			"snippet available: yes",
+			"item: none",
+		} {
+			if !strings.Contains(output, want) {
+				t.Fatalf("doctor output missing %q:\n%s", want, output)
+			}
+		}
+	})
 }

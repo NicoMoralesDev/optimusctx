@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/niccrow/optimusctx/internal/buildinfo"
 	"github.com/niccrow/optimusctx/internal/repository"
 )
 
@@ -42,7 +43,7 @@ func TestSnippetCommandPrintsUpdatedMCPContract(t *testing.T) {
 	})
 }
 
-func TestInstallRegistrationDryRun(t *testing.T) {
+func TestInstallPreview(t *testing.T) {
 	configPath := filepath.Join(t.TempDir(), "Claude", "claude_desktop_config.json")
 	var stdout bytes.Buffer
 	previousExecutablePath := installExecutablePath
@@ -87,6 +88,53 @@ func TestInstallRegistrationDryRun(t *testing.T) {
 	snippetDocument := extractConfigDocument(t, appSnippetOutput(t))
 	if got, want := document.MCPServers[repository.DefaultMCPServerName], snippetDocument.MCPServers[repository.DefaultMCPServerName]; got.Command != want.Command || strings.Join(got.Args, " ") != strings.Join(want.Args, " ") {
 		t.Fatalf("install command = %+v, snippet command = %+v", got, want)
+	}
+}
+
+func TestArchiveInstallSmoke(t *testing.T) {
+	previousVersion := buildinfo.Version
+	previousCommit := buildinfo.Commit
+	previousBuildDate := buildinfo.BuildDate
+	t.Cleanup(func() {
+		buildinfo.Version = previousVersion
+		buildinfo.Commit = previousCommit
+		buildinfo.BuildDate = previousBuildDate
+	})
+
+	buildinfo.Version = "v1.1.0"
+	buildinfo.Commit = "abc1234"
+	buildinfo.BuildDate = "2026-03-16T18:00:00Z"
+
+	var stdout bytes.Buffer
+	if err := NewRootCommand().Execute([]string{"version"}, &stdout); err != nil {
+		t.Fatalf("Execute(version) error = %v", err)
+	}
+
+	if got, want := stdout.String(), "optimusctx version=v1.1.0 commit=abc1234 build_date=2026-03-16T18:00:00Z\n"; got != want {
+		t.Fatalf("version output = %q, want %q", got, want)
+	}
+
+	guide := readCLIRepoFile(t, "docs/install-and-verify.md")
+	for _, want := range []string{
+		"brew install niccrow/tap/optimusctx",
+		"scoop install niccrow/optimusctx",
+		"optimusctx version",
+		"optimusctx doctor",
+		"optimusctx snippet",
+		"optimusctx install --client claude-desktop",
+		"status: preview only",
+	} {
+		if !strings.Contains(guide, want) {
+			t.Fatalf("docs/install-and-verify.md missing %q", want)
+		}
+	}
+	for _, banned := range []string{
+		"go run ./cmd/optimusctx",
+		"go install ./cmd/optimusctx",
+	} {
+		if strings.Contains(guide, banned) {
+			t.Fatalf("docs/install-and-verify.md should not contain %q", banned)
+		}
 	}
 }
 
