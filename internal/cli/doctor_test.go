@@ -253,3 +253,68 @@ func TestDoctorCommandHealthyWithoutWatch(t *testing.T) {
 		}
 	}
 }
+
+func TestDoctorCommandRendersStaleFreshnessSignals(t *testing.T) {
+	report := repository.DoctorReport{
+		Identity: repository.LayeredContextRepositoryIdentity{
+			RootPath:      "/repo",
+			DetectionMode: "git",
+		},
+		Repository: repository.LayeredContextEnvelope{
+			RepositoryRoot: "/repo",
+			Generation:     7,
+			Freshness:      repository.FreshnessStatusStale,
+		},
+		Install: repository.DoctorInstallSection{
+			BinaryVersion: "dev",
+			WorkingDir:    "/repo",
+		},
+		Refresh: repository.DoctorRefreshSection{
+			Status: repository.DoctorStatusDegraded,
+			Health: repository.HealthRefreshDiagnostics{
+				Present:                true,
+				LastRefreshStatus:      repository.RefreshRunStatusSuccess,
+				Freshness:              repository.FreshnessStatusStale,
+				FreshnessReason:        "workspace changed after the last successful refresh",
+				LastRefreshCompletedAt: time.Date(2026, 3, 15, 18, 0, 0, 0, time.UTC),
+			},
+			LastRun: repository.DoctorRefreshRun{
+				Present:    true,
+				Generation: 7,
+				Reason:     repository.RefreshReasonManual,
+				Status:     repository.RefreshRunStatusSuccess,
+			},
+		},
+		Watch: repository.DoctorWatchSection{
+			Status:   repository.DoctorStatusHealthy,
+			Optional: true,
+			Summary:  "watch mode is not running; background watch is optional",
+			Health: repository.WatchStatusResult{
+				Status:     repository.WatchStatusKindAbsent,
+				Reason:     "watch status file not found",
+				StatusPath: "/repo/.optimusctx/tmp/watch-status.json",
+			},
+		},
+		Summary: repository.DoctorSummary{
+			Status: repository.DoctorStatusDegraded,
+			Issues: []repository.DoctorIssue{
+				{Section: "refresh", Summary: "repository freshness is stale", Action: "run `optimusctx refresh` and inspect `.optimusctx/logs/` if refresh stays degraded"},
+			},
+		},
+		RecommendedFix: []string{
+			"run `optimusctx refresh` and inspect `.optimusctx/logs/` if refresh stays degraded",
+		},
+	}
+
+	output := formatDoctorReport(report)
+	for _, want := range []string{
+		"overall status: degraded",
+		"freshness: stale",
+		"freshness reason: workspace changed after the last successful refresh",
+		"item: refresh: repository freshness is stale; next action: run `optimusctx refresh` and inspect `.optimusctx/logs/` if refresh stays degraded",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output missing %q:\n%s", want, output)
+		}
+	}
+}

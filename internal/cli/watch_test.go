@@ -208,3 +208,30 @@ func TestFormatWatchStatusAbsentDefaults(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatWatchStatusStaleFields(t *testing.T) {
+	output := formatWatchStatus(repository.WatchStatusResult{
+		RepositoryRoot: "/repo",
+		StatusPath:     "/repo/.optimusctx/tmp/watch-status.json",
+		Status:         repository.WatchStatusKindStale,
+		Reason:         "watch heartbeat is stale",
+		Record: repository.WatchStatusRecord{
+			PID:                   42,
+			StartedAt:             "2026-03-15T12:00:00Z",
+			LastHeartbeatAt:       "2026-03-15T12:00:05Z",
+			LastRefreshGeneration: 7,
+			LastError:             "watch observer overflowed; falling back to full refresh",
+		},
+	})
+	for _, fragment := range []string{
+		"status: stale",
+		"reason: watch heartbeat is stale",
+		"pid: 42",
+		"last refresh generation: 7",
+		"last error: watch observer overflowed; falling back to full refresh",
+	} {
+		if !strings.Contains(output, fragment) {
+			t.Fatalf("output = %q, want fragment %q", output, fragment)
+		}
+	}
+}
