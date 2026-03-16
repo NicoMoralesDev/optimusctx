@@ -42,8 +42,8 @@ Plans:
 
 - [x] 10-01: end-to-end CLI workflow scenarios
 - [x] 10-02: MCP serve and tool-flow scenarios
-- [ ] 10-03: stale, degraded, and recovery scenario coverage
-- [ ] 10-04: milestone-grade functional reports and verification
+- [x] 10-03: stale, degraded, and recovery scenario coverage
+- [x] 10-04: milestone-grade functional reports and verification
 
 **Requirements covered:** `EVAL-02`, `EVAL-03`  
 **Details:** Phase 10 turns the harness into real product proof by validating user and agent workflows across normal and failure paths without changing the runtime contract.
@@ -102,8 +102,8 @@ Active milestone: `v1.1`
 
 Next step:
 
-- Execute `10-03` — stale, degraded, and recovery scenario coverage
-- Phase 10 now has healthy-path CLI and MCP validation on the shared eval harness
+- Start `11-01` — benchmark scenario selection and baseline rules
+- Phase 10 is complete with persisted functional evidence mapped to `EVAL-02` and `EVAL-03`
 
 ---
-*Last updated: 2026-03-16 after completing Phase 10 plan 02*
+*Last updated: 2026-03-16 after completing Phase 10 plan 04*

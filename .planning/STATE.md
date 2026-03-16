@@ -2,19 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 10
-current_phase_name: functional-runtime-validation
-current_plan: 3
-status: executing
-stopped_at: Completed 10-03-PLAN.md
-last_updated: "2026-03-16T11:09:58.226Z"
+current_phase: 11
+current_phase_name: benchmark-methodology-and-workflow-timing
+current_plan: 1
+status: planning
+last_updated: "2026-03-16T11:22:13.527Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
-  percent: 98
+  completed_plans: 8
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +22,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute
-**Current Phase:** 10
-**Current Phase Name:** functional-runtime-validation
+**Status:** Ready to plan
+**Current Phase:** 11
+**Current Phase Name:** benchmark-methodology-and-workflow-timing
 **Total Phases:** 5
-**Current Plan:** 3
+**Current Plan:** 1
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 98%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-16
-**Last Activity Description:** Phase 10 plan 02 completed with shared MCP eval sessions, full shipped tool-flow scenarios, and persisted repo-local transcript evidence
+**Last Activity Description:** Phase 10 plan 04 completed with persisted requirement coverage reports, truthful functional evidence docs, and full-suite verification
 
 ## Project Memory
 
@@ -44,8 +43,8 @@ progress:
 ## Current Planning Context
 
 - Active milestone: v1.1 validation, benchmarking, and distribution
-- Active phase: 10-functional-runtime-validation
-- Next planning action: start Phase 10 plan 03
+- Active phase: 11-benchmark-methodology-and-workflow-timing
+- Next planning action: start Phase 11 plan 01
 - Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
 - Coverage status: v1.0 shipped; v1.1 requirements are mapped across Phases 09-13
 
@@ -280,7 +279,8 @@ progress:
 - [Phase 10-functional-runtime-validation]: CLI eval runs MCP sessions through the shipped optimusctx mcp serve boundary in-process by framing JSON-RPC requests against the real command.
 - [Phase 10-functional-runtime-validation]: MCP transcript and response artifacts persist under the same run-scoped eval tree as CLI evidence, with MCP steps stored under surface mcp.
 - [Phase 10-functional-runtime-validation]: Eval scenarios now use typed state mutations and step-scoped refresh failure hooks instead of shell setup or ad hoc SQL.
-- [Phase 10-functional-runtime-validation]: Stale proof stays on doctor/watch diagnostics, while degraded and recovery proof uses shipped MCP refresh, health, and repository_map responses on the same workspace.
+- [Phase 10]: Functional milestone reporting stays internal and reads persisted eval evidence instead of adding a new CLI report surface.
+- [Phase 10]: Requirement coverage for EVAL-02 and EVAL-03 is defined by explicit Phase 10 scenario IDs and latest stored run evidence.
 
 ## Blockers
 
@@ -288,9 +288,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T11:09:58.223Z
-**Stopped At:** Completed 10-03-PLAN.md
+**Last Date:** 2026-03-16T11:22:13Z
+**Stopped At:** Completed 10-04-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-15 after completing Phase 08 plan 01*
+*Last updated: 2026-03-16 after completing Phase 10 plan 04*
