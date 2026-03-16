@@ -1033,6 +1033,7 @@ func RenderBenchmarkComparisonReport(summary BenchmarkHumanSummary) string {
 	_, _ = fmt.Fprintf(&b, "- estimated tokens use %s\n", summary.EstimatorPolicy)
 	_, _ = fmt.Fprintf(&b, "- %s are %s\n", summary.UsageClaim, summary.BillingDisambiguator)
 	_, _ = fmt.Fprintf(&b, "- raw CLI and MCP payload provenance stays in exported evidence for auditability but is excluded from counted totals unless the suite projects it into agent input\n")
+	_, _ = fmt.Fprintf(&b, "- lane success now requires both the stop condition and comparable final-artifact validation from the committed v2 suite contract\n")
 	_, _ = fmt.Fprintf(&b, "- phase 14 fixes benchmark truthfulness around declared agent inputs and comparable final artifacts, not provider billing or product payload size\n")
 	_, _ = fmt.Fprintf(&b, "- results describe only the recorded frozen-suite attempts and explicit estimator output\n")
 	_, _ = fmt.Fprintf(&b, "\nrerun\n%s\n", summary.RerunCommand)
@@ -1738,6 +1739,7 @@ func verifyBenchmarkReportWording(report string) []string {
 		"estimated tokens use bytes_div_4_ceiling",
 		"not provider-billed token invoices",
 		"fixes benchmark truthfulness",
+		"comparable final-artifact validation",
 		"not provider billing or product payload size",
 	} {
 		if !strings.Contains(report, required) {

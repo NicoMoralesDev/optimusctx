@@ -168,6 +168,7 @@ func TestBenchmarkComparisonReportRendering(t *testing.T) {
 		"estimated tokens use bytes_div_4_ceiling",
 		"not provider-billed token invoices",
 		"excluded from counted totals unless the suite projects it into agent input",
+		"comparable final-artifact validation",
 		"fixes benchmark truthfulness",
 	} {
 		if !strings.Contains(report, fragment) {
@@ -223,7 +224,7 @@ func TestBuildBenchmarkEvidenceBundleFromPersistedRuns(t *testing.T) {
 	repoRoot, _, store, repoID := initBenchmarkEvidenceStore(t, true)
 	defer store.Close()
 
-	persisted, err := store.ListBenchmarkRuns(context.Background(), repoID, "go-benchmark-refresh-v2", "v2")
+	persisted, err := store.ListBenchmarkRuns(context.Background(), repoID, "go-benchmark-refresh-v1", "v1")
 	if err != nil {
 		t.Fatalf("ListBenchmarkRuns() error = %v", err)
 	}
@@ -252,7 +253,7 @@ func initBenchmarkEvidenceStore(t *testing.T, withBoundaries bool) (string, stri
 		t.Fatalf("git init failed: %v\n%s", err, output)
 	}
 
-	fixturePath := filepath.Join(repoRoot, "fixtures", "go-worktree", "v2", "repository")
+	fixturePath := filepath.Join(repoRoot, "fixtures", "go-worktree", "v1", "repository")
 	if err := os.MkdirAll(fixturePath, 0o755); err != nil {
 		t.Fatalf("MkdirAll(fixturePath) error = %v", err)
 	}
@@ -292,19 +293,19 @@ func initBenchmarkEvidenceStore(t *testing.T, withBoundaries bool) (string, stri
 func benchmarkServiceSuite() repository.BenchmarkSuiteDefinition {
 	return repository.BenchmarkSuiteDefinition{
 		SchemaVersion: repository.BenchmarkSuiteSchemaV2,
-		ID:            "go-benchmark-refresh-v2",
-		Version:       "v2",
-		Name:          "Go benchmark refresh and task completion",
+		ID:            "go-benchmark-refresh-v1",
+		Version:       "v1",
+		Name:          "Go benchmark refresh recovery and bounded context",
 		Boundary:      repository.DefaultBenchmarkBoundaryContract(),
 		Fixture: repository.EvalFixtureRef{
 			ID:          "go-worktree",
-			Version:     "v2",
-			Path:        "go-worktree/v2/repository",
+			Version:     "v1",
+			Path:        "go-worktree/v1/repository",
 			Materialize: repository.EvalFixtureModeCopyTree,
 		},
 		Task: repository.BenchmarkTaskDefinition{
-			ID:         "docs-pack",
-			Prompt:     "Refresh after mutation and export bounded context.",
+			ID:         "docs-context",
+			Prompt:     "Refresh after a controlled docs change, then fetch the bounded updated notes context needed to explain the change.",
 			TargetPath: "docs/notes.txt",
 		},
 		CountedInputs: []repository.BenchmarkCountedInputDefinition{
@@ -503,10 +504,10 @@ func benchmarkEvidenceRunResult(repositoryRoot string, withBoundaries bool) repo
 
 	return repository.BenchmarkRunResult{
 		SchemaVersion: repository.BenchmarkSuiteSchemaV2,
-		SuiteID:       "go-benchmark-refresh-v2",
-		SuiteVersion:  "v2",
+		SuiteID:       "go-benchmark-refresh-v1",
+		SuiteVersion:  "v1",
 		FixtureID:     "go-worktree",
-		FixturePath:   "go-worktree/v2/repository",
+		FixturePath:   "go-worktree/v1/repository",
 		WorkspacePath: repositoryRoot,
 		Arms: []repository.BenchmarkArmRunResult{
 			{

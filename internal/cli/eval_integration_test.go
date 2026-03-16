@@ -418,16 +418,16 @@ func TestBenchmarkAttributionTables(t *testing.T) {
 func TestBenchmarkReportWordingGuards(t *testing.T) {
 	repoRoot := initCLIRepo(t)
 	seedCommittedEvalFixtures(t, repoRoot)
-	suitePath := seedV2BenchmarkEvidence(t, repoRoot)
 
 	withWorkingDirectory(t, repoRoot, func() {
 		var stdout bytes.Buffer
-		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "report", "--suite-file", suitePath}, &stdout); err != nil {
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "report", "--suite", "go-benchmark-refresh-v1", "--attempts", "2"}, &stdout); err != nil {
 			t.Fatalf("Execute(eval benchmark report) error = %v", err)
 		}
 		output := stdout.String()
 		assertContains(t, output, "estimated tokens use bytes_div_4_ceiling")
 		assertContains(t, output, "not provider-billed token invoices")
+		assertContains(t, output, "comparable final-artifact validation")
 		assertContains(t, output, "fixes benchmark truthfulness")
 		for _, banned := range []string{"provider-billed token truth", "statistically significant", "universal savings"} {
 			if strings.Contains(output, banned) {
@@ -1136,11 +1136,10 @@ func TestBenchmarkEvidenceBundleGeneration(t *testing.T) {
 func TestBenchmarkExportContainsMethodologyIdentity(t *testing.T) {
 	repoRoot := initCLIRepo(t)
 	seedCommittedEvalFixtures(t, repoRoot)
-	suitePath := seedV2BenchmarkEvidence(t, repoRoot)
 
 	withWorkingDirectory(t, repoRoot, func() {
 		var stdout bytes.Buffer
-		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "export", "--suite-file", suitePath}, &stdout); err != nil {
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "export", "--suite", "go-benchmark-refresh-v1", "--attempts", "2"}, &stdout); err != nil {
 			t.Fatalf("Execute(eval benchmark export) error = %v", err)
 		}
 
@@ -1148,7 +1147,7 @@ func TestBenchmarkExportContainsMethodologyIdentity(t *testing.T) {
 		if err := json.Unmarshal(stdout.Bytes(), &bundle); err != nil {
 			t.Fatalf("Unmarshal(bundle) error = %v", err)
 		}
-		if bundle.SuiteID != "go-benchmark-refresh-v2" {
+		if bundle.SuiteID != "go-benchmark-refresh-v1" {
 			t.Fatalf("SuiteID = %q", bundle.SuiteID)
 		}
 		if bundle.FixtureID != "go-worktree" {
@@ -1159,6 +1158,9 @@ func TestBenchmarkExportContainsMethodologyIdentity(t *testing.T) {
 		}
 		if bundle.Methodology.SuiteSchemaVersion != repository.BenchmarkSuiteSchemaV2 {
 			t.Fatalf("Methodology.SuiteSchemaVersion = %q", bundle.Methodology.SuiteSchemaVersion)
+		}
+		if len(bundle.Methodology.LaneFinalArtifacts) != 2 {
+			t.Fatalf("len(Methodology.LaneFinalArtifacts) = %d, want 2", len(bundle.Methodology.LaneFinalArtifacts))
 		}
 		if bundle.MethodologyFingerprint == "" {
 			t.Fatal("MethodologyFingerprint should not be empty")
@@ -1189,6 +1191,35 @@ func TestBenchmarkExportContainsMethodologyIdentity(t *testing.T) {
 		}
 		if !foundOperationalLabel || !foundL2ContextLabel {
 			t.Fatalf("bundle missing expected report labels: %+v", bundle.Attempts)
+		}
+	})
+}
+
+func TestBenchmarkExportActiveCorpusUsesV2Contract(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "export", "--suite", "go-benchmark-discovery-v1", "--attempts", "2"}, &stdout); err != nil {
+			t.Fatalf("Execute(eval benchmark export discovery) error = %v", err)
+		}
+
+		var bundle repository.BenchmarkEvidenceBundle
+		if err := json.Unmarshal(stdout.Bytes(), &bundle); err != nil {
+			t.Fatalf("Unmarshal(discovery bundle) error = %v", err)
+		}
+		if bundle.SchemaVersion != repository.BenchmarkEvidenceBundleSchemaV2 {
+			t.Fatalf("SchemaVersion = %q", bundle.SchemaVersion)
+		}
+		if bundle.Methodology.SuiteSchemaVersion != repository.BenchmarkSuiteSchemaV2 {
+			t.Fatalf("Methodology.SuiteSchemaVersion = %q", bundle.Methodology.SuiteSchemaVersion)
+		}
+		if bundle.Methodology.Boundary.CountedInputs != repository.BenchmarkBoundaryCountPolicyDeclaredAgentInputsOnly {
+			t.Fatalf("counted boundary = %q", bundle.Methodology.Boundary.CountedInputs)
+		}
+		if len(bundle.Methodology.LaneFinalArtifacts) != 2 {
+			t.Fatalf("len(Methodology.LaneFinalArtifacts) = %d, want 2", len(bundle.Methodology.LaneFinalArtifacts))
 		}
 	})
 }
