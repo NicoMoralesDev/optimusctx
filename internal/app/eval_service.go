@@ -131,12 +131,13 @@ func persistEvalEvidence(artifactRoot string, result repository.EvalRunResult) (
 
 	for index, step := range result.Steps {
 		stepDir := filepath.Join(artifactRoot, step.Step.ID)
+		surface, command := evalStepStorageIdentity(step.Step)
 		record := sqlite.EvalStepRecord{
 			StepID:       step.Step.ID,
 			Ordinal:      index,
 			Name:         step.Step.Name,
-			Surface:      string(step.Step.Expect.Surface),
-			Command:      string(step.Step.Expect.Command),
+			Surface:      surface,
+			Command:      command,
 			ArgsJSON:     mustMarshalEvalMetadata(buildEvalStepArgs(step.Step, indexEvalArtifacts(result.Scenario.Artifacts))),
 			ExitCode:     step.ExitCode,
 			Passed:       step.Passed,
@@ -199,6 +200,17 @@ func persistEvalEvidence(artifactRoot string, result repository.EvalRunResult) (
 	}
 
 	return stepRecords, artifactRecords, nil
+}
+
+func evalStepStorageIdentity(step repository.EvalScenarioStep) (string, string) {
+	switch step.Kind {
+	case repository.EvalStepKindCommand:
+		return string(step.Expect.Surface), string(step.Expect.Command)
+	case repository.EvalStepKindMCPSession:
+		return "mcp", string(step.Kind)
+	default:
+		return string(step.Kind), string(step.Kind)
+	}
 }
 
 func persistStepArtifact(stepDir string, artifact repository.EvalArtifactResult, record sqlite.EvalStepRecord) (string, error) {

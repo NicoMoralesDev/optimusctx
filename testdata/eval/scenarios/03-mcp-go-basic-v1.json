@@ -1,0 +1,178 @@
+{
+  "schemaVersion": "optimusctx/eval-scenario@v1",
+  "id": "mcp-go-basic-v1",
+  "version": "v1",
+  "name": "MCP initialize and tools/list on basic Go fixture",
+  "description": "Validates the shipped mcp serve stdio contract, readiness, initialize, and tools/list over the shared eval harness.",
+  "fixture": {
+    "id": "go-basic",
+    "version": "v1",
+    "path": "go-basic/v1/repository",
+    "materialize": "copy_tree",
+    "workspaceDir": "workspace"
+  },
+  "steps": [
+    {
+      "id": "init",
+      "name": "Initialize repository state",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "init",
+        "exitCode": 0
+      },
+      "captureArtifact": [
+        "init-stdout"
+      ]
+    },
+    {
+      "id": "refresh",
+      "name": "Refresh repository snapshot",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "refresh",
+        "exitCode": 0
+      },
+      "captureArtifact": [
+        "refresh-stdout"
+      ]
+    },
+    {
+      "id": "mcp-serve",
+      "name": "Run initialize and tools/list over MCP stdio",
+      "kind": "mcp_session",
+      "session": {
+        "requests": [
+          {
+            "id": 1,
+            "method": "initialize",
+            "params": {
+              "clientInfo": {
+                "name": "eval-runner",
+                "version": "1.0.0"
+              },
+              "protocolVersion": "2026-03-15"
+            }
+          },
+          {
+            "method": "notifications/initialized",
+            "notification": true
+          },
+          {
+            "id": 2,
+            "method": "tools/list"
+          }
+        ],
+        "transcriptArtifact": "mcp-transcript",
+        "captureResponses": [
+          {
+            "requestId": 2,
+            "artifact": "mcp-tools-list"
+          }
+        ]
+      },
+      "assert": [
+        {
+          "kind": "contains",
+          "target": "stderr",
+          "contains": "optimusctx mcp: ready for stdio requests"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.repository_map"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.layered_context_l0"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.layered_context_l1"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.symbol_lookup"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.structure_lookup"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.targeted_context"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.refresh"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.token_tree"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.pack"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.health"
+        }
+      ],
+      "captureArtifact": [
+        "mcp-stderr",
+        "mcp-transcript",
+        "mcp-tools-list"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "init-stdout",
+      "kind": "stdout",
+      "required": true
+    },
+    {
+      "id": "refresh-stdout",
+      "kind": "stdout",
+      "required": true
+    },
+    {
+      "id": "mcp-stderr",
+      "kind": "stderr",
+      "required": true
+    },
+    {
+      "id": "mcp-transcript",
+      "kind": "file",
+      "path": "artifacts/mcp-basic-transcript.json",
+      "required": true
+    },
+    {
+      "id": "mcp-tools-list",
+      "kind": "file",
+      "path": "artifacts/mcp-basic-tools-list.json",
+      "required": true
+    }
+  ]
+}

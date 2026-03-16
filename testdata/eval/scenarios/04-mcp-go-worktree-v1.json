@@ -1,0 +1,508 @@
+{
+  "schemaVersion": "optimusctx/eval-scenario@v1",
+  "id": "mcp-go-worktree-v1",
+  "version": "v1",
+  "name": "MCP full tool flow on nested worktree fixture",
+  "description": "Exercises every shipped MCP query and ops tool through the real mcp serve stdio contract on the richer fixture repository.",
+  "fixture": {
+    "id": "go-worktree",
+    "version": "v1",
+    "path": "go-worktree/v1/repository",
+    "materialize": "copy_tree",
+    "workspaceDir": "workspace"
+  },
+  "steps": [
+    {
+      "id": "init",
+      "name": "Initialize repository state",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "init",
+        "exitCode": 0
+      },
+      "captureArtifact": [
+        "init-stdout"
+      ]
+    },
+    {
+      "id": "refresh",
+      "name": "Refresh repository snapshot",
+      "kind": "command",
+      "expect": {
+        "surface": "cli",
+        "command": "refresh",
+        "exitCode": 0
+      },
+      "captureArtifact": [
+        "refresh-stdout"
+      ]
+    },
+    {
+      "id": "mcp-serve",
+      "name": "Run full MCP tool flow",
+      "kind": "mcp_session",
+      "session": {
+        "requests": [
+          {
+            "id": 1,
+            "method": "initialize",
+            "params": {
+              "clientInfo": {
+                "name": "eval-runner",
+                "version": "1.0.0"
+              },
+              "protocolVersion": "2026-03-15"
+            }
+          },
+          {
+            "method": "notifications/initialized",
+            "notification": true
+          },
+          {
+            "id": 2,
+            "method": "tools/list"
+          },
+          {
+            "id": 3,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.repository_map",
+              "arguments": {
+                "startPath": "."
+              }
+            }
+          },
+          {
+            "id": 4,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.layered_context_l0",
+              "arguments": {
+                "startPath": "."
+              }
+            }
+          },
+          {
+            "id": 5,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.layered_context_l1",
+              "arguments": {
+                "startPath": "."
+              }
+            }
+          },
+          {
+            "id": 6,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.symbol_lookup",
+              "arguments": {
+                "startPath": ".",
+                "name": "Name",
+                "pathPrefix": "internal/core",
+                "language": "go",
+                "kind": "function",
+                "limit": 1
+              }
+            }
+          },
+          {
+            "id": 7,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.structure_lookup",
+              "arguments": {
+                "startPath": ".",
+                "kind": "function",
+                "name": "Name",
+                "pathPrefix": "internal/core",
+                "language": "go",
+                "limit": 1
+              }
+            }
+          },
+          {
+            "id": 8,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.targeted_context",
+              "arguments": {
+                "startPath": ".",
+                "path": "internal/core/runtime.go",
+                "startLine": 1,
+                "endLine": 5,
+                "beforeLines": 0,
+                "afterLines": 0
+              }
+            }
+          },
+          {
+            "id": 9,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.refresh",
+              "arguments": {
+                "startPath": "."
+              }
+            }
+          },
+          {
+            "id": 10,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.token_tree",
+              "arguments": {
+                "startPath": ".",
+                "maxDepth": 3,
+                "maxNodes": 16
+              }
+            }
+          },
+          {
+            "id": 11,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.pack",
+              "arguments": {
+                "startPath": ".",
+                "includeRepositoryContext": true,
+                "includeStructuralContext": true
+              }
+            }
+          },
+          {
+            "id": 12,
+            "method": "tools/call",
+            "params": {
+              "name": "optimusctx.health",
+              "arguments": {
+                "startPath": "."
+              }
+            }
+          }
+        ],
+        "transcriptArtifact": "mcp-transcript",
+        "captureResponses": [
+          {
+            "requestId": 2,
+            "artifact": "mcp-tools-list"
+          },
+          {
+            "requestId": 3,
+            "artifact": "repository-map"
+          },
+          {
+            "requestId": 4,
+            "artifact": "layered-context-l0"
+          },
+          {
+            "requestId": 5,
+            "artifact": "layered-context-l1"
+          },
+          {
+            "requestId": 6,
+            "artifact": "symbol-lookup"
+          },
+          {
+            "requestId": 7,
+            "artifact": "structure-lookup"
+          },
+          {
+            "requestId": 8,
+            "artifact": "targeted-context"
+          },
+          {
+            "requestId": 9,
+            "artifact": "refresh-response"
+          },
+          {
+            "requestId": 10,
+            "artifact": "token-tree"
+          },
+          {
+            "requestId": 11,
+            "artifact": "pack-response"
+          },
+          {
+            "requestId": 12,
+            "artifact": "health-response"
+          }
+        ]
+      },
+      "assert": [
+        {
+          "kind": "contains",
+          "target": "stderr",
+          "contains": "optimusctx mcp: ready for stdio requests"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.repository_map"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.layered_context_l0"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.layered_context_l1"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.symbol_lookup"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.structure_lookup"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.targeted_context"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.refresh"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.token_tree"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.pack"
+        },
+        {
+          "kind": "contains",
+          "target": "artifact",
+          "artifact": "mcp-tools-list",
+          "contains": "optimusctx.health"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "repository-map",
+          "path": "result.structuredContent.meta.cacheStatus",
+          "equals": "persisted_only"
+        },
+        {
+          "kind": "json_field_present",
+          "target": "artifact",
+          "artifact": "repository-map",
+          "path": "result.structuredContent.data.RepositoryRoot"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "layered-context-l0",
+          "path": "result.structuredContent.meta.cacheStatus",
+          "equals": "persisted_only"
+        },
+        {
+          "kind": "json_field_present",
+          "target": "artifact",
+          "artifact": "layered-context-l0",
+          "path": "result.structuredContent.data.Identity.RootPath"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "layered-context-l1",
+          "path": "result.structuredContent.meta.cacheStatus",
+          "equals": "persisted_only"
+        },
+        {
+          "kind": "json_field_present",
+          "target": "artifact",
+          "artifact": "layered-context-l1",
+          "path": "result.structuredContent.data.Candidates.0.Path"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "symbol-lookup",
+          "path": "result.structuredContent.meta.cacheStatus",
+          "equals": "persisted_only"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "symbol-lookup",
+          "path": "result.structuredContent.data.Matches.0.Name",
+          "equals": "Name"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "structure-lookup",
+          "path": "result.structuredContent.meta.cacheStatus",
+          "equals": "persisted_only"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "structure-lookup",
+          "path": "result.structuredContent.data.Matches.0.Name",
+          "equals": "Name"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "targeted-context",
+          "path": "result.structuredContent.data.Path",
+          "equals": "internal/core/runtime.go"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "refresh-response",
+          "path": "result.structuredContent.meta.cacheStatus",
+          "equals": "refresh_attempted"
+        },
+        {
+          "kind": "json_field_present",
+          "target": "artifact",
+          "artifact": "token-tree",
+          "path": "result.structuredContent.data.Summary.ReturnedNodeCount"
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "pack-response",
+          "path": "result.structuredContent.data.Summary.ReturnedSectionCount",
+          "equals": 2
+        },
+        {
+          "kind": "json_field_equals",
+          "target": "artifact",
+          "artifact": "health-response",
+          "path": "result.structuredContent.data.Summary.Initialized",
+          "equals": true
+        }
+      ],
+      "captureArtifact": [
+        "mcp-stderr",
+        "mcp-transcript",
+        "mcp-tools-list",
+        "repository-map",
+        "layered-context-l0",
+        "layered-context-l1",
+        "symbol-lookup",
+        "structure-lookup",
+        "targeted-context",
+        "refresh-response",
+        "token-tree",
+        "pack-response",
+        "health-response"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "init-stdout",
+      "kind": "stdout",
+      "required": true
+    },
+    {
+      "id": "refresh-stdout",
+      "kind": "stdout",
+      "required": true
+    },
+    {
+      "id": "mcp-stderr",
+      "kind": "stderr",
+      "required": true
+    },
+    {
+      "id": "mcp-transcript",
+      "kind": "file",
+      "path": "artifacts/mcp-worktree-transcript.json",
+      "required": true
+    },
+    {
+      "id": "mcp-tools-list",
+      "kind": "file",
+      "path": "artifacts/mcp-worktree-tools-list.json",
+      "required": true
+    },
+    {
+      "id": "repository-map",
+      "kind": "file",
+      "path": "artifacts/mcp-repository-map.json",
+      "required": true
+    },
+    {
+      "id": "layered-context-l0",
+      "kind": "file",
+      "path": "artifacts/mcp-layered-context-l0.json",
+      "required": true
+    },
+    {
+      "id": "layered-context-l1",
+      "kind": "file",
+      "path": "artifacts/mcp-layered-context-l1.json",
+      "required": true
+    },
+    {
+      "id": "symbol-lookup",
+      "kind": "file",
+      "path": "artifacts/mcp-symbol-lookup.json",
+      "required": true
+    },
+    {
+      "id": "structure-lookup",
+      "kind": "file",
+      "path": "artifacts/mcp-structure-lookup.json",
+      "required": true
+    },
+    {
+      "id": "targeted-context",
+      "kind": "file",
+      "path": "artifacts/mcp-targeted-context.json",
+      "required": true
+    },
+    {
+      "id": "refresh-response",
+      "kind": "file",
+      "path": "artifacts/mcp-refresh.json",
+      "required": true
+    },
+    {
+      "id": "token-tree",
+      "kind": "file",
+      "path": "artifacts/mcp-token-tree.json",
+      "required": true
+    },
+    {
+      "id": "pack-response",
+      "kind": "file",
+      "path": "artifacts/mcp-pack.json",
+      "required": true
+    },
+    {
+      "id": "health-response",
+      "kind": "file",
+      "path": "artifacts/mcp-health.json",
+      "required": true
+    }
+  ]
+}

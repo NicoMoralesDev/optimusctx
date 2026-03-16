@@ -12,6 +12,67 @@ import (
 	"github.com/niccrow/optimusctx/internal/store/sqlite"
 )
 
+func TestEvalMCPInitializeAndToolsList(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"eval", "--scenario", "mcp-go-basic-v1"}, &stdout); err != nil {
+			t.Fatalf("Execute(eval mcp-go-basic-v1) error = %v", err)
+		}
+		assertContains(t, stdout.String(), "scenario id: mcp-go-basic-v1")
+		assertContains(t, stdout.String(), "status: passed")
+		assertContains(t, stdout.String(), "step init: passed exit=0")
+		assertContains(t, stdout.String(), "step refresh: passed exit=0")
+		assertContains(t, stdout.String(), "step mcp-serve: passed exit=0")
+	})
+}
+
+func TestEvalMCPToolFlows(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"eval", "--scenario", "mcp-go-worktree-v1"}, &stdout); err != nil {
+			t.Fatalf("Execute(eval mcp-go-worktree-v1) error = %v", err)
+		}
+		assertContains(t, stdout.String(), "scenario id: mcp-go-worktree-v1")
+		assertContains(t, stdout.String(), "status: passed")
+		assertContains(t, stdout.String(), "step init: passed exit=0")
+		assertContains(t, stdout.String(), "step refresh: passed exit=0")
+		assertContains(t, stdout.String(), "step mcp-serve: passed exit=0")
+	})
+}
+
+func TestEvalMCPScenariosRerun(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	scenarios := []string{"mcp-go-basic-v1", "mcp-go-worktree-v1"}
+	withWorkingDirectory(t, repoRoot, func() {
+		for _, scenarioID := range scenarios {
+			for run := 0; run < 2; run++ {
+				var stdout bytes.Buffer
+				if err := NewRootCommand().Execute([]string{"eval", "--scenario", scenarioID}, &stdout); err != nil {
+					t.Fatalf("Execute(eval %s) #%d error = %v", scenarioID, run+1, err)
+				}
+				assertContains(t, stdout.String(), "scenario id: "+scenarioID)
+				assertContains(t, stdout.String(), "status: passed")
+				assertContains(t, stdout.String(), "step mcp-serve: passed exit=0")
+			}
+		}
+	})
+
+	for _, fixtureID := range []string{"go-basic", "go-worktree"} {
+		fixtureRoot := filepath.Join(repoRoot, "testdata", "eval", "fixtures", fixtureID, "v1", "repository")
+		if _, err := os.Stat(filepath.Join(fixtureRoot, ".optimusctx")); !os.IsNotExist(err) {
+			t.Fatalf("fixture source %q should not be mutated by reruns, err=%v", fixtureID, err)
+		}
+	}
+}
+
 func TestEvalCLIScenariosRerun(t *testing.T) {
 	repoRoot := initCLIRepo(t)
 	seedCommittedEvalFixtures(t, repoRoot)
