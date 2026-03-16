@@ -90,6 +90,7 @@ type BenchmarkComparisonSummary struct {
 	SuiteID                string
 	SuiteVersion           string
 	AttemptCount           int
+	Methodology            repository.BenchmarkMethodologySnapshot
 	Arms                   []BenchmarkArmComparisonSummary
 	Verification           BenchmarkVerificationResult
 	InvalidRunReasons      []string
@@ -261,7 +262,7 @@ func (s BenchmarkService) RunRepeated(ctx context.Context, request BenchmarkRepe
 		})
 	}
 
-	summaryResult.Summary = summarizeBenchmarkAttempts(summaryResult.Attempts, summaryResult.SuiteID, summaryResult.SuiteVersion)
+	summaryResult.Summary = summarizeBenchmarkAttempts(summaryResult.Attempts, resolvedSuite)
 	evidenceBundle, err := s.exportEvidenceBundleFromStore(ctx, BenchmarkEvidenceBundleRequest{
 		StartPath:     request.StartPath,
 		SuiteID:       request.SuiteID,
@@ -537,11 +538,12 @@ func (s BenchmarkService) runAndPersist(ctx context.Context, request BenchmarkRu
 	return result, root, suite, runErr
 }
 
-func summarizeBenchmarkAttempts(attempts []BenchmarkAttemptResult, suiteID string, suiteVersion string) BenchmarkComparisonSummary {
+func summarizeBenchmarkAttempts(attempts []BenchmarkAttemptResult, suite repository.BenchmarkSuiteDefinition) BenchmarkComparisonSummary {
 	summary := BenchmarkComparisonSummary{
-		SuiteID:      suiteID,
-		SuiteVersion: suiteVersion,
+		SuiteID:      suite.ID,
+		SuiteVersion: suite.Version,
 		AttemptCount: len(attempts),
+		Methodology:  repository.BenchmarkMethodologyFromSuite(suite),
 	}
 	if len(attempts) == 0 {
 		summary.Verification = BenchmarkVerificationResult{
@@ -552,17 +554,16 @@ func summarizeBenchmarkAttempts(attempts []BenchmarkAttemptResult, suiteID strin
 		return summary
 	}
 
-	methodologyFingerprints := make([]string, 0, len(attempts))
 	armOrder := map[repository.BenchmarkArmKind]int{}
 	laneOrder := map[repository.BenchmarkLane]int{}
 	arms := map[repository.BenchmarkArmKind]*BenchmarkArmComparisonSummary{}
 	rejectionSet := map[string]struct{}{}
 	driftReasons := make([]string, 0)
+	summary.MethodologyFingerprint = benchmarkMethodologyFingerprint(suite)
 	baselineFingerprint := benchmarkAttemptFingerprint(attempts[0].Result)
 
 	for _, attempt := range attempts {
 		currentFingerprint := benchmarkAttemptFingerprint(attempt.Result)
-		methodologyFingerprints = append(methodologyFingerprints, currentFingerprint)
 		if currentFingerprint != baselineFingerprint {
 			reason := fmt.Sprintf("attempt %d drifted from frozen methodology", attempt.Attempt)
 			driftReasons = appendIfMissing(driftReasons, reason)
@@ -601,11 +602,6 @@ func summarizeBenchmarkAttempts(attempts []BenchmarkAttemptResult, suiteID strin
 				accumulateLaneMetrics(laneSummary, lane)
 			}
 		}
-	}
-
-	fingerprintSet := uniqueSorted(methodologyFingerprints)
-	if len(fingerprintSet) == 1 {
-		summary.MethodologyFingerprint = fingerprintSet[0]
 	}
 
 	armKeys := make([]repository.BenchmarkArmKind, 0, len(arms))
@@ -690,9 +686,128 @@ func benchmarkAttemptFingerprint(result repository.BenchmarkRunResult) string {
 			b.WriteString(fmt.Sprint(len(lane.Assertions)))
 			b.WriteString(":evidence=")
 			b.WriteString(strings.Join(uniqueSorted(lane.EvidencePaths), ","))
+			if lane.FinalArtifact != nil {
+				b.WriteString(":final_artifact=")
+				b.WriteString(lane.FinalArtifact.ContractID)
+				b.WriteString(":")
+				b.WriteString(lane.FinalArtifact.Path)
+				b.WriteString(":")
+				b.WriteString(fmt.Sprint(lane.FinalArtifact.Passed))
+			}
+			for _, attribution := range lane.Attribution {
+				b.WriteString(":attr=")
+				b.WriteString(attribution.StepID)
+				b.WriteString(":")
+				b.WriteString(string(attribution.Boundary))
+				b.WriteString(":")
+				b.WriteString(string(attribution.SourceKind))
+				b.WriteString(":")
+				b.WriteString(fmt.Sprint(attribution.EstimatedTokens))
+			}
 		}
 	}
 	return b.String()
+}
+
+func benchmarkMethodologyFingerprint(suite repository.BenchmarkSuiteDefinition) string {
+	methodology := repository.BenchmarkMethodologyFromSuite(suite)
+	var b strings.Builder
+	b.WriteString(suite.ID)
+	b.WriteString("|")
+	b.WriteString(suite.Version)
+	b.WriteString("|suite_schema=")
+	b.WriteString(methodology.SuiteSchemaVersion)
+	b.WriteString("|counted_inputs=")
+	b.WriteString(string(methodology.Boundary.CountedInputs))
+	b.WriteString("|system_outputs=")
+	b.WriteString(string(methodology.Boundary.SystemOutputs))
+	b.WriteString("|final_artifacts=")
+	b.WriteString(string(methodology.Boundary.FinalArtifacts))
+	for _, input := range methodology.CountedInputs {
+		b.WriteString("|input=")
+		b.WriteString(strings.Join([]string{
+			input.ID,
+			string(input.ArmKind),
+			string(input.Lane),
+			input.StepID,
+			string(input.Kind),
+			string(input.SourceKind),
+			string(input.ArtifactType),
+			string(input.ReportLabel),
+			input.Path,
+			input.JSONPath,
+			fmt.Sprint(input.StartLine),
+			fmt.Sprint(input.EndLine),
+		}, ":"))
+	}
+	if methodology.TaskFinalArtifact != nil {
+		b.WriteString("|task_final_artifact=")
+		b.WriteString(benchmarkFinalArtifactFingerprint(*methodology.TaskFinalArtifact))
+	}
+	for _, artifact := range methodology.LaneFinalArtifacts {
+		b.WriteString("|lane_final_artifact=")
+		b.WriteString(string(artifact.Lane))
+		b.WriteString(":")
+		b.WriteString(benchmarkFinalArtifactFingerprint(artifact.Contract))
+	}
+	for _, lane := range suite.Lanes {
+		b.WriteString("|lane=")
+		b.WriteString(string(lane.Name))
+		b.WriteString(":")
+		b.WriteString(lane.StartMarkerName())
+		b.WriteString(":")
+		b.WriteString(lane.SuccessMarkerName())
+		b.WriteString(":")
+		b.WriteString(lane.StopCondition.Marker)
+		b.WriteString(":assert=")
+		b.WriteString(fmt.Sprint(len(lane.Assertions)))
+	}
+	for _, arm := range suite.Arms {
+		b.WriteString("|arm=")
+		b.WriteString(string(arm.Kind))
+		b.WriteString(":")
+		b.WriteString(arm.Name)
+		for _, step := range arm.Steps {
+			b.WriteString("|step=")
+			b.WriteString(step.ID)
+			b.WriteString(":")
+			b.WriteString(string(step.Lane))
+			if step.Baseline != nil {
+				b.WriteString(":baseline:")
+				b.WriteString(string(step.Baseline.Kind))
+				b.WriteString(":")
+				b.WriteString(step.Baseline.Path)
+				b.WriteString(":")
+				b.WriteString(step.Baseline.Query)
+			}
+			if step.Treatment != nil {
+				b.WriteString(":treatment:")
+				b.WriteString(string(step.Treatment.Surface))
+				b.WriteString(":")
+				b.WriteString(string(step.Treatment.Command))
+				b.WriteString(":")
+				b.WriteString(step.Treatment.Tool)
+			}
+		}
+	}
+	return b.String()
+}
+
+func benchmarkFinalArtifactFingerprint(contract repository.BenchmarkFinalArtifactContract) string {
+	paths := append([]string(nil), contract.Normalization.JSONPaths...)
+	sort.Strings(paths)
+	return strings.Join([]string{
+		contract.ID,
+		contract.Name,
+		string(contract.Kind),
+		contract.Path,
+		string(contract.Format),
+		string(contract.Normalization.Mode),
+		strings.Join(paths, ","),
+		fmt.Sprint(contract.Normalization.TrimWhitespace),
+		fmt.Sprint(contract.Normalization.SortLines),
+		fmt.Sprint(len(contract.Assertions)),
+	}, ":")
 }
 
 func benchmarkRerunCommand(request BenchmarkRepeatedRunRequest) string {
@@ -765,7 +880,7 @@ func BuildBenchmarkHumanSummary(bundle repository.BenchmarkEvidenceBundle) Bench
 			acc := ensureHumanLaneAccumulator(laneAccumulators, lane)
 			acc.attemptCount++
 			acc.baselineElapsed = append(acc.baselineElapsed, baseline.ElapsedMS)
-			acc.baselineTokens = append(acc.baselineTokens, repository.EstimateBenchmarkTokensFromBytes(baseline.Effort.BytesRead))
+			acc.baselineTokens = append(acc.baselineTokens, benchmarkLaneEstimatedTokens(baseline))
 			if !baseline.Success {
 				acc.invalidReasons = appendIfMissing(acc.invalidReasons, fmt.Sprintf("attempt %d baseline/%s did not satisfy stop condition", attempt.Attempt, lane))
 			}
@@ -776,9 +891,11 @@ func BuildBenchmarkHumanSummary(bundle repository.BenchmarkEvidenceBundle) Bench
 				acc.attemptCount++
 			}
 			acc.treatmentElapsed = append(acc.treatmentElapsed, treatment.ElapsedMS)
-			laneTreatmentTokens := int64(0)
+			laneTreatmentTokens := benchmarkLaneEstimatedTokens(treatment)
 			for _, attribution := range treatment.Attribution {
-				laneTreatmentTokens += attribution.EstimatedTokens
+				if !attribution.CountsTowardEstimatedTokens() {
+					continue
+				}
 				key := string(lane) + "|" + string(attribution.ReportLabel)
 				group, ok := attributionAccumulators[key]
 				if !ok {
@@ -912,6 +1029,7 @@ func RenderBenchmarkComparisonReport(summary BenchmarkHumanSummary) string {
 	_, _ = fmt.Fprintf(&b, "\ncaveats\n")
 	_, _ = fmt.Fprintf(&b, "- estimated tokens use %s\n", summary.EstimatorPolicy)
 	_, _ = fmt.Fprintf(&b, "- %s are %s\n", summary.UsageClaim, summary.BillingDisambiguator)
+	_, _ = fmt.Fprintf(&b, "- phase 14 fixes benchmark truthfulness around declared agent inputs and comparable final artifacts, not provider billing or product payload size\n")
 	_, _ = fmt.Fprintf(&b, "- results describe only the recorded frozen-suite attempts and explicit estimator output\n")
 	_, _ = fmt.Fprintf(&b, "\nrerun\n%s\n", summary.RerunCommand)
 	return b.String()
@@ -924,6 +1042,17 @@ func ensureHumanLaneAccumulator(items map[repository.BenchmarkLane]*benchmarkHum
 	item := &benchmarkHumanLaneAccumulator{}
 	items[lane] = item
 	return item
+}
+
+func benchmarkLaneEstimatedTokens(lane repository.BenchmarkEvidenceLane) int64 {
+	total := int64(0)
+	for _, attribution := range lane.Attribution {
+		if !attribution.CountsTowardEstimatedTokens() {
+			continue
+		}
+		total += attribution.EstimatedTokens
+	}
+	return total
 }
 
 func benchmarkReportLabelDisplay(label repository.BenchmarkReportArtifactLabel) string {
@@ -1109,12 +1238,15 @@ func (s BenchmarkService) buildAndPersistEvidenceBundle(ctx context.Context, sto
 		return repository.BenchmarkEvidenceBundle{}, fmt.Errorf("no benchmark runs recorded for suite %q", suite.ID)
 	}
 
-	attempts, tokenContract, err := benchmarkAttemptsFromPersistedArms(persistedArms)
+	attempts, tokenContract, err := benchmarkAttemptsFromPersistedArms(persistedArms, suite.SchemaVersion)
 	if err != nil {
 		return repository.BenchmarkEvidenceBundle{}, err
 	}
-	summary := summarizeBenchmarkAttempts(attempts, suite.ID, suite.Version)
-	bundle := buildBenchmarkEvidenceBundle(repositoryRoot, tokenContract, summary, attempts, benchmarkEvidenceRerunCommand(request.SuiteID, request.SuitePath, len(attempts)))
+	if err := validateBenchmarkAttemptSemantics(attempts, suite); err != nil {
+		return repository.BenchmarkEvidenceBundle{}, err
+	}
+	summary := summarizeBenchmarkAttempts(attempts, suite)
+	bundle := buildBenchmarkEvidenceBundle(repositoryRoot, tokenContract, suite, summary, attempts, benchmarkEvidenceRerunCommand(request.SuiteID, request.SuitePath, len(attempts)))
 	return store.SaveBenchmarkEvidenceBundle(ctx, repositoryID, bundle)
 }
 
@@ -1122,21 +1254,25 @@ func buildBenchmarkEvidenceBundleFromPersistedRuns(repositoryRoot string, persis
 	if len(persistedArms) == 0 {
 		return repository.BenchmarkEvidenceBundle{}, fmt.Errorf("no benchmark runs recorded for suite %q", suite.ID)
 	}
-	attempts, tokenContract, err := benchmarkAttemptsFromPersistedArms(persistedArms)
+	attempts, tokenContract, err := benchmarkAttemptsFromPersistedArms(persistedArms, suite.SchemaVersion)
 	if err != nil {
 		return repository.BenchmarkEvidenceBundle{}, err
 	}
-	summary := summarizeBenchmarkAttempts(attempts, suite.ID, suite.Version)
-	return buildBenchmarkEvidenceBundle(repositoryRoot, tokenContract, summary, attempts, rerunCommand), nil
+	if err := validateBenchmarkAttemptSemantics(attempts, suite); err != nil {
+		return repository.BenchmarkEvidenceBundle{}, err
+	}
+	summary := summarizeBenchmarkAttempts(attempts, suite)
+	return buildBenchmarkEvidenceBundle(repositoryRoot, tokenContract, suite, summary, attempts, rerunCommand), nil
 }
 
-func buildBenchmarkEvidenceBundle(repositoryRoot string, tokenContract repository.BenchmarkTokenEstimateContract, summary BenchmarkComparisonSummary, attempts []BenchmarkAttemptResult, rerunCommand string) repository.BenchmarkEvidenceBundle {
+func buildBenchmarkEvidenceBundle(repositoryRoot string, tokenContract repository.BenchmarkTokenEstimateContract, suite repository.BenchmarkSuiteDefinition, summary BenchmarkComparisonSummary, attempts []BenchmarkAttemptResult, rerunCommand string) repository.BenchmarkEvidenceBundle {
 	bundle := repository.BenchmarkEvidenceBundle{
-		SchemaVersion:          repository.BenchmarkEvidenceBundleSchemaV1,
+		SchemaVersion:          repository.BenchmarkEvidenceBundleSchemaV2,
 		GeneratedAt:            time.Now().UTC(),
 		RepositoryRoot:         repositoryRoot,
 		SuiteID:                summary.SuiteID,
 		SuiteVersion:           summary.SuiteVersion,
+		Methodology:            repository.BenchmarkMethodologyFromSuite(suite),
 		TokenEstimateContract:  tokenContract,
 		MethodologyFingerprint: summary.MethodologyFingerprint,
 		RerunCommand:           rerunCommand,
@@ -1204,6 +1340,7 @@ func buildBenchmarkEvidenceBundle(repositoryRoot string, tokenContract repositor
 					Success:        lane.Success,
 					EvidencePaths:  append([]string(nil), lane.EvidencePaths...),
 					Effort:         lane.Effort,
+					FinalArtifact:  cloneFinalArtifactVerification(lane.FinalArtifact),
 					Attribution:    append([]repository.BenchmarkArtifactConsumption(nil), lane.Attribution...),
 				})
 			}
@@ -1214,11 +1351,12 @@ func buildBenchmarkEvidenceBundle(repositoryRoot string, tokenContract repositor
 	return repository.NormalizeBenchmarkEvidenceBundle(bundle)
 }
 
-func benchmarkAttemptsFromPersistedArms(persistedArms []sqlite.BenchmarkPersistedArm) ([]BenchmarkAttemptResult, repository.BenchmarkTokenEstimateContract, error) {
+func benchmarkAttemptsFromPersistedArms(persistedArms []sqlite.BenchmarkPersistedArm, suiteSchemaVersion string) ([]BenchmarkAttemptResult, repository.BenchmarkTokenEstimateContract, error) {
 	type laneMetadata struct {
-		SetupAppliedAt string                                    `json:"setupAppliedAt"`
-		EvidencePaths  []string                                  `json:"evidencePaths"`
-		Attribution    []repository.BenchmarkArtifactConsumption `json:"attribution"`
+		SetupAppliedAt string                                             `json:"setupAppliedAt"`
+		EvidencePaths  []string                                           `json:"evidencePaths"`
+		FinalArtifact  *repository.BenchmarkLaneFinalArtifactVerification `json:"finalArtifact"`
+		Attribution    []repository.BenchmarkArtifactConsumption          `json:"attribution"`
 	}
 	type runMetadata struct {
 		WorkspacePath         string                                    `json:"workspacePath"`
@@ -1234,7 +1372,7 @@ func benchmarkAttemptsFromPersistedArms(persistedArms []sqlite.BenchmarkPersiste
 			grouped[persisted.Run.Attempt] = &BenchmarkAttemptResult{
 				Attempt: persisted.Run.Attempt,
 				Result: repository.BenchmarkRunResult{
-					SchemaVersion: repository.BenchmarkSuiteSchemaV1,
+					SchemaVersion: suiteSchemaVersion,
 					SuiteID:       persisted.Run.SuiteID,
 					SuiteVersion:  persisted.Run.SuiteVersion,
 					FixtureID:     persisted.Run.FixtureID,
@@ -1279,6 +1417,7 @@ func benchmarkAttemptsFromPersistedArms(persistedArms []sqlite.BenchmarkPersiste
 				Elapsed:       time.Duration(sample.Sample.ElapsedMS) * time.Millisecond,
 				Success:       sample.Sample.Success,
 				EvidencePaths: append([]string(nil), metadata.EvidencePaths...),
+				FinalArtifact: cloneFinalArtifactVerification(metadata.FinalArtifact),
 				Attribution:   append([]repository.BenchmarkArtifactConsumption(nil), metadata.Attribution...),
 			}
 			if metadata.SetupAppliedAt != "" {
@@ -1356,6 +1495,44 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
+func cloneFinalArtifactVerification(value *repository.BenchmarkLaneFinalArtifactVerification) *repository.BenchmarkLaneFinalArtifactVerification {
+	if value == nil {
+		return nil
+	}
+	current := *value
+	return &current
+}
+
+func validateBenchmarkAttemptSemantics(attempts []BenchmarkAttemptResult, suite repository.BenchmarkSuiteDefinition) error {
+	methodology := repository.BenchmarkMethodologyFromSuite(suite)
+	requiredLaneArtifacts := make(map[repository.BenchmarkLane]string, len(methodology.LaneFinalArtifacts))
+	for _, artifact := range methodology.LaneFinalArtifacts {
+		requiredLaneArtifacts[artifact.Lane] = artifact.Contract.ID
+	}
+	for _, attempt := range attempts {
+		for _, arm := range attempt.Result.Arms {
+			for _, lane := range arm.LaneResults {
+				if requiredID, ok := requiredLaneArtifacts[lane.Lane]; ok {
+					if lane.FinalArtifact == nil {
+						return fmt.Errorf("benchmark attempt %d %s/%s is missing final-artifact verification for %q", attempt.Attempt, arm.Kind, lane.Lane, requiredID)
+					}
+					if lane.FinalArtifact.ContractID != requiredID {
+						return fmt.Errorf("benchmark attempt %d %s/%s final-artifact contract drifted from %q to %q", attempt.Attempt, arm.Kind, lane.Lane, requiredID, lane.FinalArtifact.ContractID)
+					}
+				}
+				for _, attribution := range lane.Attribution {
+					switch attribution.Boundary {
+					case repository.BenchmarkEvidenceBoundaryAgentInput, repository.BenchmarkEvidenceBoundarySystemProvenance, repository.BenchmarkEvidenceBoundaryFinalArtifactVerified:
+					default:
+						return fmt.Errorf("benchmark attempt %d %s/%s step %q is missing attribution boundary", attempt.Attempt, arm.Kind, lane.Lane, attribution.StepID)
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func benchmarkEvidenceMetricActionCount() string {
 	return "action_count"
 }
@@ -1365,6 +1542,7 @@ type benchmarkComparableBundle struct {
 	SuiteVersion           string
 	FixtureID              string
 	FixturePath            string
+	Methodology            repository.BenchmarkMethodologySnapshot
 	MethodologyFingerprint string
 	TokenPolicy            string
 	UsageClaim             string
@@ -1410,6 +1588,7 @@ type benchmarkComparableLane struct {
 	SuccessMarker string
 	StopMarker    string
 	Success       bool
+	FinalArtifact *repository.BenchmarkLaneFinalArtifactVerification
 	Attribution   []benchmarkComparableAttribution
 }
 
@@ -1417,12 +1596,14 @@ type benchmarkComparableAttribution struct {
 	StepID          string
 	StepName        string
 	Lane            repository.BenchmarkLane
+	Boundary        repository.BenchmarkEvidenceBoundary
 	Surface         repository.BenchmarkTreatmentSurface
 	Command         repository.EvalCommandName
 	Tool            string
 	ArtifactType    repository.BenchmarkArtifactType
 	ReportLabel     repository.BenchmarkReportArtifactLabel
 	SourceKind      repository.BenchmarkTokenEstimateSourceKind
+	ArtifactPath    string
 	EstimatedBytes  int64
 	EstimatedTokens int64
 }
@@ -1462,6 +1643,9 @@ func compareBenchmarkEvidenceBundles(expected repository.BenchmarkEvidenceBundle
 	}
 	expectedSnapshot := benchmarkComparableSnapshot(expected)
 	actualSnapshot := benchmarkComparableSnapshot(actual)
+	if !reflect.DeepEqual(expectedSnapshot.Methodology, actualSnapshot.Methodology) {
+		reasons = append(reasons, "methodology snapshot drifted")
+	}
 	if !reflect.DeepEqual(expectedSnapshot.Verification, actualSnapshot.Verification) {
 		reasons = append(reasons, "evidence verification metadata drifted")
 	}
@@ -1486,6 +1670,7 @@ func benchmarkComparableSnapshot(bundle repository.BenchmarkEvidenceBundle) benc
 		SuiteVersion:           bundle.SuiteVersion,
 		FixtureID:              bundle.FixtureID,
 		FixturePath:            bundle.FixturePath,
+		Methodology:            repository.NormalizeBenchmarkMethodologySnapshot(bundle.Methodology),
 		MethodologyFingerprint: bundle.MethodologyFingerprint,
 		TokenPolicy:            bundle.TokenEstimateContract.Policy.Name,
 		UsageClaim:             bundle.TokenEstimateContract.UsageClaim,
@@ -1548,13 +1733,14 @@ func verifyBenchmarkReportWording(report string) []string {
 	for _, required := range []string{
 		"estimated tokens use bytes_div_4_ceiling",
 		"not provider-billed token invoices",
+		"fixes benchmark truthfulness",
+		"not provider billing or product payload size",
 	} {
 		if !strings.Contains(report, required) {
 			reasons = append(reasons, fmt.Sprintf("benchmark report missing required wording %q", required))
 		}
 	}
 	for _, banned := range []string{
-		"provider billing",
 		"provider-billed token truth",
 		"statistically significant",
 		"universal savings",

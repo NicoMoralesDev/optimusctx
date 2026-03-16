@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/niccrow/optimusctx/internal/app"
 	"github.com/niccrow/optimusctx/internal/buildinfo"
@@ -406,7 +407,7 @@ func TestBenchmarkAttributionTables(t *testing.T) {
 		refreshOutput := render("go-benchmark-refresh-v1")
 		assertContains(t, refreshOutput, "treatment artifact attribution")
 		assertContains(t, refreshOutput, "L2 Context")
-		assertContains(t, refreshOutput, "Pack Export")
+		assertContains(t, refreshOutput, "Operational")
 
 		discoveryOutput := render("go-benchmark-discovery-v1")
 		assertContains(t, discoveryOutput, "Repository Map")
@@ -417,16 +418,18 @@ func TestBenchmarkAttributionTables(t *testing.T) {
 func TestBenchmarkReportWordingGuards(t *testing.T) {
 	repoRoot := initCLIRepo(t)
 	seedCommittedEvalFixtures(t, repoRoot)
+	suitePath := seedV2BenchmarkEvidence(t, repoRoot)
 
 	withWorkingDirectory(t, repoRoot, func() {
 		var stdout bytes.Buffer
-		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "report", "--suite", "go-benchmark-refresh-v1", "--attempts", "2"}, &stdout); err != nil {
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "report", "--suite-file", suitePath}, &stdout); err != nil {
 			t.Fatalf("Execute(eval benchmark report) error = %v", err)
 		}
 		output := stdout.String()
 		assertContains(t, output, "estimated tokens use bytes_div_4_ceiling")
 		assertContains(t, output, "not provider-billed token invoices")
-		for _, banned := range []string{"provider billing", "statistically significant", "universal savings"} {
+		assertContains(t, output, "fixes benchmark truthfulness")
+		for _, banned := range []string{"provider-billed token truth", "statistically significant", "universal savings"} {
 			if strings.Contains(output, banned) {
 				t.Fatalf("report should not contain %q:\n%s", banned, output)
 			}
@@ -1133,10 +1136,11 @@ func TestBenchmarkEvidenceBundleGeneration(t *testing.T) {
 func TestBenchmarkExportContainsMethodologyIdentity(t *testing.T) {
 	repoRoot := initCLIRepo(t)
 	seedCommittedEvalFixtures(t, repoRoot)
+	suitePath := seedV2BenchmarkEvidence(t, repoRoot)
 
 	withWorkingDirectory(t, repoRoot, func() {
 		var stdout bytes.Buffer
-		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "export", "--suite", "go-benchmark-refresh-v1", "--attempts", "2"}, &stdout); err != nil {
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "export", "--suite-file", suitePath}, &stdout); err != nil {
 			t.Fatalf("Execute(eval benchmark export) error = %v", err)
 		}
 
@@ -1144,11 +1148,17 @@ func TestBenchmarkExportContainsMethodologyIdentity(t *testing.T) {
 		if err := json.Unmarshal(stdout.Bytes(), &bundle); err != nil {
 			t.Fatalf("Unmarshal(bundle) error = %v", err)
 		}
-		if bundle.SuiteID != "go-benchmark-refresh-v1" {
+		if bundle.SuiteID != "go-benchmark-refresh-v2" {
 			t.Fatalf("SuiteID = %q", bundle.SuiteID)
 		}
 		if bundle.FixtureID != "go-worktree" {
 			t.Fatalf("FixtureID = %q", bundle.FixtureID)
+		}
+		if bundle.SchemaVersion != repository.BenchmarkEvidenceBundleSchemaV2 {
+			t.Fatalf("SchemaVersion = %q", bundle.SchemaVersion)
+		}
+		if bundle.Methodology.SuiteSchemaVersion != repository.BenchmarkSuiteSchemaV2 {
+			t.Fatalf("Methodology.SuiteSchemaVersion = %q", bundle.Methodology.SuiteSchemaVersion)
 		}
 		if bundle.MethodologyFingerprint == "" {
 			t.Fatal("MethodologyFingerprint should not be empty")
@@ -1159,20 +1169,26 @@ func TestBenchmarkExportContainsMethodologyIdentity(t *testing.T) {
 		if bundle.TokenEstimateContract.BillingDisambiguator != repository.BenchmarkTokenEstimateBillingDisambiguator {
 			t.Fatalf("BillingDisambiguator = %q", bundle.TokenEstimateContract.BillingDisambiguator)
 		}
-		foundPackLabel := false
+		foundOperationalLabel := false
+		foundL2ContextLabel := false
 		for _, attempt := range bundle.Attempts {
 			for _, arm := range attempt.Arms {
 				for _, lane := range arm.Lanes {
 					for _, attribution := range lane.Attribution {
-						if attribution.ReportLabel == repository.BenchmarkReportArtifactLabelPackExport {
-							foundPackLabel = true
+						switch attribution.ReportLabel {
+						case repository.BenchmarkReportArtifactLabelOperational:
+							foundOperationalLabel = true
+						case repository.BenchmarkReportArtifactLabelL2Context:
+							foundL2ContextLabel = true
+						case repository.BenchmarkReportArtifactLabelPackExport:
+							t.Fatalf("bundle should not contain pack export labels after fairness fix: %+v", bundle.Attempts)
 						}
 					}
 				}
 			}
 		}
-		if !foundPackLabel {
-			t.Fatalf("bundle missing BNCH-02 report labels: %+v", bundle.Attempts)
+		if !foundOperationalLabel || !foundL2ContextLabel {
+			t.Fatalf("bundle missing expected report labels: %+v", bundle.Attempts)
 		}
 	})
 }
@@ -1180,11 +1196,12 @@ func TestBenchmarkExportContainsMethodologyIdentity(t *testing.T) {
 func TestBenchmarkExportCLIPath(t *testing.T) {
 	repoRoot := initCLIRepo(t)
 	seedCommittedEvalFixtures(t, repoRoot)
+	suitePath := seedV2BenchmarkEvidence(t, repoRoot)
 
 	withWorkingDirectory(t, repoRoot, func() {
 		outputPath := filepath.Join("artifacts", "benchmark-evidence.json")
 		var stdout bytes.Buffer
-		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "export", "--suite", "go-benchmark-refresh-v1", "--attempts", "2", "--output", outputPath}, &stdout); err != nil {
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "export", "--suite-file", suitePath, "--output", outputPath}, &stdout); err != nil {
 			t.Fatalf("Execute(eval benchmark export --output) error = %v", err)
 		}
 		assertContains(t, stdout.String(), "benchmark evidence written:")
@@ -1197,10 +1214,442 @@ func TestBenchmarkExportCLIPath(t *testing.T) {
 		if err := json.Unmarshal(data, &bundle); err != nil {
 			t.Fatalf("Unmarshal(output bundle) error = %v", err)
 		}
-		if !strings.Contains(bundle.RerunCommand, "optimusctx eval benchmark export --suite go-benchmark-refresh-v1 --attempts 2") {
+		if !strings.Contains(bundle.RerunCommand, "optimusctx eval benchmark export --suite-file") {
 			t.Fatalf("RerunCommand = %q", bundle.RerunCommand)
 		}
 	})
+}
+
+func seedV2BenchmarkEvidence(t *testing.T, repoRoot string) string {
+	t.Helper()
+
+	fixturePath := filepath.Join(repoRoot, "testdata", "eval", "fixtures", "go-worktree", "v2", "repository")
+	if err := os.MkdirAll(fixturePath, 0o755); err != nil {
+		t.Fatalf("MkdirAll(fixturePath) error = %v", err)
+	}
+	suitePath := filepath.Join(repoRoot, "testdata", "eval", "benchmarks", "go-benchmark-refresh-v2.json")
+	data, err := json.MarshalIndent(cliBenchmarkSuiteV2(), "", "  ")
+	if err != nil {
+		t.Fatalf("MarshalIndent(cliBenchmarkSuiteV2) error = %v", err)
+	}
+	if err := os.WriteFile(suitePath, data, 0o644); err != nil {
+		t.Fatalf("WriteFile(suitePath) error = %v", err)
+	}
+
+	layout, err := state.ResolveLayout(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+	store, err := sqlite.OpenOrCreateStore(context.Background(), layout, repository.DetectionModeGit)
+	if err != nil {
+		t.Fatalf("OpenOrCreateStore() error = %v", err)
+	}
+	defer store.Close()
+
+	record, err := store.UpsertRepository(context.Background(), repository.RepositoryRoot{
+		RootPath:      repoRoot,
+		DetectionMode: repository.DetectionModeGit,
+		Fingerprint: repository.RepositoryFingerprint{
+			RootPath:     repoRoot,
+			GitCommonDir: filepath.Join(repoRoot, ".git"),
+		},
+	}, time.Date(2026, 3, 16, 20, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("UpsertRepository() error = %v", err)
+	}
+	for attempt := 1; attempt <= 2; attempt++ {
+		for _, persisted := range sqlite.BenchmarkPersistedArmsFromResult(record.ID, attempt, cliBenchmarkRunResult(repoRoot)) {
+			if _, _, err := store.SaveBenchmarkRun(context.Background(), persisted.Run, persisted.Samples); err != nil {
+				t.Fatalf("SaveBenchmarkRun(attempt=%d) error = %v", attempt, err)
+			}
+		}
+	}
+	return suitePath
+}
+
+func cliBenchmarkSuiteV2() repository.BenchmarkSuiteDefinition {
+	return repository.BenchmarkSuiteDefinition{
+		SchemaVersion: repository.BenchmarkSuiteSchemaV2,
+		ID:            "go-benchmark-refresh-v2",
+		Version:       "v2",
+		Name:          "Go benchmark refresh and task completion",
+		Boundary:      repository.DefaultBenchmarkBoundaryContract(),
+		Fixture: repository.EvalFixtureRef{
+			ID:          "go-worktree",
+			Version:     "v2",
+			Path:        "go-worktree/v2/repository",
+			Materialize: repository.EvalFixtureModeCopyTree,
+		},
+		Task: repository.BenchmarkTaskDefinition{
+			ID:         "docs-pack",
+			Prompt:     "Refresh after mutation and export bounded context.",
+			TargetPath: "docs/notes.txt",
+		},
+		CountedInputs: []repository.BenchmarkCountedInputDefinition{
+			{
+				ID:         "baseline-readiness-paths",
+				ArmKind:    repository.BenchmarkArmKindBaseline,
+				Lane:       repository.BenchmarkLaneRefreshReady,
+				StepID:     "baseline-readiness",
+				Name:       "Baseline readiness path hints",
+				Kind:       repository.BenchmarkCountedInputKindPathList,
+				SourceKind: repository.BenchmarkTokenEstimateSourcePathEstimate,
+				Path:       "docs/notes.txt",
+			},
+			{
+				ID:           "treatment-health-summary",
+				ArmKind:      repository.BenchmarkArmKindOptimusCtx,
+				Lane:         repository.BenchmarkLaneRefreshReady,
+				StepID:       "health",
+				Name:         "Projected health summary",
+				Kind:         repository.BenchmarkCountedInputKindJSONFieldProjection,
+				SourceKind:   repository.BenchmarkTokenEstimateSourceDirectPayload,
+				ArtifactType: repository.BenchmarkArtifactTypeHealth,
+				ReportLabel:  repository.BenchmarkReportArtifactLabelOperational,
+				JSONPath:     "refresh.freshness",
+			},
+			{
+				ID:         "baseline-task-slice",
+				ArmKind:    repository.BenchmarkArmKindBaseline,
+				Lane:       repository.BenchmarkLaneTaskCompletion,
+				StepID:     "baseline-context",
+				Name:       "Baseline updated notes slice",
+				Kind:       repository.BenchmarkCountedInputKindFileSlice,
+				SourceKind: repository.BenchmarkTokenEstimateSourceBoundedFileContent,
+				Path:       "docs/notes.txt",
+				StartLine:  1,
+				EndLine:    20,
+			},
+			{
+				ID:           "treatment-updated-context",
+				ArmKind:      repository.BenchmarkArmKindOptimusCtx,
+				Lane:         repository.BenchmarkLaneTaskCompletion,
+				StepID:       "context",
+				Name:         "Treatment updated notes context",
+				Kind:         repository.BenchmarkCountedInputKindTextOutput,
+				SourceKind:   repository.BenchmarkTokenEstimateSourceDirectPayload,
+				ArtifactType: repository.BenchmarkArtifactTypeL2Context,
+				ReportLabel:  repository.BenchmarkReportArtifactLabelL2Context,
+				Path:         "artifacts/updated-notes.txt",
+			},
+		},
+		Lanes: []repository.BenchmarkLaneDefinition{
+			{
+				Name: repository.BenchmarkLaneRefreshReady,
+				Assertions: []repository.BenchmarkAssertion{{
+					File:     "docs/notes.txt",
+					Kind:     repository.EvalAssertionKindContains,
+					Contains: "mutated benchmark note",
+				}},
+				FinalArtifact: &repository.BenchmarkFinalArtifactContract{
+					ID:     "refresh-readiness",
+					Name:   "Refresh readiness summary",
+					Kind:   repository.BenchmarkFinalArtifactKindReadinessSummary,
+					Path:   "artifacts/readiness.json",
+					Format: repository.BenchmarkFinalArtifactFormatJSON,
+					Normalization: repository.BenchmarkFinalArtifactNormalization{
+						Mode:      repository.BenchmarkFinalArtifactNormalizationModeJSONFields,
+						JSONPaths: []string{"freshness", "targetReady"},
+					},
+					Assertions: []repository.BenchmarkFinalArtifactAssertion{
+						{Kind: repository.EvalAssertionKindJSONFieldPresent, Path: "freshness"},
+					},
+				},
+				StopCondition: repository.BenchmarkStopCondition{
+					Kind:   repository.BenchmarkStopConditionKindMarker,
+					Marker: "refresh_ready",
+				},
+				Metrics: []repository.BenchmarkMetric{repository.BenchmarkMetricConsultedArtifacts},
+			},
+			{
+				Name: repository.BenchmarkLaneTaskCompletion,
+				Assertions: []repository.BenchmarkAssertion{{
+					File:     "docs/notes.txt",
+					Kind:     repository.EvalAssertionKindContains,
+					Contains: "mutated benchmark note",
+				}},
+				FinalArtifact: &repository.BenchmarkFinalArtifactContract{
+					ID:     "updated-notes-context",
+					Name:   "Updated notes context",
+					Kind:   repository.BenchmarkFinalArtifactKindTaskOutput,
+					Path:   "artifacts/updated-notes.txt",
+					Format: repository.BenchmarkFinalArtifactFormatText,
+					Normalization: repository.BenchmarkFinalArtifactNormalization{
+						Mode:           repository.BenchmarkFinalArtifactNormalizationModeTextTrimmed,
+						TrimWhitespace: true,
+					},
+					Assertions: []repository.BenchmarkFinalArtifactAssertion{
+						{Kind: repository.EvalAssertionKindContains, Contains: "mutated benchmark note"},
+					},
+				},
+				StopCondition: repository.BenchmarkStopCondition{
+					Kind:   repository.BenchmarkStopConditionKindMarker,
+					Marker: "task_complete",
+				},
+				Metrics: []repository.BenchmarkMetric{repository.BenchmarkMetricFileReadActions},
+			},
+		},
+		Arms: []repository.BenchmarkArmDefinition{
+			{
+				Kind: repository.BenchmarkArmKindBaseline,
+				Name: "Baseline",
+				Steps: []repository.BenchmarkStep{
+					{
+						ID:   "baseline-readiness",
+						Name: "Search mutated note",
+						Lane: repository.BenchmarkLaneRefreshReady,
+						Baseline: &repository.BenchmarkBaselineAction{
+							Kind:  repository.BenchmarkBaselineActionGitGrep,
+							Query: "mutated benchmark note",
+						},
+					},
+					{
+						ID:   "baseline-ready",
+						Name: "Mark refresh ready",
+						Lane: repository.BenchmarkLaneRefreshReady,
+						Baseline: &repository.BenchmarkBaselineAction{
+							Kind:   repository.BenchmarkBaselineActionMarkLaneComplete,
+							Marker: "refresh_ready",
+						},
+					},
+					{
+						ID:   "baseline-context",
+						Name: "Read docs slice",
+						Lane: repository.BenchmarkLaneTaskCompletion,
+						Baseline: &repository.BenchmarkBaselineAction{
+							Kind:      repository.BenchmarkBaselineActionReadFileSlice,
+							Path:      "docs/notes.txt",
+							StartLine: 1,
+							EndLine:   20,
+						},
+					},
+					{
+						ID:   "baseline-done",
+						Name: "Mark task complete",
+						Lane: repository.BenchmarkLaneTaskCompletion,
+						Baseline: &repository.BenchmarkBaselineAction{
+							Kind:   repository.BenchmarkBaselineActionMarkLaneComplete,
+							Marker: "task_complete",
+						},
+					},
+				},
+			},
+			{
+				Kind: repository.BenchmarkArmKindOptimusCtx,
+				Name: "OptimusCtx",
+				Steps: []repository.BenchmarkStep{
+					{
+						ID:   "refresh",
+						Name: "Refresh repository",
+						Lane: repository.BenchmarkLaneRefreshReady,
+						Treatment: &repository.BenchmarkTreatmentAction{
+							Surface: repository.BenchmarkTreatmentSurfaceCLI,
+							Command: repository.EvalCommandRefresh,
+						},
+					},
+					{
+						ID:   "health",
+						Name: "Check repository health",
+						Lane: repository.BenchmarkLaneRefreshReady,
+						Treatment: &repository.BenchmarkTreatmentAction{
+							Surface: repository.BenchmarkTreatmentSurfaceMCP,
+							Tool:    "optimusctx.health",
+						},
+					},
+					{
+						ID:   "context",
+						Name: "Fetch bounded updated notes context",
+						Lane: repository.BenchmarkLaneTaskCompletion,
+						Treatment: &repository.BenchmarkTreatmentAction{
+							Surface: repository.BenchmarkTreatmentSurfaceMCP,
+							Tool:    "optimusctx.targeted_context",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func cliBenchmarkRunResult(repositoryRoot string) repository.BenchmarkRunResult {
+	return repository.BenchmarkRunResult{
+		SchemaVersion: repository.BenchmarkSuiteSchemaV2,
+		SuiteID:       "go-benchmark-refresh-v2",
+		SuiteVersion:  "v2",
+		FixtureID:     "go-worktree",
+		FixturePath:   "go-worktree/v2/repository",
+		WorkspacePath: repositoryRoot,
+		Arms: []repository.BenchmarkArmRunResult{
+			{
+				Kind:       repository.BenchmarkArmKindBaseline,
+				Name:       "Baseline",
+				Workspace:  repositoryRoot,
+				StartedAt:  time.Date(2026, 3, 16, 20, 0, 0, 0, time.UTC),
+				FinishedAt: time.Date(2026, 3, 16, 20, 0, 2, 0, time.UTC),
+				LaneResults: []repository.BenchmarkLaneRunResult{
+					{
+						Lane:          repository.BenchmarkLaneRefreshReady,
+						StartMarker:   "refresh_after_change_started",
+						SuccessMarker: "refresh_ready",
+						StopMarker:    "refresh_ready",
+						StartedAt:     time.Date(2026, 3, 16, 20, 0, 0, 0, time.UTC),
+						FinishedAt:    time.Date(2026, 3, 16, 20, 0, 1, 0, time.UTC),
+						Elapsed:       time.Second,
+						Success:       true,
+						EvidencePaths: []string{"docs/notes.txt"},
+						FinalArtifact: &repository.BenchmarkLaneFinalArtifactVerification{
+							ContractID: "refresh-readiness",
+							Path:       "artifacts/readiness.json",
+							Passed:     true,
+						},
+						Effort: repository.BenchmarkLaneEffort{
+							ActionCount:        2,
+							BytesRead:          128,
+							ConsultedArtifacts: []string{"docs/notes.txt"},
+						},
+						Attribution: []repository.BenchmarkArtifactConsumption{{
+							StepID:          "baseline-readiness",
+							StepName:        "Search docs note",
+							Lane:            repository.BenchmarkLaneRefreshReady,
+							Boundary:        repository.BenchmarkEvidenceBoundaryAgentInput,
+							SourceKind:      repository.BenchmarkTokenEstimateSourcePathEstimate,
+							ArtifactPath:    "docs/notes.txt",
+							EstimatedBytes:  48,
+							EstimatedTokens: 12,
+						}},
+					},
+					{
+						Lane:          repository.BenchmarkLaneTaskCompletion,
+						StartMarker:   "task_completion_started",
+						SuccessMarker: "task_complete",
+						StopMarker:    "task_complete",
+						StartedAt:     time.Date(2026, 3, 16, 20, 0, 1, 0, time.UTC),
+						FinishedAt:    time.Date(2026, 3, 16, 20, 0, 2, 0, time.UTC),
+						Elapsed:       time.Second,
+						Success:       true,
+						EvidencePaths: []string{"docs/notes.txt"},
+						FinalArtifact: &repository.BenchmarkLaneFinalArtifactVerification{
+							ContractID: "updated-notes-context",
+							Path:       "artifacts/updated-notes.txt",
+							Passed:     true,
+						},
+						Effort: repository.BenchmarkLaneEffort{
+							ActionCount:        1,
+							FileReadActions:    1,
+							BytesRead:          512,
+							ConsultedArtifacts: []string{"docs/notes.txt"},
+						},
+						Attribution: []repository.BenchmarkArtifactConsumption{{
+							StepID:          "baseline-context",
+							StepName:        "Read docs slice",
+							Lane:            repository.BenchmarkLaneTaskCompletion,
+							Boundary:        repository.BenchmarkEvidenceBoundaryAgentInput,
+							SourceKind:      repository.BenchmarkTokenEstimateSourceBoundedFileContent,
+							ArtifactPath:    "docs/notes.txt",
+							EstimatedBytes:  88,
+							EstimatedTokens: 22,
+						}},
+					},
+				},
+			},
+			{
+				Kind:       repository.BenchmarkArmKindOptimusCtx,
+				Name:       "OptimusCtx",
+				Workspace:  repositoryRoot,
+				StartedAt:  time.Date(2026, 3, 16, 20, 0, 0, 0, time.UTC),
+				FinishedAt: time.Date(2026, 3, 16, 20, 0, 2, 0, time.UTC),
+				LaneResults: []repository.BenchmarkLaneRunResult{
+					{
+						Lane:          repository.BenchmarkLaneRefreshReady,
+						StartMarker:   "refresh_after_change_started",
+						SuccessMarker: "refresh_ready",
+						StopMarker:    "refresh_ready",
+						StartedAt:     time.Date(2026, 3, 16, 20, 0, 0, 0, time.UTC),
+						FinishedAt:    time.Date(2026, 3, 16, 20, 0, 1, 0, time.UTC),
+						Elapsed:       time.Second,
+						Success:       true,
+						EvidencePaths: []string{"docs/notes.txt", "stdout"},
+						FinalArtifact: &repository.BenchmarkLaneFinalArtifactVerification{
+							ContractID: "refresh-readiness",
+							Path:       "artifacts/readiness.json",
+							Passed:     true,
+						},
+						Effort: repository.BenchmarkLaneEffort{
+							ActionCount:           2,
+							TargetedLookupActions: 2,
+							ConsultedArtifacts:    []string{"docs/notes.txt", "stdout"},
+						},
+						Attribution: []repository.BenchmarkArtifactConsumption{
+							{
+								StepID:          "refresh",
+								StepName:        "Refresh repository",
+								Lane:            repository.BenchmarkLaneRefreshReady,
+								Boundary:        repository.BenchmarkEvidenceBoundarySystemProvenance,
+								Surface:         repository.BenchmarkTreatmentSurfaceCLI,
+								Command:         repository.EvalCommandRefresh,
+								ArtifactType:    repository.BenchmarkArtifactTypeRefresh,
+								ReportLabel:     repository.BenchmarkReportArtifactLabelOperational,
+								SourceKind:      repository.BenchmarkTokenEstimateSourceDirectPayload,
+								ArtifactPath:    "stdout",
+								EstimatedBytes:  32,
+								EstimatedTokens: 8,
+							},
+							{
+								StepID:          "health",
+								StepName:        "Check repository health",
+								Lane:            repository.BenchmarkLaneRefreshReady,
+								Boundary:        repository.BenchmarkEvidenceBoundaryAgentInput,
+								Surface:         repository.BenchmarkTreatmentSurfaceMCP,
+								Tool:            "optimusctx.health",
+								ArtifactType:    repository.BenchmarkArtifactTypeHealth,
+								ReportLabel:     repository.BenchmarkReportArtifactLabelOperational,
+								SourceKind:      repository.BenchmarkTokenEstimateSourceDirectPayload,
+								ArtifactPath:    "artifacts/readiness.json",
+								EstimatedBytes:  48,
+								EstimatedTokens: 12,
+							},
+						},
+					},
+					{
+						Lane:          repository.BenchmarkLaneTaskCompletion,
+						StartMarker:   "task_completion_started",
+						SuccessMarker: "task_complete",
+						StopMarker:    "task_complete",
+						StartedAt:     time.Date(2026, 3, 16, 20, 0, 1, 0, time.UTC),
+						FinishedAt:    time.Date(2026, 3, 16, 20, 0, 2, 0, time.UTC),
+						Elapsed:       time.Second,
+						Success:       true,
+						EvidencePaths: []string{"docs/notes.txt"},
+						FinalArtifact: &repository.BenchmarkLaneFinalArtifactVerification{
+							ContractID: "updated-notes-context",
+							Path:       "artifacts/updated-notes.txt",
+							Passed:     true,
+						},
+						Effort: repository.BenchmarkLaneEffort{
+							ActionCount:           1,
+							TargetedLookupActions: 1,
+							BytesRead:             72,
+							ConsultedArtifacts:    []string{"docs/notes.txt"},
+						},
+						Attribution: []repository.BenchmarkArtifactConsumption{{
+							StepID:          "context",
+							StepName:        "Fetch bounded updated notes context",
+							Lane:            repository.BenchmarkLaneTaskCompletion,
+							Boundary:        repository.BenchmarkEvidenceBoundaryAgentInput,
+							Surface:         repository.BenchmarkTreatmentSurfaceMCP,
+							Tool:            "optimusctx.targeted_context",
+							ArtifactType:    repository.BenchmarkArtifactTypeL2Context,
+							ReportLabel:     repository.BenchmarkReportArtifactLabelL2Context,
+							SourceKind:      repository.BenchmarkTokenEstimateSourceDirectPayload,
+							ArtifactPath:    "artifacts/updated-notes.txt",
+							EstimatedBytes:  72,
+							EstimatedTokens: 18,
+						}},
+					},
+				},
+			},
+		},
+	}
 }
 
 func copyCLITree(t *testing.T, src string, dst string) {

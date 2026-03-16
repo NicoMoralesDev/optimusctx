@@ -384,7 +384,9 @@ func runEvalBenchmarkCommand(stdout io.Writer, args []string) error {
 			return fmt.Errorf("resolve source repository root: %w", err)
 		}
 		request.StartPath = workingDir
-		request.SuitesDir = filepath.Join(root.RootPath, "testdata", "eval", "benchmarks")
+		if request.SuitePath == "" {
+			request.SuitesDir = filepath.Join(root.RootPath, "testdata", "eval", "benchmarks")
+		}
 		request.FixturesRoot = filepath.Join(root.RootPath, "testdata", "eval", "fixtures")
 		if request.SuitePath != "" && !filepath.IsAbs(request.SuitePath) {
 			request.SuitePath = filepath.Join(workingDir, request.SuitePath)
@@ -428,7 +430,9 @@ func runEvalBenchmarkCommand(stdout io.Writer, args []string) error {
 			return fmt.Errorf("resolve source repository root: %w", err)
 		}
 		request.StartPath = workingDir
-		request.SuitesDir = filepath.Join(root.RootPath, "testdata", "eval", "benchmarks")
+		if request.SuitePath == "" {
+			request.SuitesDir = filepath.Join(root.RootPath, "testdata", "eval", "benchmarks")
+		}
 		request.FixturesRoot = filepath.Join(root.RootPath, "testdata", "eval", "fixtures")
 		if request.SuitePath != "" && !filepath.IsAbs(request.SuitePath) {
 			request.SuitePath = filepath.Join(workingDir, request.SuitePath)
@@ -468,7 +472,9 @@ func runEvalBenchmarkCommand(stdout io.Writer, args []string) error {
 			return fmt.Errorf("resolve source repository root: %w", err)
 		}
 		request.StartPath = workingDir
-		request.SuitesDir = filepath.Join(root.RootPath, "testdata", "eval", "benchmarks")
+		if request.SuitePath == "" {
+			request.SuitesDir = filepath.Join(root.RootPath, "testdata", "eval", "benchmarks")
+		}
 		request.FixturesRoot = filepath.Join(root.RootPath, "testdata", "eval", "fixtures")
 		if request.SuitePath != "" && !filepath.IsAbs(request.SuitePath) {
 			request.SuitePath = filepath.Join(workingDir, request.SuitePath)
