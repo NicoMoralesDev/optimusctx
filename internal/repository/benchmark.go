@@ -12,6 +12,7 @@ import (
 )
 
 const BenchmarkSuiteSchemaV1 = "optimusctx/benchmark-suite@v1"
+const BenchmarkEvidenceBundleSchemaV1 = "optimusctx/benchmark-evidence@v1"
 
 const (
 	BenchmarkTokenEstimatorPolicyName          = "bytes_div_4_ceiling"
@@ -103,6 +104,86 @@ type BenchmarkTokenEstimateContract struct {
 	Policy               BudgetEstimatePolicy `json:"policy"`
 	UsageClaim           string               `json:"usageClaim"`
 	BillingDisambiguator string               `json:"billingDisambiguator"`
+}
+
+type BenchmarkEvidenceVerification struct {
+	Passed            bool     `json:"passed"`
+	FailureReason     string   `json:"failureReason,omitempty"`
+	DriftReasons      []string `json:"driftReasons,omitempty"`
+	InvalidRunReasons []string `json:"invalidRunReasons,omitempty"`
+}
+
+type BenchmarkEvidenceInt64Stats struct {
+	Min    int64 `json:"min"`
+	Max    int64 `json:"max"`
+	Median int64 `json:"median"`
+	Mean   int64 `json:"mean"`
+}
+
+type BenchmarkEvidenceLaneSummary struct {
+	Lane                   BenchmarkLane               `json:"lane"`
+	AttemptCount           int                         `json:"attemptCount"`
+	SuccessCount           int                         `json:"successCount"`
+	InvalidAttemptCount    int                         `json:"invalidAttemptCount"`
+	ElapsedMS              BenchmarkEvidenceInt64Stats `json:"elapsedMs"`
+	ActionCount            BenchmarkEvidenceInt64Stats `json:"actionCount"`
+	BroadSearchActions     BenchmarkEvidenceInt64Stats `json:"broadSearchActions"`
+	TargetedLookupActions  BenchmarkEvidenceInt64Stats `json:"targetedLookupActions"`
+	FileReadActions        BenchmarkEvidenceInt64Stats `json:"fileReadActions"`
+	BytesRead              BenchmarkEvidenceInt64Stats `json:"bytesRead"`
+	ConsultedArtifacts     []string                    `json:"consultedArtifacts,omitempty"`
+	RejectedAttemptReasons []string                    `json:"rejectedAttemptReasons,omitempty"`
+}
+
+type BenchmarkEvidenceArmSummary struct {
+	ArmKind BenchmarkArmKind               `json:"armKind"`
+	ArmName string                         `json:"armName"`
+	Lanes   []BenchmarkEvidenceLaneSummary `json:"lanes"`
+}
+
+type BenchmarkEvidenceLane struct {
+	Lane           BenchmarkLane                  `json:"lane"`
+	StartMarker    string                         `json:"startMarker"`
+	SuccessMarker  string                         `json:"successMarker"`
+	StopMarker     string                         `json:"stopMarker"`
+	SetupAppliedAt time.Time                      `json:"setupAppliedAt,omitempty"`
+	StartedAt      time.Time                      `json:"startedAt"`
+	FinishedAt     time.Time                      `json:"finishedAt"`
+	ElapsedMS      int64                          `json:"elapsedMs"`
+	Success        bool                           `json:"success"`
+	EvidencePaths  []string                       `json:"evidencePaths,omitempty"`
+	Effort         BenchmarkLaneEffort            `json:"effort"`
+	Attribution    []BenchmarkArtifactConsumption `json:"attribution,omitempty"`
+}
+
+type BenchmarkEvidenceArmAttempt struct {
+	Kind          BenchmarkArmKind        `json:"kind"`
+	Name          string                  `json:"name"`
+	WorkspacePath string                  `json:"workspacePath,omitempty"`
+	StartedAt     time.Time               `json:"startedAt"`
+	FinishedAt    time.Time               `json:"finishedAt"`
+	Lanes         []BenchmarkEvidenceLane `json:"lanes"`
+}
+
+type BenchmarkEvidenceAttempt struct {
+	Attempt int                           `json:"attempt"`
+	Arms    []BenchmarkEvidenceArmAttempt `json:"arms"`
+}
+
+type BenchmarkEvidenceBundle struct {
+	SchemaVersion          string                         `json:"schemaVersion"`
+	GeneratedAt            time.Time                      `json:"generatedAt"`
+	RepositoryRoot         string                         `json:"repositoryRoot"`
+	SuiteID                string                         `json:"suiteId"`
+	SuiteVersion           string                         `json:"suiteVersion"`
+	FixtureID              string                         `json:"fixtureId"`
+	FixturePath            string                         `json:"fixturePath"`
+	TokenEstimateContract  BenchmarkTokenEstimateContract `json:"tokenEstimateContract"`
+	MethodologyFingerprint string                         `json:"methodologyFingerprint"`
+	RerunCommand           string                         `json:"rerunCommand"`
+	Verification           BenchmarkEvidenceVerification  `json:"verification"`
+	Comparison             []BenchmarkEvidenceArmSummary  `json:"comparison"`
+	Attempts               []BenchmarkEvidenceAttempt     `json:"attempts"`
 }
 
 type BenchmarkArtifactConsumption struct {
@@ -261,6 +342,145 @@ func EstimateBenchmarkTokensFromBytes(byteCount int64) int64 {
 	}
 	policy := DefaultBenchmarkTokenEstimateContract().Policy
 	return (byteCount + policy.BytesPerToken - 1) / policy.BytesPerToken
+}
+
+func NormalizeBenchmarkEvidenceBundle(bundle BenchmarkEvidenceBundle) BenchmarkEvidenceBundle {
+	bundle.Attempts = append([]BenchmarkEvidenceAttempt(nil), bundle.Attempts...)
+	sort.SliceStable(bundle.Attempts, func(i, j int) bool {
+		return bundle.Attempts[i].Attempt < bundle.Attempts[j].Attempt
+	})
+	for attemptIndex := range bundle.Attempts {
+		arms := append([]BenchmarkEvidenceArmAttempt(nil), bundle.Attempts[attemptIndex].Arms...)
+		sort.SliceStable(arms, func(i, j int) bool {
+			if arms[i].Kind == arms[j].Kind {
+				return arms[i].Name < arms[j].Name
+			}
+			return benchmarkArmSortKey(arms[i].Kind) < benchmarkArmSortKey(arms[j].Kind)
+		})
+		for armIndex := range arms {
+			lanes := append([]BenchmarkEvidenceLane(nil), arms[armIndex].Lanes...)
+			sort.SliceStable(lanes, func(i, j int) bool {
+				return benchmarkLaneSortKey(lanes[i].Lane) < benchmarkLaneSortKey(lanes[j].Lane)
+			})
+			for laneIndex := range lanes {
+				lanes[laneIndex].EvidencePaths = benchmarkUniqueSorted(lanes[laneIndex].EvidencePaths)
+				lanes[laneIndex].Effort.ConsultedArtifacts = benchmarkUniqueSorted(lanes[laneIndex].Effort.ConsultedArtifacts)
+				lanes[laneIndex].Attribution = append([]BenchmarkArtifactConsumption(nil), lanes[laneIndex].Attribution...)
+				sort.SliceStable(lanes[laneIndex].Attribution, func(i, j int) bool {
+					return compareBenchmarkAttribution(lanes[laneIndex].Attribution[i], lanes[laneIndex].Attribution[j]) < 0
+				})
+			}
+			arms[armIndex].Lanes = lanes
+		}
+		bundle.Attempts[attemptIndex].Arms = arms
+	}
+
+	bundle.Comparison = append([]BenchmarkEvidenceArmSummary(nil), bundle.Comparison...)
+	sort.SliceStable(bundle.Comparison, func(i, j int) bool {
+		if bundle.Comparison[i].ArmKind == bundle.Comparison[j].ArmKind {
+			return bundle.Comparison[i].ArmName < bundle.Comparison[j].ArmName
+		}
+		return benchmarkArmSortKey(bundle.Comparison[i].ArmKind) < benchmarkArmSortKey(bundle.Comparison[j].ArmKind)
+	})
+	for armIndex := range bundle.Comparison {
+		lanes := append([]BenchmarkEvidenceLaneSummary(nil), bundle.Comparison[armIndex].Lanes...)
+		sort.SliceStable(lanes, func(i, j int) bool {
+			return benchmarkLaneSortKey(lanes[i].Lane) < benchmarkLaneSortKey(lanes[j].Lane)
+		})
+		for laneIndex := range lanes {
+			lanes[laneIndex].ConsultedArtifacts = benchmarkUniqueSorted(lanes[laneIndex].ConsultedArtifacts)
+			lanes[laneIndex].RejectedAttemptReasons = benchmarkUniqueSorted(lanes[laneIndex].RejectedAttemptReasons)
+		}
+		bundle.Comparison[armIndex].Lanes = lanes
+	}
+	bundle.Verification.DriftReasons = benchmarkUniqueSorted(bundle.Verification.DriftReasons)
+	bundle.Verification.InvalidRunReasons = benchmarkUniqueSorted(bundle.Verification.InvalidRunReasons)
+	return bundle
+}
+
+func MarshalBenchmarkEvidenceBundle(bundle BenchmarkEvidenceBundle) ([]byte, error) {
+	return json.MarshalIndent(NormalizeBenchmarkEvidenceBundle(bundle), "", "  ")
+}
+
+func benchmarkArmSortKey(kind BenchmarkArmKind) int {
+	switch kind {
+	case BenchmarkArmKindBaseline:
+		return 0
+	case BenchmarkArmKindOptimusCtx:
+		return 1
+	default:
+		return 2
+	}
+}
+
+func benchmarkLaneSortKey(lane BenchmarkLane) int {
+	switch lane {
+	case BenchmarkLaneDiscovery:
+		return 0
+	case BenchmarkLaneContextAssembly:
+		return 1
+	case BenchmarkLaneRefreshReady:
+		return 2
+	case BenchmarkLaneTaskCompletion:
+		return 3
+	default:
+		return 4
+	}
+}
+
+func compareBenchmarkAttribution(left BenchmarkArtifactConsumption, right BenchmarkArtifactConsumption) int {
+	leftKey := strings.Join([]string{
+		string(left.Lane),
+		left.StepID,
+		left.StepName,
+		string(left.Surface),
+		string(left.Command),
+		left.Tool,
+		string(left.ArtifactType),
+		string(left.ReportLabel),
+		string(left.SourceKind),
+		left.ArtifactPath,
+		fmt.Sprintf("%020d", left.EstimatedBytes),
+		fmt.Sprintf("%020d", left.EstimatedTokens),
+	}, "|")
+	rightKey := strings.Join([]string{
+		string(right.Lane),
+		right.StepID,
+		right.StepName,
+		string(right.Surface),
+		string(right.Command),
+		right.Tool,
+		string(right.ArtifactType),
+		string(right.ReportLabel),
+		string(right.SourceKind),
+		right.ArtifactPath,
+		fmt.Sprintf("%020d", right.EstimatedBytes),
+		fmt.Sprintf("%020d", right.EstimatedTokens),
+	}, "|")
+	switch {
+	case leftKey < rightKey:
+		return -1
+	case leftKey > rightKey:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func benchmarkUniqueSorted(items []string) []string {
+	set := make(map[string]struct{}, len(items))
+	for _, item := range items {
+		if item == "" {
+			continue
+		}
+		set[item] = struct{}{}
+	}
+	ordered := make([]string, 0, len(set))
+	for item := range set {
+		ordered = append(ordered, item)
+	}
+	sort.Strings(ordered)
+	return ordered
 }
 
 func BenchmarkArtifactTypeForTool(tool string) (BenchmarkArtifactType, bool) {

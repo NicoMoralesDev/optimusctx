@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -432,6 +433,90 @@ func TestBenchmarkComparisonSummary(t *testing.T) {
 	}
 }
 
+func TestBenchmarkEvidenceBundleSchema(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	assertTablesExist(t, store.DB(), "benchmark_evidence_bundles", "benchmark_evidence_lane_summaries", "benchmark_evidence_attributions")
+	assertIndexColumns(t, store.DB(), "benchmark_evidence_bundles", []string{"repository_id", "suite_id", "suite_version", "generated_at"})
+	assertIndexColumns(t, store.DB(), "benchmark_evidence_lane_summaries", []string{"benchmark_evidence_bundle_id", "arm_kind", "lane"})
+	assertIndexColumns(t, store.DB(), "benchmark_evidence_attributions", []string{"benchmark_evidence_bundle_id", "attempt", "arm_kind", "lane"})
+
+	bundle := testBenchmarkEvidenceBundle(layout.RepoRoot)
+	saved, err := store.SaveBenchmarkEvidenceBundle(ctx, repoID, bundle)
+	if err != nil {
+		t.Fatalf("SaveBenchmarkEvidenceBundle() error = %v", err)
+	}
+	if saved.SchemaVersion != repository.BenchmarkEvidenceBundleSchemaV1 {
+		t.Fatalf("saved schema version = %q", saved.SchemaVersion)
+	}
+
+	var bundleCount int
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM benchmark_evidence_bundles`).Scan(&bundleCount); err != nil {
+		t.Fatalf("count benchmark_evidence_bundles: %v", err)
+	}
+	if bundleCount != 1 {
+		t.Fatalf("bundle count = %d, want 1", bundleCount)
+	}
+
+	var attributionCount int
+	if err := store.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM benchmark_evidence_attributions`).Scan(&attributionCount); err != nil {
+		t.Fatalf("count benchmark_evidence_attributions: %v", err)
+	}
+	if attributionCount != 2 {
+		t.Fatalf("attribution count = %d, want 2", attributionCount)
+	}
+}
+
+func TestBenchmarkExportDeterminism(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	bundle := testBenchmarkEvidenceBundle(layout.RepoRoot)
+	if _, err := store.SaveBenchmarkEvidenceBundle(ctx, repoID, bundle); err != nil {
+		t.Fatalf("SaveBenchmarkEvidenceBundle() error = %v", err)
+	}
+
+	got, err := store.LoadLatestBenchmarkEvidenceBundle(ctx, repoID, bundle.SuiteID, bundle.SuiteVersion)
+	if err != nil {
+		t.Fatalf("LoadLatestBenchmarkEvidenceBundle() error = %v", err)
+	}
+	if !reflect.DeepEqual(got, repository.NormalizeBenchmarkEvidenceBundle(bundle)) {
+		t.Fatalf("bundle mismatch\n got=%+v\nwant=%+v", got, repository.NormalizeBenchmarkEvidenceBundle(bundle))
+	}
+
+	firstJSON, err := repository.MarshalBenchmarkEvidenceBundle(bundle)
+	if err != nil {
+		t.Fatalf("MarshalBenchmarkEvidenceBundle(bundle) error = %v", err)
+	}
+	secondJSON, err := repository.MarshalBenchmarkEvidenceBundle(got)
+	if err != nil {
+		t.Fatalf("MarshalBenchmarkEvidenceBundle(loaded) error = %v", err)
+	}
+	if string(firstJSON) != string(secondJSON) {
+		t.Fatalf("bundle JSON drifted after reload\nfirst=%s\nsecond=%s", firstJSON, secondJSON)
+	}
+	if !strings.Contains(string(firstJSON), `"reportLabel": "pack_export"`) {
+		t.Fatalf("bundle JSON missing report labels: %s", firstJSON)
+	}
+}
+
 func mustNextBenchmarkAttempt(t *testing.T, store *Store, ctx context.Context, repositoryID int64, suiteID string, suiteVersion string) int {
 	t.Helper()
 
@@ -440,4 +525,93 @@ func mustNextBenchmarkAttempt(t *testing.T, store *Store, ctx context.Context, r
 		t.Fatalf("NextBenchmarkAttempt() error = %v", err)
 	}
 	return attempt
+}
+
+func testBenchmarkEvidenceBundle(repositoryRoot string) repository.BenchmarkEvidenceBundle {
+	return repository.NormalizeBenchmarkEvidenceBundle(repository.BenchmarkEvidenceBundle{
+		SchemaVersion:          repository.BenchmarkEvidenceBundleSchemaV1,
+		GeneratedAt:            time.Date(2026, 3, 16, 19, 0, 0, 0, time.UTC),
+		RepositoryRoot:         repositoryRoot,
+		SuiteID:                "go-benchmark-refresh-v1",
+		SuiteVersion:           "v1",
+		FixtureID:              "go-worktree",
+		FixturePath:            "go-worktree/v1/repository",
+		TokenEstimateContract:  repository.DefaultBenchmarkTokenEstimateContract(),
+		MethodologyFingerprint: "go-benchmark-refresh-v1|baseline|optimusctx",
+		RerunCommand:           "go run ./cmd/optimusctx eval benchmark export --suite go-benchmark-refresh-v1 --attempts 2",
+		Verification: repository.BenchmarkEvidenceVerification{
+			Passed: true,
+		},
+		Comparison: []repository.BenchmarkEvidenceArmSummary{
+			{
+				ArmKind: repository.BenchmarkArmKindOptimusCtx,
+				ArmName: "OptimusCtx",
+				Lanes: []repository.BenchmarkEvidenceLaneSummary{{
+					Lane:                  repository.BenchmarkLaneContextAssembly,
+					AttemptCount:          1,
+					SuccessCount:          1,
+					ElapsedMS:             repository.BenchmarkEvidenceInt64Stats{Min: 1000, Max: 1000, Median: 1000, Mean: 1000},
+					ActionCount:           repository.BenchmarkEvidenceInt64Stats{Min: 2, Max: 2, Median: 2, Mean: 2},
+					TargetedLookupActions: repository.BenchmarkEvidenceInt64Stats{Min: 1, Max: 1, Median: 1, Mean: 1},
+					BytesRead:             repository.BenchmarkEvidenceInt64Stats{Min: 512, Max: 512, Median: 512, Mean: 512},
+					ConsultedArtifacts:    []string{"artifacts/pack.json", "docs/notes.txt"},
+				}},
+			},
+		},
+		Attempts: []repository.BenchmarkEvidenceAttempt{{
+			Attempt: 1,
+			Arms: []repository.BenchmarkEvidenceArmAttempt{{
+				Kind:          repository.BenchmarkArmKindOptimusCtx,
+				Name:          "OptimusCtx",
+				WorkspacePath: repositoryRoot,
+				StartedAt:     time.Date(2026, 3, 16, 19, 0, 0, 0, time.UTC),
+				FinishedAt:    time.Date(2026, 3, 16, 19, 0, 3, 0, time.UTC),
+				Lanes: []repository.BenchmarkEvidenceLane{{
+					Lane:          repository.BenchmarkLaneContextAssembly,
+					StartMarker:   "context_started",
+					SuccessMarker: "context_ready",
+					StopMarker:    "context_ready",
+					StartedAt:     time.Date(2026, 3, 16, 19, 0, 1, 0, time.UTC),
+					FinishedAt:    time.Date(2026, 3, 16, 19, 0, 2, 0, time.UTC),
+					ElapsedMS:     1000,
+					Success:       true,
+					EvidencePaths: []string{"docs/notes.txt", "artifacts/pack.json"},
+					Effort: repository.BenchmarkLaneEffort{
+						ActionCount:           2,
+						TargetedLookupActions: 1,
+						BytesRead:             512,
+						ConsultedArtifacts:    []string{"artifacts/pack.json", "docs/notes.txt"},
+					},
+					Attribution: []repository.BenchmarkArtifactConsumption{
+						{
+							StepID:          "context-pack",
+							StepName:        "Export context pack",
+							Lane:            repository.BenchmarkLaneContextAssembly,
+							Surface:         repository.BenchmarkTreatmentSurfaceCLI,
+							Command:         repository.EvalCommandPackExport,
+							ArtifactType:    repository.BenchmarkArtifactTypePackExport,
+							ReportLabel:     repository.BenchmarkReportArtifactLabelPackExport,
+							SourceKind:      repository.BenchmarkTokenEstimateSourcePackExportSection,
+							ArtifactPath:    "artifacts/pack.json",
+							EstimatedBytes:  512,
+							EstimatedTokens: 128,
+						},
+						{
+							StepID:          "health-check",
+							StepName:        "Inspect health",
+							Lane:            repository.BenchmarkLaneContextAssembly,
+							Surface:         repository.BenchmarkTreatmentSurfaceMCP,
+							Tool:            "optimusctx.health",
+							ArtifactType:    repository.BenchmarkArtifactTypeHealth,
+							ReportLabel:     repository.BenchmarkReportArtifactLabelOperational,
+							SourceKind:      repository.BenchmarkTokenEstimateSourceDirectPayload,
+							ArtifactPath:    ".optimusctx/state.json",
+							EstimatedBytes:  64,
+							EstimatedTokens: 16,
+						},
+					},
+				}},
+			}},
+		}},
+	})
 }
