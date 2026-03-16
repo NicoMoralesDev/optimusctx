@@ -3,6 +3,8 @@ package mcp
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -195,4 +197,111 @@ func TestMCPServerStdioSession(t *testing.T) {
 	if responses[4].Error.Data["field"] != "maxNodes" {
 		t.Fatalf("bounded failure field = %#v, want maxNodes", responses[4].Error.Data["field"])
 	}
+}
+
+func TestBenchmarkContextAssemblyLane(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "internal", "http", "handler", "rollout.go"), "package handler\n\nfunc LoadRolloutConfig() string {\n\treturn \"prod\"\n}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "internal", "config", "loader.go"), "package config\n\nfunc Load() string {\n\treturn \"loader\"\n}\n")
+	refreshRepo(t, repoRoot)
+
+	runner := app.NewBenchmarkRunner()
+	runner.RunCommand = nil
+	bootstrapped := map[string]bool{}
+	runner.RunTool = func(_ context.Context, invocation app.BenchmarkToolInvocation) (app.BenchmarkToolExecutionResult, error) {
+		server := NewServer(nil, nil, nil)
+		if !bootstrapped[invocation.WorkingDir] {
+			refresh := callTool(t, server, CallToolParams{
+				Name: toolRefresh,
+				Arguments: map[string]any{
+					"startPath": invocation.WorkingDir,
+				},
+			})
+			if refresh.IsError {
+				t.Fatalf("refresh bootstrap failed: %+v", refresh)
+			}
+			bootstrapped[invocation.WorkingDir] = true
+		}
+		call := callTool(t, server, CallToolParams{
+			Name:      invocation.Name,
+			Arguments: invocation.Arguments,
+		})
+		payload, err := decodeMCPBenchmarkPayload(call.StructuredContent)
+		if err != nil {
+			return app.BenchmarkToolExecutionResult{}, err
+		}
+		return app.BenchmarkToolExecutionResult{Payload: payload}, nil
+	}
+	runner.MkdirTemp = func(string, string) (string, error) {
+		return t.TempDir(), nil
+	}
+	runner.CopyTree = func(src string, dst string) error {
+		return copyMCPTree(t, src, dst)
+	}
+
+	benchmarksRoot := t.TempDir()
+	copyMCPTree(t, filepath.Join("..", "..", "testdata", "eval", "fixtures"), filepath.Join(benchmarksRoot, "fixtures"))
+	copyMCPTree(t, filepath.Join("..", "..", "testdata", "eval", "benchmarks"), filepath.Join(benchmarksRoot, "benchmarks"))
+
+	result, err := runner.Run(context.Background(), app.BenchmarkRunRequest{
+		SuiteID:      "go-benchmark-discovery-v1",
+		SuitesDir:    filepath.Join(benchmarksRoot, "benchmarks"),
+		FixturesRoot: filepath.Join(benchmarksRoot, "fixtures"),
+	})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	contextLane := result.Arms[1].LaneResults[1]
+	if contextLane.StopMarker != "context_ready" || !contextLane.Success {
+		t.Fatalf("context lane = %+v", contextLane)
+	}
+	if contextLane.Effort.FileReadActions == 0 || contextLane.Effort.BytesRead == 0 {
+		t.Fatalf("context effort = %+v", contextLane.Effort)
+	}
+}
+
+func copyMCPTree(t *testing.T, src string, dst string) error {
+	t.Helper()
+
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dst, info.Mode().Perm()); err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+		if entry.IsDir() {
+			if err := copyMCPTree(t, srcPath, dstPath); err != nil {
+				return err
+			}
+			continue
+		}
+		content, err := os.ReadFile(srcPath)
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(dstPath, content, info.Mode().Perm()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func decodeMCPBenchmarkPayload(value any) (any, error) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	var envelope QueryEnvelope
+	if err := json.Unmarshal(data, &envelope); err != nil {
+		return nil, err
+	}
+	return envelope.Data, nil
 }

@@ -341,7 +341,7 @@ func (r BenchmarkRunner) executeTreatmentStep(ctx context.Context, workspaceRoot
 		}
 		invocation := BenchmarkToolInvocation{
 			Name:       step.Treatment.Tool,
-			Arguments:  buildBenchmarkToolArguments(suite, workspaceRoot, step.Treatment.Tool),
+			Arguments:  buildBenchmarkToolArguments(suite, workspaceRoot, step.Treatment.Tool, state),
 			WorkingDir: workspaceRoot,
 		}
 		execution, err := r.RunTool(ctx, invocation)
@@ -373,15 +373,19 @@ func buildBenchmarkCLIArgs(action *repository.BenchmarkTreatmentAction) []string
 	return args
 }
 
-func buildBenchmarkToolArguments(suite repository.BenchmarkSuiteDefinition, workspaceRoot string, tool string) map[string]any {
+func buildBenchmarkToolArguments(suite repository.BenchmarkSuiteDefinition, workspaceRoot string, tool string, state *benchmarkArmState) map[string]any {
 	args := map[string]any{"startPath": workspaceRoot}
 	switch tool {
 	case "optimusctx.symbol_lookup":
 		args["name"] = suite.Task.TargetSymbol
 	case "optimusctx.targeted_context":
-		args["path"] = suite.Task.TargetPath
-		args["startLine"] = 1
-		args["endLine"] = 40
+		if state.targetStableKey != "" {
+			args["stableKey"] = state.targetStableKey
+		} else {
+			args["path"] = suite.Task.TargetPath
+			args["startLine"] = 1
+			args["endLine"] = 1
+		}
 		args["beforeLines"] = 0
 		args["afterLines"] = 40
 	}
@@ -482,9 +486,10 @@ type benchmarkLaneState struct {
 }
 
 type benchmarkArmState struct {
-	lanes map[repository.BenchmarkLane]*benchmarkLaneState
-	order []repository.BenchmarkLane
-	nowFn func() time.Time
+	lanes           map[repository.BenchmarkLane]*benchmarkLaneState
+	order           []repository.BenchmarkLane
+	nowFn           func() time.Time
+	targetStableKey string
 }
 
 func newBenchmarkArmState(suite repository.BenchmarkSuiteDefinition, nowFn func() time.Time) *benchmarkArmState {
@@ -577,6 +582,7 @@ func (s *benchmarkArmState) applyToolResult(lane repository.BenchmarkLane, tool 
 		for _, match := range result.Matches {
 			s.addArtifact(lane, match.Path)
 			if match.Path == task.TargetPath && match.Name == task.TargetSymbol {
+				s.targetStableKey = match.StableKey
 				current.finishedAt = finishedAt.UTC()
 				current.success = true
 			}

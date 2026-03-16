@@ -3,11 +3,13 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/niccrow/optimusctx/internal/app"
+	"github.com/niccrow/optimusctx/internal/mcp"
 	"github.com/niccrow/optimusctx/internal/repository"
 	"github.com/niccrow/optimusctx/internal/state"
 	"github.com/niccrow/optimusctx/internal/store/sqlite"
@@ -44,6 +46,75 @@ func TestEvalMCPToolFlows(t *testing.T) {
 		assertContains(t, stdout.String(), "step init: passed exit=0")
 		assertContains(t, stdout.String(), "step refresh: passed exit=0")
 		assertContains(t, stdout.String(), "step mcp-serve: passed exit=0")
+	})
+}
+
+func TestBenchmarkDiscoveryLane(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		runner := app.NewBenchmarkRunner()
+		runner.RunCommand = func(ctx context.Context, invocation app.BenchmarkCommandInvocation) (app.BenchmarkCommandExecutionResult, error) {
+			execution, err := executeEvalCLICommand(ctx, app.EvalCommandInvocation{
+				Args:       invocation.Args,
+				WorkingDir: invocation.WorkingDir,
+			})
+			return app.BenchmarkCommandExecutionResult{
+				Stdout:   execution.Stdout,
+				Stderr:   execution.Stderr,
+				ExitCode: execution.ExitCode,
+			}, err
+		}
+		runner.RunTool = func(ctx context.Context, invocation app.BenchmarkToolInvocation) (app.BenchmarkToolExecutionResult, error) {
+			session := repository.EvalMCPSession{
+				Requests: []repository.EvalMCPRequest{
+					{ID: 1, Method: "initialize", Params: mcp.InitializeParams{
+						ClientInfo:      mcp.ClientInfo{Name: "benchmark-test", Version: "1.0.0"},
+						ProtocolVersion: "2024-11-05",
+					}},
+					{Method: "notifications/initialized", Notification: true},
+					{ID: 2, Method: "tools/call", Params: mcp.CallToolParams{
+						Name:      invocation.Name,
+						Arguments: invocation.Arguments,
+					}},
+				},
+			}
+			execution, err := executeEvalCLIMCPSession(ctx, app.EvalMCPSessionInvocation{
+				WorkingDir: invocation.WorkingDir,
+				Session:    session,
+			})
+			if err != nil {
+				return app.BenchmarkToolExecutionResult{}, err
+			}
+			if len(execution.Responses) == 0 {
+				t.Fatal("expected MCP responses")
+			}
+			payload, err := decodeBenchmarkToolPayload(execution.Responses[len(execution.Responses)-1].Response)
+			if err != nil {
+				return app.BenchmarkToolExecutionResult{}, err
+			}
+			return app.BenchmarkToolExecutionResult{Payload: payload}, nil
+		}
+
+		result, err := runner.Run(context.Background(), app.BenchmarkRunRequest{
+			SuiteID:      "go-benchmark-discovery-v1",
+			SuitesDir:    filepath.Join(repoRoot, "testdata", "eval", "benchmarks"),
+			FixturesRoot: filepath.Join(repoRoot, "testdata", "eval", "fixtures"),
+		})
+		if err != nil {
+			t.Fatalf("Run() error = %v", err)
+		}
+		if len(result.Arms) != 2 {
+			t.Fatalf("len(result.Arms) = %d, want 2", len(result.Arms))
+		}
+		discovery := result.Arms[1].LaneResults[0]
+		if discovery.StopMarker != "target_identified" || !discovery.Success {
+			t.Fatalf("discovery lane = %+v", discovery)
+		}
+		if discovery.Effort.TargetedLookupActions == 0 && discovery.Effort.BroadSearchActions == 0 {
+			t.Fatalf("discovery effort = %+v", discovery.Effort)
+		}
 	})
 }
 
@@ -639,4 +710,22 @@ func findEvalArtifactRecord(records []sqlite.EvalArtifactRecord, artifactID stri
 		}
 	}
 	return sqlite.EvalArtifactRecord{}, false
+}
+
+func decodeBenchmarkToolPayload(response any) (any, error) {
+	data, err := json.Marshal(response)
+	if err != nil {
+		return nil, err
+	}
+	var frame struct {
+		Result struct {
+			StructuredContent struct {
+				Data any `json:"data"`
+			} `json:"structuredContent"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(data, &frame); err != nil {
+		return nil, err
+	}
+	return frame.Result.StructuredContent.Data, nil
 }
