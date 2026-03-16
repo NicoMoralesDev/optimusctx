@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 11
 current_phase_name: a/b benchmark methodology and workflow timing
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 11-a-b-benchmark-methodology-and-workflow-timing-02-PLAN.md
-last_updated: "2026-03-16T12:26:23.253Z"
+stopped_at: Completed 11-a-b-benchmark-methodology-and-workflow-timing-03-PLAN.md
+last_updated: "2026-03-16T12:41:13.952Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 12
-  completed_plans: 10
-  percent: 96
+  completed_plans: 11
+  percent: 98
 ---
 
 # Planning State: OptimusCtx
@@ -27,9 +27,9 @@ progress:
 **Current Phase:** 11
 **Current Phase Name:** a/b benchmark methodology and workflow timing
 **Total Phases:** 5
-**Current Plan:** 3
+**Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 96%
+**Progress:** [██████████] 98%
 **Last Activity:** 2026-03-16
 **Last Activity Description:** Phase 11 plan 02 complete, discovery/context benchmark timing and persistence shipped
 
@@ -183,6 +183,7 @@ progress:
 | Phase 10-functional-runtime-validation P01 | 10m | 3 tasks | 12 files |
 | Phase 10-functional-runtime-validation P02 | 14min | 3 tasks | 10 files |
 | Phase 11-a-b-benchmark-methodology-and-workflow-timing P01 | 1m | 3 tasks | 14 files |
+| Phase 11-a-b-benchmark-methodology-and-workflow-timing P03 | 14min | 3 tasks | 9 files |
 
 ## Decisions Made
 
@@ -294,6 +295,9 @@ progress:
 - [Phase 11-a-b-benchmark-methodology-and-workflow-timing]: Treatment context-assembly requests reuse stable symbol keys from symbol lookup so timed MCP retrieval stays anchored to indexed product behavior.
 - [Phase 11-a-b-benchmark-methodology-and-workflow-timing]: Benchmark persistence stores one run row per suite arm attempt plus separate lane-sample and metric rows for queryable repeated-run comparison.
 - [Phase 11-a-b-benchmark-methodology-and-workflow-timing]: Treatment workspaces bootstrap init and refresh outside timed lanes so discovery and context-assembly measurements exclude repository setup noise.
+- [Phase 11]: Refresh-after-change and task-completion lanes reuse eval setup actions so both arms apply the same committed repository mutation before timing begins.
+- [Phase 11]: Each benchmark arm now runs in its own copied workspace so baseline and OptimusCtx timings cannot contaminate each other through shared state.
+- [Phase 11]: Mutation-lane persistence stores setup, assertions, and evidence paths in SQLite metadata instead of introducing report-specific tables before Phase 12.
 
 ## Blockers
 
@@ -301,8 +305,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T12:26:02.385Z
-**Stopped At:** Completed 11-a-b-benchmark-methodology-and-workflow-timing-02-PLAN.md
+**Last Date:** 2026-03-16T12:41:13.949Z
+**Stopped At:** Completed 11-a-b-benchmark-methodology-and-workflow-timing-03-PLAN.md
 **Resume File:** None
 
 ---
