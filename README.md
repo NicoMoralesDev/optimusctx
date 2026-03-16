@@ -18,7 +18,25 @@ The current command surface covers repository bootstrap, refresh, diagnostics, e
 - `optimusctx snippet`
 - `optimusctx watch`
 
-## Install locally
+## Install and verify
+
+For end-user installation and first-run verification, use the canonical guide at [`docs/install-and-verify.md`](./docs/install-and-verify.md).
+
+That guide covers:
+
+- GitHub release archives
+- Homebrew on macOS and Linux
+- Scoop on Windows
+- local verification with `optimusctx version`, `optimusctx doctor`, and `optimusctx snippet`
+- optional MCP client registration through explicit `optimusctx install --client ...`
+
+The top-level release boundary stays narrow:
+
+- GitHub release archives remain the first retrievable release artifacts
+- Homebrew and Scoop are the only package-manager channels claimed for v1.1
+- MCP registration is explicit and opt-in; package installation does not silently rewrite client configs
+
+## Build from source
 
 Use `go install` to build the binary without mutating any target repository:
 
@@ -33,7 +51,7 @@ go run ./cmd/optimusctx --help
 go run ./cmd/optimusctx version
 ```
 
-The supported local install path for Phase 2 is `go install ./cmd/optimusctx`. Local development can also use `go run ./cmd/optimusctx ...` from this repository. npm or `npx` packaging is not part of the current product scope.
+This source-build path is for local development and repository work. The release-oriented operator flow lives in [`docs/install-and-verify.md`](./docs/install-and-verify.md). npm or `npx` packaging is not part of the current product scope.
 
 ## Release archives
 
@@ -79,6 +97,8 @@ scoop install niccrow/optimusctx
 For release operators, the publication targets are `niccrow/homebrew-tap` and `niccrow/scoop-bucket`. Any workflow that writes those repositories should authenticate with `HOMEBREW_TAP_GITHUB_TOKEN` and `SCOOP_BUCKET_GITHUB_TOKEN`.
 
 Homebrew and Scoop are the only package-manager channels claimed for v1.1. This repository does not yet claim `.deb`, `.rpm`, WinGet, Chocolatey, signed artifacts, or SBOM support.
+
+For the supported operator workflow after installation, follow [`docs/install-and-verify.md`](./docs/install-and-verify.md) instead of using `go run` examples from this repository.
 
 ## Smoke test in a fresh temp repository
 
