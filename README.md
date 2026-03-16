@@ -114,6 +114,37 @@ The current Phase 9 harness is intentionally narrow:
 
 This is the foundation for later validation and benchmark phases. Phase 10 can add more scenario depth on the same harness instead of replacing it with ad hoc scripts.
 
+## Benchmark reruns and methodology verification
+
+Phase 11 does not add a separate end-user `benchmark` command. The benchmark methodology is verified through the committed benchmark suites, the shipped CLI and MCP surfaces they exercise, and the persisted SQLite evidence under `.optimusctx/`.
+
+Benchmark inputs live here:
+
+- suites: `testdata/eval/benchmarks/`
+- fixtures: `testdata/eval/fixtures/`
+
+To rerun the repeated-run methodology checks from the repository root, use the targeted integration coverage:
+
+```bash
+go test ./internal/repository ./internal/app ./internal/store/sqlite -run 'TestBenchmarkRepeatedRuns|TestBenchmarkComparisonSummary'
+go test ./internal/app ./internal/cli ./internal/mcp -run 'TestBenchmarkVerificationWorkflow|TestBenchmarkRerunsDeterministic'
+```
+
+What Phase 11 proves now:
+
+- the same frozen suites can be rerun repeatedly on the same fixtures
+- paired baseline and OptimusCtx arms preserve suite, arm, lane, and attempt identity
+- methodology drift such as changed stop conditions is rejected as a verification failure
+- workflow-speed evidence is persisted in `.optimusctx/db.sqlite`
+
+What Phase 11 does not prove yet:
+
+- token attribution by artifact type
+- milestone-ready human-readable benchmark reports
+- richer export formats beyond the persisted run and lane evidence needed for verification
+
+Treat the current benchmark evidence as methodology proof, not the final reporting layer. Phase 12 owns token attribution and human-readable benchmark reporting on top of the persisted Phase 11 evidence.
+
 ## Functional validation evidence
 
 Phase 10 closes the functional milestone with persisted evidence, not a separate `eval report` command. The shipped workflow stays on `optimusctx eval` plus the repo-local artifact tree under `.optimusctx/eval/`.
