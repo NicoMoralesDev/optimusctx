@@ -19,7 +19,7 @@ created: 2026-03-16
 |----------|-------|
 | **Framework** | go test |
 | **Config file** | none |
-| **Quick run command** | `go test ./internal/repository ./internal/app -run 'TestBenchmarkSuiteContracts|TestBaselineActionValidation|TestBenchmarkLaneDefinitions|TestBenchmarkDiscoveryTiming|TestBenchmarkRefreshAfterChangeLane|TestBenchmarkTaskCompletionLane'` |
+| **Quick run command** | `Run the task-specific automated command from the verification map` |
 | **Full suite command** | `go test ./...` |
 | **Estimated runtime** | ~25 seconds |
 
@@ -27,7 +27,7 @@ created: 2026-03-16
 
 ## Sampling Rate
 
-- **After every task commit:** Run `go test ./internal/repository ./internal/app -run 'TestBenchmarkSuiteContracts|TestBaselineActionValidation|TestBenchmarkLaneDefinitions|TestBenchmarkDiscoveryTiming|TestBenchmarkRefreshAfterChangeLane|TestBenchmarkTaskCompletionLane'`
+- **After every task commit:** Run that task's `Automated Command` from the verification map. If the referenced tests do not exist yet, complete the corresponding Wave 0 prerequisite in the same task before declaring it done.
 - **After every plan wave:** Run `go test ./...`
 - **Before `$gsd-verify-work`:** Full suite must be green
 - **Max feedback latency:** 30 seconds
@@ -38,18 +38,18 @@ created: 2026-03-16
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 11-01-01 | 01 | 1 | BNCH-01 | unit/integration | `go test ./internal/repository ./internal/app -run 'TestBenchmarkSuiteContracts|TestBaselineActionValidation'` | ✅ | ⬜ pending |
-| 11-01-02 | 01 | 1 | BNCH-01 | integration | `go test ./internal/app ./internal/store/sqlite -run 'TestBenchmarkBaselineRules|TestBenchmarkSuitePersistence'` | ✅ | ⬜ pending |
-| 11-01-03 | 01 | 1 | BNCH-01 | integration | `go test ./internal/app ./internal/store/sqlite -run 'TestBenchmarkFixtureSelection|TestBenchmarkCorpusValidation'` | ✅ | ⬜ pending |
-| 11-02-01 | 02 | 2 | BNCH-03 | unit | `go test ./internal/repository ./internal/app -run 'TestBenchmarkLaneDefinitions|TestBenchmarkDiscoveryTiming'` | ✅ | ⬜ pending |
-| 11-02-02 | 02 | 2 | BNCH-03 | integration | `go test ./internal/app ./internal/cli ./internal/mcp -run 'TestBenchmarkDiscoveryLane|TestBenchmarkContextAssemblyLane'` | ✅ | ⬜ pending |
-| 11-02-03 | 02 | 2 | BNCH-01 | integration | `go test ./internal/app ./internal/store/sqlite -run 'TestBenchmarkLaneMetricsPersist'` | ✅ | ⬜ pending |
-| 11-03-01 | 03 | 3 | BNCH-03 | unit/integration | `go test ./internal/repository ./internal/app -run 'TestBenchmarkRefreshAfterChangeLane|TestBenchmarkTaskCompletionLane'` | ✅ | ⬜ pending |
-| 11-03-02 | 03 | 3 | BNCH-03 | integration | `go test ./internal/app ./internal/cli ./internal/mcp -run 'TestBenchmarkRefreshAfterChangeComparison|TestBenchmarkTaskCompletionComparison'` | ✅ | ⬜ pending |
-| 11-03-03 | 03 | 3 | BNCH-01 | integration | `go test ./internal/app ./internal/store/sqlite -run 'TestBenchmarkMutationLanesPersistEvidence'` | ✅ | ⬜ pending |
-| 11-04-01 | 04 | 4 | BNCH-01 | unit/integration | `go test ./internal/repository ./internal/app ./internal/store/sqlite -run 'TestBenchmarkRepeatedRuns|TestBenchmarkComparisonSummary'` | ✅ | ⬜ pending |
-| 11-04-02 | 04 | 4 | BNCH-03 | integration | `go test ./internal/app ./internal/cli ./internal/mcp -run 'TestBenchmarkVerificationWorkflow|TestBenchmarkRerunsDeterministic'` | ✅ | ⬜ pending |
-| 11-04-03 | 04 | 4 | BNCH-01, BNCH-03 | integration/doc | `go test ./...` | ✅ | ⬜ pending |
+| 11-01-01 | 01 | 1 | BNCH-01 | unit/integration | `go test ./internal/repository ./internal/app -run 'TestBenchmarkSuiteContracts|TestBaselineActionValidation'` | ❌ W0 | ⬜ pending |
+| 11-01-02 | 01 | 1 | BNCH-01 | integration | `go test ./internal/app ./internal/store/sqlite -run 'TestBenchmarkBaselineRules|TestBenchmarkSuitePersistence'` | ❌ W0 | ⬜ pending |
+| 11-01-03 | 01 | 1 | BNCH-01 | integration | `go test ./internal/app ./internal/store/sqlite -run 'TestBenchmarkFixtureSelection|TestBenchmarkCorpusValidation'` | ❌ W0 | ⬜ pending |
+| 11-02-01 | 02 | 2 | BNCH-03 | unit | `go test ./internal/repository ./internal/app -run 'TestBenchmarkLaneDefinitions|TestBenchmarkDiscoveryTiming'` | ❌ W0 | ⬜ pending |
+| 11-02-02 | 02 | 2 | BNCH-03 | integration | `go test ./internal/app ./internal/cli ./internal/mcp -run 'TestBenchmarkDiscoveryLane|TestBenchmarkContextAssemblyLane'` | ❌ W0 | ⬜ pending |
+| 11-02-03 | 02 | 2 | BNCH-01 | integration | `go test ./internal/app ./internal/store/sqlite -run 'TestBenchmarkLaneMetricsPersist'` | ❌ W0 | ⬜ pending |
+| 11-03-01 | 03 | 3 | BNCH-03 | unit/integration | `go test ./internal/repository ./internal/app -run 'TestBenchmarkRefreshAfterChangeLane|TestBenchmarkTaskCompletionLane'` | ❌ W0 | ⬜ pending |
+| 11-03-02 | 03 | 3 | BNCH-03 | integration | `go test ./internal/app ./internal/cli ./internal/mcp -run 'TestBenchmarkRefreshAfterChangeComparison|TestBenchmarkTaskCompletionComparison'` | ❌ W0 | ⬜ pending |
+| 11-03-03 | 03 | 3 | BNCH-01 | integration | `go test ./internal/app ./internal/store/sqlite -run 'TestBenchmarkMutationLanesPersistEvidence'` | ❌ W0 | ⬜ pending |
+| 11-04-01 | 04 | 4 | BNCH-01 | unit/integration | `go test ./internal/repository ./internal/app ./internal/store/sqlite -run 'TestBenchmarkRepeatedRuns|TestBenchmarkComparisonSummary'` | ❌ W0 | ⬜ pending |
+| 11-04-02 | 04 | 4 | BNCH-03 | integration | `go test ./internal/app ./internal/cli ./internal/mcp -run 'TestBenchmarkVerificationWorkflow|TestBenchmarkRerunsDeterministic'` | ❌ W0 | ⬜ pending |
+| 11-04-03 | 04 | 4 | BNCH-01, BNCH-03 | integration/doc | `go test ./...` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -60,6 +60,9 @@ created: 2026-03-16
 - [ ] `internal/repository/benchmark_test.go` — contract coverage for suites, arms, lanes, stop conditions, and baseline actions
 - [ ] `internal/app/benchmark_runner_test.go` — orchestration coverage for timing capture and paired workflow execution
 - [ ] `internal/store/sqlite/benchmark_test.go` — persistence coverage for repeated-run samples and comparison summaries
+- [ ] `internal/app/benchmark_service.go` — repeated-run orchestration path for benchmark verification
+- [ ] `internal/store/migrations/0005_benchmark_runs.sql` — schema for persisted benchmark runs and lane samples
+- [ ] `testdata/eval/benchmarks` — committed benchmark suites and frozen corpus definitions
 
 ---
 
@@ -78,7 +81,7 @@ created: 2026-03-16
 - [ ] Sampling continuity: no 3 consecutive tasks without automated verify
 - [ ] Wave 0 covers all MISSING references
 - [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
+- [ ] Feedback latency < 30s
 - [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending
