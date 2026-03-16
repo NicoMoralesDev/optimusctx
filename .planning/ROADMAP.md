@@ -41,7 +41,7 @@ Plans:
 Plans:
 
 - [x] 10-01: end-to-end CLI workflow scenarios
-- [ ] 10-02: MCP serve and tool-flow scenarios
+- [x] 10-02: MCP serve and tool-flow scenarios
 - [ ] 10-03: stale, degraded, and recovery scenario coverage
 - [ ] 10-04: milestone-grade functional reports and verification
 
@@ -102,8 +102,8 @@ Active milestone: `v1.1`
 
 Next step:
 
-- Execute `10-02` — MCP serve and tool-flow scenarios
-- Phase 10 is underway with healthy-path CLI workflow validation now completed
+- Execute `10-03` — stale, degraded, and recovery scenario coverage
+- Phase 10 now has healthy-path CLI and MCP validation on the shared eval harness
 
 ---
-*Last updated: 2026-03-16 after completing Phase 10 plan 01*
+*Last updated: 2026-03-16 after completing Phase 10 plan 02*

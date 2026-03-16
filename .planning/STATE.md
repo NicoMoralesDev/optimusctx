@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: validation-benchmarking-and-distribution
+milestone: v1.0
+milestone_name: milestone
 current_phase: 10
 current_phase_name: functional-runtime-validation
-current_plan: 1
+current_plan: 2
 status: executing
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-03-16T10:29:09.125Z"
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-03-16T10:47:18.817Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 8
-  completed_plans: 5
-  percent: 94
+  completed_plans: 6
+  percent: 96
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** In Progress
+**Status:** Ready to execute
 **Current Phase:** 10
 **Current Phase Name:** functional-runtime-validation
 **Total Phases:** 5
-**Current Plan:** 1
+**Current Plan:** 2
 **Total Plans in Phase:** 4
-**Progress:** [█████████░] 94%
+**Progress:** [██████████] 96%
 **Last Activity:** 2026-03-16
-**Last Activity Description:** Phase 10 plan 01 completed with typed eval assertions, committed CLI workflow scenarios, and persisted repo-local eval evidence
+**Last Activity Description:** Phase 10 plan 02 completed with shared MCP eval sessions, full shipped tool-flow scenarios, and persisted repo-local transcript evidence
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1.1 validation, benchmarking, and distribution
 - Active phase: 10-functional-runtime-validation
-- Next planning action: start Phase 10 plan 02
+- Next planning action: start Phase 10 plan 03
 - Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
 - Coverage status: v1.0 shipped; v1.1 requirements are mapped across Phases 09-13
 
@@ -176,6 +176,7 @@ progress:
 | Phase 09 P02 | 12min | 3 tasks | 5 files |
 | Phase 09-evaluation-harness-and-fixture-foundation P04 | 10min | 3 tasks | 7 files |
 | Phase 10-functional-runtime-validation P01 | 10m | 3 tasks | 12 files |
+| Phase 10-functional-runtime-validation P02 | 14min | 3 tasks | 10 files |
 
 ## Decisions Made
 
@@ -275,6 +276,9 @@ progress:
 - [Phase 09-evaluation-harness-and-fixture-foundation]: Rerun validation now asserts deterministic repo-local paths and persisted metadata rather than byte-identical pack payloads because exports embed temp workspace roots.
 - [Phase 10]: Scenario setup stays workspace-bounded with only write, overwrite, and delete actions so future validation plans can reuse one transport-neutral contract.
 - [Phase 10]: CLI eval integration copies committed fixtures into temp repositories and verifies persisted artifacts by artifact id rather than SQLite row order.
+- [Phase 10-functional-runtime-validation]: MCP eval coverage uses a dedicated mcp_session step in the shared eval schema instead of a second integration harness.
+- [Phase 10-functional-runtime-validation]: CLI eval runs MCP sessions through the shipped optimusctx mcp serve boundary in-process by framing JSON-RPC requests against the real command.
+- [Phase 10-functional-runtime-validation]: MCP transcript and response artifacts persist under the same run-scoped eval tree as CLI evidence, with MCP steps stored under surface mcp.
 
 ## Blockers
 
@@ -282,8 +286,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T10:29:09.122Z
-**Stopped At:** Completed 10-01-PLAN.md
+**Last Date:** 2026-03-16T10:47:18.814Z
+**Stopped At:** Completed 10-02-PLAN.md
 **Resume File:** None
 
 ---
