@@ -89,8 +89,18 @@ type BenchmarkLaneDefinition struct {
 	Description   string                 `json:"description,omitempty"`
 	StartMarker   string                 `json:"startMarker,omitempty"`
 	SuccessMarker string                 `json:"successMarker,omitempty"`
+	Setup         []EvalSetupAction      `json:"setup,omitempty"`
+	Assertions    []BenchmarkAssertion   `json:"assert,omitempty"`
 	StopCondition BenchmarkStopCondition `json:"stopCondition"`
 	Metrics       []BenchmarkMetric      `json:"metrics"`
+}
+
+type BenchmarkAssertion struct {
+	File     string            `json:"file"`
+	Kind     EvalAssertionKind `json:"kind"`
+	Path     string            `json:"path,omitempty"`
+	Contains string            `json:"contains,omitempty"`
+	Equals   any               `json:"equals,omitempty"`
 }
 
 type BenchmarkStopCondition struct {
@@ -145,21 +155,26 @@ type BenchmarkRunResult struct {
 type BenchmarkArmRunResult struct {
 	Kind        BenchmarkArmKind         `json:"kind"`
 	Name        string                   `json:"name"`
+	Workspace   string                   `json:"workspacePath,omitempty"`
 	StartedAt   time.Time                `json:"startedAt"`
 	FinishedAt  time.Time                `json:"finishedAt"`
 	LaneResults []BenchmarkLaneRunResult `json:"laneResults"`
 }
 
 type BenchmarkLaneRunResult struct {
-	Lane          BenchmarkLane       `json:"lane"`
-	StartMarker   string              `json:"startMarker"`
-	SuccessMarker string              `json:"successMarker"`
-	StopMarker    string              `json:"stopMarker"`
-	StartedAt     time.Time           `json:"startedAt"`
-	FinishedAt    time.Time           `json:"finishedAt"`
-	Elapsed       time.Duration       `json:"elapsed"`
-	Success       bool                `json:"success"`
-	Effort        BenchmarkLaneEffort `json:"effort"`
+	Lane           BenchmarkLane        `json:"lane"`
+	StartMarker    string               `json:"startMarker"`
+	SuccessMarker  string               `json:"successMarker"`
+	StopMarker     string               `json:"stopMarker"`
+	SetupAppliedAt time.Time            `json:"setupAppliedAt,omitempty"`
+	StartedAt      time.Time            `json:"startedAt"`
+	FinishedAt     time.Time            `json:"finishedAt"`
+	Elapsed        time.Duration        `json:"elapsed"`
+	Success        bool                 `json:"success"`
+	Setup          []EvalSetupAction    `json:"setup,omitempty"`
+	Assertions     []BenchmarkAssertion `json:"assert,omitempty"`
+	EvidencePaths  []string             `json:"evidencePaths,omitempty"`
+	Effort         BenchmarkLaneEffort  `json:"effort"`
 }
 
 type BenchmarkLaneEffort struct {
@@ -246,6 +261,12 @@ func validateBenchmarkLanes(lanes []BenchmarkLaneDefinition) (map[BenchmarkLane]
 		if err := lane.StopCondition.validate(); err != nil {
 			return nil, fmt.Errorf("lanes[%d].stopCondition: %w", idx, err)
 		}
+		if err := validateEvalSetupActions(lane.Setup); err != nil {
+			return nil, fmt.Errorf("lanes[%d].setup: %w", idx, err)
+		}
+		if err := validateBenchmarkAssertions(lane.Assertions); err != nil {
+			return nil, fmt.Errorf("lanes[%d].assert: %w", idx, err)
+		}
 		if len(lane.Metrics) == 0 {
 			return nil, fmt.Errorf("lanes[%d]: at least one metric is required", idx)
 		}
@@ -261,9 +282,46 @@ func validateBenchmarkLanes(lanes []BenchmarkLaneDefinition) (map[BenchmarkLane]
 			}
 			metrics[metric] = struct{}{}
 		}
+		if (lane.Name == BenchmarkLaneRefreshReady || lane.Name == BenchmarkLaneTaskCompletion) && len(lane.Assertions) == 0 {
+			return nil, fmt.Errorf("lanes[%d]: lane %q requires at least one assertion", idx, lane.Name)
+		}
 		seen[lane.Name] = lane
 	}
 	return seen, nil
+}
+
+func validateBenchmarkAssertions(assertions []BenchmarkAssertion) error {
+	for idx, assertion := range assertions {
+		if err := validateEvalRelativePath(assertion.File); err != nil {
+			return fmt.Errorf("assert[%d].file: %w", idx, err)
+		}
+		switch assertion.Kind {
+		case EvalAssertionKindContains:
+			if assertion.Contains == "" {
+				return fmt.Errorf("assert[%d]: contains is required for %q", idx, assertion.Kind)
+			}
+			if assertion.Path != "" || assertion.Equals != nil {
+				return fmt.Errorf("assert[%d]: path/equals must be empty for %q", idx, assertion.Kind)
+			}
+		case EvalAssertionKindJSONFieldPresent:
+			if strings.TrimSpace(assertion.Path) == "" {
+				return fmt.Errorf("assert[%d]: path is required for %q", idx, assertion.Kind)
+			}
+			if assertion.Contains != "" || assertion.Equals != nil {
+				return fmt.Errorf("assert[%d]: contains/equals must be empty for %q", idx, assertion.Kind)
+			}
+		case EvalAssertionKindJSONFieldEquals:
+			if strings.TrimSpace(assertion.Path) == "" {
+				return fmt.Errorf("assert[%d]: path is required for %q", idx, assertion.Kind)
+			}
+			if assertion.Contains != "" {
+				return fmt.Errorf("assert[%d]: contains must be empty for %q", idx, assertion.Kind)
+			}
+		default:
+			return fmt.Errorf("assert[%d]: unsupported kind %q", idx, assertion.Kind)
+		}
+	}
+	return nil
 }
 
 func (s BenchmarkStopCondition) validate() error {

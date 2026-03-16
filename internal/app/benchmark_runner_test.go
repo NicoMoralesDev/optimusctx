@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -276,6 +277,89 @@ func TestBenchmarkDiscoveryTiming(t *testing.T) {
 	}
 }
 
+func TestBenchmarkRefreshAfterChangeLane(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 3, 16, 12, 0, 0, 0, time.UTC)
+	runner := NewBenchmarkRunner()
+	runner.Now = func() time.Time {
+		current := now
+		now = now.Add(250 * time.Millisecond)
+		return current
+	}
+	runner.MkdirTemp = func(string, string) (string, error) {
+		return t.TempDir(), nil
+	}
+	runner.CopyTree = func(src string, dst string) error {
+		return copyEvalTree(src, dst)
+	}
+	runner.GitInit = func(context.Context, string) error { return nil }
+	runner.RunCommand = func(_ context.Context, invocation BenchmarkCommandInvocation) (BenchmarkCommandExecutionResult, error) {
+		if len(invocation.Args) > 0 && invocation.Args[0] == "refresh" {
+			return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
+		}
+		return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
+	}
+
+	result, err := runner.Run(context.Background(), BenchmarkRunRequest{
+		SuitePath:     writeBenchmarkMutationSuite(t),
+		FixturesRoot:  filepath.Join("..", "..", "testdata", "eval", "fixtures"),
+		WorkspaceRoot: t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	refreshLane := result.Arms[0].LaneResults[0]
+	if !refreshLane.Success {
+		t.Fatalf("refresh lane = %+v, want success", refreshLane)
+	}
+	if !refreshLane.SetupAppliedAt.Before(refreshLane.StartedAt) {
+		t.Fatalf("setup applied at = %s, started at = %s, want setup before timing start", refreshLane.SetupAppliedAt, refreshLane.StartedAt)
+	}
+	if !strings.Contains(strings.Join(refreshLane.EvidencePaths, ","), "docs/notes.txt") {
+		t.Fatalf("refresh evidence = %+v", refreshLane.EvidencePaths)
+	}
+}
+
+func TestBenchmarkTaskCompletionLane(t *testing.T) {
+	t.Parallel()
+
+	runner := NewBenchmarkRunner()
+	runner.MkdirTemp = func(string, string) (string, error) {
+		return t.TempDir(), nil
+	}
+	runner.CopyTree = func(src string, dst string) error {
+		return copyEvalTree(src, dst)
+	}
+	runner.GitInit = func(context.Context, string) error { return nil }
+	runner.RunCommand = func(_ context.Context, invocation BenchmarkCommandInvocation) (BenchmarkCommandExecutionResult, error) {
+		if reflect.DeepEqual(invocation.Args, []string{"refresh"}) {
+			return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
+		}
+		if reflect.DeepEqual(invocation.Args, []string{"pack", "export", "--format", "json", "--output", "artifacts/pack.json"}) {
+			writeEvalFixtureFile(t, filepath.Join(invocation.WorkingDir, "artifacts", "pack.json"), "{\"documents\":[\"docs/notes.txt\"]}\n")
+			return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
+		}
+		return BenchmarkCommandExecutionResult{}, nil
+	}
+
+	result, err := runner.Run(context.Background(), BenchmarkRunRequest{
+		SuitePath:     writeBenchmarkMutationSuite(t),
+		FixturesRoot:  filepath.Join("..", "..", "testdata", "eval", "fixtures"),
+		WorkspaceRoot: t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	taskLane := result.Arms[1].LaneResults[1]
+	if !taskLane.Success {
+		t.Fatalf("task lane = %+v, want success", taskLane)
+	}
+	if !strings.Contains(strings.Join(taskLane.EvidencePaths, ","), "artifacts/pack.json") {
+		t.Fatalf("task evidence = %+v", taskLane.EvidencePaths)
+	}
+}
+
 func validBenchmarkSuite() repository.BenchmarkSuiteDefinition {
 	return repository.BenchmarkSuiteDefinition{
 		SchemaVersion: repository.BenchmarkSuiteSchemaV1,
@@ -414,4 +498,140 @@ func writeBenchmarkSuiteFile(t *testing.T, path string, suite repository.Benchma
 		t.Fatalf("MarshalIndent() error = %v", err)
 	}
 	writeEvalFixtureFile(t, path, string(data))
+}
+
+func writeBenchmarkMutationSuite(t *testing.T) string {
+	t.Helper()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "suite.json")
+	writeBenchmarkSuiteFile(t, path, repository.BenchmarkSuiteDefinition{
+		SchemaVersion: repository.BenchmarkSuiteSchemaV1,
+		ID:            "go-benchmark-refresh-v1",
+		Version:       "v1",
+		Name:          "Go benchmark refresh and task completion",
+		Fixture: repository.EvalFixtureRef{
+			ID:          "go-worktree",
+			Version:     "v1",
+			Path:        "go-worktree/v1/repository",
+			Materialize: repository.EvalFixtureModeCopyTree,
+		},
+		Task: repository.BenchmarkTaskDefinition{
+			ID:                 "docs-pack",
+			Prompt:             "Refresh after change and export a pack artifact.",
+			TargetPath:         "docs/notes.txt",
+			CompletionArtifact: "artifacts/pack.json",
+		},
+		Lanes: []repository.BenchmarkLaneDefinition{
+			{
+				Name: repository.BenchmarkLaneRefreshReady,
+				Setup: []repository.EvalSetupAction{{
+					Kind:    repository.EvalSetupActionOverwriteFile,
+					Path:    "docs/notes.txt",
+					Content: "mutated benchmark note\n",
+				}},
+				Assertions: []repository.BenchmarkAssertion{{
+					File:     "docs/notes.txt",
+					Kind:     repository.EvalAssertionKindContains,
+					Contains: "mutated benchmark note",
+				}},
+				StopCondition: repository.BenchmarkStopCondition{
+					Kind:   repository.BenchmarkStopConditionKindMarker,
+					Marker: "refresh_ready",
+				},
+				Metrics: []repository.BenchmarkMetric{
+					repository.BenchmarkMetricTargetedLookupActions,
+					repository.BenchmarkMetricConsultedArtifacts,
+				},
+			},
+			{
+				Name: repository.BenchmarkLaneTaskCompletion,
+				Assertions: []repository.BenchmarkAssertion{{
+					File:     "docs/notes.txt",
+					Kind:     repository.EvalAssertionKindContains,
+					Contains: "mutated benchmark note",
+				}},
+				StopCondition: repository.BenchmarkStopCondition{
+					Kind:   repository.BenchmarkStopConditionKindMarker,
+					Marker: "task_complete",
+				},
+				Metrics: []repository.BenchmarkMetric{
+					repository.BenchmarkMetricFileReadActions,
+					repository.BenchmarkMetricBytesRead,
+				},
+			},
+		},
+		Arms: []repository.BenchmarkArmDefinition{
+			{
+				Kind: repository.BenchmarkArmKindBaseline,
+				Name: "Baseline",
+				Steps: []repository.BenchmarkStep{
+					{
+						ID:   "grep-note",
+						Name: "Search mutated note",
+						Lane: repository.BenchmarkLaneRefreshReady,
+						Baseline: &repository.BenchmarkBaselineAction{
+							Kind:  repository.BenchmarkBaselineActionGitGrep,
+							Query: "mutated benchmark note",
+						},
+					},
+					{
+						ID:   "refresh-ready",
+						Name: "Mark refresh ready",
+						Lane: repository.BenchmarkLaneRefreshReady,
+						Baseline: &repository.BenchmarkBaselineAction{
+							Kind:   repository.BenchmarkBaselineActionMarkLaneComplete,
+							Marker: "refresh_ready",
+						},
+					},
+					{
+						ID:   "read-docs",
+						Name: "Read updated docs note",
+						Lane: repository.BenchmarkLaneTaskCompletion,
+						Baseline: &repository.BenchmarkBaselineAction{
+							Kind:      repository.BenchmarkBaselineActionReadFileSlice,
+							Path:      "docs/notes.txt",
+							StartLine: 1,
+							EndLine:   20,
+						},
+					},
+					{
+						ID:   "task-complete",
+						Name: "Mark task complete",
+						Lane: repository.BenchmarkLaneTaskCompletion,
+						Baseline: &repository.BenchmarkBaselineAction{
+							Kind:   repository.BenchmarkBaselineActionMarkLaneComplete,
+							Marker: "task_complete",
+						},
+					},
+				},
+			},
+			{
+				Kind: repository.BenchmarkArmKindOptimusCtx,
+				Name: "OptimusCtx",
+				Steps: []repository.BenchmarkStep{
+					{
+						ID:   "refresh",
+						Name: "Refresh repository",
+						Lane: repository.BenchmarkLaneRefreshReady,
+						Treatment: &repository.BenchmarkTreatmentAction{
+							Surface: repository.BenchmarkTreatmentSurfaceCLI,
+							Command: repository.EvalCommandRefresh,
+						},
+					},
+					{
+						ID:   "pack",
+						Name: "Export pack",
+						Lane: repository.BenchmarkLaneTaskCompletion,
+						Treatment: &repository.BenchmarkTreatmentAction{
+							Surface: repository.BenchmarkTreatmentSurfaceCLI,
+							Command: repository.EvalCommandPackExport,
+							Args:    []string{"--format", "json", "--output", "artifacts/pack.json"},
+						},
+					},
+				},
+			},
+		},
+	})
+	return path
 }

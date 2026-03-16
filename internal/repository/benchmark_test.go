@@ -148,6 +148,137 @@ func TestBenchmarkSuiteContracts(t *testing.T) {
 	}
 }
 
+func TestBenchmarkMutationLaneContracts(t *testing.T) {
+	t.Parallel()
+
+	suite := BenchmarkSuiteDefinition{
+		SchemaVersion: BenchmarkSuiteSchemaV1,
+		ID:            "go-benchmark-refresh-v1",
+		Version:       "v1",
+		Name:          "Go benchmark refresh and task completion",
+		Fixture: EvalFixtureRef{
+			ID:          "go-worktree",
+			Version:     "v1",
+			Path:        "go-worktree/v1/repository",
+			Materialize: EvalFixtureModeCopyTree,
+		},
+		Task: BenchmarkTaskDefinition{
+			ID:                 "docs-pack",
+			Prompt:             "Refresh after mutation and export a bounded pack.",
+			TargetPath:         "docs/notes.txt",
+			CompletionArtifact: "artifacts/pack.json",
+		},
+		Lanes: []BenchmarkLaneDefinition{
+			{
+				Name: BenchmarkLaneRefreshReady,
+				Setup: []EvalSetupAction{{
+					Kind:    EvalSetupActionOverwriteFile,
+					Path:    "docs/notes.txt",
+					Content: "mutated benchmark note\n",
+				}},
+				Assertions: []BenchmarkAssertion{{
+					File:     "docs/notes.txt",
+					Kind:     EvalAssertionKindContains,
+					Contains: "mutated benchmark note",
+				}},
+				StopCondition: BenchmarkStopCondition{
+					Kind:   BenchmarkStopConditionKindMarker,
+					Marker: "refresh_ready",
+				},
+				Metrics: []BenchmarkMetric{BenchmarkMetricConsultedArtifacts},
+			},
+			{
+				Name: BenchmarkLaneTaskCompletion,
+				Assertions: []BenchmarkAssertion{{
+					File:     "docs/notes.txt",
+					Kind:     EvalAssertionKindContains,
+					Contains: "mutated benchmark note",
+				}},
+				StopCondition: BenchmarkStopCondition{
+					Kind:   BenchmarkStopConditionKindMarker,
+					Marker: "task_complete",
+				},
+				Metrics: []BenchmarkMetric{BenchmarkMetricFileReadActions},
+			},
+		},
+		Arms: []BenchmarkArmDefinition{
+			{
+				Kind: BenchmarkArmKindBaseline,
+				Name: "Baseline",
+				Steps: []BenchmarkStep{
+					{
+						ID:   "git-grep",
+						Name: "Search mutated note",
+						Lane: BenchmarkLaneRefreshReady,
+						Baseline: &BenchmarkBaselineAction{
+							Kind:  BenchmarkBaselineActionGitGrep,
+							Query: "mutated benchmark note",
+						},
+					},
+					{
+						ID:   "refresh-done",
+						Name: "Mark refresh complete",
+						Lane: BenchmarkLaneRefreshReady,
+						Baseline: &BenchmarkBaselineAction{
+							Kind:   BenchmarkBaselineActionMarkLaneComplete,
+							Marker: "refresh_ready",
+						},
+					},
+					{
+						ID:   "task-read",
+						Name: "Read docs note",
+						Lane: BenchmarkLaneTaskCompletion,
+						Baseline: &BenchmarkBaselineAction{
+							Kind:      BenchmarkBaselineActionReadFileSlice,
+							Path:      "docs/notes.txt",
+							StartLine: 1,
+							EndLine:   20,
+						},
+					},
+					{
+						ID:   "task-done",
+						Name: "Mark task complete",
+						Lane: BenchmarkLaneTaskCompletion,
+						Baseline: &BenchmarkBaselineAction{
+							Kind:   BenchmarkBaselineActionMarkLaneComplete,
+							Marker: "task_complete",
+						},
+					},
+				},
+			},
+			{
+				Kind: BenchmarkArmKindOptimusCtx,
+				Name: "Treatment",
+				Steps: []BenchmarkStep{
+					{
+						ID:   "refresh",
+						Name: "Refresh repository",
+						Lane: BenchmarkLaneRefreshReady,
+						Treatment: &BenchmarkTreatmentAction{
+							Surface: BenchmarkTreatmentSurfaceCLI,
+							Command: EvalCommandRefresh,
+						},
+					},
+					{
+						ID:   "pack",
+						Name: "Export pack",
+						Lane: BenchmarkLaneTaskCompletion,
+						Treatment: &BenchmarkTreatmentAction{
+							Surface: BenchmarkTreatmentSurfaceCLI,
+							Command: EvalCommandPackExport,
+							Args:    []string{"--format", "json", "--output", "artifacts/pack.json"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if err := suite.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
 func TestBaselineActionValidation(t *testing.T) {
 	t.Parallel()
 

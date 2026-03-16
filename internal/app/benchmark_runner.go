@@ -161,9 +161,6 @@ func (r BenchmarkRunner) Run(ctx context.Context, request BenchmarkRunRequest) (
 	if err != nil {
 		return repository.BenchmarkRunResult{}, err
 	}
-	if err := r.bootstrapTreatmentWorkspace(ctx, workspaceRoot); err != nil {
-		return repository.BenchmarkRunResult{}, err
-	}
 
 	result := repository.BenchmarkRunResult{
 		SchemaVersion: repository.BenchmarkSuiteSchemaV1,
@@ -176,7 +173,18 @@ func (r BenchmarkRunner) Run(ctx context.Context, request BenchmarkRunRequest) (
 	}
 
 	for _, arm := range suite.Arms {
-		armResult, err := r.runArm(ctx, workspaceRoot, suite, arm)
+		armWorkspace, err := r.prepareArmWorkspace(workspaceRoot, arm.Kind)
+		if err != nil {
+			result.FinishedAt = r.Now().UTC()
+			return result, err
+		}
+		if arm.Kind == repository.BenchmarkArmKindOptimusCtx {
+			if err := r.bootstrapTreatmentWorkspace(ctx, armWorkspace); err != nil {
+				result.FinishedAt = r.Now().UTC()
+				return result, err
+			}
+		}
+		armResult, err := r.runArm(ctx, armWorkspace, suite, arm)
 		if err != nil {
 			result.FinishedAt = r.Now().UTC()
 			return result, err
@@ -185,6 +193,18 @@ func (r BenchmarkRunner) Run(ctx context.Context, request BenchmarkRunRequest) (
 	}
 	result.FinishedAt = r.Now().UTC()
 	return result, nil
+}
+
+func (r BenchmarkRunner) prepareArmWorkspace(sourceWorkspace string, armKind repository.BenchmarkArmKind) (string, error) {
+	parent := filepath.Dir(sourceWorkspace)
+	workspace := filepath.Join(parent, string(armKind))
+	if err := r.CopyTree(sourceWorkspace, workspace); err != nil {
+		return "", fmt.Errorf("prepare %s benchmark workspace: %w", armKind, err)
+	}
+	if err := r.GitInit(context.Background(), workspace); err != nil {
+		return "", err
+	}
+	return workspace, nil
 }
 
 func validateBenchmarkRunRequest(request BenchmarkRunRequest) error {
@@ -248,6 +268,7 @@ func (r BenchmarkRunner) runArm(ctx context.Context, workspaceRoot string, suite
 	result := repository.BenchmarkArmRunResult{
 		Kind:      arm.Kind,
 		Name:      arm.Name,
+		Workspace: workspaceRoot,
 		StartedAt: r.Now().UTC(),
 	}
 
@@ -272,6 +293,9 @@ func (r BenchmarkRunner) runArm(ctx context.Context, workspaceRoot string, suite
 }
 
 func (r BenchmarkRunner) executeBaselineStep(workspaceRoot string, step repository.BenchmarkStep, state *benchmarkArmState) error {
+	if err := state.ensureLanePrepared(workspaceRoot, step.Lane); err != nil {
+		return err
+	}
 	startedAt := state.now()
 	state.startLane(step.Lane, startedAt)
 
@@ -298,7 +322,9 @@ func (r BenchmarkRunner) executeBaselineStep(workspaceRoot string, step reposito
 		}
 		state.recordFileRead(step.Lane, action.Path, int64(len(content)))
 	case repository.BenchmarkBaselineActionMarkLaneComplete:
-		state.markLaneComplete(step.Lane, action.Marker, startedAt)
+		if err := state.markLaneComplete(workspaceRoot, step.Lane, action.Marker, startedAt); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unsupported baseline action %q", action.Kind)
 	}
@@ -308,6 +334,9 @@ func (r BenchmarkRunner) executeBaselineStep(workspaceRoot string, step reposito
 func (r BenchmarkRunner) executeTreatmentStep(ctx context.Context, workspaceRoot string, suite repository.BenchmarkSuiteDefinition, step repository.BenchmarkStep, state *benchmarkArmState) error {
 	if step.Treatment == nil {
 		return errors.New("treatment step is missing action")
+	}
+	if err := state.ensureLanePrepared(workspaceRoot, step.Lane); err != nil {
+		return err
 	}
 	startedAt := state.now()
 	state.startLane(step.Lane, startedAt)
@@ -335,6 +364,12 @@ func (r BenchmarkRunner) executeTreatmentStep(ctx context.Context, workspaceRoot
 		if strings.TrimSpace(execution.Stderr) != "" {
 			state.addArtifact(step.Lane, "stderr")
 		}
+		if artifactPath := benchmarkCommandOutputArtifact(invocation.Args); artifactPath != "" {
+			state.addArtifact(step.Lane, artifactPath)
+		}
+		if err := state.tryCompleteLane(workspaceRoot, step.Lane, startedAt); err != nil {
+			return err
+		}
 	case repository.BenchmarkTreatmentSurfaceMCP:
 		if r.RunTool == nil {
 			return errors.New("benchmark MCP tool executor is not configured")
@@ -351,10 +386,22 @@ func (r BenchmarkRunner) executeTreatmentStep(ctx context.Context, workspaceRoot
 		if err := state.applyToolResult(step.Lane, step.Treatment.Tool, suite.Task, execution.Payload, startedAt); err != nil {
 			return err
 		}
+		if err := state.tryCompleteLane(workspaceRoot, step.Lane, startedAt); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unsupported treatment surface %q", step.Treatment.Surface)
 	}
 	return nil
+}
+
+func benchmarkCommandOutputArtifact(args []string) string {
+	for idx := 0; idx < len(args)-1; idx++ {
+		if args[idx] == "--output" {
+			return filepath.ToSlash(args[idx+1])
+		}
+	}
+	return ""
 }
 
 func buildBenchmarkCLIArgs(action *repository.BenchmarkTreatmentAction) []string {
@@ -479,6 +526,7 @@ func (r BenchmarkRunner) withDefaults() BenchmarkRunner {
 
 type benchmarkLaneState struct {
 	definition repository.BenchmarkLaneDefinition
+	setupAt    time.Time
 	startedAt  time.Time
 	finishedAt time.Time
 	success    bool
@@ -517,13 +565,45 @@ func (s *benchmarkArmState) startLane(lane repository.BenchmarkLane, startedAt t
 	}
 }
 
-func (s *benchmarkArmState) markLaneComplete(lane repository.BenchmarkLane, marker string, finishedAt time.Time) {
+func (s *benchmarkArmState) ensureLanePrepared(workspaceRoot string, lane repository.BenchmarkLane) error {
+	current := s.lanes[lane]
+	if !current.setupAt.IsZero() || len(current.definition.Setup) == 0 {
+		return nil
+	}
+	if _, err := applyEvalSetupActions(workspaceRoot, current.definition.Setup); err != nil {
+		return err
+	}
+	current.setupAt = s.now()
+	for _, assertion := range current.definition.Assertions {
+		s.addArtifact(lane, assertion.File)
+	}
+	return nil
+}
+
+func (s *benchmarkArmState) markLaneComplete(workspaceRoot string, lane repository.BenchmarkLane, marker string, finishedAt time.Time) error {
 	current := s.lanes[lane]
 	if marker != current.definition.StopCondition.Marker {
-		return
+		return nil
+	}
+	if err := s.evaluateLaneAssertions(workspaceRoot, lane); err != nil {
+		return err
 	}
 	current.finishedAt = finishedAt.UTC()
 	current.success = true
+	return nil
+}
+
+func (s *benchmarkArmState) tryCompleteLane(workspaceRoot string, lane repository.BenchmarkLane, finishedAt time.Time) error {
+	current := s.lanes[lane]
+	if current.success || len(current.definition.Assertions) == 0 {
+		return nil
+	}
+	if err := s.evaluateLaneAssertions(workspaceRoot, lane); err != nil {
+		return nil
+	}
+	current.finishedAt = finishedAt.UTC()
+	current.success = true
+	return nil
 }
 
 func (s *benchmarkArmState) recordBroadSearch(lane repository.BenchmarkLane) {
@@ -555,6 +635,43 @@ func (s *benchmarkArmState) addArtifact(lane repository.BenchmarkLane, artifact 
 		return
 	}
 	current.effort.ConsultedArtifacts = append(current.effort.ConsultedArtifacts, artifact)
+}
+
+func (s *benchmarkArmState) evaluateLaneAssertions(workspaceRoot string, lane repository.BenchmarkLane) error {
+	current := s.lanes[lane]
+	for idx, assertion := range current.definition.Assertions {
+		content, err := os.ReadFile(filepath.Join(workspaceRoot, filepath.FromSlash(assertion.File)))
+		if err != nil {
+			return fmt.Errorf("assert[%d]: read %q: %w", idx, assertion.File, err)
+		}
+		s.addArtifact(lane, assertion.File)
+		switch assertion.Kind {
+		case repository.EvalAssertionKindContains:
+			if !strings.Contains(string(content), assertion.Contains) {
+				return fmt.Errorf("assert[%d]: %q does not contain %q", idx, assertion.File, assertion.Contains)
+			}
+		case repository.EvalAssertionKindJSONFieldPresent:
+			if _, ok, err := evalJSONField(string(content), assertion.Path); err != nil {
+				return fmt.Errorf("assert[%d]: %w", idx, err)
+			} else if !ok {
+				return fmt.Errorf("assert[%d]: json field %q is missing", idx, assertion.Path)
+			}
+		case repository.EvalAssertionKindJSONFieldEquals:
+			value, ok, err := evalJSONField(string(content), assertion.Path)
+			if err != nil {
+				return fmt.Errorf("assert[%d]: %w", idx, err)
+			}
+			if !ok {
+				return fmt.Errorf("assert[%d]: json field %q is missing", idx, assertion.Path)
+			}
+			if !evalJSONValuesEqual(value, assertion.Equals) {
+				return fmt.Errorf("assert[%d]: json field %q = %#v, want %#v", idx, assertion.Path, value, assertion.Equals)
+			}
+		default:
+			return fmt.Errorf("assert[%d]: unsupported kind %q", idx, assertion.Kind)
+		}
+	}
+	return nil
 }
 
 func (s *benchmarkArmState) applyToolResult(lane repository.BenchmarkLane, tool string, task repository.BenchmarkTaskDefinition, payload any, finishedAt time.Time) error {
@@ -615,15 +732,19 @@ func (s *benchmarkArmState) results() []repository.BenchmarkLaneRunResult {
 			current.finishedAt = current.startedAt
 		}
 		results = append(results, repository.BenchmarkLaneRunResult{
-			Lane:          name,
-			StartMarker:   current.definition.StartMarkerName(),
-			SuccessMarker: current.definition.SuccessMarkerName(),
-			StopMarker:    current.definition.StopCondition.Marker,
-			StartedAt:     current.startedAt,
-			FinishedAt:    current.finishedAt,
-			Elapsed:       current.finishedAt.Sub(current.startedAt),
-			Success:       current.success,
-			Effort:        current.effort,
+			Lane:           name,
+			StartMarker:    current.definition.StartMarkerName(),
+			SuccessMarker:  current.definition.SuccessMarkerName(),
+			StopMarker:     current.definition.StopCondition.Marker,
+			SetupAppliedAt: current.setupAt,
+			StartedAt:      current.startedAt,
+			FinishedAt:     current.finishedAt,
+			Elapsed:        current.finishedAt.Sub(current.startedAt),
+			Success:        current.success,
+			Setup:          append([]repository.EvalSetupAction(nil), current.definition.Setup...),
+			Assertions:     append([]repository.BenchmarkAssertion(nil), current.definition.Assertions...),
+			EvidencePaths:  append([]string(nil), current.effort.ConsultedArtifacts...),
+			Effort:         current.effort,
 		})
 	}
 	return results
