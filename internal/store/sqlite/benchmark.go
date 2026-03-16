@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -83,6 +84,7 @@ func BenchmarkPersistedArmsFromResult(repositoryID int64, attempt int, result re
 			WorkspacePath: result.WorkspacePath,
 			StartedAt:     arm.StartedAt.UTC(),
 			CompletedAt:   arm.FinishedAt.UTC(),
+			MetadataJSON:  mustMarshalBenchmarkMetadata(map[string]any{"workspacePath": arm.Workspace}),
 		}
 		samples := make([]BenchmarkLaneSampleBundle, 0, len(arm.LaneResults))
 		for _, lane := range arm.LaneResults {
@@ -95,6 +97,12 @@ func BenchmarkPersistedArmsFromResult(repositoryID int64, attempt int, result re
 				FinishedAt:    lane.FinishedAt.UTC(),
 				ElapsedMS:     lane.Elapsed.Milliseconds(),
 				Success:       lane.Success,
+				MetadataJSON: mustMarshalBenchmarkMetadata(map[string]any{
+					"setupAppliedAt": lane.SetupAppliedAt.UTC().Format(time.RFC3339Nano),
+					"setup":          lane.Setup,
+					"assertions":     lane.Assertions,
+					"evidencePaths":  lane.EvidencePaths,
+				}),
 			}
 			metrics := []BenchmarkLaneMetricRecord{
 				{MetricName: benchmarkMetricActionCount, ValueInt: lane.Effort.ActionCount},
@@ -119,6 +127,14 @@ func BenchmarkPersistedArmsFromResult(repositoryID int64, attempt int, result re
 		persisted = append(persisted, BenchmarkPersistedArm{Run: run, Samples: samples})
 	}
 	return persisted
+}
+
+func mustMarshalBenchmarkMetadata(value any) string {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }
 
 func (s *Store) SaveBenchmarkRun(ctx context.Context, run BenchmarkRunRecord, samples []BenchmarkLaneSampleBundle) (BenchmarkRunRecord, []BenchmarkLaneSampleBundle, error) {

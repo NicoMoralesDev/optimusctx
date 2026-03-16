@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
 	"sort"
 	"testing"
@@ -157,4 +158,106 @@ func reorderBenchmarkMetricsForLoad(metrics []BenchmarkLaneMetricRecord) []Bench
 		return ordered[i].MetricName < ordered[j].MetricName
 	})
 	return ordered
+}
+
+func TestBenchmarkMutationLanesPersistEvidence(t *testing.T) {
+	t.Parallel()
+
+	result := repository.BenchmarkRunResult{
+		SchemaVersion: repository.BenchmarkSuiteSchemaV1,
+		SuiteID:       "go-benchmark-refresh-v1",
+		SuiteVersion:  "v1",
+		FixtureID:     "go-worktree",
+		FixturePath:   "go-worktree/v1/repository",
+		WorkspacePath: "/tmp/benchmark",
+		Arms: []repository.BenchmarkArmRunResult{
+			{
+				Kind:       repository.BenchmarkArmKindOptimusCtx,
+				Name:       "OptimusCtx CLI and MCP workflow",
+				Workspace:  "/tmp/benchmark/optimusctx",
+				StartedAt:  time.Date(2026, 3, 16, 17, 0, 0, 0, time.UTC),
+				FinishedAt: time.Date(2026, 3, 16, 17, 0, 4, 0, time.UTC),
+				LaneResults: []repository.BenchmarkLaneRunResult{
+					{
+						Lane:           repository.BenchmarkLaneRefreshReady,
+						StartMarker:    "refresh_after_change_started",
+						SuccessMarker:  "refresh_ready",
+						StopMarker:     "refresh_ready",
+						SetupAppliedAt: time.Date(2026, 3, 16, 17, 0, 0, 0, time.UTC),
+						StartedAt:      time.Date(2026, 3, 16, 17, 0, 1, 0, time.UTC),
+						FinishedAt:     time.Date(2026, 3, 16, 17, 0, 2, 0, time.UTC),
+						Elapsed:        time.Second,
+						Success:        true,
+						Setup: []repository.EvalSetupAction{{
+							Kind:    repository.EvalSetupActionOverwriteFile,
+							Path:    "docs/notes.txt",
+							Content: "mutated benchmark note\n",
+						}},
+						Assertions: []repository.BenchmarkAssertion{{
+							File:     "docs/notes.txt",
+							Kind:     repository.EvalAssertionKindContains,
+							Contains: "mutated benchmark note",
+						}},
+						EvidencePaths: []string{"docs/notes.txt", ".optimusctx/state.json"},
+						Effort: repository.BenchmarkLaneEffort{
+							ActionCount:           2,
+							TargetedLookupActions: 2,
+							ConsultedArtifacts:    []string{"docs/notes.txt", ".optimusctx/state.json"},
+						},
+					},
+					{
+						Lane:          repository.BenchmarkLaneTaskCompletion,
+						StartMarker:   "task_completion_started",
+						SuccessMarker: "task_complete",
+						StopMarker:    "task_complete",
+						StartedAt:     time.Date(2026, 3, 16, 17, 0, 2, 0, time.UTC),
+						FinishedAt:    time.Date(2026, 3, 16, 17, 0, 4, 0, time.UTC),
+						Elapsed:       2 * time.Second,
+						Success:       true,
+						Assertions: []repository.BenchmarkAssertion{{
+							File:     "docs/notes.txt",
+							Kind:     repository.EvalAssertionKindContains,
+							Contains: "mutated benchmark note",
+						}},
+						EvidencePaths: []string{"docs/notes.txt", "artifacts/pack.json"},
+						Effort: repository.BenchmarkLaneEffort{
+							ActionCount:        2,
+							FileReadActions:    1,
+							BytesRead:          128,
+							ConsultedArtifacts: []string{"docs/notes.txt", "artifacts/pack.json"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	persisted := BenchmarkPersistedArmsFromResult(42, 3, result)
+	if got, want := len(persisted), 1; got != want {
+		t.Fatalf("len(persisted) = %d, want %d", got, want)
+	}
+
+	var runMetadata map[string]any
+	if err := json.Unmarshal([]byte(persisted[0].Run.MetadataJSON), &runMetadata); err != nil {
+		t.Fatalf("run metadata json: %v", err)
+	}
+	if got, want := runMetadata["workspacePath"], "/tmp/benchmark/optimusctx"; got != want {
+		t.Fatalf("run metadata workspacePath = %#v, want %#v", got, want)
+	}
+
+	var laneMetadata map[string]any
+	if err := json.Unmarshal([]byte(persisted[0].Samples[0].Sample.MetadataJSON), &laneMetadata); err != nil {
+		t.Fatalf("lane metadata json: %v", err)
+	}
+	if got := laneMetadata["setupAppliedAt"]; got == "" {
+		t.Fatalf("setupAppliedAt missing from lane metadata: %+v", laneMetadata)
+	}
+	evidence, ok := laneMetadata["evidencePaths"].([]any)
+	if !ok || len(evidence) != 2 {
+		t.Fatalf("lane metadata evidencePaths = %#v", laneMetadata["evidencePaths"])
+	}
+	assertions, ok := laneMetadata["assertions"].([]any)
+	if !ok || len(assertions) != 1 {
+		t.Fatalf("lane metadata assertions = %#v", laneMetadata["assertions"])
+	}
 }
