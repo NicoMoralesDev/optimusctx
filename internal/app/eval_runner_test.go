@@ -346,6 +346,165 @@ func TestEvalRunnerReportsExecutionFailuresWithStepContext(t *testing.T) {
 	}
 }
 
+func TestEvalScenarioMaterializesFixture(t *testing.T) {
+	sourceRoot := t.TempDir()
+	fixturesRoot := filepath.Join(sourceRoot, "fixtures")
+	scenarioPath := filepath.Join(sourceRoot, "scenarios", "materialize.json")
+
+	writeEvalFixtureFile(t, filepath.Join(fixturesRoot, "go-basic", "v1", "repository", "main.go"), "package main\n")
+	writeEvalScenarioFile(t, scenarioPath, repository.EvalScenarioDefinition{
+		SchemaVersion: repository.EvalScenarioSchemaV1,
+		ID:            "materialize",
+		Version:       "v1",
+		Name:          "Materialize",
+		Fixture: repository.EvalFixtureRef{
+			ID:           "go-basic",
+			Version:      "v1",
+			Path:         "go-basic/v1/repository",
+			Materialize:  repository.EvalFixtureModeCopyTree,
+			WorkspaceDir: "workspace",
+		},
+		Steps: []repository.EvalScenarioStep{{
+			ID:   "init",
+			Name: "Initialize",
+			Kind: repository.EvalStepKindCommand,
+			Expect: repository.EvalExpectedCommand{
+				Surface:  repository.EvalCommandSurfaceCLI,
+				Command:  repository.EvalCommandInit,
+				ExitCode: 0,
+			},
+		}},
+	})
+
+	workspaces := []string{
+		filepath.Join(sourceRoot, "runs", "first"),
+		filepath.Join(sourceRoot, "runs", "second"),
+	}
+	var materialized []string
+	runner := NewEvalRunner()
+	runner.Now = newDeterministicEvalClock()
+	runner.MkdirTemp = func(string, string) (string, error) {
+		path := workspaces[len(materialized)]
+		materialized = append(materialized, path)
+		return path, nil
+	}
+	runner.RunCommand = func(_ context.Context, invocation EvalCommandInvocation) (EvalCommandExecutionResult, error) {
+		if _, err := os.Stat(filepath.Join(invocation.WorkingDir, "main.go")); err != nil {
+			t.Fatalf("materialized fixture missing main.go: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(invocation.WorkingDir, ".git")); err != nil {
+			t.Fatalf("materialized fixture missing .git: %v", err)
+		}
+		return EvalCommandExecutionResult{Stdout: "ok\n", ExitCode: 0}, nil
+	}
+
+	for run := 0; run < len(workspaces); run++ {
+		result, err := runner.Run(context.Background(), EvalRunRequest{
+			ScenarioPath: scenarioPath,
+			FixturesRoot: fixturesRoot,
+		})
+		if err != nil {
+			t.Fatalf("Run() #%d error = %v", run+1, err)
+		}
+		if !result.Passed {
+			t.Fatalf("Run() #%d passed = false, want true", run+1)
+		}
+	}
+
+	for _, root := range workspaces {
+		if _, err := os.Stat(filepath.Join(root, "workspace", "main.go")); err != nil {
+			t.Fatalf("workspace %q missing main.go: %v", root, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(fixturesRoot, "go-basic", "v1", "repository", ".git")); !os.IsNotExist(err) {
+		t.Fatalf("fixture source should not gain .git metadata, err=%v", err)
+	}
+}
+
+func TestEvalScenarioRerun(t *testing.T) {
+	sourceRoot := t.TempDir()
+	fixturesRoot := filepath.Join(sourceRoot, "fixtures")
+	scenariosDir := filepath.Join(sourceRoot, "scenarios")
+
+	writeEvalFixtureFile(t, filepath.Join(fixturesRoot, "go-basic", "v1", "repository", "main.go"), "package main\n")
+	writeEvalScenarioFile(t, filepath.Join(scenariosDir, "rerun.json"), repository.EvalScenarioDefinition{
+		SchemaVersion: repository.EvalScenarioSchemaV1,
+		ID:            "rerun",
+		Version:       "v1",
+		Name:          "Rerun",
+		Fixture: repository.EvalFixtureRef{
+			ID:           "go-basic",
+			Version:      "v1",
+			Path:         "go-basic/v1/repository",
+			Materialize:  repository.EvalFixtureModeCopyTree,
+			WorkspaceDir: "workspace",
+		},
+		Steps: []repository.EvalScenarioStep{
+			{
+				ID:   "init",
+				Name: "Initialize",
+				Kind: repository.EvalStepKindCommand,
+				Expect: repository.EvalExpectedCommand{
+					Surface:  repository.EvalCommandSurfaceCLI,
+					Command:  repository.EvalCommandInit,
+					ExitCode: 0,
+				},
+			},
+			{
+				ID:   "refresh",
+				Name: "Refresh",
+				Kind: repository.EvalStepKindCommand,
+				Expect: repository.EvalExpectedCommand{
+					Surface:  repository.EvalCommandSurfaceCLI,
+					Command:  repository.EvalCommandRefresh,
+					ExitCode: 0,
+				},
+			},
+		},
+	})
+
+	workspaces := []string{
+		filepath.Join(sourceRoot, "runs", "first"),
+		filepath.Join(sourceRoot, "runs", "second"),
+	}
+	runIndex := 0
+	runner := NewEvalRunner()
+	runner.Now = newDeterministicEvalClock()
+	runner.MkdirTemp = func(string, string) (string, error) {
+		path := workspaces[runIndex]
+		runIndex++
+		return path, nil
+	}
+	runner.RunCommand = func(_ context.Context, invocation EvalCommandInvocation) (EvalCommandExecutionResult, error) {
+		sentinel := filepath.Join(invocation.WorkingDir, "manual-only.txt")
+		if len(invocation.Args) > 0 && invocation.Args[0] == "init" {
+			if _, err := os.Stat(sentinel); err == nil {
+				t.Fatalf("rerun reused prior workspace state at %q", sentinel)
+			}
+			writeEvalFixtureFile(t, sentinel, "transient\n")
+		}
+		return EvalCommandExecutionResult{Stdout: "ok\n", ExitCode: 0}, nil
+	}
+
+	for run := 0; run < len(workspaces); run++ {
+		result, err := runner.Run(context.Background(), EvalRunRequest{
+			ScenarioID:   "rerun",
+			ScenariosDir: scenariosDir,
+			FixturesRoot: fixturesRoot,
+		})
+		if err != nil {
+			t.Fatalf("Run() #%d error = %v", run+1, err)
+		}
+		if !result.Passed {
+			t.Fatalf("Run() #%d passed = false, want true", run+1)
+		}
+	}
+
+	if _, err := os.Stat(filepath.Join(fixturesRoot, "go-basic", "v1", "repository", "manual-only.txt")); !os.IsNotExist(err) {
+		t.Fatalf("fixture source should remain immutable across reruns, err=%v", err)
+	}
+}
+
 func writeEvalScenarioFile(t *testing.T, path string, scenario repository.EvalScenarioDefinition) {
 	t.Helper()
 
