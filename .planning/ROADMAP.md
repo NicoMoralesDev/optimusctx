@@ -90,8 +90,8 @@ Plans:
 
 - [x] 13-01: automated release archives and checksums
 - [x] 13-02: primary package-manager distribution paths
-- [ ] 13-03: install-and-verify documentation and smoke flow
-- [ ] 13-04: distribution strategy, rollout, and support plan
+- [x] 13-03: install-and-verify documentation and smoke flow
+- [x] 13-04: distribution strategy, rollout, and support plan
 
 **Requirements covered:** `DIST-01`, `DIST-02`, `DIST-03`, `DIST-04`  
 **Details:** Phase 13 packages the shipped runtime for real adoption without broadening product scope: archive releases, first package-manager channels, truthful install verification, and an explicit go-to-market/distribution plan.
@@ -102,8 +102,8 @@ Active milestone: `v1.1`
 
 Next step:
 
-- Continue with `13-03` — install-and-verify documentation and smoke flow
-- Phase 13 now has canonical release archives plus the first Homebrew and Scoop package-manager channels in place
+- Review the completed Phase 13 summaries and close out the `v1.1` milestone
+- Phase 13 now covers release archives, Homebrew and Scoop installs, canonical install verification, and the rollout or support plan
 
 ---
-*Last updated: 2026-03-16 after completing Phase 13 plan 02*
+*Last updated: 2026-03-16 after completing Phase 13 distribution work*

@@ -23,8 +23,8 @@
 
 - [x] **DIST-01**: User can obtain versioned cross-platform OptimusCtx release archives with checksums through an automated release pipeline.
 - [x] **DIST-02**: User can install OptimusCtx through at least one primary package-manager path on macOS/Linux and one on Windows, aligned with the shipped single-binary runtime.
-- [ ] **DIST-03**: User can follow one documented install-and-verify path that uses the real shipped command surface, including `doctor` and `snippet`, to confirm the tool works locally.
-- [ ] **DIST-04**: User can understand the intended distribution strategy through a concrete plan that defines release channels, target users, upgrade path, and support assumptions for adoption.
+- [x] **DIST-03**: User can follow one documented install-and-verify path that uses the real shipped command surface, including `doctor` and `snippet`, to confirm the tool works locally.
+- [x] **DIST-04**: User can understand the intended distribution strategy through a concrete plan that defines release channels, target users, upgrade path, and support assumptions for adoption.
 
 ## v2 Requirements
 
@@ -62,8 +62,8 @@
 | BNCH-04 | Phase 12 | Complete |
 | DIST-01 | Phase 13 | Complete |
 | DIST-02 | Phase 13 | Complete |
-| DIST-03 | Phase 13 | Pending |
-| DIST-04 | Phase 13 | Pending |
+| DIST-03 | Phase 13 | Complete |
+| DIST-04 | Phase 13 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 12 total

@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 13
 current_phase_name: distribution pipeline and adoption plan
-current_plan: 2
+current_plan: 4
 status: executing
-stopped_at: Completed 13-02-PLAN.md
-last_updated: "2026-03-16T16:42:42.926Z"
+stopped_at: Completed 13-03-PLAN.md
+last_updated: "2026-03-16T16:56:08.196Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 20
-  completed_plans: 18
-  percent: 97
+  completed_plans: 20
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -27,11 +27,11 @@ progress:
 **Current Phase:** 13
 **Current Phase Name:** distribution pipeline and adoption plan
 **Total Phases:** 5
-**Current Plan:** 2
+**Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 97%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-16
-**Last Activity Description:** Phase 13 plan 02 complete, Homebrew and Scoop now provide the first release-derived package-manager channels with truthful install and publication guidance
+**Last Activity Description:** Phase 13 execution is complete, with canonical install-and-verify guidance and rollout policy now closing the v1.1 distribution scope
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1.1 validation, benchmarking, and distribution
 - Active phase: 13-distribution-pipeline-and-adoption-plan
-- Next planning action: continue Phase 13 with plan 03 install-and-verify documentation and smoke flow
+- Next planning action: review the completed Phase 13 summaries and close out the v1.1 milestone
 - Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
 - Coverage status: v1.0 shipped; v1.1 requirements are mapped across Phases 09-13
 
@@ -193,6 +193,8 @@ progress:
 | Phase 12-token-attribution-and-evidence-reporting P04 | 26min | 3 tasks | 9 files |
 | Phase 13-distribution-pipeline-and-adoption-plan P01 | 24min | 3 tasks | 8 files |
 | Phase 13-distribution-pipeline-and-adoption-plan P02 | 24min | 3 tasks | 6 files |
+| Phase 13 P04 | 6min | 3 tasks | 4 files |
+| Phase 13-distribution-pipeline-and-adoption-plan P03 | 6min | 3 tasks | 6 files |
 
 ## Decisions Made
 
@@ -327,6 +329,12 @@ progress:
 - [Phase 13]: Homebrew publishes through niccrow/homebrew-tap while user-facing install docs stay on the canonical Homebrew tap name niccrow/tap/optimusctx.
 - [Phase 13]: Scoop publishes through niccrow/scoop-bucket and requires explicit bucket registration before install so the Windows path stays truthful about its first-channel boundary.
 - [Phase 13]: v1.1 package-manager claims stop at Homebrew and Scoop; native Linux packages, WinGet, Chocolatey, signing, and SBOMs remain deferred.
+- [Phase 13]: v1.1 distribution stays on three explicit user channels only: GitHub Release archives, Homebrew, and Scoop.
+- [Phase 13]: GitHub Release archives remain the rollback fallback even when users normally install through Homebrew or Scoop.
+- [Phase 13]: Support stays best-effort and issue-driven, with install config writes remaining explicit behind optimusctx install --client ... --write.
+- [Phase 13]: The canonical operator flow lives in docs/install-and-verify.md, while README stays a pointer plus channel boundary summary so install instructions do not drift.
+- [Phase 13]: Release verification is anchored on the shipped CLI boundary: version, init, doctor, snippet, and preview-only install registration.
+- [Phase 13]: MCP registration remains explicit and opt-in; the smoke flow proves preview mode does not write config files unless --write is supplied.
 
 ## Blockers
 
@@ -334,9 +342,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T16:42:42.923Z
-**Stopped At:** Completed 13-02-PLAN.md
+**Last Date:** 2026-03-16T16:56:08.193Z
+**Stopped At:** Completed 13-03-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-16 after completing Phase 13 plan 02*
+*Last updated: 2026-03-16 after completing Phase 13 distribution work*
