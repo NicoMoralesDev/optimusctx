@@ -6,15 +6,15 @@ current_phase: 09
 current_phase_name: evaluation-harness-and-fixture-foundation
 current_plan: 2
 status: executing
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-03-15T23:59:52.090Z"
-last_activity: 2026-03-15
+stopped_at: Completed 09-03-PLAN.md
+last_updated: "2026-03-16T00:10:30Z"
+last_activity: 2026-03-16
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 20
-  completed_plans: 1
-  percent: 5
+  completed_plans: 2
+  percent: 10
 ---
 
 # Planning State: OptimusCtx
@@ -29,9 +29,9 @@ progress:
 **Total Phases:** 5
 **Current Plan:** 2
 **Total Plans in Phase:** 4
-**Progress:** [░░░░░░░░░░] 5%
-**Last Activity:** 2026-03-15
-**Last Activity Description:** Phase 09 plan 01 completed with canonical evaluation contracts and committed fixture scenarios
+**Progress:** [█░░░░░░░░░] 10%
+**Last Activity:** 2026-03-16
+**Last Activity Description:** Phase 09 plan 03 completed with deterministic eval artifact layout and dedicated eval persistence
 
 ## Project Memory
 
@@ -82,6 +82,7 @@ progress:
 - This file initializes project memory for future planning and execution turns.
 - Update this state whenever the active phase, milestone, or planning status changes.
 - Plan `09-01` is complete with canonical evaluation contracts, committed fixture repositories, scenario definitions, and repository-backed schema validation tests.
+- Plan `09-03` is complete with repository-local eval artifact paths, dedicated eval run persistence tables, and contract tests for rerunnable evidence storage.
 - Plan `01-01` is complete with a working Go CLI scaffold, version output, and bootstrap documentation.
 - Plan `01-02` is complete with repository root detection, ignore-aware discovery, and persistence-ready metadata records under `internal/repository`.
 - Plan `01-03` is complete with repository-local `.optimusctx` layout helpers, SQLite migrations, and store initialization under `internal/state` and `internal/store`.
@@ -167,6 +168,7 @@ progress:
 | Phase 08 P03 | 13m | 3 tasks | 5 files |
 | Phase 08 P04 | 2min | 3 tasks | 2 files |
 | Phase 09-evaluation-harness-and-fixture-foundation P01 | 18min | 3 tasks | 13 files |
+| Phase 09 P03 | 8min | 3 tasks | 7 files |
 
 ## Decisions Made
 
@@ -256,6 +258,8 @@ progress:
 - [Phase 08]: Closure review records current verification and traceability alignment without editing historical audit evidence.
 - [Phase 09]: Phase 9 scenario definitions use JSON files with an explicit schemaVersion so later CLI and persistence layers can load one canonical contract.
 - [Phase 09]: The initial command surface is intentionally narrow: init, refresh, doctor, and pack_export with CLI-only sequencing rules.
+- [Phase 09]: Evaluation artifacts live in .optimusctx/eval/ as a sibling of logs and tmp so evidence stays explicit and separate from transient operational state.
+- [Phase 09]: Eval evidence persists in dedicated eval_runs, eval_steps, and eval_artifacts tables instead of extending refresh-history tables.
 
 ## Blockers
 
@@ -263,8 +267,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-15T23:59:52.087Z
-**Stopped At:** Completed 09-01-PLAN.md
+**Last Date:** 2026-03-16T00:09:49.082Z
+**Stopped At:** Completed 09-03-PLAN.md
 **Resume File:** None
 
 ---

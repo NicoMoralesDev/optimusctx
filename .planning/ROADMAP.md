@@ -26,7 +26,7 @@ Plans:
 
 - [x] 09-01: fixture repository set and scenario schema
 - [ ] 09-02: CLI evaluation runner foundation
-- [ ] 09-03: evaluation artifact layout and persistence
+- [x] 09-03: evaluation artifact layout and persistence
 - [ ] 09-04: rerunnable scenario orchestration and docs
 
 **Requirements covered:** `EVAL-01`, `EVAL-04`  
@@ -106,4 +106,4 @@ Next step:
 - After Phase 9 completes, start Phase 10 functional runtime validation plans
 
 ---
-*Last updated: 2026-03-15 after completing Phase 09 plan 01*
+*Last updated: 2026-03-16 after completing Phase 09 plan 03*
