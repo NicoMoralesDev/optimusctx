@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 13
-current_phase_name: distribution pipeline and adoption plan
-current_plan: 4
-status: complete
-stopped_at: Completed 13-04-PLAN.md
-last_updated: "2026-03-16T16:56:08.196Z"
+current_phase: 14
+current_phase_name: benchmark boundary redefinition and agent-input validation
+current_plan: 2
+status: executing
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-03-16T19:16:14.290Z"
 last_activity: 2026-03-16
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 5
-  total_plans: 20
-  completed_plans: 20
-  percent: 100
+  total_plans: 24
+  completed_plans: 21
+  percent: 83
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Complete
-**Current Phase:** 13
-**Current Phase Name:** distribution pipeline and adoption plan
-**Total Phases:** 5
-**Current Plan:** 4
+**Status:** Ready to execute
+**Current Phase:** 14
+**Current Phase Name:** benchmark boundary redefinition and agent-input validation
+**Total Phases:** 6
+**Current Plan:** 2
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 100%
+**Progress:** [████████░░] 83%
 **Last Activity:** 2026-03-16
-**Last Activity Description:** Phase 13 execution is complete, with canonical install-and-verify guidance and rollout policy now closing the v1.1 distribution scope
+**Last Activity Description:** Phase 14 planning is complete with four execution plans for benchmark-boundary repair, suite migration, and evidence refresh
 
 ## Project Memory
 
@@ -44,8 +44,8 @@ progress:
 ## Current Planning Context
 
 - Active milestone: v1.1 validation, benchmarking, and distribution
-- Active phase: 13-distribution-pipeline-and-adoption-plan
-- Next planning action: review the completed Phase 13 summaries and close out the v1.1 milestone
+- Active phase: 14-benchmark-boundary-redefinition-and-agent-input-validation
+- Next planning action: execute Phase 14 so benchmark suites count only agent-facing inputs, enforce comparable final artifacts, and refresh milestone evidence
 - Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
 - Coverage status: v1.0 shipped; v1.1 requirements are mapped across Phases 09-13
 
@@ -82,6 +82,13 @@ progress:
 - Source of truth for scope: `.planning/REQUIREMENTS.md`
 - Source of truth for phase sequence: `.planning/ROADMAP.md`
 - Source of truth for technical direction: `.planning/research/SUMMARY.md`
+
+## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 14 added: Benchmark boundary redefinition and agent-input validation
+- Phase 14 planned: four plans cover schema repair, runtime enforcement, suite migration, and reproducibility closeout
 
 ## Notes
 
@@ -195,6 +202,7 @@ progress:
 | Phase 13-distribution-pipeline-and-adoption-plan P02 | 24min | 3 tasks | 6 files |
 | Phase 13 P04 | 6min | 3 tasks | 4 files |
 | Phase 13-distribution-pipeline-and-adoption-plan P03 | 6min | 3 tasks | 6 files |
+| Phase 14 P01 | 59min | 3 tasks | 9 files |
 
 ## Decisions Made
 
@@ -335,6 +343,8 @@ progress:
 - [Phase 13]: The canonical operator flow lives in docs/install-and-verify.md, while README stays a pointer plus channel boundary summary so install instructions do not drift.
 - [Phase 13]: Release verification is anchored on the shipped CLI boundary: version, init, doctor, snippet, and preview-only install registration.
 - [Phase 13]: MCP registration remains explicit and opt-in; the smoke flow proves preview mode does not write config files unless --write is supplied.
+- [Phase 14]: Benchmark suites now validate only as optimusctx/benchmark-suite@v2 and must declare counted agent inputs plus structured comparable final artifacts.
+- [Phase 14]: Benchmark evidence now persists a methodology snapshot and attribution boundary so counted agent input, system provenance, and final-artifact verification cannot be conflated.
 
 ## Blockers
 
@@ -342,8 +352,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T16:56:08.193Z
-**Stopped At:** Completed 13-03-PLAN.md
+**Last Date:** 2026-03-16T19:16:14.286Z
+**Stopped At:** Completed 14-01-PLAN.md
 **Resume File:** None
 
 ---

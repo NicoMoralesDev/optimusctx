@@ -98,12 +98,28 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.1` complete
+Active milestone: `v1.1` reopened with pending Phase 14
 
 Next step:
 
-- Review the completed Phase 13 summaries and close out the `v1.1` milestone
-- Phase 13 now covers release archives, Homebrew and Scoop installs, canonical install verification, and the rollout or support plan
+- Execute Phase 14 to redefine benchmark boundaries around agent-facing inputs instead of internal system work
+- Then rerun the benchmark milestone against the corrected methodology before closing out `v1.1`
+
+### Phase 14: Benchmark boundary redefinition and agent-input validation
+
+**Goal**: Redefine benchmark contracts so token accounting measures only declared agent-facing inputs, comparable normalized final artifacts are enforced at runtime, and the frozen benchmark corpus is rerun on the corrected methodology.  
+**Depends on:** Phase 13
+**Plans:** 1/4 plans executed
+
+Plans:
+
+- [ ] 14-01: benchmark boundary contract and schema upgrade
+- [ ] 14-02: runtime boundary enforcement and final-artifact validation
+- [ ] 14-03: frozen-suite migration and benchmark evidence refresh
+- [ ] 14-04: reproducibility sign-off and milestone reclose
+
+**Requirements covered:** `BNCH-01`, `BNCH-02`, `BNCH-04`  
+**Details:** Phase 14 repairs the benchmark framework boundary without redesigning product payloads: internal system work remains provenance, counted tokens come only from declared agent-facing inputs, both arms must satisfy comparable final-artifact contracts, and the committed benchmark corpus plus evidence are refreshed on the corrected methodology.
 
 ---
-*Last updated: 2026-03-16 after completing Phase 13 distribution work*
+*Last updated: 2026-03-16 after planning Phase 14 benchmark-boundary follow-up work*
