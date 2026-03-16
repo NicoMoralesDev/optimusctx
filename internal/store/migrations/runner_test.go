@@ -27,11 +27,11 @@ func TestMigrationRunnerAppliesFreshDatabase(t *testing.T) {
 	}
 
 	versions := appliedVersions(t, db)
-	if !reflect.DeepEqual(versions, []int{1, 2, 3}) {
-		t.Fatalf("versions = %v, want [1 2 3]", versions)
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4}) {
+		t.Fatalf("versions = %v, want [1 2 3 4]", versions)
 	}
 
-	assertTablesExist(t, db, "schema_migrations", "repositories", "directories", "files", "refresh_runs", "refresh_file_events", "file_extractions", "symbols")
+	assertTablesExist(t, db, "schema_migrations", "repositories", "directories", "files", "refresh_runs", "refresh_file_events", "file_extractions", "symbols", "eval_runs", "eval_steps", "eval_artifacts")
 }
 
 func TestApplyMigrationsIsNoOpWhenAlreadyCurrent(t *testing.T) {
@@ -84,6 +84,10 @@ func TestApplyMigrationsCreatesRequiredIndexes(t *testing.T) {
 	assertIndexColumns(t, db, "symbols", []string{"file_id", "ordinal"})
 	assertIndexColumns(t, db, "symbols", []string{"repository_id", "path", "ordinal"})
 	assertIndexColumns(t, db, "symbols", []string{"repository_id", "qualified_name"})
+	assertIndexColumns(t, db, "eval_runs", []string{"repository_id", "started_at"})
+	assertIndexColumns(t, db, "eval_runs", []string{"repository_id", "scenario_id", "started_at"})
+	assertIndexColumns(t, db, "eval_steps", []string{"eval_run_id", "ordinal"})
+	assertIndexColumns(t, db, "eval_artifacts", []string{"eval_run_id", "step_id"})
 }
 
 func TestApplyMigrationsAddsRefreshStateColumns(t *testing.T) {
@@ -137,6 +141,12 @@ func TestApplyMigrationsAddsRefreshStateColumns(t *testing.T) {
 	assertColumnExists(t, db, "symbols", "signature_start_byte")
 	assertColumnExists(t, db, "symbols", "signature_end_byte")
 	assertColumnExists(t, db, "symbols", "is_exported")
+	assertColumnExists(t, db, "eval_runs", "scenario_id")
+	assertColumnExists(t, db, "eval_runs", "artifact_root")
+	assertColumnExists(t, db, "eval_steps", "step_id")
+	assertColumnExists(t, db, "eval_steps", "stdout_path")
+	assertColumnExists(t, db, "eval_artifacts", "artifact_id")
+	assertColumnExists(t, db, "eval_artifacts", "stored_path")
 }
 
 func TestExtractionSchemaContracts(t *testing.T) {
