@@ -24,7 +24,7 @@
 
 Plans:
 
-- [ ] 09-01: fixture repository set and scenario schema
+- [x] 09-01: fixture repository set and scenario schema
 - [ ] 09-02: CLI evaluation runner foundation
 - [ ] 09-03: evaluation artifact layout and persistence
 - [ ] 09-04: rerunnable scenario orchestration and docs
@@ -102,8 +102,8 @@ Active milestone: `v1.1`
 
 Next step:
 
-- `$gsd-plan-phase 9` — plan the evaluation harness and fixture foundation
-- `$gsd-plan-phase 10` — after Phase 9 is planned, define the functional validation execution details
+- Execute `09-02` — CLI evaluation runner foundation
+- After Phase 9 completes, start Phase 10 functional runtime validation plans
 
 ---
-*Last updated: 2026-03-15 after defining milestone v1.1 roadmap*
+*Last updated: 2026-03-15 after completing Phase 09 plan 01*

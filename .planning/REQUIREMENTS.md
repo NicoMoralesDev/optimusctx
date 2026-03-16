@@ -10,7 +10,7 @@
 - [ ] **EVAL-01**: User can run repeatable end-to-end CLI scenarios that validate the shipped `init`, `refresh`, `doctor`, and `pack export` flows on fixture repositories.
 - [ ] **EVAL-02**: User can run repeatable end-to-end MCP scenarios that validate the shipped `mcp serve` and query/ops tool surface against realistic repository tasks.
 - [ ] **EVAL-03**: User can validate healthy, stale, degraded, and recovery scenarios so the functional suite proves both normal and failure-path behavior.
-- [ ] **EVAL-04**: User can rerun the same functional scenarios from versioned fixture repositories and scenario definitions without manually reconstructing test state.
+- [x] **EVAL-04**: User can rerun the same functional scenarios from versioned fixture repositories and scenario definitions without manually reconstructing test state.
 
 ### Benchmarking
 
@@ -55,7 +55,7 @@
 | EVAL-01 | Phase 09 | Pending |
 | EVAL-02 | Phase 10 | Pending |
 | EVAL-03 | Phase 10 | Pending |
-| EVAL-04 | Phase 09 | Pending |
+| EVAL-04 | Phase 09 | Complete |
 | BNCH-01 | Phase 11 | Pending |
 | BNCH-02 | Phase 12 | Pending |
 | BNCH-03 | Phase 11 | Pending |
