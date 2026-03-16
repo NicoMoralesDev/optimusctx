@@ -188,6 +188,81 @@ func TestBenchmarkCorpusValidation(t *testing.T) {
 	}
 }
 
+func TestBenchmarkSuiteV2FrozenCorpus(t *testing.T) {
+	t.Parallel()
+
+	suites, err := NewBenchmarkRunner().LoadSuites(BenchmarkSuiteRequest{
+		SuitesDir:    filepath.Join("..", "..", "testdata", "eval", "benchmarks"),
+		FixturesRoot: filepath.Join("..", "..", "testdata", "eval", "fixtures"),
+	})
+	if err != nil {
+		t.Fatalf("LoadSuites() error = %v", err)
+	}
+
+	byID := make(map[string]repository.BenchmarkSuiteDefinition, len(suites))
+	for _, suite := range suites {
+		byID[suite.ID] = suite
+	}
+
+	discovery, ok := byID["go-benchmark-discovery-v1"]
+	if !ok {
+		t.Fatal("missing go-benchmark-discovery-v1")
+	}
+	if discovery.SchemaVersion != repository.BenchmarkSuiteSchemaV2 {
+		t.Fatalf("discovery SchemaVersion = %q, want %q", discovery.SchemaVersion, repository.BenchmarkSuiteSchemaV2)
+	}
+	if discovery.Version != "v1" {
+		t.Fatalf("discovery Version = %q, want v1", discovery.Version)
+	}
+	if len(discovery.CountedInputs) < 6 {
+		t.Fatalf("discovery counted inputs = %d, want explicit discovery and context projections", len(discovery.CountedInputs))
+	}
+	if discovery.Lanes[0].FinalArtifact == nil || discovery.Lanes[1].FinalArtifact == nil {
+		t.Fatalf("discovery lane final artifacts = %+v", discovery.Lanes)
+	}
+
+	refresh, ok := byID["go-benchmark-refresh-v1"]
+	if !ok {
+		t.Fatal("missing go-benchmark-refresh-v1")
+	}
+	if refresh.SchemaVersion != repository.BenchmarkSuiteSchemaV2 {
+		t.Fatalf("refresh SchemaVersion = %q, want %q", refresh.SchemaVersion, repository.BenchmarkSuiteSchemaV2)
+	}
+	if refresh.Version != "v1" {
+		t.Fatalf("refresh Version = %q, want v1", refresh.Version)
+	}
+	if len(refresh.CountedInputs) < 5 {
+		t.Fatalf("refresh counted inputs = %d, want explicit readiness and task projections", len(refresh.CountedInputs))
+	}
+	if refresh.Lanes[0].FinalArtifact == nil || refresh.Lanes[1].FinalArtifact == nil {
+		t.Fatalf("refresh lane final artifacts = %+v", refresh.Lanes)
+	}
+}
+
+func TestBenchmarkMigrationPreservesStableSuiteSelection(t *testing.T) {
+	t.Parallel()
+
+	for _, suiteID := range []string{"go-benchmark-discovery-v1", "go-benchmark-refresh-v1"} {
+		suite, err := NewBenchmarkRunner().LoadSuite(BenchmarkSuiteRequest{
+			SuiteID:      suiteID,
+			SuitesDir:    filepath.Join("..", "..", "testdata", "eval", "benchmarks"),
+			FixturesRoot: filepath.Join("..", "..", "testdata", "eval", "fixtures"),
+		})
+		if err != nil {
+			t.Fatalf("LoadSuite(%q) error = %v", suiteID, err)
+		}
+		if suite.SchemaVersion != repository.BenchmarkSuiteSchemaV2 {
+			t.Fatalf("%s schema = %q, want %q", suiteID, suite.SchemaVersion, repository.BenchmarkSuiteSchemaV2)
+		}
+		if suite.Version != "v1" {
+			t.Fatalf("%s version = %q, want v1", suiteID, suite.Version)
+		}
+		if err := suite.Boundary.Validate(); err != nil {
+			t.Fatalf("%s boundary validate error = %v", suiteID, err)
+		}
+	}
+}
+
 func TestBenchmarkLaneDefinitions(t *testing.T) {
 	t.Parallel()
 

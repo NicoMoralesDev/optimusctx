@@ -1,9 +1,14 @@
 {
-  "schemaVersion": "optimusctx/benchmark-suite@v1",
+  "schemaVersion": "optimusctx/benchmark-suite@v2",
   "id": "go-benchmark-refresh-v1",
   "version": "v1",
-  "name": "Go benchmark refresh and task completion",
-  "description": "Paired refresh-after-change and completion benchmark on the frozen go-worktree fixture.",
+  "name": "Go benchmark refresh recovery and bounded context",
+  "description": "Paired refresh-after-change and bounded-context benchmark on the frozen go-worktree fixture using declared counted readiness inputs plus comparable final artifacts.",
+  "boundary": {
+    "countedInputs": "declared_agent_inputs_only",
+    "systemOutputs": "persist_system_outputs",
+    "finalArtifacts": "required_per_lane_or_task"
+  },
   "fixture": {
     "id": "go-worktree",
     "version": "v1",
@@ -12,24 +17,94 @@
     "workspaceDir": "workspace"
   },
   "task": {
-    "id": "docs-pack",
-    "prompt": "Refresh after a controlled docs change, then produce a bounded pack export that includes the updated notes file.",
+    "id": "docs-context",
+    "prompt": "Refresh after a controlled docs change, then fetch the bounded updated notes context needed to explain the change.",
     "targetPath": "docs/notes.txt",
     "contextPaths": [
-      "docs/notes.txt",
-      "app/main.go"
-    ],
-    "completionArtifact": "artifacts/pack.json"
+      "docs/notes.txt"
+    ]
   },
+  "countedInputs": [
+    {
+      "id": "baseline-tracked-file-hints",
+      "armKind": "baseline",
+      "lane": "refresh_after_change",
+      "stepId": "baseline-git-files",
+      "name": "Baseline tracked-file hints",
+      "kind": "path_list",
+      "sourceKind": "path_estimate",
+      "path": "docs"
+    },
+    {
+      "id": "baseline-mutated-note-match",
+      "armKind": "baseline",
+      "lane": "refresh_after_change",
+      "stepId": "baseline-grep-notes",
+      "name": "Baseline mutated note matches",
+      "kind": "path_list",
+      "sourceKind": "path_estimate",
+      "path": "docs/notes.txt"
+    },
+    {
+      "id": "treatment-health-freshness",
+      "armKind": "optimusctx",
+      "lane": "refresh_after_change",
+      "stepId": "opti-health",
+      "name": "Projected health freshness",
+      "kind": "json_field_projection",
+      "sourceKind": "direct_payload",
+      "artifactType": "health",
+      "reportLabel": "operational",
+      "jsonPath": "Refresh.Freshness"
+    },
+    {
+      "id": "treatment-health-generation",
+      "armKind": "optimusctx",
+      "lane": "refresh_after_change",
+      "stepId": "opti-health",
+      "name": "Projected health generation",
+      "kind": "json_field_projection",
+      "sourceKind": "direct_payload",
+      "artifactType": "health",
+      "reportLabel": "operational",
+      "jsonPath": "Refresh.CurrentGeneration"
+    },
+    {
+      "id": "baseline-updated-notes-slice",
+      "armKind": "baseline",
+      "lane": "task_completion",
+      "stepId": "baseline-read-docs",
+      "name": "Baseline updated notes slice",
+      "kind": "file_slice",
+      "sourceKind": "bounded_file_content",
+      "path": "docs/notes.txt",
+      "startLine": 1,
+      "endLine": 40
+    },
+    {
+      "id": "treatment-updated-notes-context",
+      "armKind": "optimusctx",
+      "lane": "task_completion",
+      "stepId": "opti-targeted-context",
+      "name": "Treatment bounded updated notes context",
+      "kind": "text_output",
+      "sourceKind": "direct_payload",
+      "artifactType": "l2_context",
+      "reportLabel": "l2_context",
+      "path": "artifacts/updated-notes.txt"
+    }
+  ],
   "lanes": [
     {
       "name": "refresh_after_change",
       "description": "Return the repository to usable state after a deterministic mutation.",
+      "startMarker": "refresh_after_change_started",
+      "successMarker": "refresh_ready",
       "setup": [
         {
           "kind": "overwrite_file",
           "path": "docs/notes.txt",
-          "content": "pack export should include this deterministic fixture content after benchmark mutation\n"
+          "content": "bounded context should include this deterministic fixture content after benchmark mutation\n"
         }
       ],
       "assert": [
@@ -39,6 +114,32 @@
           "contains": "after benchmark mutation"
         }
       ],
+      "finalArtifact": {
+        "id": "refresh-readiness",
+        "name": "Normalized refresh readiness summary",
+        "kind": "readiness_summary",
+        "path": "artifacts/readiness.json",
+        "format": "json",
+        "normalization": {
+          "mode": "json_fields",
+          "jsonPaths": [
+            "freshness",
+            "generation",
+            "targetReady"
+          ]
+        },
+        "assert": [
+          {
+            "kind": "json_field_equals",
+            "path": "targetReady",
+            "equals": true
+          },
+          {
+            "kind": "json_field_present",
+            "path": "freshness"
+          }
+        ]
+      },
       "stopCondition": {
         "kind": "marker",
         "marker": "refresh_ready"
@@ -51,6 +152,8 @@
     {
       "name": "task_completion",
       "description": "Produce the final task artifact once the repository is ready again.",
+      "startMarker": "task_completion_started",
+      "successMarker": "task_complete",
       "assert": [
         {
           "file": "docs/notes.txt",
@@ -58,6 +161,23 @@
           "contains": "after benchmark mutation"
         }
       ],
+      "finalArtifact": {
+        "id": "updated-notes-context",
+        "name": "Normalized updated notes context",
+        "kind": "task_output",
+        "path": "artifacts/updated-notes.txt",
+        "format": "text",
+        "normalization": {
+          "mode": "text_trimmed",
+          "trimWhitespace": true
+        },
+        "assert": [
+          {
+            "kind": "contains",
+            "contains": "after benchmark mutation"
+          }
+        ]
+      },
       "stopCondition": {
         "kind": "marker",
         "marker": "task_complete"
@@ -72,6 +192,7 @@
     {
       "kind": "baseline",
       "name": "Baseline exact-search workflow",
+      "description": "Replayable baseline workflow using git listing, exact search, bounded reads, and explicit completion markers.",
       "steps": [
         {
           "id": "baseline-git-files",
@@ -124,6 +245,7 @@
     {
       "kind": "optimusctx",
       "name": "OptimusCtx CLI and MCP workflow",
+      "description": "Refresh and health stay as provenance and timing evidence unless the suite explicitly projects readiness fields into counted agent input.",
       "steps": [
         {
           "id": "opti-refresh",
@@ -144,27 +266,12 @@
           }
         },
         {
-          "id": "opti-pack",
-          "name": "Preview bounded pack",
+          "id": "opti-targeted-context",
+          "name": "Fetch bounded updated notes context",
           "lane": "task_completion",
           "treatment": {
             "surface": "mcp",
-            "tool": "optimusctx.pack"
-          }
-        },
-        {
-          "id": "opti-pack-export",
-          "name": "Export bounded pack artifact",
-          "lane": "task_completion",
-          "treatment": {
-            "surface": "cli",
-            "command": "pack_export",
-            "args": [
-              "--format",
-              "json",
-              "--output",
-              "artifacts/pack.json"
-            ]
+            "tool": "optimusctx.targeted_context"
           }
         }
       ]

@@ -1,9 +1,14 @@
 {
-  "schemaVersion": "optimusctx/benchmark-suite@v1",
+  "schemaVersion": "optimusctx/benchmark-suite@v2",
   "id": "go-benchmark-discovery-v1",
   "version": "v1",
   "name": "Go benchmark discovery and context assembly",
-  "description": "Paired discovery and context-assembly benchmark on the frozen go-benchmark fixture.",
+  "description": "Paired discovery and context-assembly benchmark on the frozen go-benchmark fixture using declared counted agent inputs plus comparable final artifacts.",
+  "boundary": {
+    "countedInputs": "declared_agent_inputs_only",
+    "systemOutputs": "persist_system_outputs",
+    "finalArtifacts": "required_per_lane_or_task"
+  },
   "fixture": {
     "id": "go-benchmark",
     "version": "v1",
@@ -19,13 +24,122 @@
     "contextPaths": [
       "internal/http/handler/rollout.go",
       "internal/config/loader.go"
-    ],
-    "completionArtifact": "artifacts/context-pack.txt"
+    ]
   },
+  "countedInputs": [
+    {
+      "id": "baseline-internal-tree",
+      "armKind": "baseline",
+      "lane": "discovery",
+      "stepId": "baseline-list-tree",
+      "name": "Baseline internal tree listing",
+      "kind": "path_list",
+      "sourceKind": "path_estimate",
+      "path": "internal"
+    },
+    {
+      "id": "baseline-symbol-match",
+      "armKind": "baseline",
+      "lane": "discovery",
+      "stepId": "baseline-search-symbol",
+      "name": "Baseline rollout symbol match paths",
+      "kind": "path_list",
+      "sourceKind": "path_estimate",
+      "path": "internal/http/handler/rollout.go"
+    },
+    {
+      "id": "baseline-rollout-handler-slice",
+      "armKind": "baseline",
+      "lane": "context_assembly",
+      "stepId": "baseline-read-target",
+      "name": "Baseline rollout handler slice",
+      "kind": "file_slice",
+      "sourceKind": "bounded_file_content",
+      "path": "internal/http/handler/rollout.go",
+      "startLine": 1,
+      "endLine": 120
+    },
+    {
+      "id": "baseline-loader-slice",
+      "armKind": "baseline",
+      "lane": "context_assembly",
+      "stepId": "baseline-read-loader",
+      "name": "Baseline config loader slice",
+      "kind": "file_slice",
+      "sourceKind": "bounded_file_content",
+      "path": "internal/config/loader.go",
+      "startLine": 1,
+      "endLine": 120
+    },
+    {
+      "id": "treatment-discovery-map-hint",
+      "armKind": "optimusctx",
+      "lane": "discovery",
+      "stepId": "opti-repository-map",
+      "name": "Projected repository-map discovery hint",
+      "kind": "json_field_projection",
+      "sourceKind": "direct_payload",
+      "artifactType": "repository_map",
+      "reportLabel": "repository_map",
+      "jsonPath": "Directories.0.Path"
+    },
+    {
+      "id": "treatment-symbol-match",
+      "armKind": "optimusctx",
+      "lane": "discovery",
+      "stepId": "opti-symbol-lookup",
+      "name": "Projected symbol lookup match path",
+      "kind": "json_field_projection",
+      "sourceKind": "direct_payload",
+      "artifactType": "exact_lookup",
+      "reportLabel": "exact_lookup",
+      "jsonPath": "Matches.0.Path"
+    },
+    {
+      "id": "treatment-context-bundle",
+      "armKind": "optimusctx",
+      "lane": "context_assembly",
+      "stepId": "opti-targeted-context",
+      "name": "Treatment targeted context bundle",
+      "kind": "text_output",
+      "sourceKind": "direct_payload",
+      "artifactType": "l2_context",
+      "reportLabel": "l2_context",
+      "path": "artifacts/context.txt"
+    }
+  ],
   "lanes": [
     {
       "name": "discovery",
       "description": "Identify the exact file and symbol that own rollout configuration loading.",
+      "startMarker": "discovery_started",
+      "successMarker": "target_identified",
+      "finalArtifact": {
+        "id": "target-locator",
+        "name": "Normalized target locator",
+        "kind": "target_locator",
+        "path": "artifacts/target.json",
+        "format": "json",
+        "normalization": {
+          "mode": "json_fields",
+          "jsonPaths": [
+            "path",
+            "symbol"
+          ]
+        },
+        "assert": [
+          {
+            "kind": "json_field_equals",
+            "path": "path",
+            "equals": "internal/http/handler/rollout.go"
+          },
+          {
+            "kind": "json_field_equals",
+            "path": "symbol",
+            "equals": "LoadRolloutConfig"
+          }
+        ]
+      },
       "stopCondition": {
         "kind": "marker",
         "marker": "target_identified",
@@ -39,6 +153,29 @@
     {
       "name": "context_assembly",
       "description": "Assemble the bounded context required to explain the rollout configuration flow.",
+      "startMarker": "context_started",
+      "successMarker": "context_ready",
+      "finalArtifact": {
+        "id": "rollout-context-bundle",
+        "name": "Normalized rollout context bundle",
+        "kind": "context_bundle",
+        "path": "artifacts/context.txt",
+        "format": "text",
+        "normalization": {
+          "mode": "text_trimmed",
+          "trimWhitespace": true
+        },
+        "assert": [
+          {
+            "kind": "contains",
+            "contains": "LoadRolloutConfig"
+          },
+          {
+            "kind": "contains",
+            "contains": "internal/config/loader.go"
+          }
+        ]
+      },
       "stopCondition": {
         "kind": "marker",
         "marker": "context_ready",
@@ -119,7 +256,7 @@
     {
       "kind": "optimusctx",
       "name": "OptimusCtx MCP workflow",
-      "description": "Use shipped MCP retrieval surfaces only; no benchmark-only shortcuts.",
+      "description": "Use shipped MCP retrieval surfaces only; repository-map and symbol-lookup outputs stay provenance unless the suite projects a declared hint into counted agent input.",
       "steps": [
         {
           "id": "opti-repository-map",
