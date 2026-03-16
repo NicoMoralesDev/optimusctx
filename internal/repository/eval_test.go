@@ -455,8 +455,11 @@ func TestEvalFixtureReferences(t *testing.T) {
 		t.Fatal("LoadEvalScenarios() returned no scenarios")
 	}
 
-	gotIDs := []string{scenarios[0].ID, scenarios[1].ID}
-	wantIDs := []string{"cli-go-basic-v1", "cli-go-worktree-v1"}
+	gotIDs := make([]string, 0, len(scenarios))
+	for _, scenario := range scenarios {
+		gotIDs = append(gotIDs, scenario.ID)
+	}
+	wantIDs := []string{"cli-go-basic-v1", "cli-go-worktree-v1", "mcp-go-basic-v1", "mcp-go-worktree-v1"}
 	if !reflect.DeepEqual(gotIDs, wantIDs) {
 		t.Fatalf("loaded scenario IDs = %v, want %v", gotIDs, wantIDs)
 	}
@@ -480,10 +483,32 @@ func TestEvalFixtureReferences(t *testing.T) {
 			Materialize:  EvalFixtureModeCopyTree,
 			WorkspaceDir: "workspace",
 		},
+		"mcp-go-basic-v1": {
+			ID:           "go-basic",
+			Version:      "v1",
+			Path:         "go-basic/v1/repository",
+			Materialize:  EvalFixtureModeCopyTree,
+			WorkspaceDir: "workspace",
+		},
+		"mcp-go-worktree-v1": {
+			ID:           "go-worktree",
+			Version:      "v1",
+			Path:         "go-worktree/v1/repository",
+			Materialize:  EvalFixtureModeCopyTree,
+			WorkspaceDir: "workspace",
+		},
 	}
 	expectedCommands := map[string][]EvalCommandName{
 		"cli-go-basic-v1":    {EvalCommandInit, EvalCommandRefresh, EvalCommandDoctor, EvalCommandPackExport},
 		"cli-go-worktree-v1": {EvalCommandInit, EvalCommandRefresh, EvalCommandDoctor, EvalCommandPackExport},
+		"mcp-go-basic-v1":    {EvalCommandInit, EvalCommandRefresh},
+		"mcp-go-worktree-v1": {EvalCommandInit, EvalCommandRefresh},
+	}
+	expectedKinds := map[string][]EvalStepKind{
+		"cli-go-basic-v1":    {EvalStepKindCommand, EvalStepKindCommand, EvalStepKindCommand, EvalStepKindCommand},
+		"cli-go-worktree-v1": {EvalStepKindCommand, EvalStepKindCommand, EvalStepKindCommand, EvalStepKindCommand},
+		"mcp-go-basic-v1":    {EvalStepKindCommand, EvalStepKindCommand, EvalStepKindMCPSession},
+		"mcp-go-worktree-v1": {EvalStepKindCommand, EvalStepKindCommand, EvalStepKindMCPSession},
 	}
 
 	for _, scenario := range scenarios {
@@ -492,11 +517,18 @@ func TestEvalFixtureReferences(t *testing.T) {
 		}
 
 		var commands []EvalCommandName
+		var kinds []EvalStepKind
 		for _, step := range scenario.Steps {
-			commands = append(commands, step.Expect.Command)
+			kinds = append(kinds, step.Kind)
+			if step.Kind == EvalStepKindCommand {
+				commands = append(commands, step.Expect.Command)
+			}
 		}
 		if !reflect.DeepEqual(commands, expectedCommands[scenario.ID]) {
 			t.Fatalf("scenario %q commands = %v, want %v", scenario.ID, commands, expectedCommands[scenario.ID])
+		}
+		if !reflect.DeepEqual(kinds, expectedKinds[scenario.ID]) {
+			t.Fatalf("scenario %q kinds = %v, want %v", scenario.ID, kinds, expectedKinds[scenario.ID])
 		}
 		for _, step := range scenario.Steps {
 			for _, action := range step.Setup {
