@@ -1,0 +1,47 @@
+# typed: false
+# frozen_string_literal: true
+
+# Published via {{ .Publication.Repository.Owner }}/{{ .Publication.Repository.Name }}
+# Branch: {{ .Publication.Branch }}
+# Formula path: {{ .Publication.Directory }}/{{ .Publication.FormulaName }}.rb
+# Install: brew install {{ .Publication.InstallValue }}
+class Optimusctx < Formula
+  desc "{{ .Release.Description }}"
+  homepage "{{ .Release.Homepage }}"
+  version "{{ .Release.Version }}"
+  license "{{ .Release.License }}"
+
+  on_macos do
+    on_intel do
+      url "{{ .Release.Assets.DarwinAMD64.URL }}"
+      sha256 "{{ .Release.Assets.DarwinAMD64.SHA256 }}"
+    end
+
+    on_arm do
+      url "{{ .Release.Assets.DarwinARM64.URL }}"
+      sha256 "{{ .Release.Assets.DarwinARM64.SHA256 }}"
+    end
+  end
+
+  on_linux do
+    on_intel do
+      url "{{ .Release.Assets.LinuxAMD64.URL }}"
+      sha256 "{{ .Release.Assets.LinuxAMD64.SHA256 }}"
+    end
+
+    on_arm do
+      if Hardware::CPU.is_64_bit?
+        url "{{ .Release.Assets.LinuxARM64.URL }}"
+        sha256 "{{ .Release.Assets.LinuxARM64.SHA256 }}"
+      end
+    end
+  end
+
+  def install
+    bin.install "optimusctx"
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/optimusctx version")
+  end
+end
