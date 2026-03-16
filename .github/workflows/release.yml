@@ -1,0 +1,78 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing v* tag to publish or republish
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish release archives
+    runs-on: ubuntu-latest
+
+    steps:
+      # Manual dispatches must point at an existing version tag so the
+      # published GitHub Release uses the same canonical archive contract.
+      - name: Resolve release ref
+        id: release_ref
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.release_tag }}
+          GITHUB_REF_VALUE: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            case "$INPUT_TAG" in
+              v*)
+                echo "ref=refs/tags/$INPUT_TAG" >> "$GITHUB_OUTPUT"
+                ;;
+              *)
+                echo "workflow_dispatch release_tag must start with v" >&2
+                exit 1
+                ;;
+            esac
+            exit 0
+          fi
+
+          echo "ref=$GITHUB_REF_VALUE" >> "$GITHUB_OUTPUT"
+
+      # Fetch the full tag history so GoReleaser can publish the tagged build.
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release_ref.outputs.ref }}
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Lock the archive and checksum contract before publishing assets.
+      - name: Verify release contract
+        env:
+          GOCACHE: /tmp/optimusctx-gocache
+          GOMODCACHE: /tmp/optimusctx-gomodcache
+        run: go test ./internal/release -run 'TestArchiveMatrix|TestChecksumManifest'
+
+      # Publish versioned archives and checksums to GitHub Releases using the
+      # canonical .goreleaser.yml definition.
+      - name: Publish GitHub Release assets
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
