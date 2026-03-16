@@ -2,7 +2,7 @@
 phase: 11
 slug: a-b-benchmark-methodology-and-workflow-timing
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-03-16
 ---
@@ -19,18 +19,18 @@ created: 2026-03-16
 |----------|-------|
 | **Framework** | go test |
 | **Config file** | none |
-| **Quick run command** | `go test ./internal/repository ./internal/app ./internal/store/sqlite -run 'TestBenchmark|TestEval|TestComparison'` |
+| **Quick run command** | `go test ./internal/repository ./internal/app -run 'TestBenchmarkSuiteContracts|TestBaselineActionValidation|TestBenchmarkLaneDefinitions|TestBenchmarkDiscoveryTiming|TestBenchmarkRefreshAfterChangeLane|TestBenchmarkTaskCompletionLane'` |
 | **Full suite command** | `go test ./...` |
-| **Estimated runtime** | ~45 seconds |
+| **Estimated runtime** | ~25 seconds |
 
 ---
 
 ## Sampling Rate
 
-- **After every task commit:** Run `go test ./internal/repository ./internal/app ./internal/store/sqlite -run 'TestBenchmark|TestEval|TestComparison'`
+- **After every task commit:** Run `go test ./internal/repository ./internal/app -run 'TestBenchmarkSuiteContracts|TestBaselineActionValidation|TestBenchmarkLaneDefinitions|TestBenchmarkDiscoveryTiming|TestBenchmarkRefreshAfterChangeLane|TestBenchmarkTaskCompletionLane'`
 - **After every plan wave:** Run `go test ./...`
 - **Before `$gsd-verify-work`:** Full suite must be green
-- **Max feedback latency:** 60 seconds
+- **Max feedback latency:** 30 seconds
 
 ---
 
@@ -79,6 +79,6 @@ created: 2026-03-16
 - [ ] Wave 0 covers all MISSING references
 - [ ] No watch-mode flags
 - [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending
