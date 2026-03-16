@@ -12,7 +12,9 @@ import (
 )
 
 const BenchmarkSuiteSchemaV1 = "optimusctx/benchmark-suite@v1"
+const BenchmarkSuiteSchemaV2 = "optimusctx/benchmark-suite@v2"
 const BenchmarkEvidenceBundleSchemaV1 = "optimusctx/benchmark-evidence@v1"
+const BenchmarkEvidenceBundleSchemaV2 = "optimusctx/benchmark-evidence@v2"
 
 const (
 	BenchmarkTokenEstimatorPolicyName          = "bytes_div_4_ceiling"
@@ -99,6 +101,105 @@ const (
 	BenchmarkTokenEstimateSourcePathEstimate       BenchmarkTokenEstimateSourceKind = "path_estimate"
 	BenchmarkTokenEstimateSourcePackExportSection  BenchmarkTokenEstimateSourceKind = "pack_export_section_estimate"
 )
+
+type BenchmarkBoundaryCountPolicy string
+
+const (
+	BenchmarkBoundaryCountPolicyDeclaredAgentInputsOnly BenchmarkBoundaryCountPolicy = "declared_agent_inputs_only"
+)
+
+type BenchmarkBoundaryProvenancePolicy string
+
+const (
+	BenchmarkBoundaryProvenancePolicyPersistSystemOutputs BenchmarkBoundaryProvenancePolicy = "persist_system_outputs"
+)
+
+type BenchmarkBoundaryFinalArtifactPolicy string
+
+const (
+	BenchmarkBoundaryFinalArtifactPolicyRequiredPerLaneOrTask BenchmarkBoundaryFinalArtifactPolicy = "required_per_lane_or_task"
+)
+
+type BenchmarkBoundaryContract struct {
+	CountedInputs  BenchmarkBoundaryCountPolicy         `json:"countedInputs"`
+	SystemOutputs  BenchmarkBoundaryProvenancePolicy    `json:"systemOutputs"`
+	FinalArtifacts BenchmarkBoundaryFinalArtifactPolicy `json:"finalArtifacts"`
+}
+
+type BenchmarkCountedInputKind string
+
+const (
+	BenchmarkCountedInputKindPathList            BenchmarkCountedInputKind = "path_list"
+	BenchmarkCountedInputKindFileSlice           BenchmarkCountedInputKind = "file_slice"
+	BenchmarkCountedInputKindJSONFieldProjection BenchmarkCountedInputKind = "json_field_projection"
+	BenchmarkCountedInputKindTextOutput          BenchmarkCountedInputKind = "text_output"
+	BenchmarkCountedInputKindPackSection         BenchmarkCountedInputKind = "pack_section"
+)
+
+type BenchmarkFinalArtifactKind string
+
+const (
+	BenchmarkFinalArtifactKindTargetLocator    BenchmarkFinalArtifactKind = "target_locator"
+	BenchmarkFinalArtifactKindContextBundle    BenchmarkFinalArtifactKind = "context_bundle"
+	BenchmarkFinalArtifactKindReadinessSummary BenchmarkFinalArtifactKind = "readiness_summary"
+	BenchmarkFinalArtifactKindTaskOutput       BenchmarkFinalArtifactKind = "task_output"
+)
+
+type BenchmarkFinalArtifactFormat string
+
+const (
+	BenchmarkFinalArtifactFormatText BenchmarkFinalArtifactFormat = "text"
+	BenchmarkFinalArtifactFormatJSON BenchmarkFinalArtifactFormat = "json"
+)
+
+type BenchmarkFinalArtifactNormalizationMode string
+
+const (
+	BenchmarkFinalArtifactNormalizationModeTextTrimmed BenchmarkFinalArtifactNormalizationMode = "text_trimmed"
+	BenchmarkFinalArtifactNormalizationModeTextLines   BenchmarkFinalArtifactNormalizationMode = "text_lines"
+	BenchmarkFinalArtifactNormalizationModeJSONExact   BenchmarkFinalArtifactNormalizationMode = "json_exact"
+	BenchmarkFinalArtifactNormalizationModeJSONFields  BenchmarkFinalArtifactNormalizationMode = "json_fields"
+)
+
+type BenchmarkCountedInputDefinition struct {
+	ID           string                           `json:"id"`
+	ArmKind      BenchmarkArmKind                 `json:"armKind"`
+	Lane         BenchmarkLane                    `json:"lane"`
+	StepID       string                           `json:"stepId"`
+	Name         string                           `json:"name"`
+	Kind         BenchmarkCountedInputKind        `json:"kind"`
+	SourceKind   BenchmarkTokenEstimateSourceKind `json:"sourceKind"`
+	ArtifactType BenchmarkArtifactType            `json:"artifactType,omitempty"`
+	ReportLabel  BenchmarkReportArtifactLabel     `json:"reportLabel,omitempty"`
+	Path         string                           `json:"path,omitempty"`
+	JSONPath     string                           `json:"jsonPath,omitempty"`
+	StartLine    int                              `json:"startLine,omitempty"`
+	EndLine      int                              `json:"endLine,omitempty"`
+}
+
+type BenchmarkFinalArtifactNormalization struct {
+	Mode           BenchmarkFinalArtifactNormalizationMode `json:"mode"`
+	JSONPaths      []string                                `json:"jsonPaths,omitempty"`
+	TrimWhitespace bool                                    `json:"trimWhitespace,omitempty"`
+	SortLines      bool                                    `json:"sortLines,omitempty"`
+}
+
+type BenchmarkFinalArtifactAssertion struct {
+	Kind     EvalAssertionKind `json:"kind"`
+	Path     string            `json:"path,omitempty"`
+	Contains string            `json:"contains,omitempty"`
+	Equals   any               `json:"equals,omitempty"`
+}
+
+type BenchmarkFinalArtifactContract struct {
+	ID            string                              `json:"id"`
+	Name          string                              `json:"name"`
+	Kind          BenchmarkFinalArtifactKind          `json:"kind"`
+	Path          string                              `json:"path"`
+	Format        BenchmarkFinalArtifactFormat        `json:"format"`
+	Normalization BenchmarkFinalArtifactNormalization `json:"normalization"`
+	Assertions    []BenchmarkFinalArtifactAssertion   `json:"assert"`
+}
 
 type BenchmarkTokenEstimateContract struct {
 	Policy               BudgetEstimatePolicy `json:"policy"`
@@ -202,35 +303,39 @@ type BenchmarkArtifactConsumption struct {
 }
 
 type BenchmarkSuiteDefinition struct {
-	SchemaVersion string                    `json:"schemaVersion"`
-	ID            string                    `json:"id"`
-	Version       string                    `json:"version"`
-	Name          string                    `json:"name"`
-	Description   string                    `json:"description,omitempty"`
-	Fixture       EvalFixtureRef            `json:"fixture"`
-	Task          BenchmarkTaskDefinition   `json:"task"`
-	Lanes         []BenchmarkLaneDefinition `json:"lanes"`
-	Arms          []BenchmarkArmDefinition  `json:"arms"`
+	SchemaVersion string                            `json:"schemaVersion"`
+	ID            string                            `json:"id"`
+	Version       string                            `json:"version"`
+	Name          string                            `json:"name"`
+	Description   string                            `json:"description,omitempty"`
+	Boundary      BenchmarkBoundaryContract         `json:"boundary"`
+	Fixture       EvalFixtureRef                    `json:"fixture"`
+	Task          BenchmarkTaskDefinition           `json:"task"`
+	CountedInputs []BenchmarkCountedInputDefinition `json:"countedInputs"`
+	Lanes         []BenchmarkLaneDefinition         `json:"lanes"`
+	Arms          []BenchmarkArmDefinition          `json:"arms"`
 }
 
 type BenchmarkTaskDefinition struct {
-	ID                 string   `json:"id"`
-	Prompt             string   `json:"prompt"`
-	TargetPath         string   `json:"targetPath,omitempty"`
-	TargetSymbol       string   `json:"targetSymbol,omitempty"`
-	ContextPaths       []string `json:"contextPaths,omitempty"`
-	CompletionArtifact string   `json:"completionArtifact,omitempty"`
+	ID                 string                          `json:"id"`
+	Prompt             string                          `json:"prompt"`
+	TargetPath         string                          `json:"targetPath,omitempty"`
+	TargetSymbol       string                          `json:"targetSymbol,omitempty"`
+	ContextPaths       []string                        `json:"contextPaths,omitempty"`
+	CompletionArtifact string                          `json:"completionArtifact,omitempty"`
+	FinalArtifact      *BenchmarkFinalArtifactContract `json:"finalArtifact,omitempty"`
 }
 
 type BenchmarkLaneDefinition struct {
-	Name          BenchmarkLane          `json:"name"`
-	Description   string                 `json:"description,omitempty"`
-	StartMarker   string                 `json:"startMarker,omitempty"`
-	SuccessMarker string                 `json:"successMarker,omitempty"`
-	Setup         []EvalSetupAction      `json:"setup,omitempty"`
-	Assertions    []BenchmarkAssertion   `json:"assert,omitempty"`
-	StopCondition BenchmarkStopCondition `json:"stopCondition"`
-	Metrics       []BenchmarkMetric      `json:"metrics"`
+	Name          BenchmarkLane                   `json:"name"`
+	Description   string                          `json:"description,omitempty"`
+	StartMarker   string                          `json:"startMarker,omitempty"`
+	SuccessMarker string                          `json:"successMarker,omitempty"`
+	Setup         []EvalSetupAction               `json:"setup,omitempty"`
+	Assertions    []BenchmarkAssertion            `json:"assert,omitempty"`
+	FinalArtifact *BenchmarkFinalArtifactContract `json:"finalArtifact,omitempty"`
+	StopCondition BenchmarkStopCondition          `json:"stopCondition"`
+	Metrics       []BenchmarkMetric               `json:"metrics"`
 }
 
 type BenchmarkAssertion struct {
@@ -531,8 +636,8 @@ func BenchmarkReportLabelForArtifactType(artifactType BenchmarkArtifactType) Ben
 }
 
 func (s BenchmarkSuiteDefinition) Validate() error {
-	if s.SchemaVersion != BenchmarkSuiteSchemaV1 {
-		return fmt.Errorf("schemaVersion must be %q", BenchmarkSuiteSchemaV1)
+	if s.SchemaVersion != BenchmarkSuiteSchemaV2 {
+		return fmt.Errorf("schemaVersion must be %q", BenchmarkSuiteSchemaV2)
 	}
 	if strings.TrimSpace(s.ID) == "" {
 		return errors.New("id is required")
@@ -542,6 +647,9 @@ func (s BenchmarkSuiteDefinition) Validate() error {
 	}
 	if strings.TrimSpace(s.Name) == "" {
 		return errors.New("name is required")
+	}
+	if err := s.Boundary.validate(); err != nil {
+		return fmt.Errorf("boundary: %w", err)
 	}
 	if err := s.Fixture.validate(); err != nil {
 		return fmt.Errorf("fixture: %w", err)
@@ -559,7 +667,22 @@ func (s BenchmarkSuiteDefinition) Validate() error {
 	if len(s.Arms) != 2 {
 		return errors.New("exactly two arms are required")
 	}
-	return validateBenchmarkArms(s.Arms, laneDefs)
+	stepRefs, err := validateBenchmarkArms(s.Arms, laneDefs)
+	if err != nil {
+		return err
+	}
+	if len(s.CountedInputs) == 0 {
+		return errors.New("countedInputs: at least one declared agent input is required")
+	}
+	if err := validateBenchmarkCountedInputs(s.CountedInputs, stepRefs); err != nil {
+		return fmt.Errorf("countedInputs: %w", err)
+	}
+	for idx, lane := range s.Lanes {
+		if lane.FinalArtifact == nil && s.Task.FinalArtifact == nil {
+			return fmt.Errorf("lanes[%d]: lane %q requires finalArtifact or task.finalArtifact", idx, lane.Name)
+		}
+	}
+	return nil
 }
 
 func (t BenchmarkTaskDefinition) validate() error {
@@ -578,8 +701,11 @@ func (t BenchmarkTaskDefinition) validate() error {
 		}
 	}
 	if t.CompletionArtifact != "" {
-		if err := validateEvalRelativePath(t.CompletionArtifact); err != nil {
-			return fmt.Errorf("completionArtifact: %w", err)
+		return errors.New("completionArtifact is not supported in v2; use finalArtifact")
+	}
+	if t.FinalArtifact != nil {
+		if err := t.FinalArtifact.validate(); err != nil {
+			return fmt.Errorf("finalArtifact: %w", err)
 		}
 	}
 	return nil
@@ -610,6 +736,11 @@ func validateBenchmarkLanes(lanes []BenchmarkLaneDefinition) (map[BenchmarkLane]
 		}
 		if err := validateBenchmarkAssertions(lane.Assertions); err != nil {
 			return nil, fmt.Errorf("lanes[%d].assert: %w", idx, err)
+		}
+		if lane.FinalArtifact != nil {
+			if err := lane.FinalArtifact.validate(); err != nil {
+				return nil, fmt.Errorf("lanes[%d].finalArtifact: %w", idx, err)
+			}
 		}
 		if len(lane.Metrics) == 0 {
 			return nil, fmt.Errorf("lanes[%d]: at least one metric is required", idx)
@@ -694,62 +825,74 @@ func (l BenchmarkLaneDefinition) SuccessMarkerName() string {
 	return l.StopCondition.Marker
 }
 
-func validateBenchmarkArms(arms []BenchmarkArmDefinition, lanes map[BenchmarkLane]BenchmarkLaneDefinition) error {
+type benchmarkStepRef struct {
+	ArmKind BenchmarkArmKind
+	Lane    BenchmarkLane
+	Step    BenchmarkStep
+}
+
+func validateBenchmarkArms(arms []BenchmarkArmDefinition, lanes map[BenchmarkLane]BenchmarkLaneDefinition) (map[string]benchmarkStepRef, error) {
 	seenKinds := map[BenchmarkArmKind]struct{}{}
+	stepRefs := make(map[string]benchmarkStepRef)
 	for idx, arm := range arms {
 		switch arm.Kind {
 		case BenchmarkArmKindBaseline, BenchmarkArmKindOptimusCtx:
 		default:
-			return fmt.Errorf("arms[%d]: unsupported kind %q", idx, arm.Kind)
+			return nil, fmt.Errorf("arms[%d]: unsupported kind %q", idx, arm.Kind)
 		}
 		if _, exists := seenKinds[arm.Kind]; exists {
-			return fmt.Errorf("duplicate arm kind %q", arm.Kind)
+			return nil, fmt.Errorf("duplicate arm kind %q", arm.Kind)
 		}
 		seenKinds[arm.Kind] = struct{}{}
 		if strings.TrimSpace(arm.Name) == "" {
-			return fmt.Errorf("arms[%d]: name is required", idx)
+			return nil, fmt.Errorf("arms[%d]: name is required", idx)
 		}
 		if len(arm.Steps) == 0 {
-			return fmt.Errorf("arms[%d]: at least one step is required", idx)
+			return nil, fmt.Errorf("arms[%d]: at least one step is required", idx)
 		}
-		if err := validateBenchmarkArmSteps(idx, arm, lanes); err != nil {
-			return err
+		armStepRefs, err := validateBenchmarkArmSteps(idx, arm, lanes)
+		if err != nil {
+			return nil, err
+		}
+		for stepID, ref := range armStepRefs {
+			stepRefs[stepID] = ref
 		}
 	}
 	if _, ok := seenKinds[BenchmarkArmKindBaseline]; !ok {
-		return errors.New("baseline arm is required")
+		return nil, errors.New("baseline arm is required")
 	}
 	if _, ok := seenKinds[BenchmarkArmKindOptimusCtx]; !ok {
-		return errors.New("optimusctx arm is required")
+		return nil, errors.New("optimusctx arm is required")
 	}
-	return nil
+	return stepRefs, nil
 }
 
-func validateBenchmarkArmSteps(armIdx int, arm BenchmarkArmDefinition, lanes map[BenchmarkLane]BenchmarkLaneDefinition) error {
+func validateBenchmarkArmSteps(armIdx int, arm BenchmarkArmDefinition, lanes map[BenchmarkLane]BenchmarkLaneDefinition) (map[string]benchmarkStepRef, error) {
 	seenSteps := make(map[string]struct{}, len(arm.Steps))
 	markers := make(map[BenchmarkLane]map[string]struct{})
+	stepRefs := make(map[string]benchmarkStepRef, len(arm.Steps))
 	for stepIdx, step := range arm.Steps {
 		if strings.TrimSpace(step.ID) == "" {
-			return fmt.Errorf("arms[%d].steps[%d]: id is required", armIdx, stepIdx)
+			return nil, fmt.Errorf("arms[%d].steps[%d]: id is required", armIdx, stepIdx)
 		}
 		if _, exists := seenSteps[step.ID]; exists {
-			return fmt.Errorf("arms[%d]: duplicate step id %q", armIdx, step.ID)
+			return nil, fmt.Errorf("arms[%d]: duplicate step id %q", armIdx, step.ID)
 		}
 		seenSteps[step.ID] = struct{}{}
 		if strings.TrimSpace(step.Name) == "" {
-			return fmt.Errorf("arms[%d].steps[%d]: name is required", armIdx, stepIdx)
+			return nil, fmt.Errorf("arms[%d].steps[%d]: name is required", armIdx, stepIdx)
 		}
 		if _, ok := lanes[step.Lane]; !ok {
-			return fmt.Errorf("arms[%d].steps[%d]: unknown lane %q", armIdx, stepIdx, step.Lane)
+			return nil, fmt.Errorf("arms[%d].steps[%d]: unknown lane %q", armIdx, stepIdx, step.Lane)
 		}
 
 		switch arm.Kind {
 		case BenchmarkArmKindBaseline:
 			if step.Baseline == nil || step.Treatment != nil {
-				return fmt.Errorf("arms[%d].steps[%d]: baseline arm must use only baseline actions", armIdx, stepIdx)
+				return nil, fmt.Errorf("arms[%d].steps[%d]: baseline arm must use only baseline actions", armIdx, stepIdx)
 			}
 			if err := step.Baseline.validate(); err != nil {
-				return fmt.Errorf("arms[%d].steps[%d].baseline: %w", armIdx, stepIdx, err)
+				return nil, fmt.Errorf("arms[%d].steps[%d].baseline: %w", armIdx, stepIdx, err)
 			}
 			if step.Baseline.Marker != "" {
 				if markers[step.Lane] == nil {
@@ -759,25 +902,26 @@ func validateBenchmarkArmSteps(armIdx int, arm BenchmarkArmDefinition, lanes map
 			}
 		case BenchmarkArmKindOptimusCtx:
 			if step.Treatment == nil || step.Baseline != nil {
-				return fmt.Errorf("arms[%d].steps[%d]: optimusctx arm must use only treatment actions", armIdx, stepIdx)
+				return nil, fmt.Errorf("arms[%d].steps[%d]: optimusctx arm must use only treatment actions", armIdx, stepIdx)
 			}
 			if err := step.Treatment.validate(); err != nil {
-				return fmt.Errorf("arms[%d].steps[%d].treatment: %w", armIdx, stepIdx, err)
+				return nil, fmt.Errorf("arms[%d].steps[%d].treatment: %w", armIdx, stepIdx, err)
 			}
 		}
+		stepRefs[step.ID] = benchmarkStepRef{ArmKind: arm.Kind, Lane: step.Lane, Step: step}
 	}
 
 	for laneName, laneDef := range lanes {
 		if !armHasLane(arm, laneName) {
-			return fmt.Errorf("arms[%d]: lane %q is missing", armIdx, laneName)
+			return nil, fmt.Errorf("arms[%d]: lane %q is missing", armIdx, laneName)
 		}
 		if arm.Kind == BenchmarkArmKindBaseline && laneDef.StopCondition.Kind == BenchmarkStopConditionKindMarker {
 			if _, ok := markers[laneName][laneDef.StopCondition.Marker]; !ok {
-				return fmt.Errorf("arms[%d]: lane %q does not emit stop marker %q", armIdx, laneName, laneDef.StopCondition.Marker)
+				return nil, fmt.Errorf("arms[%d]: lane %q does not emit stop marker %q", armIdx, laneName, laneDef.StopCondition.Marker)
 			}
 		}
 	}
-	return nil
+	return stepRefs, nil
 }
 
 func armHasLane(arm BenchmarkArmDefinition, lane BenchmarkLane) bool {
@@ -875,6 +1019,268 @@ func benchmarkSupportsMCPTool(tool string) bool {
 	default:
 		return false
 	}
+}
+
+func DefaultBenchmarkBoundaryContract() BenchmarkBoundaryContract {
+	return BenchmarkBoundaryContract{
+		CountedInputs:  BenchmarkBoundaryCountPolicyDeclaredAgentInputsOnly,
+		SystemOutputs:  BenchmarkBoundaryProvenancePolicyPersistSystemOutputs,
+		FinalArtifacts: BenchmarkBoundaryFinalArtifactPolicyRequiredPerLaneOrTask,
+	}
+}
+
+func (c BenchmarkBoundaryContract) validate() error {
+	switch c.CountedInputs {
+	case BenchmarkBoundaryCountPolicyDeclaredAgentInputsOnly:
+	default:
+		return fmt.Errorf("countedInputs must be %q", BenchmarkBoundaryCountPolicyDeclaredAgentInputsOnly)
+	}
+	switch c.SystemOutputs {
+	case BenchmarkBoundaryProvenancePolicyPersistSystemOutputs:
+	default:
+		return fmt.Errorf("systemOutputs must be %q", BenchmarkBoundaryProvenancePolicyPersistSystemOutputs)
+	}
+	switch c.FinalArtifacts {
+	case BenchmarkBoundaryFinalArtifactPolicyRequiredPerLaneOrTask:
+	default:
+		return fmt.Errorf("finalArtifacts must be %q", BenchmarkBoundaryFinalArtifactPolicyRequiredPerLaneOrTask)
+	}
+	return nil
+}
+
+func validateBenchmarkCountedInputs(inputs []BenchmarkCountedInputDefinition, stepRefs map[string]benchmarkStepRef) error {
+	seen := make(map[string]struct{}, len(inputs))
+	for idx, input := range inputs {
+		if strings.TrimSpace(input.ID) == "" {
+			return fmt.Errorf("[%d].id: is required", idx)
+		}
+		if _, ok := seen[input.ID]; ok {
+			return fmt.Errorf("duplicate id %q", input.ID)
+		}
+		seen[input.ID] = struct{}{}
+		if strings.TrimSpace(input.Name) == "" {
+			return fmt.Errorf("[%d].name: is required", idx)
+		}
+		ref, ok := stepRefs[input.StepID]
+		if !ok {
+			return fmt.Errorf("[%d].stepId: unknown step %q", idx, input.StepID)
+		}
+		if input.ArmKind != ref.ArmKind {
+			return fmt.Errorf("[%d].armKind: step %q belongs to %q", idx, input.StepID, ref.ArmKind)
+		}
+		if input.Lane != ref.Lane {
+			return fmt.Errorf("[%d].lane: step %q belongs to %q", idx, input.StepID, ref.Lane)
+		}
+		if err := input.validate(); err != nil {
+			return fmt.Errorf("[%d]: %w", idx, err)
+		}
+	}
+	return nil
+}
+
+func (i BenchmarkCountedInputDefinition) validate() error {
+	switch i.ArmKind {
+	case BenchmarkArmKindBaseline, BenchmarkArmKindOptimusCtx:
+	default:
+		return fmt.Errorf("armKind %q is unsupported", i.ArmKind)
+	}
+	switch i.Lane {
+	case BenchmarkLaneDiscovery, BenchmarkLaneContextAssembly, BenchmarkLaneRefreshReady, BenchmarkLaneTaskCompletion:
+	default:
+		return fmt.Errorf("lane %q is unsupported", i.Lane)
+	}
+	switch i.Kind {
+	case BenchmarkCountedInputKindPathList, BenchmarkCountedInputKindFileSlice, BenchmarkCountedInputKindJSONFieldProjection, BenchmarkCountedInputKindTextOutput, BenchmarkCountedInputKindPackSection:
+	default:
+		return fmt.Errorf("kind %q is unsupported", i.Kind)
+	}
+	switch i.SourceKind {
+	case BenchmarkTokenEstimateSourcePathEstimate, BenchmarkTokenEstimateSourceBoundedFileContent, BenchmarkTokenEstimateSourceDirectPayload, BenchmarkTokenEstimateSourcePackExportSection:
+	default:
+		return fmt.Errorf("sourceKind %q is unsupported", i.SourceKind)
+	}
+	if i.Path != "" {
+		if err := validateEvalRelativePath(i.Path); err != nil {
+			return fmt.Errorf("path: %w", err)
+		}
+	}
+	if i.JSONPath != "" && strings.TrimSpace(i.JSONPath) == "" {
+		return errors.New("jsonPath cannot be blank")
+	}
+	if i.ArtifactType != "" {
+		expectedLabel := BenchmarkReportLabelForArtifactType(i.ArtifactType)
+		if expectedLabel == "" {
+			return fmt.Errorf("artifactType %q is unsupported", i.ArtifactType)
+		}
+		if i.ReportLabel != "" && i.ReportLabel != expectedLabel {
+			return fmt.Errorf("reportLabel must be %q for artifactType %q", expectedLabel, i.ArtifactType)
+		}
+	}
+	switch i.Kind {
+	case BenchmarkCountedInputKindPathList:
+		if i.SourceKind != BenchmarkTokenEstimateSourcePathEstimate {
+			return fmt.Errorf("path_list requires sourceKind %q", BenchmarkTokenEstimateSourcePathEstimate)
+		}
+		if i.Path == "" {
+			return errors.New("path_list requires path")
+		}
+		if i.JSONPath != "" || i.StartLine != 0 || i.EndLine != 0 {
+			return errors.New("path_list does not allow jsonPath or line bounds")
+		}
+	case BenchmarkCountedInputKindFileSlice:
+		if i.SourceKind != BenchmarkTokenEstimateSourceBoundedFileContent {
+			return fmt.Errorf("file_slice requires sourceKind %q", BenchmarkTokenEstimateSourceBoundedFileContent)
+		}
+		if i.Path == "" {
+			return errors.New("file_slice requires path")
+		}
+		if i.StartLine <= 0 || i.EndLine <= 0 || i.EndLine < i.StartLine {
+			return errors.New("file_slice requires positive startLine/endLine with endLine >= startLine")
+		}
+		if i.JSONPath != "" {
+			return errors.New("file_slice does not allow jsonPath")
+		}
+	case BenchmarkCountedInputKindJSONFieldProjection:
+		if i.SourceKind != BenchmarkTokenEstimateSourceDirectPayload {
+			return fmt.Errorf("json_field_projection requires sourceKind %q", BenchmarkTokenEstimateSourceDirectPayload)
+		}
+		if strings.TrimSpace(i.JSONPath) == "" {
+			return errors.New("json_field_projection requires jsonPath")
+		}
+		if i.StartLine != 0 || i.EndLine != 0 {
+			return errors.New("json_field_projection does not allow line bounds")
+		}
+	case BenchmarkCountedInputKindTextOutput:
+		if i.Path == "" {
+			return errors.New("text_output requires path")
+		}
+		if i.JSONPath != "" || i.StartLine != 0 || i.EndLine != 0 {
+			return errors.New("text_output does not allow jsonPath or line bounds")
+		}
+	case BenchmarkCountedInputKindPackSection:
+		if i.SourceKind != BenchmarkTokenEstimateSourcePackExportSection {
+			return fmt.Errorf("pack_section requires sourceKind %q", BenchmarkTokenEstimateSourcePackExportSection)
+		}
+		if i.Path == "" {
+			return errors.New("pack_section requires path")
+		}
+		if i.JSONPath != "" || i.StartLine != 0 || i.EndLine != 0 {
+			return errors.New("pack_section does not allow jsonPath or line bounds")
+		}
+	}
+	if benchmarkRequiresProjection(i.ArtifactType) && i.SourceKind == BenchmarkTokenEstimateSourceDirectPayload && i.Kind != BenchmarkCountedInputKindJSONFieldProjection {
+		return fmt.Errorf("%q direct payloads must use json_field_projection", i.ArtifactType)
+	}
+	if i.ArmKind == BenchmarkArmKindBaseline && (i.ArtifactType != "" || i.ReportLabel != "") {
+		return errors.New("baseline counted inputs must not declare artifactType or reportLabel")
+	}
+	return nil
+}
+
+func benchmarkRequiresProjection(artifactType BenchmarkArtifactType) bool {
+	switch artifactType {
+	case BenchmarkArtifactTypeRepositoryMap, BenchmarkArtifactTypeHealth, BenchmarkArtifactTypeRefresh:
+		return true
+	default:
+		return false
+	}
+}
+
+func (c BenchmarkFinalArtifactContract) validate() error {
+	if strings.TrimSpace(c.ID) == "" {
+		return errors.New("id is required")
+	}
+	if strings.TrimSpace(c.Name) == "" {
+		return errors.New("name is required")
+	}
+	switch c.Kind {
+	case BenchmarkFinalArtifactKindTargetLocator, BenchmarkFinalArtifactKindContextBundle, BenchmarkFinalArtifactKindReadinessSummary, BenchmarkFinalArtifactKindTaskOutput:
+	default:
+		return fmt.Errorf("kind %q is unsupported", c.Kind)
+	}
+	if err := validateEvalRelativePath(c.Path); err != nil {
+		return fmt.Errorf("path: %w", err)
+	}
+	switch c.Format {
+	case BenchmarkFinalArtifactFormatText, BenchmarkFinalArtifactFormatJSON:
+	default:
+		return fmt.Errorf("format %q is unsupported", c.Format)
+	}
+	if err := c.Normalization.validate(c.Format); err != nil {
+		return fmt.Errorf("normalization: %w", err)
+	}
+	if len(c.Assertions) == 0 {
+		return errors.New("at least one assertion is required")
+	}
+	for idx, assertion := range c.Assertions {
+		if err := assertion.validate(); err != nil {
+			return fmt.Errorf("assert[%d]: %w", idx, err)
+		}
+	}
+	return nil
+}
+
+func (n BenchmarkFinalArtifactNormalization) validate(format BenchmarkFinalArtifactFormat) error {
+	switch n.Mode {
+	case BenchmarkFinalArtifactNormalizationModeTextTrimmed, BenchmarkFinalArtifactNormalizationModeTextLines:
+		if format != BenchmarkFinalArtifactFormatText {
+			return fmt.Errorf("%q requires format %q", n.Mode, BenchmarkFinalArtifactFormatText)
+		}
+		if len(n.JSONPaths) > 0 {
+			return errors.New("text normalization does not allow jsonPaths")
+		}
+	case BenchmarkFinalArtifactNormalizationModeJSONExact:
+		if format != BenchmarkFinalArtifactFormatJSON {
+			return fmt.Errorf("%q requires format %q", n.Mode, BenchmarkFinalArtifactFormatJSON)
+		}
+		if len(n.JSONPaths) > 0 {
+			return errors.New("json_exact does not allow jsonPaths")
+		}
+	case BenchmarkFinalArtifactNormalizationModeJSONFields:
+		if format != BenchmarkFinalArtifactFormatJSON {
+			return fmt.Errorf("%q requires format %q", n.Mode, BenchmarkFinalArtifactFormatJSON)
+		}
+		if len(n.JSONPaths) == 0 {
+			return errors.New("json_fields requires at least one jsonPath")
+		}
+		for idx, item := range n.JSONPaths {
+			if strings.TrimSpace(item) == "" {
+				return fmt.Errorf("jsonPaths[%d]: is required", idx)
+			}
+		}
+	default:
+		return fmt.Errorf("mode %q is unsupported", n.Mode)
+	}
+	return nil
+}
+
+func (a BenchmarkFinalArtifactAssertion) validate() error {
+	switch a.Kind {
+	case EvalAssertionKindContains:
+		if a.Contains == "" {
+			return fmt.Errorf("contains is required for %q", a.Kind)
+		}
+		if a.Path != "" || a.Equals != nil {
+			return fmt.Errorf("path/equals must be empty for %q", a.Kind)
+		}
+	case EvalAssertionKindJSONFieldPresent:
+		if strings.TrimSpace(a.Path) == "" {
+			return fmt.Errorf("path is required for %q", a.Kind)
+		}
+		if a.Contains != "" || a.Equals != nil {
+			return fmt.Errorf("contains/equals must be empty for %q", a.Kind)
+		}
+	case EvalAssertionKindJSONFieldEquals:
+		if strings.TrimSpace(a.Path) == "" {
+			return fmt.Errorf("path is required for %q", a.Kind)
+		}
+		if a.Contains != "" {
+			return fmt.Errorf("contains must be empty for %q", a.Kind)
+		}
+	default:
+		return fmt.Errorf("unsupported kind %q", a.Kind)
+	}
+	return nil
 }
 
 func LoadBenchmarkSuite(path string) (BenchmarkSuiteDefinition, error) {
