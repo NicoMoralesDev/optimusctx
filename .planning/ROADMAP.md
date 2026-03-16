@@ -58,8 +58,8 @@ Plans:
 
 - [x] 11-01: benchmark scenario selection and baseline rules
 - [x] 11-02: workflow timing capture for discovery and context assembly
-- [ ] 11-03: refresh-after-change and task-completion benchmark lanes
-- [ ] 11-04: repeated-run comparison and benchmark verification
+- [x] 11-03: refresh-after-change and task-completion benchmark lanes
+- [x] 11-04: repeated-run comparison and benchmark verification
 
 **Requirements covered:** `BNCH-01`, `BNCH-03`  
 **Details:** Phase 11 focuses on methodological discipline first: same repos, same tasks, same stop conditions, and repeated timings that show whether OptimusCtx actually reduces search and context assembly work.
@@ -102,8 +102,8 @@ Active milestone: `v1.1`
 
 Next step:
 
-- Continue with `11-03` — refresh-after-change and task-completion benchmark lanes
-- Phase 11 now has persisted discovery/context benchmark timings, real-surface lane coverage, and structured benchmark run evidence for later comparison
+- Continue with `12-01` — token accounting contract and artifact attribution
+- Phase 11 is complete with persisted repeated-run benchmark verification, paired attempt summaries, and truthful rerun guidance for later reporting work
 
 ---
-*Last updated: 2026-03-16 after completing Phase 11 plan 02*
+*Last updated: 2026-03-16 after completing Phase 11 plan 04*

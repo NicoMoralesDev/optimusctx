@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 11
 current_phase_name: a/b benchmark methodology and workflow timing
 current_plan: 4
-status: executing
-stopped_at: Completed 11-a-b-benchmark-methodology-and-workflow-timing-03-PLAN.md
-last_updated: "2026-03-16T12:41:13.952Z"
+status: verifying
+stopped_at: Completed 11-04-PLAN.md
+last_updated: "2026-03-16T12:56:44.091Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 12
-  completed_plans: 11
-  percent: 98
+  completed_plans: 12
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 **Current Phase:** 11
 **Current Phase Name:** a/b benchmark methodology and workflow timing
 **Total Phases:** 5
 **Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 98%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-16
-**Last Activity Description:** Phase 11 plan 02 complete, discovery/context benchmark timing and persistence shipped
+**Last Activity Description:** Phase 11 plan 04 complete, repeated-run benchmark verification and rerun guidance shipped
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1.1 validation, benchmarking, and distribution
 - Active phase: 11-benchmark-methodology-and-workflow-timing
-- Next planning action: execute Phase 11 plan 03
+- Next planning action: execute Phase 12 plan 01
 - Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
 - Coverage status: v1.0 shipped; v1.1 requirements are mapped across Phases 09-13
 
@@ -184,6 +184,7 @@ progress:
 | Phase 10-functional-runtime-validation P02 | 14min | 3 tasks | 10 files |
 | Phase 11-a-b-benchmark-methodology-and-workflow-timing P01 | 1m | 3 tasks | 14 files |
 | Phase 11-a-b-benchmark-methodology-and-workflow-timing P03 | 14min | 3 tasks | 9 files |
+| Phase 11-a-b-benchmark-methodology-and-workflow-timing P04 | 5min | 3 tasks | 7 files |
 
 ## Decisions Made
 
@@ -298,6 +299,8 @@ progress:
 - [Phase 11]: Refresh-after-change and task-completion lanes reuse eval setup actions so both arms apply the same committed repository mutation before timing begins.
 - [Phase 11]: Each benchmark arm now runs in its own copied workspace so baseline and OptimusCtx timings cannot contaminate each other through shared state.
 - [Phase 11]: Mutation-lane persistence stores setup, assertions, and evidence paths in SQLite metadata instead of introducing report-specific tables before Phase 12.
+- [Phase 11-a-b-benchmark-methodology-and-workflow-timing]: Repeated benchmark verification runs through a dedicated app-layer BenchmarkService instead of adding a new user-facing benchmark CLI command in Phase 11.
+- [Phase 11-a-b-benchmark-methodology-and-workflow-timing]: Methodology drift is rejected by comparing repeated attempts against the frozen suite and lane contract, while SQLite keeps attempt ordering stable for later Phase 12 reporting.
 
 ## Blockers
 
@@ -305,8 +308,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T12:41:13.949Z
-**Stopped At:** Completed 11-a-b-benchmark-methodology-and-workflow-timing-03-PLAN.md
+**Last Date:** 2026-03-16T12:56:44.088Z
+**Stopped At:** Completed 11-04-PLAN.md
 **Resume File:** None
 
 ---
