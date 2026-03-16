@@ -1,0 +1,154 @@
+{
+  "schemaVersion": "optimusctx/benchmark-suite@v1",
+  "id": "go-benchmark-discovery-v1",
+  "version": "v1",
+  "name": "Go benchmark discovery and context assembly",
+  "description": "Paired discovery and context-assembly benchmark on the frozen go-benchmark fixture.",
+  "fixture": {
+    "id": "go-benchmark",
+    "version": "v1",
+    "path": "go-benchmark/v1/repository",
+    "materialize": "copy_tree",
+    "workspaceDir": "workspace"
+  },
+  "task": {
+    "id": "handler-owner",
+    "prompt": "Find the rollout configuration handler and assemble the exact code context needed to explain how it resolves config state.",
+    "targetPath": "internal/http/handler/rollout.go",
+    "targetSymbol": "LoadRolloutConfig",
+    "contextPaths": [
+      "internal/http/handler/rollout.go",
+      "internal/config/loader.go"
+    ],
+    "completionArtifact": "artifacts/context-pack.txt"
+  },
+  "lanes": [
+    {
+      "name": "discovery",
+      "description": "Identify the exact file and symbol that own rollout configuration loading.",
+      "stopCondition": {
+        "kind": "marker",
+        "marker": "target_identified",
+        "description": "The benchmark target has been identified."
+      },
+      "metrics": [
+        "broad_search_actions",
+        "consulted_artifacts"
+      ]
+    },
+    {
+      "name": "context_assembly",
+      "description": "Assemble the bounded context required to explain the rollout configuration flow.",
+      "stopCondition": {
+        "kind": "marker",
+        "marker": "context_ready",
+        "description": "The exact context bundle has been assembled."
+      },
+      "metrics": [
+        "file_read_actions",
+        "bytes_read"
+      ]
+    }
+  ],
+  "arms": [
+    {
+      "kind": "baseline",
+      "name": "Baseline exact-search workflow",
+      "description": "Narrow replayable workflow using only listing, exact search, bounded reads, and explicit completion markers.",
+      "steps": [
+        {
+          "id": "baseline-list-tree",
+          "name": "List internal tree",
+          "lane": "discovery",
+          "baseline": {
+            "kind": "list_tree",
+            "path": "internal"
+          }
+        },
+        {
+          "id": "baseline-search-symbol",
+          "name": "Search for rollout symbol",
+          "lane": "discovery",
+          "baseline": {
+            "kind": "search_text",
+            "query": "LoadRolloutConfig"
+          }
+        },
+        {
+          "id": "baseline-discovery-done",
+          "name": "Mark discovery complete",
+          "lane": "discovery",
+          "baseline": {
+            "kind": "mark_lane_complete",
+            "marker": "target_identified"
+          }
+        },
+        {
+          "id": "baseline-read-target",
+          "name": "Read rollout handler slice",
+          "lane": "context_assembly",
+          "baseline": {
+            "kind": "read_file_slice",
+            "path": "internal/http/handler/rollout.go",
+            "startLine": 1,
+            "endLine": 120
+          }
+        },
+        {
+          "id": "baseline-read-loader",
+          "name": "Read loader slice",
+          "lane": "context_assembly",
+          "baseline": {
+            "kind": "read_file_slice",
+            "path": "internal/config/loader.go",
+            "startLine": 1,
+            "endLine": 120
+          }
+        },
+        {
+          "id": "baseline-context-done",
+          "name": "Mark context assembly complete",
+          "lane": "context_assembly",
+          "baseline": {
+            "kind": "mark_lane_complete",
+            "marker": "context_ready"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "optimusctx",
+      "name": "OptimusCtx MCP workflow",
+      "description": "Use shipped MCP retrieval surfaces only; no benchmark-only shortcuts.",
+      "steps": [
+        {
+          "id": "opti-repository-map",
+          "name": "Inspect repository map",
+          "lane": "discovery",
+          "treatment": {
+            "surface": "mcp",
+            "tool": "optimusctx.repository_map"
+          }
+        },
+        {
+          "id": "opti-symbol-lookup",
+          "name": "Lookup rollout symbol",
+          "lane": "discovery",
+          "treatment": {
+            "surface": "mcp",
+            "tool": "optimusctx.symbol_lookup"
+          }
+        },
+        {
+          "id": "opti-targeted-context",
+          "name": "Fetch exact context window",
+          "lane": "context_assembly",
+          "treatment": {
+            "surface": "mcp",
+            "tool": "optimusctx.targeted_context"
+          }
+        }
+      ]
+    }
+  ]
+}

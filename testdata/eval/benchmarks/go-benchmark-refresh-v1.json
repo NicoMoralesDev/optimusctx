@@ -1,0 +1,137 @@
+{
+  "schemaVersion": "optimusctx/benchmark-suite@v1",
+  "id": "go-benchmark-refresh-v1",
+  "version": "v1",
+  "name": "Go benchmark refresh and task completion",
+  "description": "Paired refresh-after-change and completion benchmark on the frozen go-worktree fixture.",
+  "fixture": {
+    "id": "go-worktree",
+    "version": "v1",
+    "path": "go-worktree/v1/repository",
+    "materialize": "copy_tree",
+    "workspaceDir": "workspace"
+  },
+  "task": {
+    "id": "docs-pack",
+    "prompt": "Refresh after a controlled docs change, then produce a bounded pack export that includes the updated notes file.",
+    "targetPath": "docs/notes.txt",
+    "contextPaths": [
+      "docs/notes.txt",
+      "app/main.go"
+    ],
+    "completionArtifact": "artifacts/pack.json"
+  },
+  "lanes": [
+    {
+      "name": "refresh_after_change",
+      "description": "Return the repository to usable state after a deterministic mutation.",
+      "stopCondition": {
+        "kind": "marker",
+        "marker": "refresh_ready"
+      },
+      "metrics": [
+        "targeted_lookup_actions",
+        "consulted_artifacts"
+      ]
+    },
+    {
+      "name": "task_completion",
+      "description": "Produce the final task artifact once the repository is ready again.",
+      "stopCondition": {
+        "kind": "marker",
+        "marker": "task_complete"
+      },
+      "metrics": [
+        "file_read_actions",
+        "bytes_read"
+      ]
+    }
+  ],
+  "arms": [
+    {
+      "kind": "baseline",
+      "name": "Baseline exact-search workflow",
+      "steps": [
+        {
+          "id": "baseline-git-files",
+          "name": "Inspect tracked files",
+          "lane": "refresh_after_change",
+          "baseline": {
+            "kind": "git_list_files"
+          }
+        },
+        {
+          "id": "baseline-grep-notes",
+          "name": "Search docs note",
+          "lane": "refresh_after_change",
+          "baseline": {
+            "kind": "git_grep",
+            "query": "pack export should include this deterministic fixture content"
+          }
+        },
+        {
+          "id": "baseline-refresh-done",
+          "name": "Mark refresh-ready state",
+          "lane": "refresh_after_change",
+          "baseline": {
+            "kind": "mark_lane_complete",
+            "marker": "refresh_ready"
+          }
+        },
+        {
+          "id": "baseline-read-docs",
+          "name": "Read docs slice",
+          "lane": "task_completion",
+          "baseline": {
+            "kind": "read_file_slice",
+            "path": "docs/notes.txt",
+            "startLine": 1,
+            "endLine": 40
+          }
+        },
+        {
+          "id": "baseline-task-done",
+          "name": "Mark task completion",
+          "lane": "task_completion",
+          "baseline": {
+            "kind": "mark_lane_complete",
+            "marker": "task_complete"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "optimusctx",
+      "name": "OptimusCtx CLI and MCP workflow",
+      "steps": [
+        {
+          "id": "opti-refresh",
+          "name": "Run shipped refresh command",
+          "lane": "refresh_after_change",
+          "treatment": {
+            "surface": "cli",
+            "command": "refresh"
+          }
+        },
+        {
+          "id": "opti-health",
+          "name": "Check repository health",
+          "lane": "refresh_after_change",
+          "treatment": {
+            "surface": "mcp",
+            "tool": "optimusctx.health"
+          }
+        },
+        {
+          "id": "opti-pack",
+          "name": "Export bounded pack",
+          "lane": "task_completion",
+          "treatment": {
+            "surface": "mcp",
+            "tool": "optimusctx.pack"
+          }
+        }
+      ]
+    }
+  ]
+}
