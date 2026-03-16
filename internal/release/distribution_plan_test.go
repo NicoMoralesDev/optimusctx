@@ -2,6 +2,7 @@ package release
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -93,4 +94,67 @@ func deferredScopeNames(policy DistributionPolicy) []string {
 		values = append(values, item.Name)
 	}
 	return values
+}
+
+func TestRolloutPlanExamples(t *testing.T) {
+	policy := CurrentDistributionPolicy()
+	strategy := readRepoFile(t, "docs/distribution-strategy.md")
+	checklist := readRepoFile(t, "docs/release-checklist.md")
+
+	for _, want := range []string{
+		policy.SupportedChannels[0].Name,
+		policy.SupportedChannels[0].PublicationTarget,
+		policy.SupportedChannels[1].Name,
+		policy.SupportedChannels[1].PublicationTarget,
+		policy.SupportedChannels[2].Name,
+		policy.SupportedChannels[2].PublicationTarget,
+		"brew install niccrow/tap/optimusctx",
+		"scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git",
+		"scoop install niccrow/optimusctx",
+		"optimusctx version",
+		"optimusctx doctor",
+		"optimusctx snippet",
+	} {
+		if !strings.Contains(strategy, want) {
+			t.Fatalf("distribution strategy missing %q", want)
+		}
+	}
+
+	for _, want := range []string{
+		"GitHub Release archives",
+		"Homebrew",
+		"Scoop",
+		"HOMEBREW_TAP_GITHUB_TOKEN",
+		"SCOOP_BUCKET_GITHUB_TOKEN",
+		"best-effort and issue-driven",
+	} {
+		if !strings.Contains(checklist, want) {
+			t.Fatalf("release checklist missing %q", want)
+		}
+	}
+}
+
+func TestUpgradePolicy(t *testing.T) {
+	policy := CurrentDistributionPolicy()
+	strategy := readRepoFile(t, "docs/distribution-strategy.md")
+
+	for _, want := range []string{
+		policy.Upgrade.ArchiveExpectation,
+		policy.Upgrade.PackageManagerRule,
+		"replace the binary manually",
+		"prior tagged GitHub Release archive",
+		"brew upgrade niccrow/tap/optimusctx",
+		"scoop update optimusctx",
+		"`optimusctx install` is preview-first",
+		"operator opts into `--write`",
+		"native Linux packages such as `.deb` and `.rpm`",
+		"WinGet",
+		"Chocolatey",
+		"artifact signing",
+		"SBOM publication",
+	} {
+		if !strings.Contains(strategy, want) {
+			t.Fatalf("distribution strategy missing upgrade or scope detail %q", want)
+		}
+	}
 }
