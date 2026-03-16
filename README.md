@@ -116,34 +116,54 @@ This is the foundation for later validation and benchmark phases. Phase 10 can a
 
 ## Benchmark reruns and methodology verification
 
-Phase 11 does not add a separate end-user `benchmark` command. The benchmark methodology is verified through the committed benchmark suites, the shipped CLI and MCP surfaces they exercise, and the persisted SQLite evidence under `.optimusctx/`.
+Phase 12 adds two benchmark-facing report surfaces on top of the persisted evidence bundle:
+
+- `go run ./cmd/optimusctx eval benchmark export --suite <id> --attempts <n>`
+- `go run ./cmd/optimusctx eval benchmark report --suite <id> --attempts <n>`
 
 Benchmark inputs live here:
 
 - suites: `testdata/eval/benchmarks/`
 - fixtures: `testdata/eval/fixtures/`
 
-To rerun the repeated-run methodology checks from the repository root, use the targeted integration coverage:
+To rerun or inspect the repeated-run methodology from the repository root, use the shipped report surfaces:
+
+```bash
+go run ./cmd/optimusctx eval benchmark export --suite go-benchmark-refresh-v1 --attempts 2
+go run ./cmd/optimusctx eval benchmark report --suite go-benchmark-refresh-v1 --attempts 2
+```
+
+The human-readable report is intentionally narrow and truthful:
+
+- timing and estimated-token comparisons are shown lane by lane
+- treatment-side attribution is grouped with BNCH-02-facing labels such as Repository Map, Exact Lookup, L2 Context, and Pack Export
+- estimated tokens always use the `bytes_div_4_ceiling` policy
+- the report explains workflow-consumed evidence volume, not provider-billed token invoices
+- rerun guidance and methodology fingerprint stay visible so reviewers can inspect the same frozen suite again
+
+For targeted verification coverage from the repository root, use:
 
 ```bash
 go test ./internal/repository ./internal/app ./internal/store/sqlite -run 'TestBenchmarkRepeatedRuns|TestBenchmarkComparisonSummary'
 go test ./internal/app ./internal/cli ./internal/mcp -run 'TestBenchmarkVerificationWorkflow|TestBenchmarkRerunsDeterministic'
 ```
 
-What Phase 11 proves now:
+What Phase 12 reporting proves now:
 
 - the same frozen suites can be rerun repeatedly on the same fixtures
 - paired baseline and OptimusCtx arms preserve suite, arm, lane, and attempt identity
 - methodology drift such as changed stop conditions is rejected as a verification failure
-- workflow-speed evidence is persisted in `.optimusctx/db.sqlite`
+- workflow-speed and token-attribution evidence are persisted in `.optimusctx/db.sqlite`
+- the human-readable report is rendered from the persisted/exported evidence bundle rather than bespoke terminal summaries
 
-What Phase 11 does not prove yet:
+What the report still does not prove:
 
 - token attribution by artifact type
-- milestone-ready human-readable benchmark reports
-- richer export formats beyond the persisted run and lane evidence needed for verification
+- provider-billed token truth
+- universal savings beyond the recorded frozen-suite attempts
+- statistical significance beyond the explicit reruns you asked it to render
 
-Treat the current benchmark evidence as methodology proof, not the final reporting layer. Phase 12 owns token attribution and human-readable benchmark reporting on top of the persisted Phase 11 evidence.
+Treat the benchmark report as milestone evidence for the recorded suite and attempts only. If you need to review the raw machine-readable bundle, use `eval benchmark export`; if you need to inspect the operator-facing narrative, use `eval benchmark report`.
 
 ## Functional validation evidence
 
