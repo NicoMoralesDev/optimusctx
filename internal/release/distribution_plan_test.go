@@ -158,3 +158,49 @@ func TestUpgradePolicy(t *testing.T) {
 		}
 	}
 }
+
+func TestDistributionDocsStayWithinSupportedScope(t *testing.T) {
+	policy := CurrentDistributionPolicy()
+	documents := map[string]string{
+		"docs/distribution-strategy.md": readRepoFile(t, "docs/distribution-strategy.md"),
+		"docs/release-checklist.md":     readRepoFile(t, "docs/release-checklist.md"),
+	}
+
+	for path, content := range documents {
+		for _, channel := range policy.SupportedChannels {
+			if !strings.Contains(content, channel.Name) {
+				t.Fatalf("%s missing supported channel %q", path, channel.Name)
+			}
+		}
+	}
+
+	for _, want := range []string{
+		"best-effort",
+		"GitHub issues",
+		"local-first single binary",
+		"GitHub Release archive",
+		"brew upgrade niccrow/tap/optimusctx",
+		"scoop update optimusctx",
+	} {
+		if !strings.Contains(documents["docs/distribution-strategy.md"], want) && !strings.Contains(documents["docs/release-checklist.md"], want) {
+			t.Fatalf("distribution docs must keep %q visible", want)
+		}
+	}
+
+	for _, forbidden := range []string{
+		"winget install",
+		"choco install",
+		"apt install",
+		"dnf install",
+		"yum install",
+		"npm install",
+		"npx ",
+		"managed rollout service",
+	} {
+		for path, content := range documents {
+			if strings.Contains(strings.ToLower(content), forbidden) {
+				t.Fatalf("%s should not claim unsupported behavior %q", path, forbidden)
+			}
+		}
+	}
+}
