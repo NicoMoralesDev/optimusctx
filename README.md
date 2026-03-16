@@ -114,6 +114,46 @@ The current Phase 9 harness is intentionally narrow:
 
 This is the foundation for later validation and benchmark phases. Phase 10 can add more scenario depth on the same harness instead of replacing it with ad hoc scripts.
 
+## Functional validation evidence
+
+Phase 10 closes the functional milestone with persisted evidence, not a separate `eval report` command. The shipped workflow stays on `optimusctx eval` plus the repo-local artifact tree under `.optimusctx/eval/`.
+
+Requirement-mapped scenario inventory:
+
+- `EVAL-02`: `mcp-go-basic-v1`, `mcp-go-worktree-v1`
+- `EVAL-03`: `cli-go-stale-v1`, `mcp-go-degraded-v1`, `mcp-go-recovery-v1`
+
+Rerun any functional scenario from the repository root with the existing command surface:
+
+```bash
+go run ./cmd/optimusctx eval --scenario mcp-go-basic-v1
+go run ./cmd/optimusctx eval --scenario mcp-go-worktree-v1
+go run ./cmd/optimusctx eval --scenario cli-go-stale-v1
+go run ./cmd/optimusctx eval --scenario mcp-go-degraded-v1
+go run ./cmd/optimusctx eval --scenario mcp-go-recovery-v1
+```
+
+Each run persists its copied evidence under the source repository:
+
+- run root: `.optimusctx/eval/run-<id>/`
+- copied file artifacts: `.optimusctx/eval/run-<id>/artifacts/`
+- per-step stdout or stderr captures: `.optimusctx/eval/run-<id>/<step-id>/`
+- SQLite metadata for `eval_runs`, `eval_steps`, and `eval_artifacts`: `.optimusctx/db.sqlite`
+
+The functional suite only reports the shipped contract:
+
+- MCP validation uses `mcp serve`, readiness on `stderr`, `initialize`, `tools/list`, and the shipped query or ops tools
+- functional failure-path validation uses stale, partially degraded, and recovered evidence from the existing CLI and MCP surfaces
+- there is no MCP `doctor` tool, no MCP `watch` tool, and no new user-facing report mode
+
+To regenerate the requirement coverage summary used in milestone verification, run the targeted tests that read persisted eval evidence:
+
+```bash
+go test ./internal/app ./internal/cli ./internal/store/sqlite -run 'TestEvalReportSummaries|TestEvalRequirementCoverageReport'
+```
+
+Those tests validate that the latest persisted scenario runs map real scenario IDs, rerun commands, and artifact roots back to `EVAL-02` and `EVAL-03`.
+
 ## Non-invasive contract
 
 OptimusCtx is being built with an explicit local-first, non-invasive contract:

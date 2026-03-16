@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/niccrow/optimusctx/internal/app"
 	"github.com/niccrow/optimusctx/internal/repository"
 	"github.com/niccrow/optimusctx/internal/state"
 	"github.com/niccrow/optimusctx/internal/store/sqlite"
@@ -253,6 +254,63 @@ func TestEvalRecoveryScenarios(t *testing.T) {
 	}
 	assertContains(t, string(healthContent), "\"generation\": 4")
 	assertContains(t, string(healthContent), "\"freshness\": \"fresh\"")
+}
+
+func TestEvalRequirementCoverageReport(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		for _, scenarioID := range []string{
+			"mcp-go-basic-v1",
+			"mcp-go-worktree-v1",
+			"cli-go-stale-v1",
+			"mcp-go-degraded-v1",
+			"mcp-go-recovery-v1",
+		} {
+			var stdout bytes.Buffer
+			if err := NewRootCommand().Execute([]string{"eval", "--scenario", scenarioID}, &stdout); err != nil {
+				t.Fatalf("Execute(eval %s) error = %v", scenarioID, err)
+			}
+			assertContains(t, stdout.String(), "scenario id: "+scenarioID)
+			assertContains(t, stdout.String(), "status: passed")
+		}
+	})
+
+	layout, err := state.ResolveLayout(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	report, err := app.NewEvalService().RequirementCoverageReport(context.Background(), repoRoot)
+	if err != nil {
+		t.Fatalf("RequirementCoverageReport() error = %v", err)
+	}
+	if report.EvalArtifactRoot != layout.EvalDir {
+		t.Fatalf("EvalArtifactRoot = %q, want %q", report.EvalArtifactRoot, layout.EvalDir)
+	}
+	if got, want := len(report.Requirements), 2; got != want {
+		t.Fatalf("len(Requirements) = %d, want %d", got, want)
+	}
+	for _, requirement := range report.Requirements {
+		if !requirement.Covered {
+			t.Fatalf("requirement should be covered: %+v", requirement)
+		}
+		for _, evidence := range requirement.Evidence {
+			if evidence.ArtifactRoot == "" {
+				t.Fatalf("evidence missing artifact root: %+v", evidence)
+			}
+			if len(evidence.ArtifactPaths) == 0 {
+				t.Fatalf("evidence missing artifact paths: %+v", evidence)
+			}
+			assertContains(t, evidence.RerunCommand, "go run ./cmd/optimusctx eval --scenario ")
+		}
+	}
+	if report.Requirements[0].RequirementID != "EVAL-02" || report.Requirements[1].RequirementID != "EVAL-03" {
+		t.Fatalf("requirements = %+v", report.Requirements)
+	}
+	assertContains(t, report.Requirements[0].Evidence[0].ScenarioID, "mcp-go-")
+	assertContains(t, report.Requirements[1].Evidence[0].ArtifactRoot, filepath.Join(repoRoot, ".optimusctx", "eval", "run-"))
 }
 
 func TestEvalStateTransitionsPersistEvidence(t *testing.T) {
