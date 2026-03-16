@@ -12,6 +12,8 @@ The active benchmark corpus is now the committed `go-benchmark-discovery-v1` and
 - keep raw CLI and MCP payloads as provenance
 - require comparable final-artifact validation for lane success
 
+Pre-Phase-14 attribution-first evidence is superseded. The current benchmark answer comes from the repaired v2 counted-input contract and the reruns documented here.
+
 Under that corrected boundary, the rerun result is no longer negative overall.
 
 What the corrected counted-input reruns show:
@@ -25,7 +27,7 @@ What the corrected counted-input reruns show:
 
 Conclusion:
 
-- The repaired methodology now shows OptimusCtx winning or tying every counted lane in the committed corpus.
+- The repaired methodology now shows OptimusCtx winning three counted lanes and tying one in the committed corpus.
 - The earlier strongly negative result was mostly a boundary problem, not a stable statement about counted agent-facing benchmark cost.
 - Raw system provenance is still large in several places and remains useful product-diagnosis evidence, but it is no longer conflated with counted agent input.
 
@@ -153,6 +155,7 @@ It does not prove:
 - that every future task will show the same direction
 
 Treat the current result as milestone evidence for the committed corpus, not a universal product claim.
+Treat the older attribution-first result as historical context only, not as the active milestone answer.
 
 ## Product diagnosis that remains valid
 

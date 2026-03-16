@@ -204,11 +204,11 @@ The human-readable report is intentionally narrow and truthful:
 
 - timing and estimated-token comparisons are shown lane by lane
 - the active frozen suites are the committed `go-benchmark-discovery-v1` and `go-benchmark-refresh-v1` corpus under `optimusctx/benchmark-suite@v2`
-- baseline and OptimusCtx both pay estimated tokens for the outputs they actually consume during the recorded workflow
+- baseline and OptimusCtx are charged only for the declared agent-facing inputs the suite says they consumed during the recorded workflow
 - counted-token deltas come only from declared agent-input projections; raw CLI and MCP provenance remains exportable evidence unless the suite explicitly promotes it into counted input
 - lane success now requires both the stop condition and comparable final-artifact validation from the committed suite contract
 - treatment-side attribution is grouped with BNCH-02-facing labels such as Repository Map, Exact Lookup, L2 Context, and Operational
-- the current Phase 14 reruns improve counted discovery and refresh-readiness totals for OptimusCtx, while raw provenance can still be materially larger and remains diagnostic evidence rather than counted cost
+- the current Phase 14 reruns supersede the earlier attribution-first benchmark answer: OptimusCtx improves counted discovery and refresh-readiness totals, task completion remains a tie, and raw provenance can still be materially larger without becoming counted cost
 - estimated tokens always use the `bytes_div_4_ceiling` policy
 - the report explains workflow-consumed evidence volume, not provider-billed token invoices
 - rerun guidance and methodology fingerprint stay visible so reviewers can inspect the same frozen suite again
@@ -221,7 +221,7 @@ go test ./internal/repository ./internal/app ./internal/store/sqlite -run 'TestB
 go test ./internal/app ./internal/cli ./internal/mcp -run 'TestBenchmarkVerificationWorkflow|TestBenchmarkRerunsDeterministic'
 ```
 
-What Phase 12 reporting proves now:
+What the current benchmark reporting proves now:
 
 - the same frozen suites can be rerun repeatedly on the same fixtures
 - paired baseline and OptimusCtx arms preserve suite, arm, lane, and attempt identity
@@ -232,10 +232,10 @@ What Phase 12 reporting proves now:
 
 What the report still does not prove:
 
-- token attribution by artifact type
 - provider-billed token truth
 - universal savings beyond the recorded frozen-suite attempts
 - statistical significance beyond the explicit reruns you asked it to render
+- general answer quality beyond the committed comparable final-artifact contracts
 
 Treat the benchmark report as milestone evidence for the recorded suite and attempts only. If you need to review the raw machine-readable bundle, use `eval benchmark export`; if you need to inspect the operator-facing narrative, use `eval benchmark report`; if you need the final milestone gate, use `eval benchmark verify` to rerun the suite through the shipped CLI path and print pass/fail status, methodology fingerprint, rerun command, and drift reasons.
 
