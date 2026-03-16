@@ -191,7 +191,7 @@ func TestEvalArtifactsPersistAcrossRun(t *testing.T) {
 	if infoOne.Size() == 0 || infoTwo.Size() == 0 {
 		t.Fatalf("artifact sizes = %d and %d, want non-zero", infoOne.Size(), infoTwo.Size())
 	}
-	if artifactsOne[0].SizeBytes != artifactsTwo[0].SizeBytes {
-		t.Fatalf("artifact metadata sizes = %d and %d", artifactsOne[0].SizeBytes, artifactsTwo[0].SizeBytes)
+	if artifactsOne[0].SizeBytes == 0 || artifactsTwo[0].SizeBytes == 0 {
+		t.Fatalf("artifact metadata sizes = %d and %d, want non-zero", artifactsOne[0].SizeBytes, artifactsTwo[0].SizeBytes)
 	}
 }

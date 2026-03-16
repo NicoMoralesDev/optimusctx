@@ -4,13 +4,19 @@ OptimusCtx is a local-first runtime that builds and maintains persistent reposit
 
 ## Current status
 
-Phase 2 now includes the repository-local bootstrap and manual refresh path. The command surface is still intentionally small while extraction and query features are built:
+The current command surface covers repository bootstrap, refresh, diagnostics, export, MCP serving, eval harness runs, and watch-mode support:
 
 - `optimusctx --help`
 - `optimusctx version`
+- `optimusctx doctor`
+- `optimusctx eval --scenario <id>`
 - `optimusctx init`
+- `optimusctx install`
+- `optimusctx mcp serve`
+- `optimusctx pack export`
 - `optimusctx refresh`
 - `optimusctx snippet`
+- `optimusctx watch`
 
 ## Install locally
 
@@ -68,6 +74,45 @@ optimusctx refresh
 ```
 
 This fixture-style flow matches the automated integration tests. Running count-based UAT inside the actively changing `optimusctx` worktree is not a reliable way to validate no-op or mutation counts.
+
+## Evaluation harness
+
+Phase 9 adds one committed, rerunnable evaluation path that uses versioned fixtures and versioned scenario definitions instead of hidden manual setup.
+
+Evaluation inputs live in this repository:
+
+- fixtures: `testdata/eval/fixtures/`
+- scenarios: `testdata/eval/scenarios/`
+
+Each scenario names a stable scenario ID, the fixture repository version to materialize, and the ordered CLI steps to execute. Reruns always reconstruct a fresh temp workspace from the fixture tree before running the scenario, so you do not hand-edit prior state between runs.
+
+Run a scenario by ID from the repository root:
+
+```bash
+go run ./cmd/optimusctx eval --scenario <scenario-id>
+```
+
+Example:
+
+```bash
+go run ./cmd/optimusctx eval --scenario persist
+```
+
+Or run an explicit scenario file:
+
+```bash
+go run ./cmd/optimusctx eval --scenario-file testdata/eval/scenarios/persist.json
+```
+
+The current Phase 9 harness is intentionally narrow:
+
+- fixtures and scenarios are versioned inputs checked into the repo
+- `eval` executes the real shipped CLI boundary inside the materialized workspace
+- reruns rebuild fixture state automatically instead of depending on leftover `.optimusctx` directories or manual repository edits
+- evidence for each run is persisted under the source repository at `.optimusctx/eval/run-<id>/`
+- SQLite metadata for runs, steps, and copied artifacts is stored in `.optimusctx/db.sqlite`
+
+This is the foundation for later validation and benchmark phases. Phase 10 can add more scenario depth on the same harness instead of replacing it with ad hoc scripts.
 
 ## Non-invasive contract
 
