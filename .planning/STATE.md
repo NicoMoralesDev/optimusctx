@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 14
 current_phase_name: benchmark boundary redefinition and agent-input validation
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 14-01-PLAN.md
-last_updated: "2026-03-16T19:16:14.290Z"
+stopped_at: Completed 14-02-PLAN.md
+last_updated: "2026-03-16T19:42:26.946Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 24
-  completed_plans: 21
-  percent: 83
+  completed_plans: 22
+  percent: 97
 ---
 
 # Planning State: OptimusCtx
@@ -27,9 +27,9 @@ progress:
 **Current Phase:** 14
 **Current Phase Name:** benchmark boundary redefinition and agent-input validation
 **Total Phases:** 6
-**Current Plan:** 2
+**Current Plan:** 3
 **Total Plans in Phase:** 4
-**Progress:** [████████░░] 83%
+**Progress:** [██████████] 97%
 **Last Activity:** 2026-03-16
 **Last Activity Description:** Phase 14 planning is complete with four execution plans for benchmark-boundary repair, suite migration, and evidence refresh
 
@@ -203,6 +203,7 @@ progress:
 | Phase 13 P04 | 6min | 3 tasks | 4 files |
 | Phase 13-distribution-pipeline-and-adoption-plan P03 | 6min | 3 tasks | 6 files |
 | Phase 14 P01 | 59min | 3 tasks | 9 files |
+| Phase 14-benchmark-boundary-redefinition-and-agent-input-validation P02 | 22min | 3 tasks | 6 files |
 
 ## Decisions Made
 
@@ -345,6 +346,9 @@ progress:
 - [Phase 13]: MCP registration remains explicit and opt-in; the smoke flow proves preview mode does not write config files unless --write is supplied.
 - [Phase 14]: Benchmark suites now validate only as optimusctx/benchmark-suite@v2 and must declare counted agent inputs plus structured comparable final artifacts.
 - [Phase 14]: Benchmark evidence now persists a methodology snapshot and attribution boundary so counted agent input, system provenance, and final-artifact verification cannot be conflated.
+- [Phase 14-benchmark-boundary-redefinition-and-agent-input-validation]: The runner records raw CLI and MCP outputs as system provenance, then projects only declared countedInputs into agent-input totals.
+- [Phase 14-benchmark-boundary-redefinition-and-agent-input-validation]: Lane completion now requires both stop-condition progress and a materialized final artifact that satisfies the lane contract.
+- [Phase 14-benchmark-boundary-redefinition-and-agent-input-validation]: Human-readable reports label attribution rows as counted agent inputs and leave provenance in exported evidence for auditability instead of folding it into totals.
 
 ## Blockers
 
@@ -352,8 +356,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T19:16:14.286Z
-**Stopped At:** Completed 14-01-PLAN.md
+**Last Date:** 2026-03-16T19:42:26.942Z
+**Stopped At:** Completed 14-02-PLAN.md
 **Resume File:** None
 
 ---
