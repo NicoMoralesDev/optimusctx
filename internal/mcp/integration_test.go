@@ -168,6 +168,9 @@ func TestMCPServerStdioSession(t *testing.T) {
 	if repoEnvelope.Meta.RepositoryRoot != repoRoot {
 		t.Fatalf("repository map root = %q, want %q", repoEnvelope.Meta.RepositoryRoot, repoRoot)
 	}
+	if repoEnvelope.Meta.CacheStatus != cacheStatusPersistedOnly {
+		t.Fatalf("repository map cache status = %q, want %q", repoEnvelope.Meta.CacheStatus, cacheStatusPersistedOnly)
+	}
 
 	var refreshCall CallToolResult
 	mustDecodeResult(t, responses[3].Result, &refreshCall)
@@ -175,6 +178,12 @@ func TestMCPServerStdioSession(t *testing.T) {
 	decodeStructuredContent(t, refreshCall.StructuredContent, &refreshEnvelope)
 	if refreshEnvelope.Meta.CacheStatus != "refresh_attempted" {
 		t.Fatalf("refresh cache status = %q, want refresh_attempted", refreshEnvelope.Meta.CacheStatus)
+	}
+	if refreshEnvelope.Meta.Generation == 0 {
+		t.Fatalf("refresh generation = %d, want non-zero", refreshEnvelope.Meta.Generation)
+	}
+	if refreshCall.IsError {
+		t.Fatal("refresh call unexpectedly marked as error")
 	}
 
 	if responses[4].Error == nil {

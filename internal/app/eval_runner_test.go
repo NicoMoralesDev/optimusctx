@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/niccrow/optimusctx/internal/repository"
+	"github.com/niccrow/optimusctx/internal/store/sqlite"
 )
 
 func TestEvalRunnerExecutesCLIWorkflow(t *testing.T) {
@@ -377,6 +378,105 @@ func TestEvalMCPSessionExecution(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(result.WorkspacePath, "artifacts", "transcript.json")); err != nil {
 		t.Fatalf("expected transcript artifact: %v", err)
+	}
+}
+
+func TestEvalRunnerPersistsMCPSessionEvidence(t *testing.T) {
+	sourceRoot := t.TempDir()
+	fixturesRoot := filepath.Join(sourceRoot, "fixtures")
+	scenarioPath := filepath.Join(sourceRoot, "scenarios", "mcp-persist.json")
+
+	writeEvalFixtureFile(t, filepath.Join(fixturesRoot, "go-basic", "v1", "repository", "main.go"), "package main\n")
+	writeEvalScenarioFile(t, scenarioPath, repository.EvalScenarioDefinition{
+		SchemaVersion: repository.EvalScenarioSchemaV1,
+		ID:            "mcp-persist",
+		Version:       "v1",
+		Name:          "MCP Persist",
+		Fixture: repository.EvalFixtureRef{
+			ID:           "go-basic",
+			Version:      "v1",
+			Path:         "go-basic/v1/repository",
+			Materialize:  repository.EvalFixtureModeCopyTree,
+			WorkspaceDir: "workspace",
+		},
+		Steps: []repository.EvalScenarioStep{{
+			ID:   "mcp-serve",
+			Name: "Run MCP session",
+			Kind: repository.EvalStepKindMCPSession,
+			Session: &repository.EvalMCPSession{
+				Requests: []repository.EvalMCPRequest{
+					{ID: 1, Method: "initialize"},
+					{Method: "notifications/initialized", Notification: true},
+					{ID: 2, Method: "tools/list"},
+				},
+				TranscriptArtifact: "transcript",
+				CaptureResponses: []repository.EvalMCPResponseCapture{
+					{RequestID: 2, Artifact: "tools-list"},
+				},
+			},
+			CaptureArtifact: []string{"session-stderr", "transcript", "tools-list"},
+		}},
+		Artifacts: []repository.EvalArtifactRef{
+			{ID: "session-stderr", Kind: repository.EvalArtifactKindStderr, Required: true},
+			{ID: "transcript", Kind: repository.EvalArtifactKindFile, Path: "artifacts/transcript.json", Required: true},
+			{ID: "tools-list", Kind: repository.EvalArtifactKindFile, Path: "artifacts/tools-list.json", Required: true},
+		},
+	})
+
+	runner := NewEvalRunner()
+	runner.Now = newDeterministicEvalClock()
+	runner.RunMCPSession = func(_ context.Context, invocation EvalMCPSessionInvocation) (EvalMCPSessionExecutionResult, error) {
+		return EvalMCPSessionExecutionResult{
+			Stderr: "optimusctx mcp: ready for stdio requests\n",
+			Responses: []EvalMCPSessionResponse{
+				{RequestID: 1, Response: map[string]any{"jsonrpc": "2.0", "id": float64(1), "result": map[string]any{"protocolVersion": "2026-03-15"}}},
+				{RequestID: 2, Response: map[string]any{"jsonrpc": "2.0", "id": float64(2), "result": map[string]any{"tools": []any{map[string]any{"name": "optimusctx.repository_map"}}}}},
+			},
+		}, nil
+	}
+
+	result, err := runner.Run(context.Background(), EvalRunRequest{
+		ScenarioPath: scenarioPath,
+		FixturesRoot: fixturesRoot,
+	})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	artifactRoot := filepath.Join(sourceRoot, "persisted")
+	stepRecords, artifactRecords, err := persistEvalEvidence(artifactRoot, result)
+	if err != nil {
+		t.Fatalf("persistEvalEvidence() error = %v", err)
+	}
+	if len(stepRecords) != 1 {
+		t.Fatalf("len(stepRecords) = %d, want 1", len(stepRecords))
+	}
+	if stepRecords[0].StderrPath == "" {
+		t.Fatalf("expected stderr path for MCP step: %+v", stepRecords[0])
+	}
+	if stepRecords[0].Surface != "mcp" || stepRecords[0].Command != string(repository.EvalStepKindMCPSession) {
+		t.Fatalf("step storage identity = %+v", stepRecords[0])
+	}
+	if _, err := os.Stat(stepRecords[0].StderrPath); err != nil {
+		t.Fatalf("Stat(stderr path) error = %v", err)
+	}
+	transcript, ok := findEvalArtifactRecord(artifactRecords, "transcript")
+	if !ok {
+		t.Fatalf("missing transcript artifact: %+v", artifactRecords)
+	}
+	if transcript.StoredPath != filepath.Join(artifactRoot, "artifacts", "transcript.json") {
+		t.Fatalf("transcript stored path = %q", transcript.StoredPath)
+	}
+	toolsList, ok := findEvalArtifactRecord(artifactRecords, "tools-list")
+	if !ok {
+		t.Fatalf("missing tools-list artifact: %+v", artifactRecords)
+	}
+	content, err := os.ReadFile(toolsList.StoredPath)
+	if err != nil {
+		t.Fatalf("ReadFile(tools-list) error = %v", err)
+	}
+	if !strings.Contains(string(content), "optimusctx.repository_map") {
+		t.Fatalf("tools-list content = %q", string(content))
 	}
 }
 
@@ -781,4 +881,13 @@ func newDeterministicEvalClock() func() time.Time {
 		tick++
 		return current
 	}
+}
+
+func findEvalArtifactRecord(records []sqlite.EvalArtifactRecord, artifactID string) (sqlite.EvalArtifactRecord, bool) {
+	for _, record := range records {
+		if record.ArtifactID == artifactID {
+			return record, true
+		}
+	}
+	return sqlite.EvalArtifactRecord{}, false
 }

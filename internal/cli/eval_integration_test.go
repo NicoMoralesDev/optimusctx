@@ -46,6 +46,70 @@ func TestEvalMCPToolFlows(t *testing.T) {
 	})
 }
 
+func TestEvalMCPArtifactsPersist(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"eval", "--scenario", "mcp-go-worktree-v1"}, &stdout); err != nil {
+			t.Fatalf("Execute(eval mcp-go-worktree-v1) error = %v", err)
+		}
+		assertContains(t, stdout.String(), "status: passed")
+	})
+
+	layout, err := state.ResolveLayout(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+	store, err := sqlite.OpenOrCreateStore(context.Background(), layout, repository.DetectionModeGit)
+	if err != nil {
+		t.Fatalf("OpenOrCreateStore() error = %v", err)
+	}
+	defer store.Close()
+
+	run, steps, artifacts, err := store.LoadEvalRun(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("LoadEvalRun(1) error = %v", err)
+	}
+	if run.ScenarioID != "mcp-go-worktree-v1" || !run.Passed {
+		t.Fatalf("run = %+v", run)
+	}
+	if run.ArtifactRoot != layout.EvalRunDir(1) {
+		t.Fatalf("artifact root = %q, want %q", run.ArtifactRoot, layout.EvalRunDir(1))
+	}
+	if len(steps) != 3 {
+		t.Fatalf("len(steps) = %d, want 3", len(steps))
+	}
+	if steps[2].StderrPath == "" {
+		t.Fatalf("missing MCP stderr path: %+v", steps[2])
+	}
+	if _, err := os.Stat(steps[2].StderrPath); err != nil {
+		t.Fatalf("Stat(stderr path) error = %v", err)
+	}
+
+	transcript, ok := findEvalArtifactRecord(artifacts, "mcp-transcript")
+	if !ok {
+		t.Fatalf("missing transcript artifact: %+v", artifacts)
+	}
+	if transcript.StoredPath != filepath.Join(layout.EvalRunDir(1), "artifacts", "mcp-worktree-transcript.json") {
+		t.Fatalf("transcript stored path = %q", transcript.StoredPath)
+	}
+	if _, err := os.Stat(transcript.StoredPath); err != nil {
+		t.Fatalf("Stat(transcript path) error = %v", err)
+	}
+
+	healthArtifact, ok := findEvalArtifactRecord(artifacts, "health-response")
+	if !ok {
+		t.Fatalf("missing health artifact: %+v", artifacts)
+	}
+	content, err := os.ReadFile(healthArtifact.StoredPath)
+	if err != nil {
+		t.Fatalf("ReadFile(health artifact) error = %v", err)
+	}
+	assertContains(t, string(content), "\"Initialized\": true")
+}
+
 func TestEvalMCPScenariosRerun(t *testing.T) {
 	repoRoot := initCLIRepo(t)
 	seedCommittedEvalFixtures(t, repoRoot)
@@ -69,6 +133,37 @@ func TestEvalMCPScenariosRerun(t *testing.T) {
 		fixtureRoot := filepath.Join(repoRoot, "testdata", "eval", "fixtures", fixtureID, "v1", "repository")
 		if _, err := os.Stat(filepath.Join(fixtureRoot, ".optimusctx")); !os.IsNotExist(err) {
 			t.Fatalf("fixture source %q should not be mutated by reruns, err=%v", fixtureID, err)
+		}
+	}
+
+	layout, err := state.ResolveLayout(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+	store, err := sqlite.OpenOrCreateStore(context.Background(), layout, repository.DetectionModeGit)
+	if err != nil {
+		t.Fatalf("OpenOrCreateStore() error = %v", err)
+	}
+	defer store.Close()
+
+	for runID := int64(1); runID <= 4; runID++ {
+		run, _, artifacts, err := store.LoadEvalRun(context.Background(), runID)
+		if err != nil {
+			t.Fatalf("LoadEvalRun(%d) error = %v", runID, err)
+		}
+		if run.ArtifactRoot != layout.EvalRunDir(runID) {
+			t.Fatalf("run %d artifact root = %q, want %q", runID, run.ArtifactRoot, layout.EvalRunDir(runID))
+		}
+		if run.ScenarioID != "mcp-go-worktree-v1" {
+			continue
+		}
+		transcript, ok := findEvalArtifactRecord(artifacts, "mcp-transcript")
+		if !ok {
+			t.Fatalf("run %d missing transcript artifact: %+v", runID, artifacts)
+		}
+		wantPath := filepath.Join(layout.EvalRunDir(runID), "artifacts", "mcp-worktree-transcript.json")
+		if transcript.StoredPath != wantPath {
+			t.Fatalf("run %d transcript path = %q, want %q", runID, transcript.StoredPath, wantPath)
 		}
 	}
 }
