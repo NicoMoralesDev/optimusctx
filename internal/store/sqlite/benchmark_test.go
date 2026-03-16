@@ -261,3 +261,101 @@ func TestBenchmarkMutationLanesPersistEvidence(t *testing.T) {
 		t.Fatalf("lane metadata assertions = %#v", laneMetadata["assertions"])
 	}
 }
+
+func TestBenchmarkComparisonSummary(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	result := repository.BenchmarkRunResult{
+		SchemaVersion: repository.BenchmarkSuiteSchemaV1,
+		SuiteID:       "go-benchmark-refresh-v1",
+		SuiteVersion:  "v1",
+		FixtureID:     "go-worktree",
+		FixturePath:   "go-worktree/v1/repository",
+		WorkspacePath: "/tmp/benchmark",
+		Arms: []repository.BenchmarkArmRunResult{
+			{
+				Kind:       repository.BenchmarkArmKindBaseline,
+				Name:       "Baseline",
+				Workspace:  "/tmp/benchmark/baseline",
+				StartedAt:  time.Date(2026, 3, 16, 18, 0, 0, 0, time.UTC),
+				FinishedAt: time.Date(2026, 3, 16, 18, 0, 3, 0, time.UTC),
+				LaneResults: []repository.BenchmarkLaneRunResult{{
+					Lane:          repository.BenchmarkLaneRefreshReady,
+					StartMarker:   "refresh_after_change_started",
+					SuccessMarker: "refresh_ready",
+					StopMarker:    "refresh_ready",
+					StartedAt:     time.Date(2026, 3, 16, 18, 0, 0, 0, time.UTC),
+					FinishedAt:    time.Date(2026, 3, 16, 18, 0, 1, 0, time.UTC),
+					Elapsed:       time.Second,
+					Success:       true,
+					Effort: repository.BenchmarkLaneEffort{
+						ActionCount:        2,
+						ConsultedArtifacts: []string{"docs/notes.txt"},
+					},
+				}},
+			},
+			{
+				Kind:       repository.BenchmarkArmKindOptimusCtx,
+				Name:       "OptimusCtx",
+				Workspace:  "/tmp/benchmark/optimusctx",
+				StartedAt:  time.Date(2026, 3, 16, 18, 0, 0, 0, time.UTC),
+				FinishedAt: time.Date(2026, 3, 16, 18, 0, 2, 0, time.UTC),
+				LaneResults: []repository.BenchmarkLaneRunResult{{
+					Lane:          repository.BenchmarkLaneRefreshReady,
+					StartMarker:   "refresh_after_change_started",
+					SuccessMarker: "refresh_ready",
+					StopMarker:    "refresh_ready",
+					StartedAt:     time.Date(2026, 3, 16, 18, 0, 0, 0, time.UTC),
+					FinishedAt:    time.Date(2026, 3, 16, 18, 0, 1, 0, time.UTC),
+					Elapsed:       time.Second,
+					Success:       true,
+					Effort: repository.BenchmarkLaneEffort{
+						ActionCount:        1,
+						ConsultedArtifacts: []string{"docs/notes.txt", ".optimusctx/state.json"},
+					},
+				}},
+			},
+		},
+	}
+
+	for attempt := 1; attempt <= 2; attempt++ {
+		for _, arm := range BenchmarkPersistedArmsFromResult(repoID, attempt, result) {
+			if _, _, err := store.SaveBenchmarkRun(ctx, arm.Run, arm.Samples); err != nil {
+				t.Fatalf("SaveBenchmarkRun(attempt=%d) error = %v", attempt, err)
+			}
+		}
+	}
+
+	if got, want := mustNextBenchmarkAttempt(t, store, ctx, repoID, result.SuiteID, result.SuiteVersion), 3; got != want {
+		t.Fatalf("NextBenchmarkAttempt() = %d, want %d", got, want)
+	}
+
+	runs, err := store.ListBenchmarkRuns(ctx, repoID, result.SuiteID, result.SuiteVersion)
+	if err != nil {
+		t.Fatalf("ListBenchmarkRuns() error = %v", err)
+	}
+	if got, want := len(runs), 4; got != want {
+		t.Fatalf("len(runs) = %d, want %d", got, want)
+	}
+	if runs[0].Run.Attempt != 1 || runs[2].Run.Attempt != 2 {
+		t.Fatalf("attempt ordering = [%d %d %d %d], want grouped attempts", runs[0].Run.Attempt, runs[1].Run.Attempt, runs[2].Run.Attempt, runs[3].Run.Attempt)
+	}
+}
+
+func mustNextBenchmarkAttempt(t *testing.T, store *Store, ctx context.Context, repositoryID int64, suiteID string, suiteVersion string) int {
+	t.Helper()
+
+	attempt, err := store.NextBenchmarkAttempt(ctx, repositoryID, suiteID, suiteVersion)
+	if err != nil {
+		t.Fatalf("NextBenchmarkAttempt() error = %v", err)
+	}
+	return attempt
+}

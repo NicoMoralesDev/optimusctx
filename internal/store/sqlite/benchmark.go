@@ -184,6 +184,62 @@ func (s *Store) LoadBenchmarkRun(ctx context.Context, runID int64) (BenchmarkRun
 	return run, samples, nil
 }
 
+func (s *Store) NextBenchmarkAttempt(ctx context.Context, repositoryID int64, suiteID string, suiteVersion string) (int, error) {
+	if s == nil || s.db == nil {
+		return 0, fmt.Errorf("next benchmark attempt: store is not initialized")
+	}
+	var maxAttempt sql.NullInt64
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT MAX(attempt)
+		FROM benchmark_runs
+		WHERE repository_id = ? AND suite_id = ? AND suite_version = ?
+	`, repositoryID, suiteID, suiteVersion).Scan(&maxAttempt); err != nil {
+		return 0, fmt.Errorf("next benchmark attempt for suite %q: %w", suiteID, err)
+	}
+	if !maxAttempt.Valid {
+		return 1, nil
+	}
+	return int(maxAttempt.Int64) + 1, nil
+}
+
+func (s *Store) ListBenchmarkRuns(ctx context.Context, repositoryID int64, suiteID string, suiteVersion string) ([]BenchmarkPersistedArm, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("list benchmark runs: store is not initialized")
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id
+		FROM benchmark_runs
+		WHERE repository_id = ? AND suite_id = ? AND suite_version = ?
+		ORDER BY attempt, CASE arm_kind WHEN 'baseline' THEN 0 ELSE 1 END, id
+	`, repositoryID, suiteID, suiteVersion)
+	if err != nil {
+		return nil, fmt.Errorf("list benchmark runs for suite %q: %w", suiteID, err)
+	}
+	defer rows.Close()
+
+	var runIDs []int64
+	for rows.Next() {
+		var runID int64
+		if err := rows.Scan(&runID); err != nil {
+			return nil, fmt.Errorf("scan benchmark run id for suite %q: %w", suiteID, err)
+		}
+		runIDs = append(runIDs, runID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate benchmark runs for suite %q: %w", suiteID, err)
+	}
+
+	runs := make([]BenchmarkPersistedArm, 0, len(runIDs))
+	for _, runID := range runIDs {
+		run, samples, err := s.LoadBenchmarkRun(ctx, runID)
+		if err != nil {
+			return nil, err
+		}
+		runs = append(runs, BenchmarkPersistedArm{Run: run, Samples: samples})
+	}
+	return runs, nil
+}
+
 func validateBenchmarkRun(run BenchmarkRunRecord) error {
 	switch {
 	case run.RepositoryID == 0:

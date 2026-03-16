@@ -360,6 +360,56 @@ func TestBenchmarkTaskCompletionLane(t *testing.T) {
 	}
 }
 
+func TestBenchmarkRepeatedRuns(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := initRepo(t)
+	service := NewBenchmarkService()
+	service.Runner = NewBenchmarkRunner()
+	service.Runner.Now = newDeterministicBenchmarkClock()
+	service.Runner.RunCommand = func(_ context.Context, invocation BenchmarkCommandInvocation) (BenchmarkCommandExecutionResult, error) {
+		if reflect.DeepEqual(invocation.Args, []string{"refresh"}) {
+			return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
+		}
+		if reflect.DeepEqual(invocation.Args, []string{"pack", "export", "--format", "json", "--output", "artifacts/pack.json"}) {
+			writeEvalFixtureFile(t, filepath.Join(invocation.WorkingDir, "artifacts", "pack.json"), "{\"documents\":[\"docs/notes.txt\"]}\n")
+			return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
+		}
+		return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
+	}
+
+	result, err := service.RunRepeated(context.Background(), BenchmarkRepeatedRunRequest{
+		StartPath:     repoRoot,
+		SuitePath:     writeBenchmarkMutationSuite(t),
+		FixturesRoot:  filepath.Join("..", "..", "testdata", "eval", "fixtures"),
+		WorkspaceRoot: t.TempDir(),
+		Attempts:      2,
+	})
+	if err != nil {
+		t.Fatalf("RunRepeated() error = %v", err)
+	}
+	if got, want := len(result.Attempts), 2; got != want {
+		t.Fatalf("len(result.Attempts) = %d, want %d", got, want)
+	}
+	for index, attempt := range result.Attempts {
+		if got, want := attempt.Attempt, index+1; got != want {
+			t.Fatalf("attempt number = %d, want %d", got, want)
+		}
+		if len(attempt.Result.Arms) != 2 {
+			t.Fatalf("attempt %d arms = %d, want 2", attempt.Attempt, len(attempt.Result.Arms))
+		}
+	}
+	if !result.Summary.Verification.Passed {
+		t.Fatalf("summary verification = %+v, want passed", result.Summary.Verification)
+	}
+	if result.Summary.AttemptCount != 2 {
+		t.Fatalf("summary attempts = %d, want 2", result.Summary.AttemptCount)
+	}
+	if !strings.Contains(result.Summary.RerunCommand, "TestBenchmarkVerificationWorkflow|TestBenchmarkRerunsDeterministic") {
+		t.Fatalf("rerun command = %q", result.Summary.RerunCommand)
+	}
+}
+
 func validBenchmarkSuite() repository.BenchmarkSuiteDefinition {
 	return repository.BenchmarkSuiteDefinition{
 		SchemaVersion: repository.BenchmarkSuiteSchemaV1,
@@ -634,4 +684,14 @@ func writeBenchmarkMutationSuite(t *testing.T) string {
 		},
 	})
 	return path
+}
+
+func newDeterministicBenchmarkClock() func() time.Time {
+	base := time.Date(2026, time.March, 16, 12, 0, 0, 0, time.UTC)
+	var tick int
+	return func() time.Time {
+		current := base.Add(time.Duration(tick) * 250 * time.Millisecond)
+		tick++
+		return current
+	}
 }
