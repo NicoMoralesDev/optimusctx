@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"slices"
 	"sort"
 	"strings"
@@ -52,6 +53,16 @@ type BenchmarkEvidenceBundleRequest struct {
 }
 
 type BenchmarkHumanReportRequest struct {
+	StartPath     string
+	SuiteID       string
+	SuitePath     string
+	SuitesDir     string
+	FixturesRoot  string
+	WorkspaceRoot string
+	Attempts      int
+}
+
+type BenchmarkMilestoneVerificationRequest struct {
 	StartPath     string
 	SuiteID       string
 	SuitePath     string
@@ -124,6 +135,24 @@ type BenchmarkVerificationResult struct {
 	Passed        bool
 	FailureReason string
 	DriftReasons  []string
+}
+
+type BenchmarkMilestoneVerificationResult struct {
+	SuiteID                     string
+	SuiteVersion                string
+	FixtureID                   string
+	FixturePath                 string
+	AttemptCount                int
+	MethodologyFingerprint      string
+	PersistedFingerprint        string
+	RerunCommand                string
+	Verification                BenchmarkVerificationResult
+	ReportVerificationPassed    bool
+	ReportVerificationReasons   []string
+	ReproducibilityPassed       bool
+	ReproducibilityDriftReasons []string
+	Passed                      bool
+	FailureReason               string
 }
 
 type BenchmarkHumanSummary struct {
@@ -205,6 +234,10 @@ func (s BenchmarkService) RunRepeated(ctx context.Context, request BenchmarkRepe
 	summaryResult := BenchmarkRepeatedRunResult{Attempts: make([]BenchmarkAttemptResult, 0, request.Attempts)}
 	var resolvedRoot repository.RepositoryRoot
 	var resolvedSuite repository.BenchmarkSuiteDefinition
+	baseAttempt, err := s.nextBenchmarkAttemptStart(ctx, request)
+	if err != nil {
+		return BenchmarkRepeatedRunResult{}, err
+	}
 	for attempt := 1; attempt <= request.Attempts; attempt++ {
 		result, root, suite, err := s.runAndPersist(ctx, BenchmarkRunServiceRequest{
 			StartPath:     request.StartPath,
@@ -213,7 +246,7 @@ func (s BenchmarkService) RunRepeated(ctx context.Context, request BenchmarkRepe
 			SuitesDir:     request.SuitesDir,
 			FixturesRoot:  request.FixturesRoot,
 			WorkspaceRoot: request.WorkspaceRoot,
-		}, attempt)
+		}, baseAttempt+attempt-1)
 		if err != nil {
 			return BenchmarkRepeatedRunResult{}, err
 		}
@@ -245,6 +278,56 @@ func (s BenchmarkService) RunRepeated(ctx context.Context, request BenchmarkRepe
 	summaryResult.Summary.RerunCommand = evidenceBundle.RerunCommand
 	summaryResult.Summary.MethodologyFingerprint = evidenceBundle.MethodologyFingerprint
 	return summaryResult, nil
+}
+
+func (s BenchmarkService) nextBenchmarkAttemptStart(ctx context.Context, request BenchmarkRepeatedRunRequest) (int, error) {
+	root, err := s.Locator.Resolve(request.StartPath)
+	if err != nil {
+		return 0, fmt.Errorf("resolve repository root: %w", err)
+	}
+
+	layoutResolver := s.ResolveLayout
+	if layoutResolver == nil {
+		layoutResolver = state.ResolveLayout
+	}
+	layout, err := layoutResolver(root.RootPath)
+	if err != nil {
+		return 0, fmt.Errorf("resolve state layout: %w", err)
+	}
+
+	openStore := s.OpenStore
+	if openStore == nil {
+		openStore = func(ctx context.Context, layout state.Layout, detectionMode string) (*sqlite.Store, error) {
+			return sqlite.OpenOrCreateStore(ctx, layout, detectionMode)
+		}
+	}
+	store, err := openStore(ctx, layout, root.DetectionMode)
+	if err != nil {
+		return 0, fmt.Errorf("open benchmark store: %w", err)
+	}
+	defer store.Close()
+
+	repoRecord, err := store.UpsertRepository(ctx, root, s.nowUTC())
+	if err != nil {
+		return 0, fmt.Errorf("persist repository metadata: %w", err)
+	}
+
+	runner := s.Runner.withDefaults()
+	suite, err := runner.LoadSuite(BenchmarkSuiteRequest{
+		SuiteID:      request.SuiteID,
+		SuitePath:    request.SuitePath,
+		SuitesDir:    request.SuitesDir,
+		FixturesRoot: request.FixturesRoot,
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	next, err := store.NextBenchmarkAttempt(ctx, repoRecord.ID, suite.ID, suite.Version)
+	if err != nil {
+		return 0, fmt.Errorf("next benchmark attempt: %w", err)
+	}
+	return next, nil
 }
 
 func (s BenchmarkService) ExportEvidenceBundle(ctx context.Context, request BenchmarkEvidenceBundleRequest) (repository.BenchmarkEvidenceBundle, error) {
@@ -294,6 +377,92 @@ func (s BenchmarkService) VerifyMethodology(ctx context.Context, request Benchma
 		return BenchmarkVerificationResult{}, err
 	}
 	return result.Summary.Verification, nil
+}
+
+func (s BenchmarkService) VerifyMilestoneEvidence(ctx context.Context, request BenchmarkMilestoneVerificationRequest) (BenchmarkMilestoneVerificationResult, error) {
+	root, suite, store, repoID, err := s.resolveBenchmarkEvidenceContext(ctx, BenchmarkEvidenceBundleRequest{
+		StartPath:     request.StartPath,
+		SuiteID:       request.SuiteID,
+		SuitePath:     request.SuitePath,
+		SuitesDir:     request.SuitesDir,
+		FixturesRoot:  request.FixturesRoot,
+		WorkspaceRoot: request.WorkspaceRoot,
+		Attempts:      request.Attempts,
+	})
+	if err != nil {
+		return BenchmarkMilestoneVerificationResult{}, err
+	}
+	defer store.Close()
+
+	persistedBundle, err := store.LoadLatestBenchmarkEvidenceBundle(ctx, repoID, suite.ID, suite.Version)
+	if err != nil {
+		return BenchmarkMilestoneVerificationResult{}, fmt.Errorf("load persisted benchmark evidence: %w", err)
+	}
+
+	attempts := request.Attempts
+	if attempts <= 0 {
+		attempts = len(persistedBundle.Attempts)
+	}
+	if attempts <= 0 {
+		attempts = 2
+	}
+
+	repeated, err := s.RunRepeated(ctx, BenchmarkRepeatedRunRequest{
+		StartPath:     request.StartPath,
+		SuiteID:       request.SuiteID,
+		SuitePath:     request.SuitePath,
+		SuitesDir:     request.SuitesDir,
+		FixturesRoot:  request.FixturesRoot,
+		WorkspaceRoot: request.WorkspaceRoot,
+		Attempts:      attempts,
+	})
+	if err != nil {
+		return BenchmarkMilestoneVerificationResult{}, err
+	}
+
+	runCount := attempts * len(suite.Arms)
+	if runCount <= 0 {
+		runCount = attempts
+	}
+	recomputedRuns, err := store.ListLatestBenchmarkRuns(ctx, repoID, suite.ID, suite.Version, runCount)
+	if err != nil {
+		return BenchmarkMilestoneVerificationResult{}, fmt.Errorf("load latest persisted benchmark runs: %w", err)
+	}
+	recomputedBundle, err := buildBenchmarkEvidenceBundleFromPersistedRuns(root.RootPath, recomputedRuns, suite, benchmarkEvidenceRerunCommand(request.SuiteID, request.SuitePath, attempts))
+	if err != nil {
+		return BenchmarkMilestoneVerificationResult{}, fmt.Errorf("recompute benchmark evidence from persisted runs: %w", err)
+	}
+
+	result := BenchmarkMilestoneVerificationResult{
+		SuiteID:                repeated.EvidenceBundle.SuiteID,
+		SuiteVersion:           repeated.EvidenceBundle.SuiteVersion,
+		FixtureID:              repeated.EvidenceBundle.FixtureID,
+		FixturePath:            repeated.EvidenceBundle.FixturePath,
+		AttemptCount:           attempts,
+		MethodologyFingerprint: repeated.EvidenceBundle.MethodologyFingerprint,
+		PersistedFingerprint:   persistedBundle.MethodologyFingerprint,
+		RerunCommand:           repeated.EvidenceBundle.RerunCommand,
+		Verification:           repeated.Summary.Verification,
+	}
+
+	driftReasons := compareBenchmarkEvidenceBundles(persistedBundle, repeated.EvidenceBundle)
+	driftReasons = append(driftReasons, prefixReasons("persisted rerun record mismatch", compareBenchmarkEvidenceBundles(recomputedBundle, repeated.EvidenceBundle))...)
+	result.ReportVerificationReasons = verifyBenchmarkReportWording(RenderBenchmarkComparisonReport(BuildBenchmarkHumanSummary(repeated.EvidenceBundle)))
+	result.ReportVerificationPassed = len(result.ReportVerificationReasons) == 0
+	result.ReproducibilityDriftReasons = uniqueSorted(driftReasons)
+	result.ReproducibilityPassed = len(result.ReproducibilityDriftReasons) == 0
+	result.Passed = result.Verification.Passed && result.ReportVerificationPassed && result.ReproducibilityPassed
+
+	switch {
+	case !result.Verification.Passed:
+		result.FailureReason = result.Verification.FailureReason
+	case len(result.ReproducibilityDriftReasons) > 0:
+		result.FailureReason = strings.Join(result.ReproducibilityDriftReasons, "; ")
+	case len(result.ReportVerificationReasons) > 0:
+		result.FailureReason = strings.Join(result.ReportVerificationReasons, "; ")
+	}
+
+	return result, nil
 }
 
 func (s BenchmarkService) runAndPersist(ctx context.Context, request BenchmarkRunServiceRequest, forcedAttempt int) (repository.BenchmarkRunResult, repository.RepositoryRoot, repository.BenchmarkSuiteDefinition, error) {
@@ -920,7 +1089,19 @@ func (s BenchmarkService) exportEvidenceBundleFromStore(ctx context.Context, req
 }
 
 func (s BenchmarkService) buildAndPersistEvidenceBundle(ctx context.Context, store *sqlite.Store, repositoryID int64, repositoryRoot string, suite repository.BenchmarkSuiteDefinition, request BenchmarkEvidenceBundleRequest) (repository.BenchmarkEvidenceBundle, error) {
-	persistedArms, err := store.ListBenchmarkRuns(ctx, repositoryID, suite.ID, suite.Version)
+	var (
+		persistedArms []sqlite.BenchmarkPersistedArm
+		err           error
+	)
+	if request.Attempts > 0 {
+		runCount := request.Attempts * len(suite.Arms)
+		if runCount <= 0 {
+			runCount = request.Attempts
+		}
+		persistedArms, err = store.ListLatestBenchmarkRuns(ctx, repositoryID, suite.ID, suite.Version, runCount)
+	} else {
+		persistedArms, err = store.ListBenchmarkRuns(ctx, repositoryID, suite.ID, suite.Version)
+	}
 	if err != nil {
 		return repository.BenchmarkEvidenceBundle{}, err
 	}
@@ -935,6 +1116,18 @@ func (s BenchmarkService) buildAndPersistEvidenceBundle(ctx context.Context, sto
 	summary := summarizeBenchmarkAttempts(attempts, suite.ID, suite.Version)
 	bundle := buildBenchmarkEvidenceBundle(repositoryRoot, tokenContract, summary, attempts, benchmarkEvidenceRerunCommand(request.SuiteID, request.SuitePath, len(attempts)))
 	return store.SaveBenchmarkEvidenceBundle(ctx, repositoryID, bundle)
+}
+
+func buildBenchmarkEvidenceBundleFromPersistedRuns(repositoryRoot string, persistedArms []sqlite.BenchmarkPersistedArm, suite repository.BenchmarkSuiteDefinition, rerunCommand string) (repository.BenchmarkEvidenceBundle, error) {
+	if len(persistedArms) == 0 {
+		return repository.BenchmarkEvidenceBundle{}, fmt.Errorf("no benchmark runs recorded for suite %q", suite.ID)
+	}
+	attempts, tokenContract, err := benchmarkAttemptsFromPersistedArms(persistedArms)
+	if err != nil {
+		return repository.BenchmarkEvidenceBundle{}, err
+	}
+	summary := summarizeBenchmarkAttempts(attempts, suite.ID, suite.Version)
+	return buildBenchmarkEvidenceBundle(repositoryRoot, tokenContract, summary, attempts, rerunCommand), nil
 }
 
 func buildBenchmarkEvidenceBundle(repositoryRoot string, tokenContract repository.BenchmarkTokenEstimateContract, summary BenchmarkComparisonSummary, attempts []BenchmarkAttemptResult, rerunCommand string) repository.BenchmarkEvidenceBundle {
@@ -1165,6 +1358,288 @@ func firstNonEmpty(values ...string) string {
 
 func benchmarkEvidenceMetricActionCount() string {
 	return "action_count"
+}
+
+type benchmarkComparableBundle struct {
+	SuiteID                string
+	SuiteVersion           string
+	FixtureID              string
+	FixturePath            string
+	MethodologyFingerprint string
+	TokenPolicy            string
+	UsageClaim             string
+	BillingDisambiguator   string
+	Verification           repository.BenchmarkEvidenceVerification
+	Comparison             []benchmarkComparableArmSummary
+	HumanSummary           benchmarkComparableHumanSummary
+}
+
+type benchmarkComparableArmSummary struct {
+	ArmKind repository.BenchmarkArmKind
+	ArmName string
+	Lanes   []benchmarkComparableLaneSummary
+}
+
+type benchmarkComparableLaneSummary struct {
+	Lane                   repository.BenchmarkLane
+	AttemptCount           int
+	SuccessCount           int
+	InvalidAttemptCount    int
+	ActionCount            repository.BenchmarkEvidenceInt64Stats
+	BroadSearchActions     repository.BenchmarkEvidenceInt64Stats
+	TargetedLookupActions  repository.BenchmarkEvidenceInt64Stats
+	FileReadActions        repository.BenchmarkEvidenceInt64Stats
+	BytesRead              repository.BenchmarkEvidenceInt64Stats
+	ConsultedArtifacts     []string
+	RejectedAttemptReasons []string
+}
+
+type benchmarkComparableAttempt struct {
+	Arms []benchmarkComparableArm
+}
+
+type benchmarkComparableArm struct {
+	Kind  repository.BenchmarkArmKind
+	Name  string
+	Lanes []benchmarkComparableLane
+}
+
+type benchmarkComparableLane struct {
+	Lane          repository.BenchmarkLane
+	StartMarker   string
+	SuccessMarker string
+	StopMarker    string
+	Success       bool
+	Attribution   []benchmarkComparableAttribution
+}
+
+type benchmarkComparableAttribution struct {
+	StepID          string
+	StepName        string
+	Lane            repository.BenchmarkLane
+	Surface         repository.BenchmarkTreatmentSurface
+	Command         repository.EvalCommandName
+	Tool            string
+	ArtifactType    repository.BenchmarkArtifactType
+	ReportLabel     repository.BenchmarkReportArtifactLabel
+	SourceKind      repository.BenchmarkTokenEstimateSourceKind
+	EstimatedBytes  int64
+	EstimatedTokens int64
+}
+
+type benchmarkComparableHumanSummary struct {
+	LaneComparisons []benchmarkComparableHumanLane
+	AttributionRows []benchmarkComparableHumanAttribution
+}
+
+type benchmarkComparableHumanLane struct {
+	Lane                     repository.BenchmarkLane
+	AttemptCount             int
+	BaselineEstimatedTokens  BenchmarkInt64Stats
+	TreatmentEstimatedTokens BenchmarkInt64Stats
+	EstimatedTokenDelta      int64
+	InvalidAttemptReasons    []string
+}
+
+type benchmarkComparableHumanAttribution struct {
+	Lane                  repository.BenchmarkLane
+	ReportLabel           repository.BenchmarkReportArtifactLabel
+	DisplayLabel          string
+	AttemptCount          int
+	MedianEstimatedTokens int64
+	TotalEstimatedTokens  int64
+}
+
+func compareBenchmarkEvidenceBundles(expected repository.BenchmarkEvidenceBundle, actual repository.BenchmarkEvidenceBundle) []string {
+	expected = repository.NormalizeBenchmarkEvidenceBundle(expected)
+	actual = repository.NormalizeBenchmarkEvidenceBundle(actual)
+	reasons := make([]string, 0)
+	if expected.MethodologyFingerprint != actual.MethodologyFingerprint {
+		reasons = append(reasons, fmt.Sprintf("methodology fingerprint drifted from %q to %q", expected.MethodologyFingerprint, actual.MethodologyFingerprint))
+	}
+	if expected.TokenEstimateContract.Policy.Name != actual.TokenEstimateContract.Policy.Name {
+		reasons = append(reasons, fmt.Sprintf("estimator policy drifted from %q to %q", expected.TokenEstimateContract.Policy.Name, actual.TokenEstimateContract.Policy.Name))
+	}
+	expectedSnapshot := benchmarkComparableSnapshot(expected)
+	actualSnapshot := benchmarkComparableSnapshot(actual)
+	if !reflect.DeepEqual(expectedSnapshot.Verification, actualSnapshot.Verification) {
+		reasons = append(reasons, "evidence verification metadata drifted")
+	}
+	if !reflect.DeepEqual(expectedSnapshot.Comparison, actualSnapshot.Comparison) {
+		reasons = append(reasons, "comparison summary drifted")
+	}
+	reasons = append(reasons, compareBenchmarkHumanSummary(expectedSnapshot.HumanSummary, actualSnapshot.HumanSummary)...)
+	if len(reasons) > 0 && !slices.Contains(reasons, "benchmark attribution totals drifted") {
+		for _, reason := range reasons {
+			if strings.Contains(reason, "attribution") || strings.Contains(reason, "lane token summary") {
+				reasons = append(reasons, "benchmark attribution totals drifted")
+				break
+			}
+		}
+	}
+	return uniqueSorted(reasons)
+}
+
+func benchmarkComparableSnapshot(bundle repository.BenchmarkEvidenceBundle) benchmarkComparableBundle {
+	snapshot := benchmarkComparableBundle{
+		SuiteID:                bundle.SuiteID,
+		SuiteVersion:           bundle.SuiteVersion,
+		FixtureID:              bundle.FixtureID,
+		FixturePath:            bundle.FixturePath,
+		MethodologyFingerprint: bundle.MethodologyFingerprint,
+		TokenPolicy:            bundle.TokenEstimateContract.Policy.Name,
+		UsageClaim:             bundle.TokenEstimateContract.UsageClaim,
+		BillingDisambiguator:   bundle.TokenEstimateContract.BillingDisambiguator,
+		Verification:           bundle.Verification,
+		Comparison:             make([]benchmarkComparableArmSummary, 0, len(bundle.Comparison)),
+		HumanSummary:           benchmarkComparableHumanSummary{},
+	}
+	for _, arm := range bundle.Comparison {
+		comparableArm := benchmarkComparableArmSummary{
+			ArmKind: arm.ArmKind,
+			ArmName: arm.ArmName,
+			Lanes:   make([]benchmarkComparableLaneSummary, 0, len(arm.Lanes)),
+		}
+		for _, lane := range arm.Lanes {
+			comparableArm.Lanes = append(comparableArm.Lanes, benchmarkComparableLaneSummary{
+				Lane:                   lane.Lane,
+				AttemptCount:           lane.AttemptCount,
+				SuccessCount:           lane.SuccessCount,
+				InvalidAttemptCount:    lane.InvalidAttemptCount,
+				ActionCount:            lane.ActionCount,
+				BroadSearchActions:     lane.BroadSearchActions,
+				TargetedLookupActions:  lane.TargetedLookupActions,
+				FileReadActions:        lane.FileReadActions,
+				BytesRead:              lane.BytesRead,
+				ConsultedArtifacts:     append([]string(nil), lane.ConsultedArtifacts...),
+				RejectedAttemptReasons: append([]string(nil), lane.RejectedAttemptReasons...),
+			})
+		}
+		snapshot.Comparison = append(snapshot.Comparison, comparableArm)
+	}
+	humanSummary := BuildBenchmarkHumanSummary(bundle)
+	snapshot.HumanSummary.LaneComparisons = make([]benchmarkComparableHumanLane, 0, len(humanSummary.LaneComparisons))
+	for _, lane := range humanSummary.LaneComparisons {
+		snapshot.HumanSummary.LaneComparisons = append(snapshot.HumanSummary.LaneComparisons, benchmarkComparableHumanLane{
+			Lane:                     lane.Lane,
+			AttemptCount:             lane.AttemptCount,
+			BaselineEstimatedTokens:  lane.BaselineEstimatedTokens,
+			TreatmentEstimatedTokens: lane.TreatmentEstimatedTokens,
+			EstimatedTokenDelta:      lane.EstimatedTokenDelta,
+			InvalidAttemptReasons:    append([]string(nil), lane.InvalidAttemptReasons...),
+		})
+	}
+	snapshot.HumanSummary.AttributionRows = make([]benchmarkComparableHumanAttribution, 0, len(humanSummary.AttributionRows))
+	for _, row := range humanSummary.AttributionRows {
+		snapshot.HumanSummary.AttributionRows = append(snapshot.HumanSummary.AttributionRows, benchmarkComparableHumanAttribution{
+			Lane:                  row.Lane,
+			ReportLabel:           row.ReportLabel,
+			DisplayLabel:          row.DisplayLabel,
+			AttemptCount:          row.AttemptCount,
+			MedianEstimatedTokens: row.MedianEstimatedTokens,
+			TotalEstimatedTokens:  row.TotalEstimatedTokens,
+		})
+	}
+	return snapshot
+}
+
+func verifyBenchmarkReportWording(report string) []string {
+	reasons := make([]string, 0)
+	for _, required := range []string{
+		"estimated tokens use bytes_div_4_ceiling",
+		"not provider-billed token invoices",
+	} {
+		if !strings.Contains(report, required) {
+			reasons = append(reasons, fmt.Sprintf("benchmark report missing required wording %q", required))
+		}
+	}
+	for _, banned := range []string{
+		"provider billing",
+		"provider-billed token truth",
+		"statistically significant",
+		"universal savings",
+	} {
+		if strings.Contains(report, banned) {
+			reasons = append(reasons, fmt.Sprintf("benchmark report contains banned wording %q", banned))
+		}
+	}
+	return uniqueSorted(reasons)
+}
+
+func prefixReasons(prefix string, reasons []string) []string {
+	if prefix == "" || len(reasons) == 0 {
+		return reasons
+	}
+	prefixed := make([]string, 0, len(reasons))
+	for _, reason := range reasons {
+		prefixed = append(prefixed, prefix+": "+reason)
+	}
+	return prefixed
+}
+
+func compareBenchmarkHumanSummary(expected benchmarkComparableHumanSummary, actual benchmarkComparableHumanSummary) []string {
+	const tokenTolerance int64 = 256
+
+	reasons := make([]string, 0)
+	if len(expected.LaneComparisons) != len(actual.LaneComparisons) {
+		return append(reasons, "lane token summary count drifted")
+	}
+	for index := range expected.LaneComparisons {
+		left := expected.LaneComparisons[index]
+		right := actual.LaneComparisons[index]
+		if left.Lane != right.Lane || left.AttemptCount != right.AttemptCount || !reflect.DeepEqual(left.InvalidAttemptReasons, right.InvalidAttemptReasons) {
+			reasons = append(reasons, fmt.Sprintf("lane token summary drifted for %s", left.Lane))
+			continue
+		}
+		if !statsWithinTolerance(left.BaselineEstimatedTokens, right.BaselineEstimatedTokens, 0) {
+			reasons = append(reasons, fmt.Sprintf("baseline token summary drifted for %s", left.Lane))
+		}
+		if !statsWithinTolerance(left.TreatmentEstimatedTokens, right.TreatmentEstimatedTokens, tokenTolerance) {
+			reasons = append(reasons, fmt.Sprintf("treatment token summary drifted for %s", left.Lane))
+		}
+		if !withinTolerance(left.EstimatedTokenDelta, right.EstimatedTokenDelta, tokenTolerance) {
+			reasons = append(reasons, fmt.Sprintf("lane token delta drifted for %s", left.Lane))
+		}
+	}
+
+	if len(expected.AttributionRows) != len(actual.AttributionRows) {
+		return append(reasons, "attribution row count drifted")
+	}
+	actualRows := make(map[string]benchmarkComparableHumanAttribution, len(actual.AttributionRows))
+	for _, row := range actual.AttributionRows {
+		actualRows[string(row.Lane)+"|"+string(row.ReportLabel)] = row
+	}
+	for _, left := range expected.AttributionRows {
+		key := string(left.Lane) + "|" + string(left.ReportLabel)
+		right, ok := actualRows[key]
+		if !ok {
+			reasons = append(reasons, fmt.Sprintf("attribution row drifted for %s/%s", left.Lane, left.ReportLabel))
+			continue
+		}
+		if left.DisplayLabel != right.DisplayLabel || left.AttemptCount != right.AttemptCount {
+			reasons = append(reasons, fmt.Sprintf("attribution row drifted for %s/%s", left.Lane, left.ReportLabel))
+			continue
+		}
+		if !withinTolerance(left.MedianEstimatedTokens, right.MedianEstimatedTokens, tokenTolerance) || !withinTolerance(left.TotalEstimatedTokens, right.TotalEstimatedTokens, tokenTolerance) {
+			reasons = append(reasons, fmt.Sprintf("attribution totals drifted for %s/%s", left.Lane, left.ReportLabel))
+		}
+	}
+	return uniqueSorted(reasons)
+}
+
+func statsWithinTolerance(expected BenchmarkInt64Stats, actual BenchmarkInt64Stats, tolerance int64) bool {
+	return withinTolerance(expected.Min, actual.Min, tolerance) &&
+		withinTolerance(expected.Max, actual.Max, tolerance) &&
+		withinTolerance(expected.Median, actual.Median, tolerance) &&
+		withinTolerance(expected.Mean, actual.Mean, tolerance)
+}
+
+func withinTolerance(expected int64, actual int64, tolerance int64) bool {
+	delta := expected - actual
+	if delta < 0 {
+		delta = -delta
+	}
+	return delta <= tolerance
 }
 
 func benchmarkEvidenceLaneSortKey(lane repository.BenchmarkLane) int {

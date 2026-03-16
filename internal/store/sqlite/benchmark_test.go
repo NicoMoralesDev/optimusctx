@@ -263,6 +263,121 @@ func TestBenchmarkMutationLanesPersistEvidence(t *testing.T) {
 	}
 }
 
+func TestBenchmarkRecomputedAttributionMatchesExportUsesLatestAttempts(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	for attempt := 1; attempt <= 4; attempt++ {
+		result := benchmarkSQLiteEvidenceRunResult(layout.RepoRoot, attempt)
+		for _, persisted := range BenchmarkPersistedArmsFromResult(repoID, attempt, result) {
+			if _, _, err := store.SaveBenchmarkRun(ctx, persisted.Run, persisted.Samples); err != nil {
+				t.Fatalf("SaveBenchmarkRun(attempt=%d) error = %v", attempt, err)
+			}
+		}
+	}
+
+	latest, err := store.ListLatestBenchmarkRuns(ctx, repoID, "go-benchmark-refresh-v1", "v1", 4)
+	if err != nil {
+		t.Fatalf("ListLatestBenchmarkRuns() error = %v", err)
+	}
+	if got, want := len(latest), 4; got != want {
+		t.Fatalf("len(latest) = %d, want %d", got, want)
+	}
+	attempts := []int{latest[0].Run.Attempt, latest[1].Run.Attempt, latest[2].Run.Attempt, latest[3].Run.Attempt}
+	if !reflect.DeepEqual(attempts, []int{3, 3, 4, 4}) {
+		t.Fatalf("latest attempts = %+v", attempts)
+	}
+	for _, run := range latest {
+		for _, sample := range run.Samples {
+			var metadata map[string]any
+			if err := json.Unmarshal([]byte(sample.Sample.MetadataJSON), &metadata); err != nil {
+				t.Fatalf("json.Unmarshal(metadata) error = %v", err)
+			}
+			if _, ok := metadata["attribution"]; !ok {
+				t.Fatalf("metadata missing attribution: %+v", metadata)
+			}
+		}
+	}
+}
+
+func benchmarkSQLiteEvidenceRunResult(repositoryRoot string, attempt int) repository.BenchmarkRunResult {
+	return repository.BenchmarkRunResult{
+		SchemaVersion: repository.BenchmarkSuiteSchemaV1,
+		SuiteID:       "go-benchmark-refresh-v1",
+		SuiteVersion:  "v1",
+		FixtureID:     "go-worktree",
+		FixturePath:   "go-worktree/v1/repository",
+		WorkspacePath: repositoryRoot,
+		Arms: []repository.BenchmarkArmRunResult{
+			{
+				Kind:       repository.BenchmarkArmKindBaseline,
+				Name:       "Baseline",
+				Workspace:  repositoryRoot,
+				StartedAt:  time.Date(2026, 3, 16, 20, 0, 0, 0, time.UTC),
+				FinishedAt: time.Date(2026, 3, 16, 20, 0, 2, 0, time.UTC),
+				LaneResults: []repository.BenchmarkLaneRunResult{{
+					Lane:          repository.BenchmarkLaneRefreshReady,
+					StartMarker:   "refresh_after_change_started",
+					SuccessMarker: "refresh_ready",
+					StopMarker:    "refresh_ready",
+					StartedAt:     time.Date(2026, 3, 16, 20, 0, 0, 0, time.UTC),
+					FinishedAt:    time.Date(2026, 3, 16, 20, 0, 1, 0, time.UTC),
+					Elapsed:       time.Second,
+					Success:       true,
+					EvidencePaths: []string{"docs/notes.txt"},
+					Effort: repository.BenchmarkLaneEffort{
+						ActionCount:     1,
+						FileReadActions: 1,
+						BytesRead:       256,
+					},
+				}},
+			},
+			{
+				Kind:       repository.BenchmarkArmKindOptimusCtx,
+				Name:       "OptimusCtx CLI and MCP workflow",
+				Workspace:  repositoryRoot,
+				StartedAt:  time.Date(2026, 3, 16, 20, 0, 0, 0, time.UTC),
+				FinishedAt: time.Date(2026, 3, 16, 20, 0, 2, 0, time.UTC),
+				LaneResults: []repository.BenchmarkLaneRunResult{{
+					Lane:          repository.BenchmarkLaneRefreshReady,
+					StartMarker:   "refresh_after_change_started",
+					SuccessMarker: "refresh_ready",
+					StopMarker:    "refresh_ready",
+					StartedAt:     time.Date(2026, 3, 16, 20, 0, 0, 0, time.UTC),
+					FinishedAt:    time.Date(2026, 3, 16, 20, 0, 1, 0, time.UTC),
+					Elapsed:       time.Second,
+					Success:       true,
+					EvidencePaths: []string{"artifacts/pack.json"},
+					Effort: repository.BenchmarkLaneEffort{
+						ActionCount:        2,
+						FileReadActions:    1,
+						BytesRead:          128,
+						ConsultedArtifacts: []string{"artifacts/pack.json"},
+					},
+					Attribution: []repository.BenchmarkArtifactConsumption{{
+						StepID:          "pack-export",
+						Lane:            repository.BenchmarkLaneRefreshReady,
+						ArtifactType:    repository.BenchmarkArtifactTypePackExport,
+						ReportLabel:     repository.BenchmarkReportArtifactLabelPackExport,
+						SourceKind:      repository.BenchmarkTokenEstimateSourcePackExportSection,
+						ArtifactPath:    "artifacts/pack.json",
+						EstimatedBytes:  128,
+						EstimatedTokens: 32 + int64(attempt),
+					}},
+				}},
+			},
+		},
+	}
+}
+
 func TestAttributionPersistenceInputs(t *testing.T) {
 	t.Parallel()
 

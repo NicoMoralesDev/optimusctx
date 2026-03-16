@@ -195,6 +195,81 @@ func TestBenchmarkReportReusesPersistedEvidence(t *testing.T) {
 	}
 }
 
+func TestBenchmarkRerunReproducibility(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	attempts := []BenchmarkAttemptResult{
+		{Attempt: 1, Result: benchmarkEvidenceRunResult(repoRoot)},
+		{Attempt: 2, Result: benchmarkEvidenceRunResult(repoRoot)},
+	}
+	summary := summarizeBenchmarkAttempts(attempts, "go-benchmark-refresh-v1", "v1")
+	bundle := buildBenchmarkEvidenceBundle(repoRoot, repository.DefaultBenchmarkTokenEstimateContract(), summary, attempts, "go run ./cmd/optimusctx eval benchmark verify --suite go-benchmark-refresh-v1 --attempts 2")
+	recomputed := buildBenchmarkEvidenceBundle(repoRoot, repository.DefaultBenchmarkTokenEstimateContract(), summary, attempts, "go run ./cmd/optimusctx eval benchmark verify --suite go-benchmark-refresh-v1 --attempts 2")
+
+	reasons := compareBenchmarkEvidenceBundles(bundle, recomputed)
+	if len(reasons) != 0 {
+		t.Fatalf("compareBenchmarkEvidenceBundles() = %+v, want no drift", reasons)
+	}
+	if wording := verifyBenchmarkReportWording(RenderBenchmarkComparisonReport(BuildBenchmarkHumanSummary(recomputed))); len(wording) != 0 {
+		t.Fatalf("verifyBenchmarkReportWording() = %+v", wording)
+	}
+}
+
+func TestBenchmarkMethodologyFingerprint(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+	attempts := []BenchmarkAttemptResult{
+		{Attempt: 1, Result: benchmarkEvidenceRunResult(repoRoot)},
+		{Attempt: 2, Result: benchmarkEvidenceRunResult(repoRoot)},
+	}
+	summary := summarizeBenchmarkAttempts(attempts, "go-benchmark-refresh-v1", "v1")
+	bundle := buildBenchmarkEvidenceBundle(repoRoot, repository.DefaultBenchmarkTokenEstimateContract(), summary, attempts, "go run ./cmd/optimusctx eval benchmark verify --suite go-benchmark-refresh-v1 --attempts 2")
+
+	driftedResult := benchmarkEvidenceRunResult(repoRoot)
+	driftedResult.Arms[0].LaneResults[0].StopMarker = "refresh_ready_drifted"
+	driftedAttempts := []BenchmarkAttemptResult{
+		{Attempt: 1, Result: benchmarkEvidenceRunResult(repoRoot)},
+		{Attempt: 2, Result: driftedResult},
+	}
+	driftedSummary := summarizeBenchmarkAttempts(driftedAttempts, "go-benchmark-refresh-v1", "v1")
+	driftedBundle := buildBenchmarkEvidenceBundle(repoRoot, repository.DefaultBenchmarkTokenEstimateContract(), driftedSummary, driftedAttempts, "go run ./cmd/optimusctx eval benchmark verify --suite go-benchmark-refresh-v1 --attempts 2")
+
+	reasons := compareBenchmarkEvidenceBundles(bundle, driftedBundle)
+	if len(reasons) == 0 {
+		t.Fatal("compareBenchmarkEvidenceBundles() should report methodology drift")
+	}
+	if !strings.Contains(strings.Join(reasons, " "), "methodology fingerprint") {
+		t.Fatalf("reasons = %+v", reasons)
+	}
+}
+
+func TestBuildBenchmarkEvidenceBundleFromPersistedRuns(t *testing.T) {
+	t.Parallel()
+
+	repoRoot, store, repoID := initBenchmarkEvidenceStore(t)
+	defer store.Close()
+
+	persisted, err := store.ListBenchmarkRuns(context.Background(), repoID, "go-benchmark-refresh-v1", "v1")
+	if err != nil {
+		t.Fatalf("ListBenchmarkRuns() error = %v", err)
+	}
+	bundle, err := buildBenchmarkEvidenceBundleFromPersistedRuns(repoRoot, persisted, repository.BenchmarkSuiteDefinition{
+		ID:      "go-benchmark-refresh-v1",
+		Version: "v1",
+	}, "go run ./cmd/optimusctx eval benchmark verify --suite go-benchmark-refresh-v1 --attempts 2")
+	if err != nil {
+		t.Fatalf("buildBenchmarkEvidenceBundleFromPersistedRuns() error = %v", err)
+	}
+	if bundle.MethodologyFingerprint == "" {
+		t.Fatal("MethodologyFingerprint should not be empty")
+	}
+	if len(bundle.Attempts) != 2 {
+		t.Fatalf("len(bundle.Attempts) = %d, want 2", len(bundle.Attempts))
+	}
+}
+
 func initBenchmarkEvidenceStore(t *testing.T) (string, *sqlite.Store, int64) {
 	t.Helper()
 

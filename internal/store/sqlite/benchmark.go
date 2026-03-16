@@ -368,6 +368,60 @@ func (s *Store) ListBenchmarkRuns(ctx context.Context, repositoryID int64, suite
 	return runs, nil
 }
 
+func (s *Store) ListLatestBenchmarkRuns(ctx context.Context, repositoryID int64, suiteID string, suiteVersion string, runCount int) ([]BenchmarkPersistedArm, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("list latest benchmark runs: store is not initialized")
+	}
+	if runCount <= 0 {
+		return nil, fmt.Errorf("list latest benchmark runs: run count must be positive")
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id
+		FROM benchmark_runs
+		WHERE repository_id = ? AND suite_id = ? AND suite_version = ?
+		ORDER BY id DESC
+		LIMIT ?
+	`, repositoryID, suiteID, suiteVersion, runCount)
+	if err != nil {
+		return nil, fmt.Errorf("list latest benchmark runs for suite %q: %w", suiteID, err)
+	}
+	defer rows.Close()
+
+	runIDs := make([]int64, 0, runCount)
+	for rows.Next() {
+		var runID int64
+		if err := rows.Scan(&runID); err != nil {
+			return nil, fmt.Errorf("scan latest benchmark run for suite %q: %w", suiteID, err)
+		}
+		runIDs = append(runIDs, runID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate latest benchmark runs for suite %q: %w", suiteID, err)
+	}
+	if len(runIDs) == 0 {
+		return nil, nil
+	}
+
+	runIDSet := make(map[int64]struct{}, len(runIDs))
+	for _, runID := range runIDs {
+		runIDSet[runID] = struct{}{}
+	}
+
+	persisted, err := s.ListBenchmarkRuns(ctx, repositoryID, suiteID, suiteVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]BenchmarkPersistedArm, 0, len(persisted))
+	for _, run := range persisted {
+		if _, ok := runIDSet[run.Run.ID]; ok {
+			filtered = append(filtered, run)
+		}
+	}
+	return filtered, nil
+}
+
 func validateBenchmarkRun(run BenchmarkRunRecord) error {
 	switch {
 	case run.RepositoryID == 0:
@@ -486,13 +540,20 @@ func saveBenchmarkEvidenceBundleRecord(ctx context.Context, tx *sql.Tx, reposito
 	}
 	record.ID, err = result.LastInsertId()
 	if err != nil || record.ID == 0 {
+		var createdAt string
 		err = tx.QueryRowContext(ctx, `
 			SELECT id, created_at
 			FROM benchmark_evidence_bundles
 			WHERE repository_id = ? AND suite_id = ? AND suite_version = ? AND methodology_fingerprint = ?
-		`, repositoryID, bundle.SuiteID, bundle.SuiteVersion, bundle.MethodologyFingerprint).Scan(&record.ID, &record.CreatedAt)
+		`, repositoryID, bundle.SuiteID, bundle.SuiteVersion, bundle.MethodologyFingerprint).Scan(&record.ID, &createdAt)
 		if err != nil {
 			return BenchmarkEvidenceBundleRecord{}, fmt.Errorf("load benchmark evidence bundle ID: %w", err)
+		}
+		if createdAt != "" {
+			record.CreatedAt, err = time.Parse(time.RFC3339Nano, createdAt)
+			if err != nil {
+				return BenchmarkEvidenceBundleRecord{}, fmt.Errorf("parse benchmark evidence bundle created_at: %w", err)
+			}
 		}
 	}
 	return record, nil
