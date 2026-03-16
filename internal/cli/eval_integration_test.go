@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/niccrow/optimusctx/internal/app"
+	"github.com/niccrow/optimusctx/internal/buildinfo"
 	"github.com/niccrow/optimusctx/internal/mcp"
 	"github.com/niccrow/optimusctx/internal/repository"
 	"github.com/niccrow/optimusctx/internal/state"
@@ -48,6 +49,96 @@ func TestEvalMCPToolFlows(t *testing.T) {
 		assertContains(t, stdout.String(), "step refresh: passed exit=0")
 		assertContains(t, stdout.String(), "step mcp-serve: passed exit=0")
 	})
+}
+
+func TestDistributionSmokeFlow(t *testing.T) {
+	previousVersion := buildinfo.Version
+	previousCommit := buildinfo.Commit
+	previousBuildDate := buildinfo.BuildDate
+	t.Cleanup(func() {
+		buildinfo.Version = previousVersion
+		buildinfo.Commit = previousCommit
+		buildinfo.BuildDate = previousBuildDate
+	})
+
+	buildinfo.Version = "v1.1.0"
+	buildinfo.Commit = "abc1234"
+	buildinfo.BuildDate = "2026-03-16T18:00:00Z"
+
+	repoRoot := initCLIRepo(t)
+	writeCLIFile(t, filepath.Join(repoRoot, "main.go"), "package main\n\nfunc main() {}\n")
+
+	versionOutput := runDistributionCLICommand(t, repoRoot, "version")
+	if got, want := versionOutput, "optimusctx version=v1.1.0 commit=abc1234 build_date=2026-03-16T18:00:00Z\n"; got != want {
+		t.Fatalf("version output = %q, want %q", got, want)
+	}
+
+	initOutput := runDistributionCLICommand(t, repoRoot, "init")
+	assertContains(t, initOutput, "repository root: "+repoRoot)
+	assertContains(t, initOutput, "freshness: fresh")
+
+	doctorOutput := runDistributionCLICommand(t, repoRoot, "doctor")
+	assertContains(t, doctorOutput, "overall status: healthy")
+	assertContains(t, doctorOutput, "runtime version: v1.1.0")
+	assertContains(t, doctorOutput, "freshness: fresh")
+	assertContains(t, doctorOutput, "snippet available: yes")
+
+	snippetOutput := runDistributionCLICommand(t, repoRoot, "snippet")
+	assertContains(t, snippetOutput, "# OptimusCtx manual integration snippet")
+	assertContains(t, snippetOutput, "optimusctx install --client claude-desktop")
+
+	configPath := filepath.Join(repoRoot, "claude_desktop_config.json")
+	installOutput := runDistributionCLICommand(t, repoRoot, "install", "--client", "claude-desktop", "--config", configPath)
+	assertContains(t, installOutput, "mode: preview")
+	assertContains(t, installOutput, "status: preview only")
+	assertContains(t, installOutput, "config path: "+configPath)
+	if _, err := os.Stat(configPath); !os.IsNotExist(err) {
+		t.Fatalf("install preview should not write config file: %v", err)
+	}
+
+	snippetDocument := extractConfigDocument(t, snippetOutput)
+	installDocument := extractConfigDocument(t, installOutput)
+	if got, want := installDocument.MCPServers[repository.DefaultMCPServerName], snippetDocument.MCPServers[repository.DefaultMCPServerName]; got.Command != want.Command || strings.Join(got.Args, " ") != strings.Join(want.Args, " ") {
+		t.Fatalf("install preview = %+v, snippet = %+v", got, want)
+	}
+}
+
+func TestReleaseVerificationCommands(t *testing.T) {
+	readme := readCLIRepoFile(t, "README.md")
+	guide := readCLIRepoFile(t, "docs/install-and-verify.md")
+
+	assertContains(t, readme, "docs/install-and-verify.md")
+	assertContains(t, readme, "MCP registration is explicit and opt-in")
+
+	requiredGuideFragments := []string{
+		"optimusctx version",
+		"optimusctx doctor",
+		"optimusctx snippet",
+		"optimusctx install --client claude-desktop",
+		"status: preview only",
+		"brew install niccrow/tap/optimusctx",
+		"scoop install niccrow/optimusctx",
+	}
+	for _, fragment := range requiredGuideFragments {
+		assertContains(t, guide, fragment)
+	}
+
+	for _, banned := range []string{
+		"go run ./cmd/optimusctx",
+		"go install ./cmd/optimusctx",
+	} {
+		if strings.Contains(guide, banned) {
+			t.Fatalf("docs/install-and-verify.md should not contain %q", banned)
+		}
+	}
+
+	versionIndex := strings.Index(guide, "optimusctx version")
+	doctorIndex := strings.Index(guide, "optimusctx doctor")
+	snippetIndex := strings.Index(guide, "optimusctx snippet")
+	installIndex := strings.Index(guide, "optimusctx install --client claude-desktop")
+	if !(versionIndex >= 0 && doctorIndex > versionIndex && snippetIndex > doctorIndex && installIndex > snippetIndex) {
+		t.Fatalf("guide command order is wrong: version=%d doctor=%d snippet=%d install=%d", versionIndex, doctorIndex, snippetIndex, installIndex)
+	}
 }
 
 func TestBenchmarkDiscoveryLane(t *testing.T) {
@@ -117,6 +208,22 @@ func TestBenchmarkDiscoveryLane(t *testing.T) {
 			t.Fatalf("discovery effort = %+v", discovery.Effort)
 		}
 	})
+}
+
+func runDistributionCLICommand(t *testing.T, workingDir string, args ...string) string {
+	t.Helper()
+
+	execution, err := executeEvalCLICommand(context.Background(), app.EvalCommandInvocation{
+		Args:       args,
+		WorkingDir: workingDir,
+	})
+	if err != nil {
+		t.Fatalf("executeEvalCLICommand(%v) error = %v", args, err)
+	}
+	if execution.ExitCode != 0 {
+		t.Fatalf("executeEvalCLICommand(%v) exit=%d stderr=%q stdout=%q", args, execution.ExitCode, execution.Stderr, execution.Stdout)
+	}
+	return execution.Stdout
 }
 
 func TestBenchmarkRefreshAfterChangeComparison(t *testing.T) {
