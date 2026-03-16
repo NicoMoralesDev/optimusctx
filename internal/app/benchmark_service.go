@@ -281,6 +281,52 @@ func (s BenchmarkService) RunRepeated(ctx context.Context, request BenchmarkRepe
 	return summaryResult, nil
 }
 
+func (s BenchmarkService) resolveBenchmarkRunContext(ctx context.Context, request BenchmarkRunServiceRequest) (repository.RepositoryRoot, repository.BenchmarkSuiteDefinition, *sqlite.Store, int64, error) {
+	root, err := s.Locator.Resolve(request.StartPath)
+	if err != nil {
+		return repository.RepositoryRoot{}, repository.BenchmarkSuiteDefinition{}, nil, 0, fmt.Errorf("resolve repository root: %w", err)
+	}
+
+	layoutResolver := s.ResolveLayout
+	if layoutResolver == nil {
+		layoutResolver = state.ResolveLayout
+	}
+	layout, err := layoutResolver(root.RootPath)
+	if err != nil {
+		return repository.RepositoryRoot{}, repository.BenchmarkSuiteDefinition{}, nil, 0, fmt.Errorf("resolve state layout: %w", err)
+	}
+
+	openStore := s.OpenStore
+	if openStore == nil {
+		openStore = func(ctx context.Context, layout state.Layout, detectionMode string) (*sqlite.Store, error) {
+			return sqlite.OpenOrCreateStore(ctx, layout, detectionMode)
+		}
+	}
+	store, err := openStore(ctx, layout, root.DetectionMode)
+	if err != nil {
+		return repository.RepositoryRoot{}, repository.BenchmarkSuiteDefinition{}, nil, 0, fmt.Errorf("open benchmark store: %w", err)
+	}
+
+	repoRecord, err := store.UpsertRepository(ctx, root, s.nowUTC())
+	if err != nil {
+		store.Close()
+		return repository.RepositoryRoot{}, repository.BenchmarkSuiteDefinition{}, nil, 0, fmt.Errorf("persist repository metadata: %w", err)
+	}
+
+	runner := s.Runner.withDefaults()
+	suite, err := runner.LoadSuite(BenchmarkSuiteRequest{
+		SuiteID:      request.SuiteID,
+		SuitePath:    request.SuitePath,
+		SuitesDir:    request.SuitesDir,
+		FixturesRoot: request.FixturesRoot,
+	})
+	if err != nil {
+		store.Close()
+		return repository.RepositoryRoot{}, repository.BenchmarkSuiteDefinition{}, nil, 0, err
+	}
+	return root, suite, store, repoRecord.ID, nil
+}
+
 func (s BenchmarkService) nextBenchmarkAttemptStart(ctx context.Context, request BenchmarkRepeatedRunRequest) (int, error) {
 	root, err := s.Locator.Resolve(request.StartPath)
 	if err != nil {
@@ -467,49 +513,19 @@ func (s BenchmarkService) VerifyMilestoneEvidence(ctx context.Context, request B
 }
 
 func (s BenchmarkService) runAndPersist(ctx context.Context, request BenchmarkRunServiceRequest, forcedAttempt int) (repository.BenchmarkRunResult, repository.RepositoryRoot, repository.BenchmarkSuiteDefinition, error) {
-	root, err := s.Locator.Resolve(request.StartPath)
-	if err != nil {
-		return repository.BenchmarkRunResult{}, repository.RepositoryRoot{}, repository.BenchmarkSuiteDefinition{}, fmt.Errorf("resolve repository root: %w", err)
-	}
-
-	layoutResolver := s.ResolveLayout
-	if layoutResolver == nil {
-		layoutResolver = state.ResolveLayout
-	}
-	layout, err := layoutResolver(root.RootPath)
-	if err != nil {
-		return repository.BenchmarkRunResult{}, repository.RepositoryRoot{}, repository.BenchmarkSuiteDefinition{}, fmt.Errorf("resolve state layout: %w", err)
-	}
-
-	openStore := s.OpenStore
-	if openStore == nil {
-		openStore = func(ctx context.Context, layout state.Layout, detectionMode string) (*sqlite.Store, error) {
-			return sqlite.OpenOrCreateStore(ctx, layout, detectionMode)
-		}
-	}
-	store, err := openStore(ctx, layout, root.DetectionMode)
-	if err != nil {
-		return repository.BenchmarkRunResult{}, repository.RepositoryRoot{}, repository.BenchmarkSuiteDefinition{}, fmt.Errorf("open benchmark store: %w", err)
-	}
-	defer store.Close()
-
-	repoRecord, err := store.UpsertRepository(ctx, root, s.nowUTC())
-	if err != nil {
-		return repository.BenchmarkRunResult{}, repository.RepositoryRoot{}, repository.BenchmarkSuiteDefinition{}, fmt.Errorf("persist repository metadata: %w", err)
-	}
-
-	runner := s.Runner.withDefaults()
-	suite, err := runner.LoadSuite(BenchmarkSuiteRequest{
-		SuiteID:      request.SuiteID,
-		SuitePath:    request.SuitePath,
-		SuitesDir:    request.SuitesDir,
-		FixturesRoot: request.FixturesRoot,
-	})
+	root, suite, store, repoID, err := s.resolveBenchmarkRunContext(ctx, request)
 	if err != nil {
 		return repository.BenchmarkRunResult{}, repository.RepositoryRoot{}, repository.BenchmarkSuiteDefinition{}, err
 	}
+	defer store.Close()
 
-	result, runErr := runner.Run(ctx, BenchmarkRunRequest{
+	result, err := s.runAndPersistResolved(ctx, store, repoID, root, suite, request, forcedAttempt)
+	return result, root, suite, err
+}
+
+func (s BenchmarkService) runAndPersistResolved(ctx context.Context, store *sqlite.Store, repoID int64, root repository.RepositoryRoot, suite repository.BenchmarkSuiteDefinition, request BenchmarkRunServiceRequest, forcedAttempt int) (repository.BenchmarkRunResult, error) {
+	runner := s.Runner.withDefaults()
+	result, runErr := runner.runLoadedSuite(ctx, suite, BenchmarkRunRequest{
 		SuiteID:       request.SuiteID,
 		SuitePath:     request.SuitePath,
 		SuitesDir:     request.SuitesDir,
@@ -517,25 +533,26 @@ func (s BenchmarkService) runAndPersist(ctx context.Context, request BenchmarkRu
 		WorkspaceRoot: request.WorkspaceRoot,
 	})
 	if result.SuiteID == "" {
-		return result, root, suite, runErr
+		return result, runErr
 	}
 
 	attempt := forcedAttempt
 	if attempt == 0 {
-		attempt, err = store.NextBenchmarkAttempt(ctx, repoRecord.ID, result.SuiteID, result.SuiteVersion)
+		var err error
+		attempt, err = store.NextBenchmarkAttempt(ctx, repoID, result.SuiteID, result.SuiteVersion)
 		if err != nil {
-			return result, root, suite, combineBenchmarkErrors(runErr, fmt.Errorf("next benchmark attempt: %w", err))
+			return result, combineBenchmarkErrors(runErr, fmt.Errorf("next benchmark attempt: %w", err))
 		}
 	}
 
-	for _, arm := range sqlite.BenchmarkPersistedArmsFromResult(repoRecord.ID, attempt, result) {
+	for _, arm := range sqlite.BenchmarkPersistedArmsFromResult(repoID, attempt, result) {
 		_, _, err := store.SaveBenchmarkRun(ctx, arm.Run, arm.Samples)
 		if err != nil {
-			return result, root, suite, combineBenchmarkErrors(runErr, fmt.Errorf("persist benchmark attempt %d: %w", attempt, err))
+			return result, combineBenchmarkErrors(runErr, fmt.Errorf("persist benchmark attempt %d: %w", attempt, err))
 		}
 	}
 
-	return result, root, suite, runErr
+	return result, runErr
 }
 
 func summarizeBenchmarkAttempts(attempts []BenchmarkAttemptResult, suite repository.BenchmarkSuiteDefinition) BenchmarkComparisonSummary {
@@ -561,6 +578,10 @@ func summarizeBenchmarkAttempts(attempts []BenchmarkAttemptResult, suite reposit
 	driftReasons := make([]string, 0)
 	summary.MethodologyFingerprint = benchmarkMethodologyFingerprint(suite)
 	baselineFingerprint := benchmarkAttemptFingerprint(attempts[0].Result)
+	requiredLaneArtifacts := make(map[repository.BenchmarkLane]string, len(summary.Methodology.LaneFinalArtifacts))
+	for _, artifact := range summary.Methodology.LaneFinalArtifacts {
+		requiredLaneArtifacts[artifact.Lane] = artifact.Contract.ID
+	}
 
 	for _, attempt := range attempts {
 		currentFingerprint := benchmarkAttemptFingerprint(attempt.Result)
@@ -584,23 +605,34 @@ func summarizeBenchmarkAttempts(attempts []BenchmarkAttemptResult, suite reposit
 				}
 				laneSummary := upsertLaneSummary(armSummary, lane.Lane)
 				laneSummary.AttemptCount++
+				laneInvalidReasons := make([]string, 0, 3)
 				if lane.Success {
 					laneSummary.SuccessCount++
+				}
+				if requiredID, ok := requiredLaneArtifacts[lane.Lane]; ok {
+					switch {
+					case lane.FinalArtifact == nil:
+						laneInvalidReasons = appendIfMissing(laneInvalidReasons, fmt.Sprintf("attempt %d %s/%s is missing final-artifact verification for %q", attempt.Attempt, arm.Kind, lane.Lane, requiredID))
+					case lane.FinalArtifact.ContractID != requiredID:
+						laneInvalidReasons = appendIfMissing(laneInvalidReasons, fmt.Sprintf("attempt %d %s/%s final-artifact contract drifted from %q to %q", attempt.Attempt, arm.Kind, lane.Lane, requiredID, lane.FinalArtifact.ContractID))
+					}
 				}
 				if !lane.Success {
 					reason := fmt.Sprintf("attempt %d %s/%s did not satisfy stop condition", attempt.Attempt, arm.Kind, lane.Lane)
 					if lane.FinalArtifact != nil && !lane.FinalArtifact.Passed {
 						reason = fmt.Sprintf("attempt %d %s/%s final artifact %q failed: %s", attempt.Attempt, arm.Kind, lane.Lane, lane.FinalArtifact.ContractID, lane.FinalArtifact.FailureReason)
 					}
-					laneSummary.InvalidAttemptCount++
-					laneSummary.RejectedAttemptReasons = appendIfMissing(laneSummary.RejectedAttemptReasons, reason)
-					rejectionSet[reason] = struct{}{}
+					laneInvalidReasons = appendIfMissing(laneInvalidReasons, reason)
 				}
 				if lane.StopMarker != lane.SuccessMarker {
-					reason := fmt.Sprintf("attempt %d %s/%s changed stop marker from %q to %q", attempt.Attempt, arm.Kind, lane.Lane, lane.SuccessMarker, lane.StopMarker)
+					laneInvalidReasons = appendIfMissing(laneInvalidReasons, fmt.Sprintf("attempt %d %s/%s changed stop marker from %q to %q", attempt.Attempt, arm.Kind, lane.Lane, lane.SuccessMarker, lane.StopMarker))
+				}
+				if len(laneInvalidReasons) > 0 {
 					laneSummary.InvalidAttemptCount++
-					laneSummary.RejectedAttemptReasons = appendIfMissing(laneSummary.RejectedAttemptReasons, reason)
-					rejectionSet[reason] = struct{}{}
+					for _, reason := range laneInvalidReasons {
+						laneSummary.RejectedAttemptReasons = appendIfMissing(laneSummary.RejectedAttemptReasons, reason)
+						rejectionSet[reason] = struct{}{}
+					}
 				}
 				accumulateLaneMetrics(laneSummary, lane)
 			}
@@ -1511,22 +1543,9 @@ func cloneFinalArtifactVerification(value *repository.BenchmarkLaneFinalArtifact
 }
 
 func validateBenchmarkAttemptSemantics(attempts []BenchmarkAttemptResult, suite repository.BenchmarkSuiteDefinition) error {
-	methodology := repository.BenchmarkMethodologyFromSuite(suite)
-	requiredLaneArtifacts := make(map[repository.BenchmarkLane]string, len(methodology.LaneFinalArtifacts))
-	for _, artifact := range methodology.LaneFinalArtifacts {
-		requiredLaneArtifacts[artifact.Lane] = artifact.Contract.ID
-	}
 	for _, attempt := range attempts {
 		for _, arm := range attempt.Result.Arms {
 			for _, lane := range arm.LaneResults {
-				if requiredID, ok := requiredLaneArtifacts[lane.Lane]; ok {
-					if lane.FinalArtifact == nil {
-						return fmt.Errorf("benchmark attempt %d %s/%s is missing final-artifact verification for %q", attempt.Attempt, arm.Kind, lane.Lane, requiredID)
-					}
-					if lane.FinalArtifact.ContractID != requiredID {
-						return fmt.Errorf("benchmark attempt %d %s/%s final-artifact contract drifted from %q to %q", attempt.Attempt, arm.Kind, lane.Lane, requiredID, lane.FinalArtifact.ContractID)
-					}
-				}
 				for _, attribution := range lane.Attribution {
 					switch attribution.Boundary {
 					case repository.BenchmarkEvidenceBoundaryAgentInput, repository.BenchmarkEvidenceBoundarySystemProvenance, repository.BenchmarkEvidenceBoundaryFinalArtifactVerified:

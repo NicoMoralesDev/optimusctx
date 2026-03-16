@@ -158,7 +158,10 @@ func (r BenchmarkRunner) Run(ctx context.Context, request BenchmarkRunRequest) (
 	if err != nil {
 		return repository.BenchmarkRunResult{}, err
 	}
+	return r.runLoadedSuite(ctx, suite, request)
+}
 
+func (r BenchmarkRunner) runLoadedSuite(ctx context.Context, suite repository.BenchmarkSuiteDefinition, request BenchmarkRunRequest) (repository.BenchmarkRunResult, error) {
 	workspaceRoot, err := r.prepareWorkspace(ctx, request, suite)
 	if err != nil {
 		return repository.BenchmarkRunResult{}, err
