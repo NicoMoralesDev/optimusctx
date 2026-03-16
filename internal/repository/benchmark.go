@@ -214,6 +214,34 @@ type BenchmarkEvidenceVerification struct {
 	InvalidRunReasons []string `json:"invalidRunReasons,omitempty"`
 }
 
+type BenchmarkEvidenceBoundary string
+
+const (
+	BenchmarkEvidenceBoundaryAgentInput            BenchmarkEvidenceBoundary = "agent_input"
+	BenchmarkEvidenceBoundarySystemProvenance      BenchmarkEvidenceBoundary = "system_provenance"
+	BenchmarkEvidenceBoundaryFinalArtifactVerified BenchmarkEvidenceBoundary = "final_artifact_verification"
+)
+
+type BenchmarkLaneFinalArtifactVerification struct {
+	ContractID    string `json:"contractId"`
+	Path          string `json:"path"`
+	Passed        bool   `json:"passed"`
+	FailureReason string `json:"failureReason,omitempty"`
+}
+
+type BenchmarkLaneFinalArtifactSnapshot struct {
+	Lane     BenchmarkLane                  `json:"lane"`
+	Contract BenchmarkFinalArtifactContract `json:"contract"`
+}
+
+type BenchmarkMethodologySnapshot struct {
+	SuiteSchemaVersion string                               `json:"suiteSchemaVersion"`
+	Boundary           BenchmarkBoundaryContract            `json:"boundary"`
+	CountedInputs      []BenchmarkCountedInputDefinition    `json:"countedInputs"`
+	TaskFinalArtifact  *BenchmarkFinalArtifactContract      `json:"taskFinalArtifact,omitempty"`
+	LaneFinalArtifacts []BenchmarkLaneFinalArtifactSnapshot `json:"laneFinalArtifacts,omitempty"`
+}
+
 type BenchmarkEvidenceInt64Stats struct {
 	Min    int64 `json:"min"`
 	Max    int64 `json:"max"`
@@ -243,18 +271,19 @@ type BenchmarkEvidenceArmSummary struct {
 }
 
 type BenchmarkEvidenceLane struct {
-	Lane           BenchmarkLane                  `json:"lane"`
-	StartMarker    string                         `json:"startMarker"`
-	SuccessMarker  string                         `json:"successMarker"`
-	StopMarker     string                         `json:"stopMarker"`
-	SetupAppliedAt time.Time                      `json:"setupAppliedAt,omitempty"`
-	StartedAt      time.Time                      `json:"startedAt"`
-	FinishedAt     time.Time                      `json:"finishedAt"`
-	ElapsedMS      int64                          `json:"elapsedMs"`
-	Success        bool                           `json:"success"`
-	EvidencePaths  []string                       `json:"evidencePaths,omitempty"`
-	Effort         BenchmarkLaneEffort            `json:"effort"`
-	Attribution    []BenchmarkArtifactConsumption `json:"attribution,omitempty"`
+	Lane           BenchmarkLane                           `json:"lane"`
+	StartMarker    string                                  `json:"startMarker"`
+	SuccessMarker  string                                  `json:"successMarker"`
+	StopMarker     string                                  `json:"stopMarker"`
+	SetupAppliedAt time.Time                               `json:"setupAppliedAt,omitempty"`
+	StartedAt      time.Time                               `json:"startedAt"`
+	FinishedAt     time.Time                               `json:"finishedAt"`
+	ElapsedMS      int64                                   `json:"elapsedMs"`
+	Success        bool                                    `json:"success"`
+	EvidencePaths  []string                                `json:"evidencePaths,omitempty"`
+	Effort         BenchmarkLaneEffort                     `json:"effort"`
+	FinalArtifact  *BenchmarkLaneFinalArtifactVerification `json:"finalArtifact,omitempty"`
+	Attribution    []BenchmarkArtifactConsumption          `json:"attribution,omitempty"`
 }
 
 type BenchmarkEvidenceArmAttempt struct {
@@ -279,6 +308,7 @@ type BenchmarkEvidenceBundle struct {
 	SuiteVersion           string                         `json:"suiteVersion"`
 	FixtureID              string                         `json:"fixtureId"`
 	FixturePath            string                         `json:"fixturePath"`
+	Methodology            BenchmarkMethodologySnapshot   `json:"methodology"`
 	TokenEstimateContract  BenchmarkTokenEstimateContract `json:"tokenEstimateContract"`
 	MethodologyFingerprint string                         `json:"methodologyFingerprint"`
 	RerunCommand           string                         `json:"rerunCommand"`
@@ -291,6 +321,7 @@ type BenchmarkArtifactConsumption struct {
 	StepID          string                           `json:"stepId"`
 	StepName        string                           `json:"stepName,omitempty"`
 	Lane            BenchmarkLane                    `json:"lane"`
+	Boundary        BenchmarkEvidenceBoundary        `json:"boundary"`
 	Surface         BenchmarkTreatmentSurface        `json:"surface,omitempty"`
 	Command         EvalCommandName                  `json:"command,omitempty"`
 	Tool            string                           `json:"tool,omitempty"`
@@ -405,20 +436,21 @@ type BenchmarkArmRunResult struct {
 }
 
 type BenchmarkLaneRunResult struct {
-	Lane           BenchmarkLane                  `json:"lane"`
-	StartMarker    string                         `json:"startMarker"`
-	SuccessMarker  string                         `json:"successMarker"`
-	StopMarker     string                         `json:"stopMarker"`
-	SetupAppliedAt time.Time                      `json:"setupAppliedAt,omitempty"`
-	StartedAt      time.Time                      `json:"startedAt"`
-	FinishedAt     time.Time                      `json:"finishedAt"`
-	Elapsed        time.Duration                  `json:"elapsed"`
-	Success        bool                           `json:"success"`
-	Setup          []EvalSetupAction              `json:"setup,omitempty"`
-	Assertions     []BenchmarkAssertion           `json:"assert,omitempty"`
-	EvidencePaths  []string                       `json:"evidencePaths,omitempty"`
-	Effort         BenchmarkLaneEffort            `json:"effort"`
-	Attribution    []BenchmarkArtifactConsumption `json:"attribution,omitempty"`
+	Lane           BenchmarkLane                           `json:"lane"`
+	StartMarker    string                                  `json:"startMarker"`
+	SuccessMarker  string                                  `json:"successMarker"`
+	StopMarker     string                                  `json:"stopMarker"`
+	SetupAppliedAt time.Time                               `json:"setupAppliedAt,omitempty"`
+	StartedAt      time.Time                               `json:"startedAt"`
+	FinishedAt     time.Time                               `json:"finishedAt"`
+	Elapsed        time.Duration                           `json:"elapsed"`
+	Success        bool                                    `json:"success"`
+	Setup          []EvalSetupAction                       `json:"setup,omitempty"`
+	Assertions     []BenchmarkAssertion                    `json:"assert,omitempty"`
+	EvidencePaths  []string                                `json:"evidencePaths,omitempty"`
+	Effort         BenchmarkLaneEffort                     `json:"effort"`
+	FinalArtifact  *BenchmarkLaneFinalArtifactVerification `json:"finalArtifact,omitempty"`
+	Attribution    []BenchmarkArtifactConsumption          `json:"attribution,omitempty"`
 }
 
 type BenchmarkLaneEffort struct {
@@ -449,7 +481,12 @@ func EstimateBenchmarkTokensFromBytes(byteCount int64) int64 {
 	return (byteCount + policy.BytesPerToken - 1) / policy.BytesPerToken
 }
 
+func (c BenchmarkArtifactConsumption) CountsTowardEstimatedTokens() bool {
+	return c.Boundary == BenchmarkEvidenceBoundaryAgentInput
+}
+
 func NormalizeBenchmarkEvidenceBundle(bundle BenchmarkEvidenceBundle) BenchmarkEvidenceBundle {
+	bundle.Methodology = NormalizeBenchmarkMethodologySnapshot(bundle.Methodology)
 	bundle.Attempts = append([]BenchmarkEvidenceAttempt(nil), bundle.Attempts...)
 	sort.SliceStable(bundle.Attempts, func(i, j int) bool {
 		return bundle.Attempts[i].Attempt < bundle.Attempts[j].Attempt
@@ -474,6 +511,10 @@ func NormalizeBenchmarkEvidenceBundle(bundle BenchmarkEvidenceBundle) BenchmarkE
 				sort.SliceStable(lanes[laneIndex].Attribution, func(i, j int) bool {
 					return compareBenchmarkAttribution(lanes[laneIndex].Attribution[i], lanes[laneIndex].Attribution[j]) < 0
 				})
+				if lanes[laneIndex].FinalArtifact != nil {
+					current := *lanes[laneIndex].FinalArtifact
+					lanes[laneIndex].FinalArtifact = &current
+				}
 			}
 			arms[armIndex].Lanes = lanes
 		}
@@ -538,6 +579,7 @@ func compareBenchmarkAttribution(left BenchmarkArtifactConsumption, right Benchm
 		string(left.Lane),
 		left.StepID,
 		left.StepName,
+		string(left.Boundary),
 		string(left.Surface),
 		string(left.Command),
 		left.Tool,
@@ -552,6 +594,7 @@ func compareBenchmarkAttribution(left BenchmarkArtifactConsumption, right Benchm
 		string(right.Lane),
 		right.StepID,
 		right.StepName,
+		string(right.Boundary),
 		string(right.Surface),
 		string(right.Command),
 		right.Tool,
@@ -570,6 +613,30 @@ func compareBenchmarkAttribution(left BenchmarkArtifactConsumption, right Benchm
 	default:
 		return 0
 	}
+}
+
+func NormalizeBenchmarkMethodologySnapshot(snapshot BenchmarkMethodologySnapshot) BenchmarkMethodologySnapshot {
+	snapshot.CountedInputs = append([]BenchmarkCountedInputDefinition(nil), snapshot.CountedInputs...)
+	sort.SliceStable(snapshot.CountedInputs, func(i, j int) bool {
+		left := snapshot.CountedInputs[i]
+		right := snapshot.CountedInputs[j]
+		leftKey := strings.Join([]string{string(left.ArmKind), string(left.Lane), left.StepID, left.ID}, "|")
+		rightKey := strings.Join([]string{string(right.ArmKind), string(right.Lane), right.StepID, right.ID}, "|")
+		return leftKey < rightKey
+	})
+	snapshot.LaneFinalArtifacts = append([]BenchmarkLaneFinalArtifactSnapshot(nil), snapshot.LaneFinalArtifacts...)
+	sort.SliceStable(snapshot.LaneFinalArtifacts, func(i, j int) bool {
+		left := snapshot.LaneFinalArtifacts[i]
+		right := snapshot.LaneFinalArtifacts[j]
+		leftKey := strings.Join([]string{string(left.Lane), left.Contract.ID, left.Contract.Path}, "|")
+		rightKey := strings.Join([]string{string(right.Lane), right.Contract.ID, right.Contract.Path}, "|")
+		return leftKey < rightKey
+	})
+	if snapshot.TaskFinalArtifact != nil {
+		current := *snapshot.TaskFinalArtifact
+		snapshot.TaskFinalArtifact = &current
+	}
+	return snapshot
 }
 
 func benchmarkUniqueSorted(items []string) []string {
@@ -1048,6 +1115,10 @@ func (c BenchmarkBoundaryContract) validate() error {
 	return nil
 }
 
+func (c BenchmarkBoundaryContract) Validate() error {
+	return c.validate()
+}
+
 func validateBenchmarkCountedInputs(inputs []BenchmarkCountedInputDefinition, stepRefs map[string]benchmarkStepRef) error {
 	seen := make(map[string]struct{}, len(inputs))
 	for idx, input := range inputs {
@@ -1177,6 +1248,10 @@ func (i BenchmarkCountedInputDefinition) validate() error {
 	return nil
 }
 
+func (i BenchmarkCountedInputDefinition) Validate() error {
+	return i.validate()
+}
+
 func benchmarkRequiresProjection(artifactType BenchmarkArtifactType) bool {
 	switch artifactType {
 	case BenchmarkArtifactTypeRepositoryMap, BenchmarkArtifactTypeHealth, BenchmarkArtifactTypeRefresh:
@@ -1218,6 +1293,10 @@ func (c BenchmarkFinalArtifactContract) validate() error {
 		}
 	}
 	return nil
+}
+
+func (c BenchmarkFinalArtifactContract) Validate() error {
+	return c.validate()
 }
 
 func (n BenchmarkFinalArtifactNormalization) validate(format BenchmarkFinalArtifactFormat) error {
@@ -1281,6 +1360,29 @@ func (a BenchmarkFinalArtifactAssertion) validate() error {
 		return fmt.Errorf("unsupported kind %q", a.Kind)
 	}
 	return nil
+}
+
+func BenchmarkMethodologyFromSuite(suite BenchmarkSuiteDefinition) BenchmarkMethodologySnapshot {
+	snapshot := BenchmarkMethodologySnapshot{
+		SuiteSchemaVersion: suite.SchemaVersion,
+		Boundary:           suite.Boundary,
+		CountedInputs:      append([]BenchmarkCountedInputDefinition(nil), suite.CountedInputs...),
+	}
+	if suite.Task.FinalArtifact != nil {
+		current := *suite.Task.FinalArtifact
+		snapshot.TaskFinalArtifact = &current
+	}
+	snapshot.LaneFinalArtifacts = make([]BenchmarkLaneFinalArtifactSnapshot, 0, len(suite.Lanes))
+	for _, lane := range suite.Lanes {
+		if lane.FinalArtifact == nil {
+			continue
+		}
+		snapshot.LaneFinalArtifacts = append(snapshot.LaneFinalArtifacts, BenchmarkLaneFinalArtifactSnapshot{
+			Lane:     lane.Name,
+			Contract: *lane.FinalArtifact,
+		})
+	}
+	return NormalizeBenchmarkMethodologySnapshot(snapshot)
 }
 
 func LoadBenchmarkSuite(path string) (BenchmarkSuiteDefinition, error) {

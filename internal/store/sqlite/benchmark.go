@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/niccrow/optimusctx/internal/repository"
@@ -70,6 +71,11 @@ type BenchmarkEvidenceBundleRecord struct {
 	SchemaVersion          string
 	SuiteID                string
 	SuiteVersion           string
+	SuiteSchemaVersion     string
+	CountedInputPolicy     string
+	SystemOutputPolicy     string
+	FinalArtifactPolicy    string
+	CountedInputCount      int
 	MethodologyFingerprint string
 	RerunCommand           string
 	GeneratedAt            time.Time
@@ -80,21 +86,25 @@ type BenchmarkEvidenceBundleRecord struct {
 }
 
 type BenchmarkEvidenceLaneSummaryRecord struct {
-	ID                        int64
-	BenchmarkEvidenceBundleID int64
-	ArmKind                   repository.BenchmarkArmKind
-	ArmName                   string
-	Lane                      repository.BenchmarkLane
-	AttemptCount              int
-	SuccessCount              int
-	InvalidAttemptCount       int
-	ElapsedMSJSON             string
-	ActionCountJSON           string
-	BroadSearchActionsJSON    string
-	TargetedLookupActionsJSON string
-	FileReadActionsJSON       string
-	BytesReadJSON             string
-	MetadataJSON              string
+	ID                         int64
+	BenchmarkEvidenceBundleID  int64
+	ArmKind                    repository.BenchmarkArmKind
+	ArmName                    string
+	Lane                       repository.BenchmarkLane
+	AttemptCount               int
+	SuccessCount               int
+	InvalidAttemptCount        int
+	ElapsedMSJSON              string
+	ActionCountJSON            string
+	BroadSearchActionsJSON     string
+	TargetedLookupActionsJSON  string
+	FileReadActionsJSON        string
+	BytesReadJSON              string
+	FinalArtifactContractID    string
+	FinalArtifactPath          string
+	FinalArtifactPassed        bool
+	FinalArtifactFailureReason string
+	MetadataJSON               string
 }
 
 type BenchmarkEvidenceAttributionRecord struct {
@@ -106,6 +116,8 @@ type BenchmarkEvidenceAttributionRecord struct {
 	Ordinal                   int
 	StepID                    string
 	StepName                  string
+	Boundary                  repository.BenchmarkEvidenceBoundary
+	CountsTowardTokens        bool
 	Surface                   repository.BenchmarkTreatmentSurface
 	CommandName               repository.EvalCommandName
 	ToolName                  string
@@ -159,6 +171,7 @@ func BenchmarkPersistedArmsFromResult(repositoryID int64, attempt int, result re
 					"setup":          lane.Setup,
 					"assertions":     lane.Assertions,
 					"evidencePaths":  lane.EvidencePaths,
+					"finalArtifact":  lane.FinalArtifact,
 					"attribution":    lane.Attribution,
 				}),
 			}
@@ -221,7 +234,7 @@ func (s *Store) SaveBenchmarkEvidenceBundle(ctx context.Context, repositoryID in
 	if err != nil {
 		return repository.BenchmarkEvidenceBundle{}, err
 	}
-	if err = replaceBenchmarkEvidenceLaneSummaries(ctx, tx, record.ID, normalized.Comparison); err != nil {
+	if err = replaceBenchmarkEvidenceLaneSummaries(ctx, tx, record.ID, normalized.Comparison, normalized.Attempts); err != nil {
 		return repository.BenchmarkEvidenceBundle{}, err
 	}
 	if err = replaceBenchmarkEvidenceAttributions(ctx, tx, record.ID, normalized.Attempts); err != nil {
@@ -452,8 +465,8 @@ func validateBenchmarkRun(run BenchmarkRunRecord) error {
 
 func validateBenchmarkEvidenceBundle(bundle repository.BenchmarkEvidenceBundle) error {
 	switch {
-	case bundle.SchemaVersion != repository.BenchmarkEvidenceBundleSchemaV1:
-		return fmt.Errorf("save benchmark evidence bundle: schema version must be %q", repository.BenchmarkEvidenceBundleSchemaV1)
+	case bundle.SchemaVersion != repository.BenchmarkEvidenceBundleSchemaV2:
+		return fmt.Errorf("save benchmark evidence bundle: schema version must be %q", repository.BenchmarkEvidenceBundleSchemaV2)
 	case bundle.RepositoryRoot == "":
 		return fmt.Errorf("save benchmark evidence bundle: repository root is required")
 	case bundle.SuiteID == "":
@@ -471,6 +484,46 @@ func validateBenchmarkEvidenceBundle(bundle repository.BenchmarkEvidenceBundle) 
 	case bundle.GeneratedAt.IsZero():
 		return fmt.Errorf("save benchmark evidence bundle: generated time is required")
 	}
+	if bundle.Methodology.SuiteSchemaVersion != repository.BenchmarkSuiteSchemaV2 {
+		return fmt.Errorf("save benchmark evidence bundle: methodology suite schema version must be %q", repository.BenchmarkSuiteSchemaV2)
+	}
+	if err := bundle.Methodology.Boundary.Validate(); err != nil {
+		return fmt.Errorf("save benchmark evidence bundle: methodology boundary: %w", err)
+	}
+	if len(bundle.Methodology.CountedInputs) == 0 {
+		return fmt.Errorf("save benchmark evidence bundle: methodology counted inputs are required")
+	}
+	for idx, input := range bundle.Methodology.CountedInputs {
+		if err := input.Validate(); err != nil {
+			return fmt.Errorf("save benchmark evidence bundle: methodology countedInputs[%d]: %w", idx, err)
+		}
+	}
+	if bundle.Methodology.TaskFinalArtifact != nil {
+		if err := bundle.Methodology.TaskFinalArtifact.Validate(); err != nil {
+			return fmt.Errorf("save benchmark evidence bundle: methodology taskFinalArtifact: %w", err)
+		}
+	}
+	for idx, artifact := range bundle.Methodology.LaneFinalArtifacts {
+		if err := artifact.Contract.Validate(); err != nil {
+			return fmt.Errorf("save benchmark evidence bundle: methodology laneFinalArtifacts[%d]: %w", idx, err)
+		}
+	}
+	for attemptIdx, attempt := range bundle.Attempts {
+		for armIdx, arm := range attempt.Arms {
+			for laneIdx, lane := range arm.Lanes {
+				if lane.FinalArtifact != nil && strings.TrimSpace(lane.FinalArtifact.ContractID) == "" {
+					return fmt.Errorf("save benchmark evidence bundle: attempts[%d].arms[%d].lanes[%d].finalArtifact.contractId is required", attemptIdx, armIdx, laneIdx)
+				}
+				for attrIdx, attribution := range lane.Attribution {
+					switch attribution.Boundary {
+					case repository.BenchmarkEvidenceBoundaryAgentInput, repository.BenchmarkEvidenceBoundarySystemProvenance, repository.BenchmarkEvidenceBoundaryFinalArtifactVerified:
+					default:
+						return fmt.Errorf("save benchmark evidence bundle: attempts[%d].arms[%d].lanes[%d].attribution[%d].boundary is required", attemptIdx, armIdx, laneIdx, attrIdx)
+					}
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -480,6 +533,7 @@ func saveBenchmarkEvidenceBundleRecord(ctx context.Context, tx *sql.Tx, reposito
 		"repositoryRoot":        bundle.RepositoryRoot,
 		"fixtureID":             bundle.FixtureID,
 		"fixturePath":           bundle.FixturePath,
+		"methodology":           bundle.Methodology,
 		"tokenEstimateContract": bundle.TokenEstimateContract,
 		"verification":          bundle.Verification,
 	})
@@ -493,6 +547,11 @@ func saveBenchmarkEvidenceBundleRecord(ctx context.Context, tx *sql.Tx, reposito
 		SchemaVersion:          bundle.SchemaVersion,
 		SuiteID:                bundle.SuiteID,
 		SuiteVersion:           bundle.SuiteVersion,
+		SuiteSchemaVersion:     bundle.Methodology.SuiteSchemaVersion,
+		CountedInputPolicy:     string(bundle.Methodology.Boundary.CountedInputs),
+		SystemOutputPolicy:     string(bundle.Methodology.Boundary.SystemOutputs),
+		FinalArtifactPolicy:    string(bundle.Methodology.Boundary.FinalArtifacts),
+		CountedInputCount:      len(bundle.Methodology.CountedInputs),
 		MethodologyFingerprint: bundle.MethodologyFingerprint,
 		RerunCommand:           bundle.RerunCommand,
 		GeneratedAt:            bundle.GeneratedAt.UTC(),
@@ -508,6 +567,11 @@ func saveBenchmarkEvidenceBundleRecord(ctx context.Context, tx *sql.Tx, reposito
 			schema_version,
 			suite_id,
 			suite_version,
+			suite_schema_version,
+			counted_input_policy,
+			system_output_policy,
+			final_artifact_policy,
+			counted_input_count,
 			methodology_fingerprint,
 			rerun_command,
 			generated_at,
@@ -515,8 +579,13 @@ func saveBenchmarkEvidenceBundleRecord(ctx context.Context, tx *sql.Tx, reposito
 			bundle_json,
 			created_at,
 			updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(repository_id, suite_id, suite_version, methodology_fingerprint) DO UPDATE SET
+			suite_schema_version = excluded.suite_schema_version,
+			counted_input_policy = excluded.counted_input_policy,
+			system_output_policy = excluded.system_output_policy,
+			final_artifact_policy = excluded.final_artifact_policy,
+			counted_input_count = excluded.counted_input_count,
 			rerun_command = excluded.rerun_command,
 			generated_at = excluded.generated_at,
 			metadata_json = excluded.metadata_json,
@@ -527,6 +596,11 @@ func saveBenchmarkEvidenceBundleRecord(ctx context.Context, tx *sql.Tx, reposito
 		record.SchemaVersion,
 		record.SuiteID,
 		record.SuiteVersion,
+		record.SuiteSchemaVersion,
+		record.CountedInputPolicy,
+		record.SystemOutputPolicy,
+		record.FinalArtifactPolicy,
+		record.CountedInputCount,
 		record.MethodologyFingerprint,
 		record.RerunCommand,
 		record.GeneratedAt.Format(time.RFC3339Nano),
@@ -559,16 +633,18 @@ func saveBenchmarkEvidenceBundleRecord(ctx context.Context, tx *sql.Tx, reposito
 	return record, nil
 }
 
-func replaceBenchmarkEvidenceLaneSummaries(ctx context.Context, tx *sql.Tx, bundleID int64, summaries []repository.BenchmarkEvidenceArmSummary) error {
+func replaceBenchmarkEvidenceLaneSummaries(ctx context.Context, tx *sql.Tx, bundleID int64, summaries []repository.BenchmarkEvidenceArmSummary, attempts []repository.BenchmarkEvidenceAttempt) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM benchmark_evidence_lane_summaries WHERE benchmark_evidence_bundle_id = ?`, bundleID); err != nil {
 		return fmt.Errorf("delete benchmark evidence lane summaries for bundle %d: %w", bundleID, err)
 	}
+	laneFinalArtifacts := latestBenchmarkLaneFinalArtifacts(attempts)
 	for _, arm := range summaries {
 		for _, lane := range arm.Lanes {
 			metadataJSON := mustMarshalBenchmarkMetadata(map[string]any{
 				"consultedArtifacts":     lane.ConsultedArtifacts,
 				"rejectedAttemptReasons": lane.RejectedAttemptReasons,
 			})
+			finalArtifact := laneFinalArtifacts[lane.Lane]
 			if _, err := tx.ExecContext(ctx, `
 				INSERT INTO benchmark_evidence_lane_summaries (
 					benchmark_evidence_bundle_id,
@@ -584,8 +660,12 @@ func replaceBenchmarkEvidenceLaneSummaries(ctx context.Context, tx *sql.Tx, bund
 					targeted_lookup_actions_json,
 					file_read_actions_json,
 					bytes_read_json,
+					final_artifact_contract_id,
+					final_artifact_path,
+					final_artifact_passed,
+					final_artifact_failure_reason,
 					metadata_json
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			`,
 				bundleID,
 				string(arm.ArmKind),
@@ -600,6 +680,10 @@ func replaceBenchmarkEvidenceLaneSummaries(ctx context.Context, tx *sql.Tx, bund
 				mustMarshalBenchmarkMetadata(lane.TargetedLookupActions),
 				mustMarshalBenchmarkMetadata(lane.FileReadActions),
 				mustMarshalBenchmarkMetadata(lane.BytesRead),
+				emptyToNil(finalArtifact.ContractID),
+				emptyToNil(finalArtifact.Path),
+				boolToInt(finalArtifact.Passed),
+				emptyToNil(finalArtifact.FailureReason),
 				emptyToNil(metadataJSON),
 			); err != nil {
 				return fmt.Errorf("insert benchmark evidence lane summary %q/%q: %w", arm.ArmKind, lane.Lane, err)
@@ -607,6 +691,21 @@ func replaceBenchmarkEvidenceLaneSummaries(ctx context.Context, tx *sql.Tx, bund
 		}
 	}
 	return nil
+}
+
+func latestBenchmarkLaneFinalArtifacts(attempts []repository.BenchmarkEvidenceAttempt) map[repository.BenchmarkLane]repository.BenchmarkLaneFinalArtifactVerification {
+	finalArtifacts := make(map[repository.BenchmarkLane]repository.BenchmarkLaneFinalArtifactVerification)
+	for _, attempt := range attempts {
+		for _, arm := range attempt.Arms {
+			for _, lane := range arm.Lanes {
+				if lane.FinalArtifact == nil {
+					continue
+				}
+				finalArtifacts[lane.Lane] = *lane.FinalArtifact
+			}
+		}
+	}
+	return finalArtifacts
 }
 
 func replaceBenchmarkEvidenceAttributions(ctx context.Context, tx *sql.Tx, bundleID int64, attempts []repository.BenchmarkEvidenceAttempt) error {
@@ -629,6 +728,8 @@ func replaceBenchmarkEvidenceAttributions(ctx context.Context, tx *sql.Tx, bundl
 							ordinal,
 							step_id,
 							step_name,
+							boundary,
+							counts_toward_tokens,
 							surface,
 							command_name,
 							tool_name,
@@ -639,7 +740,7 @@ func replaceBenchmarkEvidenceAttributions(ctx context.Context, tx *sql.Tx, bundl
 							estimated_bytes,
 							estimated_tokens,
 							metadata_json
-						) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+						) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 					`,
 						bundleID,
 						attempt.Attempt,
@@ -648,6 +749,8 @@ func replaceBenchmarkEvidenceAttributions(ctx context.Context, tx *sql.Tx, bundl
 						ordinal,
 						attribution.StepID,
 						emptyToNil(attribution.StepName),
+						string(attribution.Boundary),
+						boolToInt(attribution.CountsTowardEstimatedTokens()),
 						emptyToNil(string(attribution.Surface)),
 						emptyToNil(string(attribution.Command)),
 						emptyToNil(attribution.Tool),

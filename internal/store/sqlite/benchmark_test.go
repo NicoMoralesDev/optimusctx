@@ -562,16 +562,22 @@ func TestBenchmarkEvidenceBundleSchema(t *testing.T) {
 
 	assertTablesExist(t, store.DB(), "benchmark_evidence_bundles", "benchmark_evidence_lane_summaries", "benchmark_evidence_attributions")
 	assertIndexColumns(t, store.DB(), "benchmark_evidence_bundles", []string{"repository_id", "suite_id", "suite_version", "generated_at"})
+	assertIndexColumns(t, store.DB(), "benchmark_evidence_bundles", []string{"repository_id", "suite_id", "suite_version", "suite_schema_version", "counted_input_policy", "system_output_policy", "final_artifact_policy"})
 	assertIndexColumns(t, store.DB(), "benchmark_evidence_lane_summaries", []string{"benchmark_evidence_bundle_id", "arm_kind", "lane"})
+	assertIndexColumns(t, store.DB(), "benchmark_evidence_lane_summaries", []string{"benchmark_evidence_bundle_id", "lane", "final_artifact_contract_id"})
 	assertIndexColumns(t, store.DB(), "benchmark_evidence_attributions", []string{"benchmark_evidence_bundle_id", "attempt", "arm_kind", "lane"})
+	assertIndexColumns(t, store.DB(), "benchmark_evidence_attributions", []string{"benchmark_evidence_bundle_id", "boundary", "counts_toward_tokens"})
 
 	bundle := testBenchmarkEvidenceBundle(layout.RepoRoot)
 	saved, err := store.SaveBenchmarkEvidenceBundle(ctx, repoID, bundle)
 	if err != nil {
 		t.Fatalf("SaveBenchmarkEvidenceBundle() error = %v", err)
 	}
-	if saved.SchemaVersion != repository.BenchmarkEvidenceBundleSchemaV1 {
+	if saved.SchemaVersion != repository.BenchmarkEvidenceBundleSchemaV2 {
 		t.Fatalf("saved schema version = %q", saved.SchemaVersion)
+	}
+	if saved.Methodology.SuiteSchemaVersion != repository.BenchmarkSuiteSchemaV2 {
+		t.Fatalf("saved methodology suite schema version = %q", saved.Methodology.SuiteSchemaVersion)
 	}
 
 	var bundleCount int
@@ -627,8 +633,8 @@ func TestBenchmarkExportDeterminism(t *testing.T) {
 	if string(firstJSON) != string(secondJSON) {
 		t.Fatalf("bundle JSON drifted after reload\nfirst=%s\nsecond=%s", firstJSON, secondJSON)
 	}
-	if !strings.Contains(string(firstJSON), `"reportLabel": "pack_export"`) {
-		t.Fatalf("bundle JSON missing report labels: %s", firstJSON)
+	if !strings.Contains(string(firstJSON), `"boundary": "agent_input"`) {
+		t.Fatalf("bundle JSON missing attribution boundaries: %s", firstJSON)
 	}
 }
 
@@ -644,15 +650,76 @@ func mustNextBenchmarkAttempt(t *testing.T, store *Store, ctx context.Context, r
 
 func testBenchmarkEvidenceBundle(repositoryRoot string) repository.BenchmarkEvidenceBundle {
 	return repository.NormalizeBenchmarkEvidenceBundle(repository.BenchmarkEvidenceBundle{
-		SchemaVersion:          repository.BenchmarkEvidenceBundleSchemaV1,
-		GeneratedAt:            time.Date(2026, 3, 16, 19, 0, 0, 0, time.UTC),
-		RepositoryRoot:         repositoryRoot,
-		SuiteID:                "go-benchmark-refresh-v1",
-		SuiteVersion:           "v1",
-		FixtureID:              "go-worktree",
-		FixturePath:            "go-worktree/v1/repository",
+		SchemaVersion:  repository.BenchmarkEvidenceBundleSchemaV2,
+		GeneratedAt:    time.Date(2026, 3, 16, 19, 0, 0, 0, time.UTC),
+		RepositoryRoot: repositoryRoot,
+		SuiteID:        "go-benchmark-refresh-v1",
+		SuiteVersion:   "v2",
+		FixtureID:      "go-worktree",
+		FixturePath:    "go-worktree/v2/repository",
+		Methodology: repository.BenchmarkMethodologySnapshot{
+			SuiteSchemaVersion: repository.BenchmarkSuiteSchemaV2,
+			Boundary:           repository.DefaultBenchmarkBoundaryContract(),
+			CountedInputs: []repository.BenchmarkCountedInputDefinition{
+				{
+					ID:         "baseline-readiness-paths",
+					ArmKind:    repository.BenchmarkArmKindBaseline,
+					Lane:       repository.BenchmarkLaneContextAssembly,
+					StepID:     "baseline-context",
+					Name:       "Baseline readiness paths",
+					Kind:       repository.BenchmarkCountedInputKindPathList,
+					SourceKind: repository.BenchmarkTokenEstimateSourcePathEstimate,
+					Path:       "docs/notes.txt",
+				},
+				{
+					ID:           "treatment-context-pack",
+					ArmKind:      repository.BenchmarkArmKindOptimusCtx,
+					Lane:         repository.BenchmarkLaneContextAssembly,
+					StepID:       "context-pack",
+					Name:         "Treatment context pack",
+					Kind:         repository.BenchmarkCountedInputKindPackSection,
+					SourceKind:   repository.BenchmarkTokenEstimateSourcePackExportSection,
+					ArtifactType: repository.BenchmarkArtifactTypePackExport,
+					ReportLabel:  repository.BenchmarkReportArtifactLabelPackExport,
+					Path:         "artifacts/pack.json",
+				},
+			},
+			TaskFinalArtifact: &repository.BenchmarkFinalArtifactContract{
+				ID:     "notes-pack",
+				Name:   "Updated notes pack",
+				Kind:   repository.BenchmarkFinalArtifactKindTaskOutput,
+				Path:   "artifacts/pack.json",
+				Format: repository.BenchmarkFinalArtifactFormatJSON,
+				Normalization: repository.BenchmarkFinalArtifactNormalization{
+					Mode:      repository.BenchmarkFinalArtifactNormalizationModeJSONFields,
+					JSONPaths: []string{"sections[0].path"},
+				},
+				Assertions: []repository.BenchmarkFinalArtifactAssertion{
+					{Kind: repository.EvalAssertionKindJSONFieldPresent, Path: "sections[0].path"},
+				},
+			},
+			LaneFinalArtifacts: []repository.BenchmarkLaneFinalArtifactSnapshot{
+				{
+					Lane: repository.BenchmarkLaneContextAssembly,
+					Contract: repository.BenchmarkFinalArtifactContract{
+						ID:     "context-pack",
+						Name:   "Context pack",
+						Kind:   repository.BenchmarkFinalArtifactKindContextBundle,
+						Path:   "artifacts/pack.json",
+						Format: repository.BenchmarkFinalArtifactFormatJSON,
+						Normalization: repository.BenchmarkFinalArtifactNormalization{
+							Mode:      repository.BenchmarkFinalArtifactNormalizationModeJSONFields,
+							JSONPaths: []string{"sections[0].path"},
+						},
+						Assertions: []repository.BenchmarkFinalArtifactAssertion{
+							{Kind: repository.EvalAssertionKindJSONFieldPresent, Path: "sections[0].path"},
+						},
+					},
+				},
+			},
+		},
 		TokenEstimateContract:  repository.DefaultBenchmarkTokenEstimateContract(),
-		MethodologyFingerprint: "go-benchmark-refresh-v1|baseline|optimusctx",
+		MethodologyFingerprint: "go-benchmark-refresh-v2|optimusctx/benchmark-suite@v2|declared_agent_inputs_only|persist_system_outputs|required_per_lane_or_task|counted-inputs=2",
 		RerunCommand:           "go run ./cmd/optimusctx eval benchmark export --suite go-benchmark-refresh-v1 --attempts 2",
 		Verification: repository.BenchmarkEvidenceVerification{
 			Passed: true,
@@ -691,6 +758,11 @@ func testBenchmarkEvidenceBundle(repositoryRoot string) repository.BenchmarkEvid
 					ElapsedMS:     1000,
 					Success:       true,
 					EvidencePaths: []string{"docs/notes.txt", "artifacts/pack.json"},
+					FinalArtifact: &repository.BenchmarkLaneFinalArtifactVerification{
+						ContractID: "context-pack",
+						Path:       "artifacts/pack.json",
+						Passed:     true,
+					},
 					Effort: repository.BenchmarkLaneEffort{
 						ActionCount:           2,
 						TargetedLookupActions: 1,
@@ -702,6 +774,7 @@ func testBenchmarkEvidenceBundle(repositoryRoot string) repository.BenchmarkEvid
 							StepID:          "context-pack",
 							StepName:        "Export context pack",
 							Lane:            repository.BenchmarkLaneContextAssembly,
+							Boundary:        repository.BenchmarkEvidenceBoundaryAgentInput,
 							Surface:         repository.BenchmarkTreatmentSurfaceCLI,
 							Command:         repository.EvalCommandPackExport,
 							ArtifactType:    repository.BenchmarkArtifactTypePackExport,
@@ -715,6 +788,7 @@ func testBenchmarkEvidenceBundle(repositoryRoot string) repository.BenchmarkEvid
 							StepID:          "health-check",
 							StepName:        "Inspect health",
 							Lane:            repository.BenchmarkLaneContextAssembly,
+							Boundary:        repository.BenchmarkEvidenceBoundarySystemProvenance,
 							Surface:         repository.BenchmarkTreatmentSurfaceMCP,
 							Tool:            "optimusctx.health",
 							ArtifactType:    repository.BenchmarkArtifactTypeHealth,
