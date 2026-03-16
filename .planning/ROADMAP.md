@@ -10,7 +10,7 @@
 
 ## Current Milestone
 
-- [ ] **v1.1** — validation, benchmarking, and distribution
+- [x] **v1.1** — validation, benchmarking, and distribution
 - Goal: prove the shipped runtime works end to end, measure token and workflow savings with repeatable A/B methodology, and prepare a credible distribution path.
 - Requirements: [REQUIREMENTS.md](/home/nico/projects/optimusctx/.planning/REQUIREMENTS.md)
 
@@ -98,7 +98,7 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.1`
+Active milestone: `v1.1` complete
 
 Next step:
 
