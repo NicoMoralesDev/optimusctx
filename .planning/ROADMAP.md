@@ -72,8 +72,8 @@ Plans:
 
 Plans:
 
-- [ ] 12-01: token accounting contract and artifact attribution
-- [ ] 12-02: benchmark result storage and export format
+- [x] 12-01: token accounting contract and artifact attribution
+- [x] 12-02: benchmark result storage and export format
 - [ ] 12-03: human-readable benchmark summaries and comparison reports
 - [ ] 12-04: reproducibility checks and milestone verification
 
@@ -102,8 +102,8 @@ Active milestone: `v1.1`
 
 Next step:
 
-- Continue with `12-01` — token accounting contract and artifact attribution
-- Phase 11 is complete with persisted repeated-run benchmark verification, paired attempt summaries, and truthful rerun guidance for later reporting work
+- Continue with `12-03` — human-readable benchmark summaries and comparison reports
+- Phase 12 now has canonical token attribution plus persisted machine-readable benchmark evidence bundles and a shipped export path for later reporting work
 
 ---
-*Last updated: 2026-03-16 after completing Phase 11 plan 04*
+*Last updated: 2026-03-16 after completing Phase 12 plan 02*

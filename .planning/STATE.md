@@ -4,10 +4,10 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 12
 current_phase_name: token attribution and evidence reporting
-current_plan: 2
-status: executing
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-03-16T14:07:40.303Z"
+current_plan: 3
+status: in_progress
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-03-16T14:08:16Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
@@ -27,11 +27,11 @@ progress:
 **Current Phase:** 12
 **Current Phase Name:** token attribution and evidence reporting
 **Total Phases:** 5
-**Current Plan:** 2
+**Current Plan:** 3
 **Total Plans in Phase:** 4
 **Progress:** [██████████] 96%
 **Last Activity:** 2026-03-16
-**Last Activity Description:** Phase 12 plan 01 complete, canonical token attribution and persistence evidence shipped
+**Last Activity Description:** Phase 12 plan 02 complete, deterministic benchmark evidence bundle export shipped
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1.1 validation, benchmarking, and distribution
 - Active phase: 12-token-attribution-and-evidence-reporting
-- Next planning action: execute Phase 12 plan 02
+- Next planning action: execute Phase 12 plan 03
 - Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
 - Coverage status: v1.0 shipped; v1.1 requirements are mapped across Phases 09-13
 
