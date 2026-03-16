@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 12
 current_phase_name: token attribution and evidence reporting
 current_plan: 4
-status: executing
-stopped_at: Completed 12-03-PLAN.md
-last_updated: "2026-03-16T14:18:08.767Z"
+status: verifying
+stopped_at: Completed 12-04-PLAN.md
+last_updated: "2026-03-16T14:45:26.128Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 16
-  completed_plans: 15
-  percent: 98
+  completed_plans: 16
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 **Current Phase:** 12
 **Current Phase Name:** token attribution and evidence reporting
 **Total Phases:** 5
 **Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 98%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-16
-**Last Activity Description:** Phase 12 plan 03 complete, human-readable benchmark reports now render from persisted evidence bundles
+**Last Activity Description:** Phase 12 plan 04 complete, benchmark milestone verification now reruns persisted evidence and reports reproducibility drift through the shipped CLI
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1.1 validation, benchmarking, and distribution
 - Active phase: 12-token-attribution-and-evidence-reporting
-- Next planning action: execute Phase 12 plan 03
+- Next planning action: begin Phase 13 distribution planning and execution
 - Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
 - Coverage status: v1.0 shipped; v1.1 requirements are mapped across Phases 09-13
 
@@ -188,6 +188,7 @@ progress:
 | Phase 12 P01 | 364 | 3 tasks | 8 files |
 | Phase 12-token-attribution-and-evidence-reporting P02 | 33min | 3 tasks | 8 files |
 | Phase 12 P03 | 9min | 3 tasks | 5 files |
+| Phase 12-token-attribution-and-evidence-reporting P04 | 26min | 3 tasks | 9 files |
 
 ## Decisions Made
 
@@ -313,6 +314,9 @@ progress:
 - [Phase 12]: Human-readable benchmark reports render from normalized persisted evidence bundles instead of bespoke CLI aggregation.
 - [Phase 12]: Lane token comparisons use bytes_div_4_ceiling for baseline bytes-read and treatment attribution totals.
 - [Phase 12]: Operator-facing attribution labels stay on BNCH-02 terms such as Repository Map, Exact Lookup, L2 Context, and Pack Export.
+- [Phase 12-token-attribution-and-evidence-reporting]: Repeated benchmark reruns now persist from the next available attempt number while milestone reproducibility compares normalized evidence instead of raw historical attempt IDs.
+- [Phase 12-token-attribution-and-evidence-reporting]: Milestone verification checks methodology fingerprint, estimator contract, deterministic lane summaries, and guarded report wording while tolerating path-sensitive token variance already allowed by prior benchmark contracts.
+- [Phase 12-token-attribution-and-evidence-reporting]: The benchmark CLI keeps export as the machine-readable rerun contract and adds verify as the milestone-facing pass/fail gate.
 
 ## Blockers
 
@@ -320,8 +324,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T14:18:08.764Z
-**Stopped At:** Completed 12-03-PLAN.md
+**Last Date:** 2026-03-16T14:45:26.125Z
+**Stopped At:** Completed 12-04-PLAN.md
 **Resume File:** None
 
 ---

@@ -75,7 +75,7 @@ Plans:
 - [x] 12-01: token accounting contract and artifact attribution
 - [x] 12-02: benchmark result storage and export format
 - [x] 12-03: human-readable benchmark summaries and comparison reports
-- [ ] 12-04: reproducibility checks and milestone verification
+- [x] 12-04: reproducibility checks and milestone verification
 
 **Requirements covered:** `BNCH-02`, `BNCH-04`  
 **Details:** Phase 12 turns raw benchmark runs into defensible evidence by keeping one estimator, attributing savings to concrete OptimusCtx artifacts, and exporting results others can rerun and inspect.
@@ -102,8 +102,8 @@ Active milestone: `v1.1`
 
 Next step:
 
-- Continue with `12-04` — reproducibility checks and milestone verification
-- Phase 12 now has canonical token attribution plus persisted machine-readable and human-readable benchmark evidence surfaces for final reproducibility review
+- Continue with `13-01` — automated release archives and checksums
+- Phase 12 is complete with canonical token attribution, persisted benchmark evidence, and a shipped milestone verification command for reproducibility review
 
 ---
-*Last updated: 2026-03-16 after completing Phase 12 plan 03*
+*Last updated: 2026-03-16 after completing Phase 12 plan 04*
