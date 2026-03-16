@@ -1,0 +1,96 @@
+package release
+
+import (
+	"reflect"
+	"testing"
+)
+
+func TestDistributionChannelPolicy(t *testing.T) {
+	policy := CurrentDistributionPolicy()
+
+	if !policy.ProductShape.LocalFirst || !policy.ProductShape.SingleBinary {
+		t.Fatalf("product shape must stay local-first and single-binary: %+v", policy.ProductShape)
+	}
+	if policy.ProductShape.ManagedService {
+		t.Fatalf("distribution policy must not claim a managed service")
+	}
+	if policy.ProductShape.AutomaticConfigEditsByDefault {
+		t.Fatalf("distribution policy must keep install config edits opt-in")
+	}
+
+	if got, want := policyChannelIDs(policy), []string{"github-release-archive", "homebrew", "scoop"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("channel IDs = %v, want %v", got, want)
+	}
+
+	if got, want := policy.Upgrade.VerificationCommands, []string{"optimusctx version", "optimusctx doctor", "optimusctx snippet"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("verification commands = %v, want %v", got, want)
+	}
+
+	if got, want := policy.Support.SupportedCommands, []string{
+		"optimusctx version",
+		"optimusctx doctor",
+		"optimusctx snippet",
+		"optimusctx install --client claude-desktop --write",
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("supported commands = %v, want %v", got, want)
+	}
+
+	assertChannelPolicy(t, policy.SupportedChannels[0], DistributionChannel{
+		ID:                "github-release-archive",
+		Name:              "GitHub Release archives",
+		PublicationTarget: "github.com/niccrow/optimusctx releases",
+	})
+	assertChannelPolicy(t, policy.SupportedChannels[1], DistributionChannel{
+		ID:                "homebrew",
+		Name:              "Homebrew",
+		PublicationTarget: "niccrow/homebrew-tap",
+	})
+	assertChannelPolicy(t, policy.SupportedChannels[2], DistributionChannel{
+		ID:                "scoop",
+		Name:              "Scoop",
+		PublicationTarget: "niccrow/scoop-bucket",
+	})
+
+	if got, want := deferredScopeNames(policy), []string{
+		"native Linux packages",
+		"WinGet",
+		"Chocolatey",
+		"artifact signing",
+		"SBOM publication",
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("deferred scope = %v, want %v", got, want)
+	}
+}
+
+func assertChannelPolicy(t *testing.T, got DistributionChannel, want DistributionChannel) {
+	t.Helper()
+
+	if got.ID != want.ID {
+		t.Fatalf("channel ID = %q, want %q", got.ID, want.ID)
+	}
+	if got.Name != want.Name {
+		t.Fatalf("channel %s name = %q, want %q", got.ID, got.Name, want.Name)
+	}
+	if got.PublicationTarget != want.PublicationTarget {
+		t.Fatalf("channel %s publication target = %q, want %q", got.ID, got.PublicationTarget, want.PublicationTarget)
+	}
+	if got.UserFacingInstall == "" || got.Audience == "" || got.UpgradePath == "" || got.RollbackPath == "" || got.SupportBoundary == "" {
+		t.Fatalf("channel %s must define install, audience, upgrade, rollback, and support details: %+v", got.ID, got)
+	}
+}
+
+func policyChannelIDs(policy DistributionPolicy) []string {
+	values := make([]string, 0, len(policy.SupportedChannels))
+	for _, channel := range policy.SupportedChannels {
+		values = append(values, channel.ID)
+	}
+	return values
+}
+
+func deferredScopeNames(policy DistributionPolicy) []string {
+	values := make([]string, 0, len(policy.DeferredScope))
+	for _, item := range policy.DeferredScope {
+		values = append(values, item.Name)
+	}
+	return values
+}
