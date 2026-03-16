@@ -620,6 +620,24 @@ func formatBenchmarkVerificationSummary(result app.BenchmarkMilestoneVerificatio
 	return b.String()
 }
 
+func decodeBenchmarkToolPayload(response any) (any, error) {
+	data, err := json.Marshal(response)
+	if err != nil {
+		return nil, err
+	}
+	var frame struct {
+		Result struct {
+			StructuredContent struct {
+				Data any `json:"data"`
+			} `json:"structuredContent"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(data, &frame); err != nil {
+		return nil, err
+	}
+	return frame.Result.StructuredContent.Data, nil
+}
+
 func formatEvalRunSummary(result repository.EvalRunResult) string {
 	var b strings.Builder
 	_, _ = fmt.Fprintf(&b, "scenario id: %s\nstatus: %s\nstarted at: %s\nfinished at: %s\nsteps: %d\n",

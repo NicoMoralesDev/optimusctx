@@ -120,6 +120,7 @@ Phase 12 adds two benchmark-facing report surfaces on top of the persisted evide
 
 - `go run ./cmd/optimusctx eval benchmark export --suite <id> --attempts <n>`
 - `go run ./cmd/optimusctx eval benchmark report --suite <id> --attempts <n>`
+- `go run ./cmd/optimusctx eval benchmark verify --suite <id> --attempts <n>`
 
 Benchmark inputs live here:
 
@@ -131,6 +132,7 @@ To rerun or inspect the repeated-run methodology from the repository root, use t
 ```bash
 go run ./cmd/optimusctx eval benchmark export --suite go-benchmark-refresh-v1 --attempts 2
 go run ./cmd/optimusctx eval benchmark report --suite go-benchmark-refresh-v1 --attempts 2
+go run ./cmd/optimusctx eval benchmark verify --suite go-benchmark-refresh-v1 --attempts 2
 ```
 
 The human-readable report is intentionally narrow and truthful:
@@ -140,6 +142,7 @@ The human-readable report is intentionally narrow and truthful:
 - estimated tokens always use the `bytes_div_4_ceiling` policy
 - the report explains workflow-consumed evidence volume, not provider-billed token invoices
 - rerun guidance and methodology fingerprint stay visible so reviewers can inspect the same frozen suite again
+- milestone verification reruns the same frozen suite and fails if methodology, attribution totals, BNCH-02-facing labels, or report wording drift
 
 For targeted verification coverage from the repository root, use:
 
@@ -153,6 +156,7 @@ What Phase 12 reporting proves now:
 - the same frozen suites can be rerun repeatedly on the same fixtures
 - paired baseline and OptimusCtx arms preserve suite, arm, lane, and attempt identity
 - methodology drift such as changed stop conditions is rejected as a verification failure
+- reproducibility verification compares regenerated evidence against the persisted benchmark bundle and the freshly persisted rerun records
 - workflow-speed and token-attribution evidence are persisted in `.optimusctx/db.sqlite`
 - the human-readable report is rendered from the persisted/exported evidence bundle rather than bespoke terminal summaries
 
@@ -163,7 +167,7 @@ What the report still does not prove:
 - universal savings beyond the recorded frozen-suite attempts
 - statistical significance beyond the explicit reruns you asked it to render
 
-Treat the benchmark report as milestone evidence for the recorded suite and attempts only. If you need to review the raw machine-readable bundle, use `eval benchmark export`; if you need to inspect the operator-facing narrative, use `eval benchmark report`.
+Treat the benchmark report as milestone evidence for the recorded suite and attempts only. If you need to review the raw machine-readable bundle, use `eval benchmark export`; if you need to inspect the operator-facing narrative, use `eval benchmark report`; if you need the final milestone gate, use `eval benchmark verify` to rerun the suite through the shipped CLI path and print pass/fail status, methodology fingerprint, rerun command, and drift reasons.
 
 ## Functional validation evidence
 

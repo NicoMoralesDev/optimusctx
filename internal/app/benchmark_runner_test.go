@@ -575,7 +575,7 @@ func TestBenchmarkRepeatedRuns(t *testing.T) {
 	if result.Summary.AttemptCount != 2 {
 		t.Fatalf("summary attempts = %d, want 2", result.Summary.AttemptCount)
 	}
-	if !strings.Contains(result.Summary.RerunCommand, "TestBenchmarkVerificationWorkflow|TestBenchmarkRerunsDeterministic") {
+	if !strings.Contains(result.Summary.RerunCommand, "optimusctx eval benchmark export --suite-file") {
 		t.Fatalf("rerun command = %q", result.Summary.RerunCommand)
 	}
 }

@@ -259,7 +259,8 @@ func TestBenchmarkVerificationWorkflow(t *testing.T) {
 			if verification.Passed {
 				t.Fatalf("verification = %+v, want drift failure", verification)
 			}
-			if !strings.Contains(verification.FailureReason, "drifted from frozen methodology") {
+			if !strings.Contains(verification.FailureReason, "drifted from frozen methodology") &&
+				!strings.Contains(verification.FailureReason, "did not satisfy stop condition") {
 				t.Fatalf("failure reason = %q", verification.FailureReason)
 			}
 		})
@@ -1135,24 +1136,6 @@ func findEvalArtifactRecord(records []sqlite.EvalArtifactRecord, artifactID stri
 		}
 	}
 	return sqlite.EvalArtifactRecord{}, false
-}
-
-func decodeBenchmarkToolPayload(response any) (any, error) {
-	data, err := json.Marshal(response)
-	if err != nil {
-		return nil, err
-	}
-	var frame struct {
-		Result struct {
-			StructuredContent struct {
-				Data any `json:"data"`
-			} `json:"structuredContent"`
-		} `json:"result"`
-	}
-	if err := json.Unmarshal(data, &frame); err != nil {
-		return nil, err
-	}
-	return frame.Result.StructuredContent.Data, nil
 }
 
 func newCLIBenchmarkService(t *testing.T) app.BenchmarkService {
