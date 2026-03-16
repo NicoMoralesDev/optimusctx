@@ -236,6 +236,60 @@ func TestEvalRunnerCapturesStepResults(t *testing.T) {
 	}
 }
 
+func TestEvalRunnerAppliesDefaultsToPartialConfiguration(t *testing.T) {
+	sourceRoot := t.TempDir()
+	fixturesRoot := filepath.Join(sourceRoot, "fixtures")
+	scenarioPath := filepath.Join(sourceRoot, "scenarios", "defaults.json")
+
+	writeEvalFixtureFile(t, filepath.Join(fixturesRoot, "go-basic", "v1", "repository", "main.go"), "package main\n")
+	writeEvalScenarioFile(t, scenarioPath, repository.EvalScenarioDefinition{
+		SchemaVersion: repository.EvalScenarioSchemaV1,
+		ID:            "defaults",
+		Version:       "v1",
+		Name:          "Defaults",
+		Fixture: repository.EvalFixtureRef{
+			ID:           "go-basic",
+			Version:      "v1",
+			Path:         "go-basic/v1/repository",
+			Materialize:  repository.EvalFixtureModeCopyTree,
+			WorkspaceDir: "workspace",
+		},
+		Steps: []repository.EvalScenarioStep{
+			{
+				ID:   "init",
+				Name: "Initialize",
+				Kind: repository.EvalStepKindCommand,
+				Expect: repository.EvalExpectedCommand{
+					Surface:  repository.EvalCommandSurfaceCLI,
+					Command:  repository.EvalCommandInit,
+					ExitCode: 0,
+				},
+			},
+		},
+	})
+
+	runner := EvalRunner{
+		RunCommand: func(_ context.Context, invocation EvalCommandInvocation) (EvalCommandExecutionResult, error) {
+			if _, err := os.Stat(filepath.Join(invocation.WorkingDir, ".git")); err != nil {
+				t.Fatalf("expected default git initialization: %v", err)
+			}
+			return EvalCommandExecutionResult{Stdout: "ok\n", ExitCode: 0}, nil
+		},
+		Now: newDeterministicEvalClock(),
+	}
+
+	result, err := runner.Run(context.Background(), EvalRunRequest{
+		ScenarioPath: scenarioPath,
+		FixturesRoot: fixturesRoot,
+	})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if result.ScenarioID != "defaults" || !result.Passed {
+		t.Fatalf("Run() result = %+v", result)
+	}
+}
+
 func writeEvalScenarioFile(t *testing.T, path string, scenario repository.EvalScenarioDefinition) {
 	t.Helper()
 

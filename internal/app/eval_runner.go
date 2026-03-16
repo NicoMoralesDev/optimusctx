@@ -70,6 +70,8 @@ func NewEvalRunner() EvalRunner {
 }
 
 func (r EvalRunner) Run(ctx context.Context, request EvalRunRequest) (repository.EvalRunResult, error) {
+	r = r.withDefaults()
+
 	if err := validateEvalRunRequest(request); err != nil {
 		return repository.EvalRunResult{}, err
 	}
@@ -167,6 +169,35 @@ func validateEvalRunRequest(request EvalRunRequest) error {
 		return errors.New("scenarios directory is required when selecting by scenario ID")
 	}
 	return nil
+}
+
+func (r EvalRunner) withDefaults() EvalRunner {
+	defaults := NewEvalRunner()
+	if r.LoadScenario == nil {
+		r.LoadScenario = defaults.LoadScenario
+	}
+	if r.LoadScenarios == nil {
+		r.LoadScenarios = defaults.LoadScenarios
+	}
+	if r.ValidateFixtureReferences == nil {
+		r.ValidateFixtureReferences = defaults.ValidateFixtureReferences
+	}
+	if r.RunCommand == nil {
+		r.RunCommand = defaults.RunCommand
+	}
+	if r.MkdirTemp == nil {
+		r.MkdirTemp = defaults.MkdirTemp
+	}
+	if r.CopyTree == nil {
+		r.CopyTree = defaults.CopyTree
+	}
+	if r.GitInit == nil {
+		r.GitInit = defaults.GitInit
+	}
+	if r.Now == nil {
+		r.Now = defaults.Now
+	}
+	return r
 }
 
 func (r EvalRunner) loadScenario(request EvalRunRequest) (repository.EvalScenarioDefinition, error) {
