@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-current_phase: 09
-current_phase_name: evaluation-harness-and-fixture-foundation
-current_plan: 4
-status: ready_for_next_phase
-stopped_at: Completed 09-04-PLAN.md
-last_updated: "2026-03-16T00:25:43.246Z"
+milestone: v1.1
+milestone_name: validation-benchmarking-and-distribution
+current_phase: 10
+current_phase_name: functional-runtime-validation
+current_plan: 1
+status: executing
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-03-16T10:29:09.125Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_plans: 8
+  completed_plans: 5
+  percent: 94
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready for next phase
-**Current Phase:** 09
-**Current Phase Name:** evaluation-harness-and-fixture-foundation
+**Status:** In Progress
+**Current Phase:** 10
+**Current Phase Name:** functional-runtime-validation
 **Total Phases:** 5
-**Current Plan:** 4
+**Current Plan:** 1
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 100%
+**Progress:** [█████████░] 94%
 **Last Activity:** 2026-03-16
-**Last Activity Description:** Phase 09 plan 04 completed with rerunnable fixture orchestration, persisted eval evidence, and truthful eval workflow docs
+**Last Activity Description:** Phase 10 plan 01 completed with typed eval assertions, committed CLI workflow scenarios, and persisted repo-local eval evidence
 
 ## Project Memory
 
@@ -44,8 +44,8 @@ progress:
 ## Current Planning Context
 
 - Active milestone: v1.1 validation, benchmarking, and distribution
-- Active phase: 09-evaluation-harness-and-fixture-foundation
-- Next planning action: start Phase 10 plan 01
+- Active phase: 10-functional-runtime-validation
+- Next planning action: start Phase 10 plan 02
 - Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
 - Coverage status: v1.0 shipped; v1.1 requirements are mapped across Phases 09-13
 
@@ -175,6 +175,7 @@ progress:
 | Phase 09 P03 | 8min | 3 tasks | 7 files |
 | Phase 09 P02 | 12min | 3 tasks | 5 files |
 | Phase 09-evaluation-harness-and-fixture-foundation P04 | 10min | 3 tasks | 7 files |
+| Phase 10-functional-runtime-validation P01 | 10m | 3 tasks | 12 files |
 
 ## Decisions Made
 
@@ -272,6 +273,8 @@ progress:
 - [Phase 09-evaluation-harness-and-fixture-foundation]: The default eval path now persists runs under the source repository's .optimusctx/eval/run-<id> tree instead of leaving evidence in temp workspaces.
 - [Phase 09-evaluation-harness-and-fixture-foundation]: Eval runner pre-creates file-artifact parent directories so real CLI commands can write deterministic outputs without manual setup.
 - [Phase 09-evaluation-harness-and-fixture-foundation]: Rerun validation now asserts deterministic repo-local paths and persisted metadata rather than byte-identical pack payloads because exports embed temp workspace roots.
+- [Phase 10]: Scenario setup stays workspace-bounded with only write, overwrite, and delete actions so future validation plans can reuse one transport-neutral contract.
+- [Phase 10]: CLI eval integration copies committed fixtures into temp repositories and verifies persisted artifacts by artifact id rather than SQLite row order.
 
 ## Blockers
 
@@ -279,8 +282,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T00:25:43.243Z
-**Stopped At:** Completed 09-04-PLAN.md
+**Last Date:** 2026-03-16T10:29:09.122Z
+**Stopped At:** Completed 10-01-PLAN.md
 **Resume File:** None
 
 ---
