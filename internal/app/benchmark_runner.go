@@ -165,7 +165,7 @@ func (r BenchmarkRunner) Run(ctx context.Context, request BenchmarkRunRequest) (
 	}
 
 	result := repository.BenchmarkRunResult{
-		SchemaVersion: repository.BenchmarkSuiteSchemaV1,
+		SchemaVersion: suite.SchemaVersion,
 		SuiteID:       suite.ID,
 		SuiteVersion:  suite.Version,
 		FixtureID:     suite.Fixture.ID,
@@ -266,7 +266,7 @@ func (r BenchmarkRunner) bootstrapTreatmentWorkspace(ctx context.Context, worksp
 }
 
 func (r BenchmarkRunner) runArm(ctx context.Context, workspaceRoot string, suite repository.BenchmarkSuiteDefinition, arm repository.BenchmarkArmDefinition) (repository.BenchmarkArmRunResult, error) {
-	state := newBenchmarkArmState(suite, r.Now)
+	state := newBenchmarkArmState(suite, arm.Kind, r.Now)
 	result := repository.BenchmarkArmRunResult{
 		Kind:      arm.Kind,
 		Name:      arm.Name,
@@ -304,10 +304,18 @@ func (r BenchmarkRunner) executeBaselineStep(workspaceRoot string, step reposito
 	action := step.Baseline
 	switch action.Kind {
 	case repository.BenchmarkBaselineActionListTree, repository.BenchmarkBaselineActionGitListFiles:
-		if _, err := walkBenchmarkFiles(workspaceRoot, action.Path); err != nil {
+		matches, err := walkBenchmarkFiles(workspaceRoot, action.Path)
+		if err != nil {
 			return err
 		}
 		state.recordBroadSearch(step.Lane)
+		for _, match := range matches {
+			state.addArtifact(step.Lane, match)
+		}
+		state.recordPathListObservation(step, matches)
+		if err := state.projectCountedInputs(workspaceRoot, step); err != nil {
+			return err
+		}
 	case repository.BenchmarkBaselineActionSearchText, repository.BenchmarkBaselineActionGitGrep:
 		matches, err := searchBenchmarkQuery(workspaceRoot, action.Path, action.Query)
 		if err != nil {
@@ -317,21 +325,20 @@ func (r BenchmarkRunner) executeBaselineStep(workspaceRoot string, step reposito
 		for _, match := range matches {
 			state.addArtifact(step.Lane, match)
 		}
+		state.recordPathListObservation(step, matches)
+		if err := state.projectCountedInputs(workspaceRoot, step); err != nil {
+			return err
+		}
 	case repository.BenchmarkBaselineActionReadFileSlice:
 		content, err := readBenchmarkFileSlice(filepath.Join(workspaceRoot, filepath.FromSlash(action.Path)), action.StartLine, action.EndLine)
 		if err != nil {
 			return err
 		}
 		state.recordFileRead(step, action.Path, int64(len(content)))
-		state.addAttribution(step.Lane, repository.BenchmarkArtifactConsumption{
-			StepID:          step.ID,
-			StepName:        step.Name,
-			Lane:            step.Lane,
-			SourceKind:      repository.BenchmarkTokenEstimateSourceBoundedFileContent,
-			ArtifactPath:    action.Path,
-			EstimatedBytes:  int64(len(content)),
-			EstimatedTokens: repository.EstimateBenchmarkTokensFromBytes(int64(len(content))),
-		})
+		state.recordFileSliceObservation(step, action.Path, content)
+		if err := state.projectCountedInputs(workspaceRoot, step); err != nil {
+			return err
+		}
 	case repository.BenchmarkBaselineActionMarkLaneComplete:
 		if err := state.markLaneComplete(workspaceRoot, step.Lane, action.Marker, startedAt); err != nil {
 			return err
@@ -376,21 +383,30 @@ func (r BenchmarkRunner) executeTreatmentStep(ctx context.Context, workspaceRoot
 			return fmt.Errorf("cli command %q exited with %d", strings.Join(invocation.Args, " "), execution.ExitCode)
 		}
 		state.recordTargetedLookup(step.Lane)
+		observation := benchmarkStepObservation{
+			outputArtifactPath: benchmarkCommandOutputArtifact(invocation.Args),
+			cliStdout:          execution.Stdout,
+			cliStderr:          execution.Stderr,
+		}
 		if strings.TrimSpace(execution.Stdout) != "" {
 			state.addArtifact(step.Lane, "stdout")
+			state.addCLIOutputProvenance(step, "stdout", execution.Stdout)
 		}
 		if strings.TrimSpace(execution.Stderr) != "" {
 			state.addArtifact(step.Lane, "stderr")
+			state.addCLIOutputProvenance(step, "stderr", execution.Stderr)
 		}
-		if artifactPath := benchmarkCommandOutputArtifact(invocation.Args); artifactPath != "" {
-			state.addArtifact(step.Lane, artifactPath)
-			if strings.EqualFold(filepath.Ext(artifactPath), ".json") || strings.EqualFold(filepath.Ext(artifactPath), ".gz") {
-				for _, attribution := range benchmarkPackExportAttribution(filepath.Join(workspaceRoot, filepath.FromSlash(artifactPath)), step) {
-					state.addAttribution(step.Lane, attribution)
-				}
+		if observation.outputArtifactPath != "" {
+			state.addArtifact(step.Lane, observation.outputArtifactPath)
+			if strings.EqualFold(filepath.Ext(observation.outputArtifactPath), ".json") || strings.EqualFold(filepath.Ext(observation.outputArtifactPath), ".gz") {
+				observation.packSections = benchmarkPackExportAttribution(filepath.Join(workspaceRoot, filepath.FromSlash(observation.outputArtifactPath)), step)
 			}
 		}
-		state.addCommandAttribution(step)
+		state.recordCLIObservation(step, observation)
+		state.addCommandProvenance(step)
+		if err := state.projectCountedInputs(workspaceRoot, step); err != nil {
+			return err
+		}
 		if err := state.tryCompleteLane(workspaceRoot, step.Lane, startedAt); err != nil {
 			return err
 		}
@@ -410,7 +426,11 @@ func (r BenchmarkRunner) executeTreatmentStep(ctx context.Context, workspaceRoot
 		if err := state.applyToolResult(step.Lane, step.Treatment.Tool, suite.Task, execution.Payload, startedAt); err != nil {
 			return err
 		}
-		state.addToolAttribution(step, execution.Payload)
+		state.recordPayloadObservation(step, execution.Payload)
+		state.addToolProvenance(step, execution.Payload)
+		if err := state.projectCountedInputs(workspaceRoot, step); err != nil {
+			return err
+		}
 		if err := state.tryCompleteLane(workspaceRoot, step.Lane, startedAt); err != nil {
 			return err
 		}
@@ -609,25 +629,50 @@ type benchmarkLaneState struct {
 	success     bool
 	effort      repository.BenchmarkLaneEffort
 	attribution []repository.BenchmarkArtifactConsumption
+	steps       map[string]benchmarkStepObservation
 }
 
 type benchmarkArmState struct {
+	armKind         repository.BenchmarkArmKind
+	countedInputs   map[string][]repository.BenchmarkCountedInputDefinition
 	lanes           map[repository.BenchmarkLane]*benchmarkLaneState
 	order           []repository.BenchmarkLane
 	nowFn           func() time.Time
 	targetStableKey string
 }
 
-func newBenchmarkArmState(suite repository.BenchmarkSuiteDefinition, nowFn func() time.Time) *benchmarkArmState {
+type benchmarkStepObservation struct {
+	artifactPath       string
+	pathMatches        []string
+	fileSliceContent   string
+	outputArtifactPath string
+	cliStdout          string
+	cliStderr          string
+	packSections       []repository.BenchmarkArtifactConsumption
+	payload            any
+}
+
+func newBenchmarkArmState(suite repository.BenchmarkSuiteDefinition, armKind repository.BenchmarkArmKind, nowFn func() time.Time) *benchmarkArmState {
 	state := &benchmarkArmState{
-		lanes: make(map[repository.BenchmarkLane]*benchmarkLaneState, len(suite.Lanes)),
-		nowFn: nowFn,
+		armKind:       armKind,
+		countedInputs: make(map[string][]repository.BenchmarkCountedInputDefinition),
+		lanes:         make(map[repository.BenchmarkLane]*benchmarkLaneState, len(suite.Lanes)),
+		nowFn:         nowFn,
 	}
 	for _, lane := range suite.Lanes {
 		lane.StartMarker = lane.StartMarkerName()
 		lane.SuccessMarker = lane.SuccessMarkerName()
-		state.lanes[lane.Name] = &benchmarkLaneState{definition: lane}
+		state.lanes[lane.Name] = &benchmarkLaneState{
+			definition: lane,
+			steps:      make(map[string]benchmarkStepObservation),
+		}
 		state.order = append(state.order, lane.Name)
+	}
+	for _, input := range suite.CountedInputs {
+		if input.ArmKind != armKind {
+			continue
+		}
+		state.countedInputs[input.StepID] = append(state.countedInputs[input.StepID], input)
 	}
 	return state
 }
@@ -723,7 +768,31 @@ func (s *benchmarkArmState) addAttribution(lane repository.BenchmarkLane, attrib
 	s.lanes[lane].attribution = append(s.lanes[lane].attribution, attribution)
 }
 
-func (s *benchmarkArmState) addToolAttribution(step repository.BenchmarkStep, payload any) {
+func (s *benchmarkArmState) addCLIOutputProvenance(step repository.BenchmarkStep, artifactPath string, output string) {
+	estimatedBytes := int64(len(strings.TrimSpace(output)))
+	if estimatedBytes == 0 {
+		return
+	}
+	attribution := repository.BenchmarkArtifactConsumption{
+		StepID:          step.ID,
+		StepName:        step.Name,
+		Lane:            step.Lane,
+		Boundary:        repository.BenchmarkEvidenceBoundarySystemProvenance,
+		Surface:         step.Treatment.Surface,
+		Command:         step.Treatment.Command,
+		SourceKind:      repository.BenchmarkTokenEstimateSourceDirectPayload,
+		ArtifactPath:    artifactPath,
+		EstimatedBytes:  estimatedBytes,
+		EstimatedTokens: repository.EstimateBenchmarkTokensFromBytes(estimatedBytes),
+	}
+	if artifactType, ok := repository.BenchmarkArtifactTypeForCommand(step.Treatment.Command); ok {
+		attribution.ArtifactType = artifactType
+		attribution.ReportLabel = repository.BenchmarkReportLabelForArtifactType(artifactType)
+	}
+	s.addAttribution(step.Lane, attribution)
+}
+
+func (s *benchmarkArmState) addToolProvenance(step repository.BenchmarkStep, payload any) {
 	artifactType, ok := repository.BenchmarkArtifactTypeForTool(step.Treatment.Tool)
 	if !ok {
 		return
@@ -734,6 +803,7 @@ func (s *benchmarkArmState) addToolAttribution(step repository.BenchmarkStep, pa
 		StepID:          step.ID,
 		StepName:        step.Name,
 		Lane:            step.Lane,
+		Boundary:        repository.BenchmarkEvidenceBoundarySystemProvenance,
 		Surface:         step.Treatment.Surface,
 		Tool:            step.Treatment.Tool,
 		ArtifactType:    artifactType,
@@ -745,7 +815,7 @@ func (s *benchmarkArmState) addToolAttribution(step repository.BenchmarkStep, pa
 	})
 }
 
-func (s *benchmarkArmState) addCommandAttribution(step repository.BenchmarkStep) {
+func (s *benchmarkArmState) addCommandProvenance(step repository.BenchmarkStep) {
 	artifactType, ok := repository.BenchmarkArtifactTypeForCommand(step.Treatment.Command)
 	if !ok {
 		return
@@ -758,12 +828,180 @@ func (s *benchmarkArmState) addCommandAttribution(step repository.BenchmarkStep)
 		StepID:       step.ID,
 		StepName:     step.Name,
 		Lane:         step.Lane,
+		Boundary:     repository.BenchmarkEvidenceBoundarySystemProvenance,
 		Surface:      step.Treatment.Surface,
 		Command:      step.Treatment.Command,
 		ArtifactType: artifactType,
 		ReportLabel:  repository.BenchmarkReportLabelForArtifactType(artifactType),
 		SourceKind:   sourceKind,
 	})
+}
+
+func (s *benchmarkArmState) recordPathListObservation(step repository.BenchmarkStep, matches []string) {
+	current := s.lanes[step.Lane].steps[step.ID]
+	current.pathMatches = append([]string(nil), matches...)
+	s.lanes[step.Lane].steps[step.ID] = current
+}
+
+func (s *benchmarkArmState) recordFileSliceObservation(step repository.BenchmarkStep, artifactPath string, content string) {
+	current := s.lanes[step.Lane].steps[step.ID]
+	current.artifactPath = artifactPath
+	current.fileSliceContent = content
+	s.lanes[step.Lane].steps[step.ID] = current
+}
+
+func (s *benchmarkArmState) recordCLIObservation(step repository.BenchmarkStep, observation benchmarkStepObservation) {
+	s.lanes[step.Lane].steps[step.ID] = observation
+}
+
+func (s *benchmarkArmState) recordPayloadObservation(step repository.BenchmarkStep, payload any) {
+	current := s.lanes[step.Lane].steps[step.ID]
+	current.payload = payload
+	current.artifactPath = benchmarkAttributionArtifactPath(payload)
+	s.lanes[step.Lane].steps[step.ID] = current
+}
+
+func (s *benchmarkArmState) projectCountedInputs(workspaceRoot string, step repository.BenchmarkStep) error {
+	for _, input := range s.countedInputs[step.ID] {
+		attribution, ok, err := s.projectCountedInput(workspaceRoot, step, input)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			continue
+		}
+		s.addAttribution(step.Lane, attribution)
+	}
+	return nil
+}
+
+func (s *benchmarkArmState) projectCountedInput(workspaceRoot string, step repository.BenchmarkStep, input repository.BenchmarkCountedInputDefinition) (repository.BenchmarkArtifactConsumption, bool, error) {
+	observation := s.lanes[step.Lane].steps[step.ID]
+	attribution := repository.BenchmarkArtifactConsumption{
+		StepID:       step.ID,
+		StepName:     step.Name,
+		Lane:         step.Lane,
+		Boundary:     repository.BenchmarkEvidenceBoundaryAgentInput,
+		ArtifactType: input.ArtifactType,
+		ReportLabel:  input.ReportLabel,
+		SourceKind:   input.SourceKind,
+		ArtifactPath: input.Path,
+	}
+	if step.Treatment != nil {
+		attribution.Surface = step.Treatment.Surface
+		attribution.Command = step.Treatment.Command
+		attribution.Tool = step.Treatment.Tool
+	}
+	if attribution.ReportLabel == "" && attribution.ArtifactType != "" {
+		attribution.ReportLabel = repository.BenchmarkReportLabelForArtifactType(attribution.ArtifactType)
+	}
+	switch input.Kind {
+	case repository.BenchmarkCountedInputKindPathList:
+		if len(observation.pathMatches) == 0 {
+			return repository.BenchmarkArtifactConsumption{}, false, nil
+		}
+		attribution.EstimatedBytes = int64(len(strings.Join(observation.pathMatches, "\n")))
+	case repository.BenchmarkCountedInputKindFileSlice:
+		content, err := readBenchmarkFileSlice(filepath.Join(workspaceRoot, filepath.FromSlash(input.Path)), input.StartLine, input.EndLine)
+		if err != nil {
+			return repository.BenchmarkArtifactConsumption{}, false, err
+		}
+		attribution.EstimatedBytes = int64(len(content))
+	case repository.BenchmarkCountedInputKindJSONFieldProjection:
+		value, ok, err := benchmarkProjectedJSONField(observation.payload, input.JSONPath)
+		if err != nil {
+			return repository.BenchmarkArtifactConsumption{}, false, err
+		}
+		if !ok {
+			return repository.BenchmarkArtifactConsumption{}, false, nil
+		}
+		projectedBytes, err := benchmarkProjectedValueBytes(value)
+		if err != nil {
+			return repository.BenchmarkArtifactConsumption{}, false, err
+		}
+		attribution.EstimatedBytes = projectedBytes
+		if attribution.ArtifactPath == "" {
+			attribution.ArtifactPath = benchmarkFirstNonEmpty(observation.outputArtifactPath, observation.artifactPath)
+		}
+	case repository.BenchmarkCountedInputKindTextOutput:
+		text, ok := benchmarkProjectedText(observation)
+		if !ok {
+			return repository.BenchmarkArtifactConsumption{}, false, nil
+		}
+		attribution.EstimatedBytes = int64(len(text))
+	case repository.BenchmarkCountedInputKindPackSection:
+		total := int64(0)
+		found := false
+		for _, section := range observation.packSections {
+			if section.SourceKind != repository.BenchmarkTokenEstimateSourcePackExportSection {
+				continue
+			}
+			found = true
+			total += section.EstimatedTokens
+		}
+		if !found {
+			return repository.BenchmarkArtifactConsumption{}, false, nil
+		}
+		attribution.EstimatedTokens = total
+		attribution.ArtifactPath = benchmarkFirstNonEmpty(input.Path, observation.outputArtifactPath)
+	default:
+		return repository.BenchmarkArtifactConsumption{}, false, nil
+	}
+	if attribution.EstimatedBytes == 0 && attribution.EstimatedTokens == 0 {
+		return repository.BenchmarkArtifactConsumption{}, false, nil
+	}
+	return attribution, true, nil
+}
+
+func benchmarkProjectedJSONField(payload any, jsonPath string) (any, bool, error) {
+	if payload == nil {
+		return nil, false, nil
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return nil, false, err
+	}
+	value, ok, err := evalJSONField(string(data), jsonPath)
+	if err != nil {
+		return nil, false, err
+	}
+	return value, ok, nil
+}
+
+func benchmarkProjectedValueBytes(value any) (int64, error) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return 0, err
+	}
+	return int64(len(data)), nil
+}
+
+func benchmarkProjectedText(observation benchmarkStepObservation) (string, bool) {
+	if observation.fileSliceContent != "" {
+		return observation.fileSliceContent, true
+	}
+	if observation.payload != nil {
+		var contextResult repository.TargetedContextResult
+		if err := decodeBenchmarkPayload(observation.payload, &contextResult); err == nil && len(contextResult.Source) > 0 {
+			return strings.Join(contextResult.Source, "\n"), true
+		}
+	}
+	if strings.TrimSpace(observation.cliStdout) != "" {
+		return strings.TrimSpace(observation.cliStdout), true
+	}
+	if strings.TrimSpace(observation.cliStderr) != "" {
+		return strings.TrimSpace(observation.cliStderr), true
+	}
+	return "", false
+}
+
+func benchmarkFirstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func (s *benchmarkArmState) evaluateLaneAssertions(workspaceRoot string, lane repository.BenchmarkLane) error {

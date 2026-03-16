@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -22,10 +21,11 @@ func TestBenchmarkBaselineRules(t *testing.T) {
 
 	writeEvalFixtureFile(t, filepath.Join(fixturesRoot, "go-benchmark", "v1", "repository", "go.mod"), "module fixture/benchmark\n\ngo 1.23.0\n")
 	writeBenchmarkSuiteFile(t, filepath.Join(suitesDir, "invalid.json"), repository.BenchmarkSuiteDefinition{
-		SchemaVersion: repository.BenchmarkSuiteSchemaV1,
-		ID:            "invalid-baseline-v1",
-		Version:       "v1",
+		SchemaVersion: repository.BenchmarkSuiteSchemaV2,
+		ID:            "invalid-baseline-v2",
+		Version:       "v2",
 		Name:          "Invalid baseline",
+		Boundary:      repository.DefaultBenchmarkBoundaryContract(),
 		Fixture: repository.EvalFixtureRef{
 			ID:          "go-benchmark",
 			Version:     "v1",
@@ -36,7 +36,31 @@ func TestBenchmarkBaselineRules(t *testing.T) {
 			ID:         "target",
 			Prompt:     "Find the rollout handler",
 			TargetPath: "internal/http/handler/rollout.go",
+			FinalArtifact: &repository.BenchmarkFinalArtifactContract{
+				ID:     "target-locator",
+				Name:   "Target locator",
+				Kind:   repository.BenchmarkFinalArtifactKindTargetLocator,
+				Path:   "artifacts/target.json",
+				Format: repository.BenchmarkFinalArtifactFormatJSON,
+				Normalization: repository.BenchmarkFinalArtifactNormalization{
+					Mode:      repository.BenchmarkFinalArtifactNormalizationModeJSONFields,
+					JSONPaths: []string{"path"},
+				},
+				Assertions: []repository.BenchmarkFinalArtifactAssertion{
+					{Kind: repository.EvalAssertionKindJSONFieldPresent, Path: "path"},
+				},
+			},
 		},
+		CountedInputs: []repository.BenchmarkCountedInputDefinition{{
+			ID:         "baseline-search",
+			ArmKind:    repository.BenchmarkArmKindBaseline,
+			Lane:       repository.BenchmarkLaneDiscovery,
+			StepID:     "bad",
+			Name:       "Baseline discovery paths",
+			Kind:       repository.BenchmarkCountedInputKindPathList,
+			SourceKind: repository.BenchmarkTokenEstimateSourcePathEstimate,
+			Path:       "internal",
+		}},
 		Lanes: []repository.BenchmarkLaneDefinition{
 			{
 				Name: repository.BenchmarkLaneDiscovery,
@@ -301,6 +325,7 @@ func TestBenchmarkRefreshAfterChangeLane(t *testing.T) {
 		}
 		return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
 	}
+	runner.RunTool = benchmarkMutationToolExecutor(t)
 
 	result, err := runner.Run(context.Background(), BenchmarkRunRequest{
 		SuitePath:     writeBenchmarkMutationSuite(t),
@@ -322,7 +347,7 @@ func TestBenchmarkRefreshAfterChangeLane(t *testing.T) {
 	}
 }
 
-func TestBenchmarkTokenEstimation(t *testing.T) {
+func TestBenchmarkAgentInputProjection(t *testing.T) {
 	t.Parallel()
 
 	now := time.Date(2026, 3, 16, 12, 0, 0, 0, time.UTC)
@@ -366,34 +391,70 @@ func TestBenchmarkTokenEstimation(t *testing.T) {
 			return BenchmarkToolExecutionResult{}, nil
 		}
 	}
+	suitePath := filepath.Join(t.TempDir(), "suite.json")
+	writeBenchmarkSuiteFile(t, suitePath, validBenchmarkSuite())
 
 	result, err := runner.Run(context.Background(), BenchmarkRunRequest{
-		SuiteID:      "go-benchmark-discovery-v1",
-		SuitesDir:    filepath.Join("..", "..", "testdata", "eval", "benchmarks"),
+		SuitePath:    suitePath,
 		FixturesRoot: filepath.Join("..", "..", "testdata", "eval", "fixtures"),
 	})
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
-	baselineContext := result.Arms[0].LaneResults[1]
-	if len(baselineContext.Attribution) != 2 {
-		t.Fatalf("baseline context attribution = %+v, want 2 records", baselineContext.Attribution)
+	baselineDiscovery := result.Arms[0].LaneResults[0]
+	if len(baselineDiscovery.Attribution) != 1 {
+		t.Fatalf("baseline discovery attribution = %+v, want 1 counted-input record", baselineDiscovery.Attribution)
 	}
-	for _, got := range baselineContext.Attribution {
-		if got.SourceKind != repository.BenchmarkTokenEstimateSourceBoundedFileContent {
-			t.Fatalf("baseline source kind = %q", got.SourceKind)
-		}
-		if got.EstimatedBytes == 0 || got.EstimatedTokens == 0 {
-			t.Fatalf("baseline attribution = %+v, want estimated bytes/tokens", got)
-		}
+	if baselineDiscovery.Attribution[0].Boundary != repository.BenchmarkEvidenceBoundaryAgentInput {
+		t.Fatalf("baseline discovery boundary = %q", baselineDiscovery.Attribution[0].Boundary)
+	}
+	if baselineDiscovery.Attribution[0].SourceKind != repository.BenchmarkTokenEstimateSourcePathEstimate {
+		t.Fatalf("baseline discovery source kind = %q", baselineDiscovery.Attribution[0].SourceKind)
+	}
+
+	baselineContext := result.Arms[0].LaneResults[1]
+	if len(baselineContext.Attribution) != 1 {
+		t.Fatalf("baseline context attribution = %+v, want 1 counted-input record", baselineContext.Attribution)
+	}
+	if baselineContext.Attribution[0].Boundary != repository.BenchmarkEvidenceBoundaryAgentInput {
+		t.Fatalf("baseline context boundary = %q", baselineContext.Attribution[0].Boundary)
+	}
+	if baselineContext.Attribution[0].SourceKind != repository.BenchmarkTokenEstimateSourceBoundedFileContent {
+		t.Fatalf("baseline source kind = %q", baselineContext.Attribution[0].SourceKind)
+	}
+	if baselineContext.Attribution[0].EstimatedBytes == 0 || baselineContext.Attribution[0].EstimatedTokens == 0 {
+		t.Fatalf("baseline attribution = %+v, want estimated bytes/tokens", baselineContext.Attribution[0])
+	}
+
+	treatmentDiscovery := result.Arms[1].LaneResults[0]
+	if len(treatmentDiscovery.Attribution) != 3 {
+		t.Fatalf("treatment discovery attribution = %+v, want raw repository-map + raw lookup + projected lookup", treatmentDiscovery.Attribution)
+	}
+	if treatmentDiscovery.Attribution[0].Boundary != repository.BenchmarkEvidenceBoundarySystemProvenance {
+		t.Fatalf("repository map boundary = %q", treatmentDiscovery.Attribution[0].Boundary)
+	}
+	if treatmentDiscovery.Attribution[1].Boundary != repository.BenchmarkEvidenceBoundarySystemProvenance {
+		t.Fatalf("symbol lookup provenance boundary = %q", treatmentDiscovery.Attribution[1].Boundary)
+	}
+	if treatmentDiscovery.Attribution[2].Boundary != repository.BenchmarkEvidenceBoundaryAgentInput {
+		t.Fatalf("symbol lookup boundary = %q", treatmentDiscovery.Attribution[2].Boundary)
+	}
+	if treatmentDiscovery.Attribution[2].ArtifactType != repository.BenchmarkArtifactTypeExactLookup {
+		t.Fatalf("lookup artifact type = %q", treatmentDiscovery.Attribution[2].ArtifactType)
 	}
 
 	treatmentContext := result.Arms[1].LaneResults[1]
-	if len(treatmentContext.Attribution) != 1 {
-		t.Fatalf("treatment context attribution = %+v, want 1 record", treatmentContext.Attribution)
+	if len(treatmentContext.Attribution) != 2 {
+		t.Fatalf("treatment context attribution = %+v, want provenance plus counted projection", treatmentContext.Attribution)
 	}
-	got := treatmentContext.Attribution[0]
+	if treatmentContext.Attribution[0].Boundary != repository.BenchmarkEvidenceBoundarySystemProvenance {
+		t.Fatalf("targeted_context provenance boundary = %q", treatmentContext.Attribution[0].Boundary)
+	}
+	got := treatmentContext.Attribution[1]
+	if got.Boundary != repository.BenchmarkEvidenceBoundaryAgentInput {
+		t.Fatalf("counted context boundary = %q", got.Boundary)
+	}
 	if got.Tool != "optimusctx.targeted_context" {
 		t.Fatalf("treatment tool = %q", got.Tool)
 	}
@@ -414,7 +475,7 @@ func TestBenchmarkTokenEstimation(t *testing.T) {
 	}
 }
 
-func TestBenchmarkStepArtifactAttribution(t *testing.T) {
+func TestBenchmarkAttributionBoundary(t *testing.T) {
 	t.Parallel()
 
 	clock := newDeterministicBenchmarkClock()
@@ -424,29 +485,9 @@ func TestBenchmarkStepArtifactAttribution(t *testing.T) {
 	runner.CopyTree = func(src string, dst string) error { return copyEvalTree(src, dst) }
 	runner.GitInit = func(context.Context, string) error { return nil }
 	runner.RunCommand = func(_ context.Context, invocation BenchmarkCommandInvocation) (BenchmarkCommandExecutionResult, error) {
-		if len(invocation.Args) >= 2 && strings.Join(invocation.Args[:2], " ") == "pack export" {
-			outputPath := filepath.Join(invocation.WorkingDir, "artifacts", "pack.json")
-			artifact := repository.PackExportArtifact{
-				Manifest: repository.PackExportManifest{
-					IncludedSections: []repository.PackExportSectionRecord{
-						{Kind: repository.PackExportSectionRepositoryContext, Included: true, EstimatedTokens: 18},
-						{Kind: repository.PackExportSectionTargetContext, Included: true, EstimatedTokens: 22},
-					},
-				},
-			}
-			content, err := json.Marshal(artifact)
-			if err != nil {
-				return BenchmarkCommandExecutionResult{}, err
-			}
-			if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
-				return BenchmarkCommandExecutionResult{}, err
-			}
-			if err := os.WriteFile(outputPath, content, 0o644); err != nil {
-				return BenchmarkCommandExecutionResult{}, err
-			}
-		}
-		return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
+		return BenchmarkCommandExecutionResult{ExitCode: 0, Stdout: "refresh completed\n"}, nil
 	}
+	runner.RunTool = benchmarkMutationToolExecutor(t)
 
 	result, err := runner.Run(context.Background(), BenchmarkRunRequest{
 		SuitePath:     writeBenchmarkMutationSuite(t),
@@ -458,36 +499,50 @@ func TestBenchmarkStepArtifactAttribution(t *testing.T) {
 	}
 
 	refreshLane := result.Arms[1].LaneResults[0]
-	if len(refreshLane.Attribution) != 1 {
-		t.Fatalf("refresh lane attribution = %+v, want 1 record", refreshLane.Attribution)
+	if len(refreshLane.Attribution) != 4 {
+		t.Fatalf("refresh lane attribution = %+v, want provenance plus counted health projection", refreshLane.Attribution)
 	}
-	if refreshLane.Attribution[0].Command != repository.EvalCommandRefresh {
-		t.Fatalf("refresh command = %q", refreshLane.Attribution[0].Command)
+	var foundRefreshOutput bool
+	var foundRefreshMarker bool
+	var foundHealthProvenance bool
+	var foundHealthProjection bool
+	for _, record := range refreshLane.Attribution {
+		switch {
+		case record.StepID == "refresh" && record.Command == repository.EvalCommandRefresh && record.Boundary == repository.BenchmarkEvidenceBoundarySystemProvenance && record.EstimatedTokens > 0:
+			foundRefreshOutput = true
+		case record.StepID == "refresh" && record.Command == repository.EvalCommandRefresh && record.Boundary == repository.BenchmarkEvidenceBoundarySystemProvenance && record.EstimatedTokens == 0:
+			foundRefreshMarker = true
+		case record.StepID == "health" && record.Tool == "optimusctx.health" && record.Boundary == repository.BenchmarkEvidenceBoundarySystemProvenance:
+			foundHealthProvenance = true
+		case record.StepID == "health" && record.Tool == "optimusctx.health" && record.Boundary == repository.BenchmarkEvidenceBoundaryAgentInput:
+			foundHealthProjection = true
+		}
 	}
-	if refreshLane.Attribution[0].ArtifactType != repository.BenchmarkArtifactTypeRefresh {
-		t.Fatalf("refresh artifact type = %q", refreshLane.Attribution[0].ArtifactType)
+	if !foundRefreshOutput || !foundRefreshMarker || !foundHealthProvenance || !foundHealthProjection {
+		t.Fatalf("refresh lane attribution = %+v, want refresh output + refresh marker + raw health + projected health summary", refreshLane.Attribution)
 	}
 
 	taskLane := result.Arms[1].LaneResults[1]
-	if len(taskLane.Attribution) != 3 {
-		t.Fatalf("task lane attribution = %+v, want 3 records", taskLane.Attribution)
+	if len(taskLane.Attribution) != 2 {
+		t.Fatalf("task lane attribution = %+v, want provenance plus counted context projection", taskLane.Attribution)
 	}
-	for _, record := range taskLane.Attribution {
-		if record.StepID != "pack" {
-			t.Fatalf("step id = %q, want pack", record.StepID)
-		}
-		if record.ArtifactType != repository.BenchmarkArtifactTypePackExport {
-			t.Fatalf("artifact type = %q, want pack_export", record.ArtifactType)
-		}
+	if taskLane.Attribution[0].Boundary != repository.BenchmarkEvidenceBoundarySystemProvenance {
+		t.Fatalf("task provenance boundary = %q", taskLane.Attribution[0].Boundary)
 	}
-	if taskLane.Attribution[0].SourceKind != repository.BenchmarkTokenEstimateSourcePackExportSection {
-		t.Fatalf("source kind = %q", taskLane.Attribution[0].SourceKind)
+	if taskLane.Attribution[1].StepID != "context" {
+		t.Fatalf("step id = %q, want context", taskLane.Attribution[1].StepID)
 	}
-	if taskLane.Attribution[0].EstimatedTokens != 18 || taskLane.Attribution[1].EstimatedTokens != 22 {
-		t.Fatalf("pack export section tokens = [%d %d]", taskLane.Attribution[0].EstimatedTokens, taskLane.Attribution[1].EstimatedTokens)
+	if taskLane.Attribution[1].Boundary != repository.BenchmarkEvidenceBoundaryAgentInput {
+		t.Fatalf("task counted boundary = %q", taskLane.Attribution[1].Boundary)
 	}
-	if taskLane.Attribution[2].EstimatedTokens != 0 {
-		t.Fatalf("command attribution = %+v, want zero-token command record", taskLane.Attribution[2])
+	if taskLane.Attribution[1].ArtifactType != repository.BenchmarkArtifactTypeL2Context {
+		t.Fatalf("artifact type = %q, want l2_context", taskLane.Attribution[1].ArtifactType)
+	}
+	if taskLane.Attribution[1].SourceKind != repository.BenchmarkTokenEstimateSourceDirectPayload {
+		t.Fatalf("source kind = %q", taskLane.Attribution[1].SourceKind)
+	}
+	if taskLane.Attribution[1].EstimatedTokens == 0 {
+		t.Fatalf("context attribution = %+v, want non-zero estimated tokens", taskLane.Attribution[1])
 	}
 }
 
@@ -506,12 +561,9 @@ func TestBenchmarkTaskCompletionLane(t *testing.T) {
 		if reflect.DeepEqual(invocation.Args, []string{"refresh"}) {
 			return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
 		}
-		if reflect.DeepEqual(invocation.Args, []string{"pack", "export", "--format", "json", "--output", "artifacts/pack.json"}) {
-			writeEvalFixtureFile(t, filepath.Join(invocation.WorkingDir, "artifacts", "pack.json"), "{\"documents\":[\"docs/notes.txt\"]}\n")
-			return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
-		}
 		return BenchmarkCommandExecutionResult{}, nil
 	}
+	runner.RunTool = benchmarkMutationToolExecutor(t)
 
 	result, err := runner.Run(context.Background(), BenchmarkRunRequest{
 		SuitePath:     writeBenchmarkMutationSuite(t),
@@ -525,7 +577,7 @@ func TestBenchmarkTaskCompletionLane(t *testing.T) {
 	if !taskLane.Success {
 		t.Fatalf("task lane = %+v, want success", taskLane)
 	}
-	if !strings.Contains(strings.Join(taskLane.EvidencePaths, ","), "artifacts/pack.json") {
+	if !strings.Contains(strings.Join(taskLane.EvidencePaths, ","), "docs/notes.txt") {
 		t.Fatalf("task evidence = %+v", taskLane.EvidencePaths)
 	}
 }
@@ -541,12 +593,9 @@ func TestBenchmarkRepeatedRuns(t *testing.T) {
 		if reflect.DeepEqual(invocation.Args, []string{"refresh"}) {
 			return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
 		}
-		if reflect.DeepEqual(invocation.Args, []string{"pack", "export", "--format", "json", "--output", "artifacts/pack.json"}) {
-			writeEvalFixtureFile(t, filepath.Join(invocation.WorkingDir, "artifacts", "pack.json"), "{\"documents\":[\"docs/notes.txt\"]}\n")
-			return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
-		}
 		return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
 	}
+	service.Runner.RunTool = benchmarkMutationToolExecutor(t)
 
 	result, err := service.RunRepeated(context.Background(), BenchmarkRepeatedRunRequest{
 		StartPath:     repoRoot,
@@ -582,10 +631,11 @@ func TestBenchmarkRepeatedRuns(t *testing.T) {
 
 func validBenchmarkSuite() repository.BenchmarkSuiteDefinition {
 	return repository.BenchmarkSuiteDefinition{
-		SchemaVersion: repository.BenchmarkSuiteSchemaV1,
+		SchemaVersion: repository.BenchmarkSuiteSchemaV2,
 		ID:            "go-benchmark-discovery-v1",
 		Version:       "v1",
 		Name:          "Go benchmark discovery and context assembly",
+		Boundary:      repository.DefaultBenchmarkBoundaryContract(),
 		Fixture: repository.EvalFixtureRef{
 			ID:          "go-benchmark",
 			Version:     "v1",
@@ -593,12 +643,59 @@ func validBenchmarkSuite() repository.BenchmarkSuiteDefinition {
 			Materialize: repository.EvalFixtureModeCopyTree,
 		},
 		Task: repository.BenchmarkTaskDefinition{
-			ID:                 "handler-owner",
-			Prompt:             "Find the rollout handler owner and assemble the exact surrounding context.",
-			TargetPath:         "internal/http/handler/rollout.go",
-			TargetSymbol:       "LoadRolloutConfig",
-			ContextPaths:       []string{"internal/http/handler/rollout.go", "internal/config/loader.go"},
-			CompletionArtifact: "artifacts/context-pack.txt",
+			ID:           "handler-owner",
+			Prompt:       "Find the rollout handler owner and assemble the exact surrounding context.",
+			TargetPath:   "internal/http/handler/rollout.go",
+			TargetSymbol: "LoadRolloutConfig",
+			ContextPaths: []string{"internal/http/handler/rollout.go", "internal/config/loader.go"},
+		},
+		CountedInputs: []repository.BenchmarkCountedInputDefinition{
+			{
+				ID:         "baseline-discovery-paths",
+				ArmKind:    repository.BenchmarkArmKindBaseline,
+				Lane:       repository.BenchmarkLaneDiscovery,
+				StepID:     "search",
+				Name:       "Baseline discovery search results",
+				Kind:       repository.BenchmarkCountedInputKindPathList,
+				SourceKind: repository.BenchmarkTokenEstimateSourcePathEstimate,
+				Path:       "internal",
+			},
+			{
+				ID:         "baseline-context-slice",
+				ArmKind:    repository.BenchmarkArmKindBaseline,
+				Lane:       repository.BenchmarkLaneContextAssembly,
+				StepID:     "read",
+				Name:       "Baseline rollout handler slice",
+				Kind:       repository.BenchmarkCountedInputKindFileSlice,
+				SourceKind: repository.BenchmarkTokenEstimateSourceBoundedFileContent,
+				Path:       "internal/http/handler/rollout.go",
+				StartLine:  1,
+				EndLine:    80,
+			},
+			{
+				ID:           "treatment-symbol-path",
+				ArmKind:      repository.BenchmarkArmKindOptimusCtx,
+				Lane:         repository.BenchmarkLaneDiscovery,
+				StepID:       "lookup",
+				Name:         "Projected symbol lookup match",
+				Kind:         repository.BenchmarkCountedInputKindJSONFieldProjection,
+				SourceKind:   repository.BenchmarkTokenEstimateSourceDirectPayload,
+				ArtifactType: repository.BenchmarkArtifactTypeExactLookup,
+				ReportLabel:  repository.BenchmarkReportArtifactLabelExactLookup,
+				JSONPath:     "Matches.0.Path",
+			},
+			{
+				ID:           "treatment-context",
+				ArmKind:      repository.BenchmarkArmKindOptimusCtx,
+				Lane:         repository.BenchmarkLaneContextAssembly,
+				StepID:       "context",
+				Name:         "Treatment targeted context",
+				Kind:         repository.BenchmarkCountedInputKindTextOutput,
+				SourceKind:   repository.BenchmarkTokenEstimateSourceDirectPayload,
+				ArtifactType: repository.BenchmarkArtifactTypeL2Context,
+				ReportLabel:  repository.BenchmarkReportArtifactLabelL2Context,
+				Path:         "artifacts/context.txt",
+			},
 		},
 		Lanes: []repository.BenchmarkLaneDefinition{
 			{
@@ -608,6 +705,20 @@ func validBenchmarkSuite() repository.BenchmarkSuiteDefinition {
 				StopCondition: repository.BenchmarkStopCondition{
 					Kind:   repository.BenchmarkStopConditionKindMarker,
 					Marker: "target_identified",
+				},
+				FinalArtifact: &repository.BenchmarkFinalArtifactContract{
+					ID:     "target-locator",
+					Name:   "Target locator",
+					Kind:   repository.BenchmarkFinalArtifactKindTargetLocator,
+					Path:   "artifacts/target.json",
+					Format: repository.BenchmarkFinalArtifactFormatJSON,
+					Normalization: repository.BenchmarkFinalArtifactNormalization{
+						Mode:      repository.BenchmarkFinalArtifactNormalizationModeJSONFields,
+						JSONPaths: []string{"path", "symbol"},
+					},
+					Assertions: []repository.BenchmarkFinalArtifactAssertion{
+						{Kind: repository.EvalAssertionKindJSONFieldPresent, Path: "path"},
+					},
 				},
 				Metrics: []repository.BenchmarkMetric{
 					repository.BenchmarkMetricBroadSearchActions,
@@ -621,6 +732,20 @@ func validBenchmarkSuite() repository.BenchmarkSuiteDefinition {
 				StopCondition: repository.BenchmarkStopCondition{
 					Kind:   repository.BenchmarkStopConditionKindMarker,
 					Marker: "context_ready",
+				},
+				FinalArtifact: &repository.BenchmarkFinalArtifactContract{
+					ID:     "context-bundle",
+					Name:   "Context bundle",
+					Kind:   repository.BenchmarkFinalArtifactKindContextBundle,
+					Path:   "artifacts/context.txt",
+					Format: repository.BenchmarkFinalArtifactFormatText,
+					Normalization: repository.BenchmarkFinalArtifactNormalization{
+						Mode:           repository.BenchmarkFinalArtifactNormalizationModeTextTrimmed,
+						TrimWhitespace: true,
+					},
+					Assertions: []repository.BenchmarkFinalArtifactAssertion{
+						{Kind: repository.EvalAssertionKindContains, Contains: "LoadRolloutConfig"},
+					},
 				},
 				Metrics: []repository.BenchmarkMetric{
 					repository.BenchmarkMetricFileReadActions,
@@ -726,10 +851,11 @@ func writeBenchmarkMutationSuite(t *testing.T) string {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "suite.json")
 	writeBenchmarkSuiteFile(t, path, repository.BenchmarkSuiteDefinition{
-		SchemaVersion: repository.BenchmarkSuiteSchemaV1,
+		SchemaVersion: repository.BenchmarkSuiteSchemaV2,
 		ID:            "go-benchmark-refresh-v1",
 		Version:       "v1",
 		Name:          "Go benchmark refresh and task completion",
+		Boundary:      repository.DefaultBenchmarkBoundaryContract(),
 		Fixture: repository.EvalFixtureRef{
 			ID:          "go-worktree",
 			Version:     "v1",
@@ -737,10 +863,57 @@ func writeBenchmarkMutationSuite(t *testing.T) string {
 			Materialize: repository.EvalFixtureModeCopyTree,
 		},
 		Task: repository.BenchmarkTaskDefinition{
-			ID:                 "docs-pack",
-			Prompt:             "Refresh after change and export a pack artifact.",
-			TargetPath:         "docs/notes.txt",
-			CompletionArtifact: "artifacts/pack.json",
+			ID:         "docs-context",
+			Prompt:     "Refresh after change and fetch the bounded updated notes context.",
+			TargetPath: "docs/notes.txt",
+		},
+		CountedInputs: []repository.BenchmarkCountedInputDefinition{
+			{
+				ID:         "baseline-refresh-paths",
+				ArmKind:    repository.BenchmarkArmKindBaseline,
+				Lane:       repository.BenchmarkLaneRefreshReady,
+				StepID:     "grep-note",
+				Name:       "Baseline mutated note matches",
+				Kind:       repository.BenchmarkCountedInputKindPathList,
+				SourceKind: repository.BenchmarkTokenEstimateSourcePathEstimate,
+				Path:       "docs/notes.txt",
+			},
+			{
+				ID:           "treatment-health-summary",
+				ArmKind:      repository.BenchmarkArmKindOptimusCtx,
+				Lane:         repository.BenchmarkLaneRefreshReady,
+				StepID:       "health",
+				Name:         "Projected health freshness",
+				Kind:         repository.BenchmarkCountedInputKindJSONFieldProjection,
+				SourceKind:   repository.BenchmarkTokenEstimateSourceDirectPayload,
+				ArtifactType: repository.BenchmarkArtifactTypeHealth,
+				ReportLabel:  repository.BenchmarkReportArtifactLabelOperational,
+				JSONPath:     "freshness",
+			},
+			{
+				ID:         "baseline-task-slice",
+				ArmKind:    repository.BenchmarkArmKindBaseline,
+				Lane:       repository.BenchmarkLaneTaskCompletion,
+				StepID:     "read-docs",
+				Name:       "Baseline updated docs slice",
+				Kind:       repository.BenchmarkCountedInputKindFileSlice,
+				SourceKind: repository.BenchmarkTokenEstimateSourceBoundedFileContent,
+				Path:       "docs/notes.txt",
+				StartLine:  1,
+				EndLine:    20,
+			},
+			{
+				ID:           "treatment-context",
+				ArmKind:      repository.BenchmarkArmKindOptimusCtx,
+				Lane:         repository.BenchmarkLaneTaskCompletion,
+				StepID:       "context",
+				Name:         "Treatment bounded updated notes context",
+				Kind:         repository.BenchmarkCountedInputKindTextOutput,
+				SourceKind:   repository.BenchmarkTokenEstimateSourceDirectPayload,
+				ArtifactType: repository.BenchmarkArtifactTypeL2Context,
+				ReportLabel:  repository.BenchmarkReportArtifactLabelL2Context,
+				Path:         "artifacts/updated-notes.txt",
+			},
 		},
 		Lanes: []repository.BenchmarkLaneDefinition{
 			{
@@ -759,6 +932,20 @@ func writeBenchmarkMutationSuite(t *testing.T) string {
 					Kind:   repository.BenchmarkStopConditionKindMarker,
 					Marker: "refresh_ready",
 				},
+				FinalArtifact: &repository.BenchmarkFinalArtifactContract{
+					ID:     "refresh-readiness",
+					Name:   "Refresh readiness summary",
+					Kind:   repository.BenchmarkFinalArtifactKindReadinessSummary,
+					Path:   "artifacts/readiness.json",
+					Format: repository.BenchmarkFinalArtifactFormatJSON,
+					Normalization: repository.BenchmarkFinalArtifactNormalization{
+						Mode:      repository.BenchmarkFinalArtifactNormalizationModeJSONFields,
+						JSONPaths: []string{"freshness", "targetReady"},
+					},
+					Assertions: []repository.BenchmarkFinalArtifactAssertion{
+						{Kind: repository.EvalAssertionKindJSONFieldPresent, Path: "targetReady"},
+					},
+				},
 				Metrics: []repository.BenchmarkMetric{
 					repository.BenchmarkMetricTargetedLookupActions,
 					repository.BenchmarkMetricConsultedArtifacts,
@@ -775,6 +962,20 @@ func writeBenchmarkMutationSuite(t *testing.T) string {
 					Kind:   repository.BenchmarkStopConditionKindMarker,
 					Marker: "task_complete",
 				},
+				FinalArtifact: &repository.BenchmarkFinalArtifactContract{
+					ID:     "updated-notes-context",
+					Name:   "Updated notes context",
+					Kind:   repository.BenchmarkFinalArtifactKindTaskOutput,
+					Path:   "artifacts/updated-notes.txt",
+					Format: repository.BenchmarkFinalArtifactFormatText,
+					Normalization: repository.BenchmarkFinalArtifactNormalization{
+						Mode:           repository.BenchmarkFinalArtifactNormalizationModeTextTrimmed,
+						TrimWhitespace: true,
+					},
+					Assertions: []repository.BenchmarkFinalArtifactAssertion{
+						{Kind: repository.EvalAssertionKindContains, Contains: "mutated benchmark note"},
+					},
+				},
 				Metrics: []repository.BenchmarkMetric{
 					repository.BenchmarkMetricFileReadActions,
 					repository.BenchmarkMetricBytesRead,
@@ -786,6 +987,14 @@ func writeBenchmarkMutationSuite(t *testing.T) string {
 				Kind: repository.BenchmarkArmKindBaseline,
 				Name: "Baseline",
 				Steps: []repository.BenchmarkStep{
+					{
+						ID:   "git-files",
+						Name: "Inspect tracked files",
+						Lane: repository.BenchmarkLaneRefreshReady,
+						Baseline: &repository.BenchmarkBaselineAction{
+							Kind: repository.BenchmarkBaselineActionGitListFiles,
+						},
+					},
 					{
 						ID:   "grep-note",
 						Name: "Search mutated note",
@@ -840,13 +1049,21 @@ func writeBenchmarkMutationSuite(t *testing.T) string {
 						},
 					},
 					{
-						ID:   "pack",
-						Name: "Export pack",
+						ID:   "health",
+						Name: "Check repository health",
+						Lane: repository.BenchmarkLaneRefreshReady,
+						Treatment: &repository.BenchmarkTreatmentAction{
+							Surface: repository.BenchmarkTreatmentSurfaceMCP,
+							Tool:    "optimusctx.health",
+						},
+					},
+					{
+						ID:   "context",
+						Name: "Fetch bounded updated notes context",
 						Lane: repository.BenchmarkLaneTaskCompletion,
 						Treatment: &repository.BenchmarkTreatmentAction{
-							Surface: repository.BenchmarkTreatmentSurfaceCLI,
-							Command: repository.EvalCommandPackExport,
-							Args:    []string{"--format", "json", "--output", "artifacts/pack.json"},
+							Surface: repository.BenchmarkTreatmentSurfaceMCP,
+							Tool:    "optimusctx.targeted_context",
 						},
 					},
 				},
@@ -863,5 +1080,27 @@ func newDeterministicBenchmarkClock() func() time.Time {
 		current := base.Add(time.Duration(tick) * 250 * time.Millisecond)
 		tick++
 		return current
+	}
+}
+
+func benchmarkMutationToolExecutor(t *testing.T) BenchmarkToolExecutor {
+	t.Helper()
+
+	return func(_ context.Context, invocation BenchmarkToolInvocation) (BenchmarkToolExecutionResult, error) {
+		switch invocation.Name {
+		case "optimusctx.health":
+			return BenchmarkToolExecutionResult{Payload: map[string]any{
+				"freshness": "fresh",
+				"state":     "ready",
+			}}, nil
+		case "optimusctx.targeted_context":
+			return BenchmarkToolExecutionResult{Payload: repository.TargetedContextResult{
+				Path:   "docs/notes.txt",
+				Source: []string{"mutated benchmark note"},
+			}}, nil
+		default:
+			t.Fatalf("unexpected tool %q", invocation.Name)
+			return BenchmarkToolExecutionResult{}, nil
+		}
 	}
 }
