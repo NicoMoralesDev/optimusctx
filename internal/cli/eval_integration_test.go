@@ -326,6 +326,53 @@ func TestBenchmarkReportWordingGuards(t *testing.T) {
 	})
 }
 
+func TestBenchmarkMilestoneVerification(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "export", "--suite", "go-benchmark-refresh-v1", "--attempts", "2"}, &stdout); err != nil {
+			t.Fatalf("Execute(eval benchmark export) error = %v", err)
+		}
+
+		stdout.Reset()
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "verify", "--suite", "go-benchmark-refresh-v1", "--attempts", "2"}, &stdout); err != nil {
+			t.Fatalf("Execute(eval benchmark verify) error = %v", err)
+		}
+		output := stdout.String()
+		assertContains(t, output, "benchmark milestone verification")
+		assertContains(t, output, "status: passed")
+		assertContains(t, output, "reproducibility verification: passed")
+		assertContains(t, output, "report wording verification: passed")
+		assertContains(t, output, "methodology fingerprint:")
+	})
+}
+
+func TestBenchmarkVerificationWordingGuards(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "export", "--suite", "go-benchmark-refresh-v1", "--attempts", "2"}, &stdout); err != nil {
+			t.Fatalf("Execute(eval benchmark export) error = %v", err)
+		}
+
+		stdout.Reset()
+		if err := NewRootCommand().Execute([]string{"eval", "benchmark", "verify", "--suite", "go-benchmark-refresh-v1", "--attempts", "2"}, &stdout); err != nil {
+			t.Fatalf("Execute(eval benchmark verify) error = %v", err)
+		}
+		output := stdout.String()
+		assertContains(t, output, "report wording verification: passed")
+		for _, banned := range []string{"provider billing", "statistically significant", "universal savings"} {
+			if strings.Contains(output, banned) {
+				t.Fatalf("verification output should not contain %q:\n%s", banned, output)
+			}
+		}
+	})
+}
+
 func TestEvalMCPArtifactsPersist(t *testing.T) {
 	repoRoot := initCLIRepo(t)
 	seedCommittedEvalFixtures(t, repoRoot)
