@@ -94,11 +94,19 @@ func TestEvalArtifactsPersistAcrossRun(t *testing.T) {
 
 	packOnePath := filepath.Join(layout.EvalRunDir(1), "artifacts", "pack-basic.json")
 	packTwoPath := filepath.Join(layout.EvalRunDir(2), "artifacts", "pack-worktree.json")
-	if artifactsOne[len(artifactsOne)-1].StoredPath != packOnePath {
-		t.Fatalf("artifact one stored path = %q", artifactsOne[len(artifactsOne)-1].StoredPath)
+	packOne, ok := findEvalArtifactRecord(artifactsOne, "pack-output")
+	if !ok {
+		t.Fatalf("pack artifact missing from run one: %+v", artifactsOne)
 	}
-	if artifactsTwo[len(artifactsTwo)-1].StoredPath != packTwoPath {
-		t.Fatalf("artifact two stored path = %q", artifactsTwo[len(artifactsTwo)-1].StoredPath)
+	packTwo, ok := findEvalArtifactRecord(artifactsTwo, "pack-output")
+	if !ok {
+		t.Fatalf("pack artifact missing from run two: %+v", artifactsTwo)
+	}
+	if packOne.StoredPath != packOnePath {
+		t.Fatalf("artifact one stored path = %q", packOne.StoredPath)
+	}
+	if packTwo.StoredPath != packTwoPath {
+		t.Fatalf("artifact two stored path = %q", packTwo.StoredPath)
 	}
 
 	infoOne, err := os.Stat(packOnePath)
@@ -112,8 +120,8 @@ func TestEvalArtifactsPersistAcrossRun(t *testing.T) {
 	if infoOne.Size() == 0 || infoTwo.Size() == 0 {
 		t.Fatalf("artifact sizes = %d and %d, want non-zero", infoOne.Size(), infoTwo.Size())
 	}
-	if artifactsOne[len(artifactsOne)-1].SizeBytes == 0 || artifactsTwo[len(artifactsTwo)-1].SizeBytes == 0 {
-		t.Fatalf("artifact metadata sizes = %d and %d, want non-zero", artifactsOne[len(artifactsOne)-1].SizeBytes, artifactsTwo[len(artifactsTwo)-1].SizeBytes)
+	if packOne.SizeBytes == 0 || packTwo.SizeBytes == 0 {
+		t.Fatalf("artifact metadata sizes = %d and %d, want non-zero", packOne.SizeBytes, packTwo.SizeBytes)
 	}
 }
 
@@ -155,4 +163,13 @@ func copyCLITree(t *testing.T, src string, dst string) {
 		}
 		writeCLIFile(t, dstPath, string(content))
 	}
+}
+
+func findEvalArtifactRecord(records []sqlite.EvalArtifactRecord, artifactID string) (sqlite.EvalArtifactRecord, bool) {
+	for _, record := range records {
+		if record.ArtifactID == artifactID {
+			return record, true
+		}
+	}
+	return sqlite.EvalArtifactRecord{}, false
 }
