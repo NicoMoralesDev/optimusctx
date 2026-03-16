@@ -818,6 +818,77 @@ func seedCommittedEvalFixtures(t *testing.T, repoRoot string) {
 	copyCLITree(t, sourceRoot, filepath.Join(repoRoot, "testdata", "eval"))
 }
 
+func TestBenchmarkArtifactAttribution(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	seedCommittedEvalFixtures(t, repoRoot)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		service := newCLIBenchmarkService(t)
+		if _, err := service.RunRepeated(context.Background(), app.BenchmarkRepeatedRunRequest{
+			StartPath:    repoRoot,
+			SuiteID:      "go-benchmark-discovery-v1",
+			SuitesDir:    filepath.Join(repoRoot, "testdata", "eval", "benchmarks"),
+			FixturesRoot: filepath.Join(repoRoot, "testdata", "eval", "fixtures"),
+			Attempts:     1,
+		}); err != nil {
+			t.Fatalf("RunRepeated() error = %v", err)
+		}
+	})
+
+	layout, err := state.ResolveLayout(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+	store, err := sqlite.OpenOrCreateStore(context.Background(), layout, repository.DetectionModeGit)
+	if err != nil {
+		t.Fatalf("OpenOrCreateStore() error = %v", err)
+	}
+	defer store.Close()
+
+	repositoryID, err := store.LookupRepositoryID(context.Background(), repoRoot)
+	if err != nil {
+		t.Fatalf("LookupRepositoryID() error = %v", err)
+	}
+	runs, err := store.ListBenchmarkRuns(context.Background(), repositoryID, "go-benchmark-discovery-v1", "v1")
+	if err != nil {
+		t.Fatalf("ListBenchmarkRuns() error = %v", err)
+	}
+	if len(runs) != 2 {
+		t.Fatalf("len(runs) = %d, want 2", len(runs))
+	}
+
+	var found bool
+	for _, run := range runs {
+		if run.Run.ArmKind != repository.BenchmarkArmKindOptimusCtx {
+			continue
+		}
+		for _, sample := range run.Samples {
+			if sample.Sample.Lane != repository.BenchmarkLaneContextAssembly {
+				continue
+			}
+			var metadata struct {
+				Attribution []repository.BenchmarkArtifactConsumption `json:"attribution"`
+			}
+			if err := json.Unmarshal([]byte(sample.Sample.MetadataJSON), &metadata); err != nil {
+				t.Fatalf("sample metadata json: %v", err)
+			}
+			if len(metadata.Attribution) == 0 {
+				t.Fatalf("metadata attribution missing: %s", sample.Sample.MetadataJSON)
+			}
+			if metadata.Attribution[0].StepID != "opti-targeted-context" {
+				t.Fatalf("step id = %q", metadata.Attribution[0].StepID)
+			}
+			if metadata.Attribution[0].ReportLabel != repository.BenchmarkReportArtifactLabelL2Context {
+				t.Fatalf("report label = %q", metadata.Attribution[0].ReportLabel)
+			}
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("did not find persisted optimusctx context-assembly attribution")
+	}
+}
+
 func copyCLITree(t *testing.T, src string, dst string) {
 	t.Helper()
 

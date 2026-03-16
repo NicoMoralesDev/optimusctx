@@ -262,6 +262,88 @@ func TestBenchmarkMutationLanesPersistEvidence(t *testing.T) {
 	}
 }
 
+func TestAttributionPersistenceInputs(t *testing.T) {
+	t.Parallel()
+
+	result := repository.BenchmarkRunResult{
+		SchemaVersion: repository.BenchmarkSuiteSchemaV1,
+		SuiteID:       "go-benchmark-discovery-v1",
+		SuiteVersion:  "v1",
+		FixtureID:     "go-benchmark",
+		FixturePath:   "go-benchmark/v1/repository",
+		WorkspacePath: "/tmp/benchmark",
+		Arms: []repository.BenchmarkArmRunResult{
+			{
+				Kind:       repository.BenchmarkArmKindOptimusCtx,
+				Name:       "OptimusCtx",
+				Workspace:  "/tmp/benchmark/optimusctx",
+				StartedAt:  time.Date(2026, 3, 16, 17, 30, 0, 0, time.UTC),
+				FinishedAt: time.Date(2026, 3, 16, 17, 30, 2, 0, time.UTC),
+				LaneResults: []repository.BenchmarkLaneRunResult{{
+					Lane:          repository.BenchmarkLaneContextAssembly,
+					StartMarker:   "context_started",
+					SuccessMarker: "context_ready",
+					StopMarker:    "context_ready",
+					StartedAt:     time.Date(2026, 3, 16, 17, 30, 0, 0, time.UTC),
+					FinishedAt:    time.Date(2026, 3, 16, 17, 30, 2, 0, time.UTC),
+					Elapsed:       2 * time.Second,
+					Success:       true,
+					EvidencePaths: []string{"artifacts/pack.json"},
+					Attribution: []repository.BenchmarkArtifactConsumption{
+						{
+							StepID:          "pack",
+							StepName:        "Export pack",
+							Lane:            repository.BenchmarkLaneContextAssembly,
+							Surface:         repository.BenchmarkTreatmentSurfaceCLI,
+							Command:         repository.EvalCommandPackExport,
+							ArtifactType:    repository.BenchmarkArtifactTypePackExport,
+							ReportLabel:     repository.BenchmarkReportArtifactLabelPackExport,
+							SourceKind:      repository.BenchmarkTokenEstimateSourcePackExportSection,
+							ArtifactPath:    "artifacts/pack.json",
+							EstimatedTokens: 41,
+						},
+					},
+				}},
+			},
+		},
+	}
+
+	persisted := BenchmarkPersistedArmsFromResult(42, 1, result)
+	if len(persisted) != 1 {
+		t.Fatalf("len(persisted) = %d, want 1", len(persisted))
+	}
+
+	var runMetadata struct {
+		WorkspacePath         string                                    `json:"workspacePath"`
+		TokenEstimateContract repository.BenchmarkTokenEstimateContract `json:"tokenEstimateContract"`
+	}
+	if err := json.Unmarshal([]byte(persisted[0].Run.MetadataJSON), &runMetadata); err != nil {
+		t.Fatalf("run metadata json: %v", err)
+	}
+	if runMetadata.WorkspacePath != "/tmp/benchmark/optimusctx" {
+		t.Fatalf("workspacePath = %q", runMetadata.WorkspacePath)
+	}
+	if runMetadata.TokenEstimateContract.Policy.Name != repository.BenchmarkTokenEstimatorPolicyName {
+		t.Fatalf("estimate policy = %q", runMetadata.TokenEstimateContract.Policy.Name)
+	}
+
+	var laneMetadata struct {
+		Attribution []repository.BenchmarkArtifactConsumption `json:"attribution"`
+	}
+	if err := json.Unmarshal([]byte(persisted[0].Samples[0].Sample.MetadataJSON), &laneMetadata); err != nil {
+		t.Fatalf("lane metadata json: %v", err)
+	}
+	if len(laneMetadata.Attribution) != 1 {
+		t.Fatalf("lane attribution = %+v, want 1 record", laneMetadata.Attribution)
+	}
+	if laneMetadata.Attribution[0].ReportLabel != repository.BenchmarkReportArtifactLabelPackExport {
+		t.Fatalf("report label = %q", laneMetadata.Attribution[0].ReportLabel)
+	}
+	if laneMetadata.Attribution[0].SourceKind != repository.BenchmarkTokenEstimateSourcePackExportSection {
+		t.Fatalf("source kind = %q", laneMetadata.Attribution[0].SourceKind)
+	}
+}
+
 func TestBenchmarkComparisonSummary(t *testing.T) {
 	t.Parallel()
 

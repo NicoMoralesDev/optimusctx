@@ -11,6 +11,8 @@ import (
 
 	"github.com/niccrow/optimusctx/internal/app"
 	"github.com/niccrow/optimusctx/internal/repository"
+	"github.com/niccrow/optimusctx/internal/state"
+	"github.com/niccrow/optimusctx/internal/store/sqlite"
 )
 
 func TestMCPRefreshPackHealth(t *testing.T) {
@@ -324,6 +326,108 @@ func TestBenchmarkRerunsDeterministic(t *testing.T) {
 	}
 	if got, want := result.Attempts[0].Result.Arms[1].LaneResults[0].Lane, repository.BenchmarkLaneDiscovery; got != want {
 		t.Fatalf("lane identity = %q, want %q", got, want)
+	}
+}
+
+func TestBenchmarkArtifactAttribution(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "internal", "http", "handler", "rollout.go"), "package handler\n\nfunc LoadRolloutConfig() string {\n\treturn \"prod\"\n}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "internal", "config", "loader.go"), "package config\n\nfunc Load() string {\n\treturn \"loader\"\n}\n")
+	refreshRepo(t, repoRoot)
+
+	service := app.NewBenchmarkService()
+	service.Runner = app.NewBenchmarkRunner()
+	service.Runner.RunCommand = nil
+	bootstrapped := map[string]bool{}
+	service.Runner.RunTool = func(_ context.Context, invocation app.BenchmarkToolInvocation) (app.BenchmarkToolExecutionResult, error) {
+		server := NewServer(nil, nil, nil)
+		if !bootstrapped[invocation.WorkingDir] {
+			refresh := callTool(t, server, CallToolParams{
+				Name: toolRefresh,
+				Arguments: map[string]any{
+					"startPath": invocation.WorkingDir,
+				},
+			})
+			if refresh.IsError {
+				t.Fatalf("refresh bootstrap failed: %+v", refresh)
+			}
+			bootstrapped[invocation.WorkingDir] = true
+		}
+		call := callTool(t, server, CallToolParams{
+			Name:      invocation.Name,
+			Arguments: invocation.Arguments,
+		})
+		payload, err := decodeMCPBenchmarkPayload(call.StructuredContent)
+		if err != nil {
+			return app.BenchmarkToolExecutionResult{}, err
+		}
+		return app.BenchmarkToolExecutionResult{Payload: payload}, nil
+	}
+	service.Runner.MkdirTemp = func(string, string) (string, error) { return t.TempDir(), nil }
+	service.Runner.CopyTree = func(src string, dst string) error { return copyMCPTree(t, src, dst) }
+
+	benchmarksRoot := t.TempDir()
+	copyMCPTree(t, filepath.Join("..", "..", "testdata", "eval", "fixtures"), filepath.Join(benchmarksRoot, "fixtures"))
+	copyMCPTree(t, filepath.Join("..", "..", "testdata", "eval", "benchmarks"), filepath.Join(benchmarksRoot, "benchmarks"))
+
+	if _, err := service.RunRepeated(context.Background(), app.BenchmarkRepeatedRunRequest{
+		StartPath:    repoRoot,
+		SuiteID:      "go-benchmark-discovery-v1",
+		SuitesDir:    filepath.Join(benchmarksRoot, "benchmarks"),
+		FixturesRoot: filepath.Join(benchmarksRoot, "fixtures"),
+		Attempts:     1,
+	}); err != nil {
+		t.Fatalf("RunRepeated() error = %v", err)
+	}
+
+	layout, err := state.ResolveLayout(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+	store, err := sqlite.OpenOrCreateStore(context.Background(), layout, repository.DetectionModeGit)
+	if err != nil {
+		t.Fatalf("OpenOrCreateStore() error = %v", err)
+	}
+	defer store.Close()
+
+	repositoryID, err := store.LookupRepositoryID(context.Background(), repoRoot)
+	if err != nil {
+		t.Fatalf("LookupRepositoryID() error = %v", err)
+	}
+	runs, err := store.ListBenchmarkRuns(context.Background(), repositoryID, "go-benchmark-discovery-v1", "v1")
+	if err != nil {
+		t.Fatalf("ListBenchmarkRuns() error = %v", err)
+	}
+
+	var found bool
+	for _, run := range runs {
+		if run.Run.ArmKind != repository.BenchmarkArmKindOptimusCtx {
+			continue
+		}
+		for _, sample := range run.Samples {
+			if sample.Sample.Lane != repository.BenchmarkLaneDiscovery {
+				continue
+			}
+			var metadata struct {
+				Attribution []repository.BenchmarkArtifactConsumption `json:"attribution"`
+			}
+			if err := json.Unmarshal([]byte(sample.Sample.MetadataJSON), &metadata); err != nil {
+				t.Fatalf("sample metadata json: %v", err)
+			}
+			if len(metadata.Attribution) < 2 {
+				t.Fatalf("discovery attribution = %+v, want repository_map and exact_lookup", metadata.Attribution)
+			}
+			if metadata.Attribution[0].ReportLabel != repository.BenchmarkReportArtifactLabelRepositoryMap {
+				t.Fatalf("first report label = %q", metadata.Attribution[0].ReportLabel)
+			}
+			if metadata.Attribution[1].ReportLabel != repository.BenchmarkReportArtifactLabelExactLookup {
+				t.Fatalf("second report label = %q", metadata.Attribution[1].ReportLabel)
+			}
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("did not find persisted mcp discovery attribution")
 	}
 }
 

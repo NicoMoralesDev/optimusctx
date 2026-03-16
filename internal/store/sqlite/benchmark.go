@@ -84,7 +84,10 @@ func BenchmarkPersistedArmsFromResult(repositoryID int64, attempt int, result re
 			WorkspacePath: result.WorkspacePath,
 			StartedAt:     arm.StartedAt.UTC(),
 			CompletedAt:   arm.FinishedAt.UTC(),
-			MetadataJSON:  mustMarshalBenchmarkMetadata(map[string]any{"workspacePath": arm.Workspace}),
+			MetadataJSON: mustMarshalBenchmarkMetadata(map[string]any{
+				"workspacePath":         arm.Workspace,
+				"tokenEstimateContract": repository.DefaultBenchmarkTokenEstimateContract(),
+			}),
 		}
 		samples := make([]BenchmarkLaneSampleBundle, 0, len(arm.LaneResults))
 		for _, lane := range arm.LaneResults {
@@ -102,6 +105,7 @@ func BenchmarkPersistedArmsFromResult(repositoryID int64, attempt int, result re
 					"setup":          lane.Setup,
 					"assertions":     lane.Assertions,
 					"evidencePaths":  lane.EvidencePaths,
+					"attribution":    lane.Attribution,
 				}),
 			}
 			metrics := []BenchmarkLaneMetricRecord{
