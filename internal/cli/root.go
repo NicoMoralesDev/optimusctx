@@ -33,6 +33,8 @@ func (c *Command) Execute(args []string, stdout io.Writer) error {
 		return nil
 	case "doctor":
 		return newDoctorCommand().Run(stdout, args[1:])
+	case "eval":
+		return newEvalCommand().Run(stdout, args[1:])
 	case "init":
 		return newInitCommand().Run(stdout, args[1:])
 	case "pack":
@@ -56,11 +58,12 @@ func (c *Command) Execute(args []string, stdout io.Writer) error {
 }
 
 func (c *Command) printHelp(stdout io.Writer) {
-	_, _ = fmt.Fprintf(stdout, "%s\n\n%s\n\nUsage:\n  %s <command>\n\nAvailable Commands:\n  doctor    %s\n  init      %s\n  install   %s\n  mcp       %s\n  pack      %s\n  refresh   %s\n  snippet   %s\n  watch     %s\n  version   %s\n\nFlags:\n  -h, --help   Show help for optimusctx\n",
+	_, _ = fmt.Fprintf(stdout, "%s\n\n%s\n\nUsage:\n  %s <command>\n\nAvailable Commands:\n  doctor    %s\n  eval      %s\n  init      %s\n  install   %s\n  mcp       %s\n  pack      %s\n  refresh   %s\n  snippet   %s\n  watch     %s\n  version   %s\n\nFlags:\n  -h, --help   Show help for optimusctx\n",
 		c.Name,
 		c.Description,
 		c.Name,
 		newDoctorCommand().Summary,
+		newEvalCommand().Summary,
 		newInitCommand().Summary,
 		newInstallCommand().Summary,
 		newMCPCommand().Summary,
