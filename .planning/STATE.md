@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 14
 current_phase_name: benchmark boundary redefinition and agent-input validation
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-03-16T19:42:26.946Z"
+stopped_at: Completed 14-03-PLAN.md
+last_updated: "2026-03-16T20:10:48.632Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 24
-  completed_plans: 22
-  percent: 97
+  completed_plans: 23
+  percent: 98
 ---
 
 # Planning State: OptimusCtx
@@ -27,9 +27,9 @@ progress:
 **Current Phase:** 14
 **Current Phase Name:** benchmark boundary redefinition and agent-input validation
 **Total Phases:** 6
-**Current Plan:** 3
+**Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 97%
+**Progress:** [██████████] 98%
 **Last Activity:** 2026-03-16
 **Last Activity Description:** Phase 14 planning is complete with four execution plans for benchmark-boundary repair, suite migration, and evidence refresh
 
@@ -204,6 +204,7 @@ progress:
 | Phase 13-distribution-pipeline-and-adoption-plan P03 | 6min | 3 tasks | 6 files |
 | Phase 14 P01 | 59min | 3 tasks | 9 files |
 | Phase 14-benchmark-boundary-redefinition-and-agent-input-validation P02 | 22min | 3 tasks | 6 files |
+| Phase 14 P03 | 25min | 3 tasks | 9 files |
 
 ## Decisions Made
 
@@ -349,6 +350,10 @@ progress:
 - [Phase 14-benchmark-boundary-redefinition-and-agent-input-validation]: The runner records raw CLI and MCP outputs as system provenance, then projects only declared countedInputs into agent-input totals.
 - [Phase 14-benchmark-boundary-redefinition-and-agent-input-validation]: Lane completion now requires both stop-condition progress and a materialized final artifact that satisfies the lane contract.
 - [Phase 14-benchmark-boundary-redefinition-and-agent-input-validation]: Human-readable reports label attribution rows as counted agent inputs and leave provenance in exported evidence for auditability instead of folding it into totals.
+- [Phase 14]: The frozen benchmark selectors stay on go-benchmark-*-v1 ids while schemaVersion moves to optimusctx/benchmark-suite@v2.
+- [Phase 14]: Counted benchmark totals now come only from declared agent-input projections; raw CLI and MCP provenance stays exported but does not drive counted deltas.
+- [Phase 14]: Refresh readiness final artifacts normalize the shared targetReady signal, while treatment-only freshness and generation remain counted operational projections.
+- [Phase 14]: Repeated-run fingerprints ignore system-provenance token magnitudes because temp-workspace roots make those raw payload bytes path-sensitive.
 
 ## Blockers
 
@@ -356,8 +361,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T19:42:26.942Z
-**Stopped At:** Completed 14-02-PLAN.md
+**Last Date:** 2026-03-16T20:10:48.628Z
+**Stopped At:** Completed 14-03-PLAN.md
 **Resume File:** None
 
 ---

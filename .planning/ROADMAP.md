@@ -109,7 +109,7 @@ Next step:
 
 **Goal**: Redefine benchmark contracts so token accounting measures only declared agent-facing inputs, comparable normalized final artifacts are enforced at runtime, and the frozen benchmark corpus is rerun on the corrected methodology.  
 **Depends on:** Phase 13
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 
