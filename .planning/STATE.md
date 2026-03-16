@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 13
 current_phase_name: distribution pipeline and adoption plan
-current_plan: 1
-status: verifying
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-03-16T16:09:01.843Z"
+current_plan: 2
+status: executing
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-03-16T16:42:42.926Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 20
-  completed_plans: 17
-  percent: 95
+  completed_plans: 18
+  percent: 97
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase in progress — next distribution plan ready
+**Status:** Ready to execute
 **Current Phase:** 13
 **Current Phase Name:** distribution pipeline and adoption plan
 **Total Phases:** 5
-**Current Plan:** 1
+**Current Plan:** 2
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 95%
+**Progress:** [██████████] 97%
 **Last Activity:** 2026-03-16
-**Last Activity Description:** Phase 13 plan 01 complete, GitHub Releases now publish deterministic cross-platform archives and checksums through the canonical GoReleaser contract
+**Last Activity Description:** Phase 13 plan 02 complete, Homebrew and Scoop now provide the first release-derived package-manager channels with truthful install and publication guidance
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1.1 validation, benchmarking, and distribution
 - Active phase: 13-distribution-pipeline-and-adoption-plan
-- Next planning action: continue Phase 13 with plan 02 package-manager distribution
+- Next planning action: continue Phase 13 with plan 03 install-and-verify documentation and smoke flow
 - Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
 - Coverage status: v1.0 shipped; v1.1 requirements are mapped across Phases 09-13
 
@@ -91,6 +91,7 @@ progress:
 - Plan `09-03` is complete with repository-local eval artifact paths, dedicated eval run persistence tables, and contract tests for rerunnable evidence storage.
 - Plan `09-04` is complete with fresh-workspace rerun coverage, persisted eval run evidence, and README guidance for the shipped `eval` workflow.
 - Plan `13-01` is complete with the canonical GoReleaser release contract, GitHub Releases publication workflow, and ldflags-backed version metadata coverage.
+- Plan `13-02` is complete with release-derived Homebrew and Scoop manifests, explicit publication targets, and truthful package-manager channel docs.
 - Plan `11-01` is complete with canonical benchmark suite contracts, app-layer suite selection enforcement, and a frozen benchmark corpus for later timing plans.
 - Plan `11-02` is complete with lane-level benchmark timing, real-surface CLI and MCP execution coverage, and persisted benchmark run evidence under `internal/app` and `internal/store/sqlite`.
 - Plan `01-01` is complete with a working Go CLI scaffold, version output, and bootstrap documentation.
@@ -191,6 +192,7 @@ progress:
 | Phase 12 P03 | 9min | 3 tasks | 5 files |
 | Phase 12-token-attribution-and-evidence-reporting P04 | 26min | 3 tasks | 9 files |
 | Phase 13-distribution-pipeline-and-adoption-plan P01 | 24min | 3 tasks | 8 files |
+| Phase 13-distribution-pipeline-and-adoption-plan P02 | 24min | 3 tasks | 6 files |
 
 ## Decisions Made
 
@@ -322,6 +324,9 @@ progress:
 - [Phase 13-distribution-pipeline-and-adoption-plan]: GoReleaser is the only release source of truth, and the GitHub Actions workflow delegates archive, checksum, and ldflags behavior to that file instead of duplicating platform logic.
 - [Phase 13-distribution-pipeline-and-adoption-plan]: GitHub Releases is the first retrievable distribution channel, with manual dispatch restricted to existing v* tags so republished artifacts stay tied to tagged source.
 - [Phase 13-distribution-pipeline-and-adoption-plan]: Release metadata is exposed through buildinfo.Current() and verified through optimusctx version so shipped binaries report truthful version, commit, and build date values.
+- [Phase 13]: Homebrew publishes through niccrow/homebrew-tap while user-facing install docs stay on the canonical Homebrew tap name niccrow/tap/optimusctx.
+- [Phase 13]: Scoop publishes through niccrow/scoop-bucket and requires explicit bucket registration before install so the Windows path stays truthful about its first-channel boundary.
+- [Phase 13]: v1.1 package-manager claims stop at Homebrew and Scoop; native Linux packages, WinGet, Chocolatey, signing, and SBOMs remain deferred.
 
 ## Blockers
 
@@ -329,9 +334,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T16:09:01.840Z
-**Stopped At:** Completed 13-01-PLAN.md
+**Last Date:** 2026-03-16T16:42:42.923Z
+**Stopped At:** Completed 13-02-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-16 after completing Phase 10 plan 04*
+*Last updated: 2026-03-16 after completing Phase 13 plan 02*

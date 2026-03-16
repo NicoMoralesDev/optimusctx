@@ -89,7 +89,7 @@ Plans:
 Plans:
 
 - [x] 13-01: automated release archives and checksums
-- [ ] 13-02: primary package-manager distribution paths
+- [x] 13-02: primary package-manager distribution paths
 - [ ] 13-03: install-and-verify documentation and smoke flow
 - [ ] 13-04: distribution strategy, rollout, and support plan
 
@@ -102,8 +102,8 @@ Active milestone: `v1.1`
 
 Next step:
 
-- Continue with `13-02` — primary package-manager distribution paths
-- Phase 13 is underway with the canonical release archive, checksum, and GitHub Releases publication contract in place
+- Continue with `13-03` — install-and-verify documentation and smoke flow
+- Phase 13 now has canonical release archives plus the first Homebrew and Scoop package-manager channels in place
 
 ---
-*Last updated: 2026-03-16 after completing Phase 13 plan 01*
+*Last updated: 2026-03-16 after completing Phase 13 plan 02*
