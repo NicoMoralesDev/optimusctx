@@ -261,6 +261,72 @@ func TestBenchmarkContextAssemblyLane(t *testing.T) {
 	}
 }
 
+func TestBenchmarkRerunsDeterministic(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "internal", "http", "handler", "rollout.go"), "package handler\n\nfunc LoadRolloutConfig() string {\n\treturn \"prod\"\n}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "internal", "config", "loader.go"), "package config\n\nfunc Load() string {\n\treturn \"loader\"\n}\n")
+	refreshRepo(t, repoRoot)
+
+	service := app.NewBenchmarkService()
+	service.Runner = app.NewBenchmarkRunner()
+	service.Runner.RunCommand = nil
+	bootstrapped := map[string]bool{}
+	service.Runner.RunTool = func(_ context.Context, invocation app.BenchmarkToolInvocation) (app.BenchmarkToolExecutionResult, error) {
+		server := NewServer(nil, nil, nil)
+		if !bootstrapped[invocation.WorkingDir] {
+			refresh := callTool(t, server, CallToolParams{
+				Name: toolRefresh,
+				Arguments: map[string]any{
+					"startPath": invocation.WorkingDir,
+				},
+			})
+			if refresh.IsError {
+				t.Fatalf("refresh bootstrap failed: %+v", refresh)
+			}
+			bootstrapped[invocation.WorkingDir] = true
+		}
+		call := callTool(t, server, CallToolParams{
+			Name:      invocation.Name,
+			Arguments: invocation.Arguments,
+		})
+		payload, err := decodeMCPBenchmarkPayload(call.StructuredContent)
+		if err != nil {
+			return app.BenchmarkToolExecutionResult{}, err
+		}
+		return app.BenchmarkToolExecutionResult{Payload: payload}, nil
+	}
+	service.Runner.MkdirTemp = func(string, string) (string, error) {
+		return t.TempDir(), nil
+	}
+	service.Runner.CopyTree = func(src string, dst string) error {
+		return copyMCPTree(t, src, dst)
+	}
+
+	benchmarksRoot := t.TempDir()
+	copyMCPTree(t, filepath.Join("..", "..", "testdata", "eval", "fixtures"), filepath.Join(benchmarksRoot, "fixtures"))
+	copyMCPTree(t, filepath.Join("..", "..", "testdata", "eval", "benchmarks"), filepath.Join(benchmarksRoot, "benchmarks"))
+
+	result, err := service.RunRepeated(context.Background(), app.BenchmarkRepeatedRunRequest{
+		StartPath:    repoRoot,
+		SuiteID:      "go-benchmark-discovery-v1",
+		SuitesDir:    filepath.Join(benchmarksRoot, "benchmarks"),
+		FixturesRoot: filepath.Join(benchmarksRoot, "fixtures"),
+		Attempts:     2,
+	})
+	if err != nil {
+		t.Fatalf("RunRepeated() error = %v", err)
+	}
+	if !result.Summary.Verification.Passed {
+		t.Fatalf("verification = %+v", result.Summary.Verification)
+	}
+	if got, want := result.Summary.AttemptCount, 2; got != want {
+		t.Fatalf("summary attempts = %d, want %d", got, want)
+	}
+	if got, want := result.Attempts[0].Result.Arms[1].LaneResults[0].Lane, repository.BenchmarkLaneDiscovery; got != want {
+		t.Fatalf("lane identity = %q, want %q", got, want)
+	}
+}
+
 func TestBenchmarkTaskCompletionComparison(t *testing.T) {
 	runner := app.NewBenchmarkRunner()
 	runner.RunCommand = func(_ context.Context, invocation app.BenchmarkCommandInvocation) (app.BenchmarkCommandExecutionResult, error) {

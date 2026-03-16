@@ -197,6 +197,75 @@ func TestBenchmarkRefreshAfterChangeComparison(t *testing.T) {
 	})
 }
 
+func TestBenchmarkVerificationWorkflow(t *testing.T) {
+	t.Run("stable methodology passes", func(t *testing.T) {
+		repoRoot := initCLIRepo(t)
+		seedCommittedEvalFixtures(t, repoRoot)
+		withWorkingDirectory(t, repoRoot, func() {
+			service := newCLIBenchmarkService(t)
+			result, err := service.RunRepeated(context.Background(), app.BenchmarkRepeatedRunRequest{
+				StartPath:    repoRoot,
+				SuiteID:      "go-benchmark-refresh-v1",
+				SuitesDir:    filepath.Join(repoRoot, "testdata", "eval", "benchmarks"),
+				FixturesRoot: filepath.Join(repoRoot, "testdata", "eval", "fixtures"),
+				Attempts:     2,
+			})
+			if err != nil {
+				t.Fatalf("RunRepeated() error = %v", err)
+			}
+			if !result.Summary.Verification.Passed {
+				t.Fatalf("verification = %+v", result.Summary.Verification)
+			}
+			if got, want := len(result.Summary.Arms), 2; got != want {
+				t.Fatalf("len(summary.Arms) = %d, want %d", got, want)
+			}
+			if !strings.Contains(result.Summary.RerunCommand, "TestBenchmarkVerificationWorkflow|TestBenchmarkRerunsDeterministic") {
+				t.Fatalf("rerun command = %q", result.Summary.RerunCommand)
+			}
+		})
+	})
+
+	t.Run("drift fails verification", func(t *testing.T) {
+		repoRoot := initCLIRepo(t)
+		seedCommittedEvalFixtures(t, repoRoot)
+		withWorkingDirectory(t, repoRoot, func() {
+			service := newCLIBenchmarkService(t)
+			suitePath := filepath.Join(repoRoot, "testdata", "eval", "benchmarks", "go-benchmark-refresh-v1.json")
+			baseLoadSuiteFile := service.Runner.LoadSuiteFile
+			var loadCount int
+			service.Runner.LoadSuiteFile = func(path string) (repository.BenchmarkSuiteDefinition, error) {
+				suite, err := baseLoadSuiteFile(path)
+				if err != nil {
+					return repository.BenchmarkSuiteDefinition{}, err
+				}
+				if path == suitePath {
+					loadCount++
+					if loadCount > 2 {
+						suite.Lanes[0].StopCondition.Marker = "refresh_ready_drifted"
+					}
+				}
+				return suite, nil
+			}
+
+			verification, err := service.VerifyMethodology(context.Background(), app.BenchmarkRepeatedRunRequest{
+				StartPath:    repoRoot,
+				SuitePath:    suitePath,
+				FixturesRoot: filepath.Join(repoRoot, "testdata", "eval", "fixtures"),
+				Attempts:     2,
+			})
+			if err != nil {
+				t.Fatalf("VerifyMethodology() error = %v", err)
+			}
+			if verification.Passed {
+				t.Fatalf("verification = %+v, want drift failure", verification)
+			}
+			if !strings.Contains(verification.FailureReason, "drifted from frozen methodology") {
+				t.Fatalf("failure reason = %q", verification.FailureReason)
+			}
+		})
+	})
+}
+
 func TestEvalMCPArtifactsPersist(t *testing.T) {
 	repoRoot := initCLIRepo(t)
 	seedCommittedEvalFixtures(t, repoRoot)
@@ -807,4 +876,50 @@ func decodeBenchmarkToolPayload(response any) (any, error) {
 		return nil, err
 	}
 	return frame.Result.StructuredContent.Data, nil
+}
+
+func newCLIBenchmarkService(t *testing.T) app.BenchmarkService {
+	t.Helper()
+
+	service := app.NewBenchmarkService()
+	service.Runner = app.NewBenchmarkRunner()
+	service.Runner.RunCommand = func(ctx context.Context, invocation app.BenchmarkCommandInvocation) (app.BenchmarkCommandExecutionResult, error) {
+		execution, err := executeEvalCLICommand(ctx, app.EvalCommandInvocation{
+			Args:       invocation.Args,
+			WorkingDir: invocation.WorkingDir,
+		})
+		return app.BenchmarkCommandExecutionResult{
+			Stdout:   execution.Stdout,
+			Stderr:   execution.Stderr,
+			ExitCode: execution.ExitCode,
+		}, err
+	}
+	service.Runner.RunTool = func(ctx context.Context, invocation app.BenchmarkToolInvocation) (app.BenchmarkToolExecutionResult, error) {
+		session := repository.EvalMCPSession{
+			Requests: []repository.EvalMCPRequest{
+				{ID: 1, Method: "initialize", Params: mcp.InitializeParams{
+					ClientInfo:      mcp.ClientInfo{Name: "benchmark-test", Version: "1.0.0"},
+					ProtocolVersion: "2024-11-05",
+				}},
+				{Method: "notifications/initialized", Notification: true},
+				{ID: 2, Method: "tools/call", Params: mcp.CallToolParams{
+					Name:      invocation.Name,
+					Arguments: invocation.Arguments,
+				}},
+			},
+		}
+		execution, err := executeEvalCLIMCPSession(ctx, app.EvalMCPSessionInvocation{
+			WorkingDir: invocation.WorkingDir,
+			Session:    session,
+		})
+		if err != nil {
+			return app.BenchmarkToolExecutionResult{}, err
+		}
+		payload, err := decodeBenchmarkToolPayload(execution.Responses[len(execution.Responses)-1].Response)
+		if err != nil {
+			return app.BenchmarkToolExecutionResult{}, err
+		}
+		return app.BenchmarkToolExecutionResult{Payload: payload}, nil
+	}
+	return service
 }
