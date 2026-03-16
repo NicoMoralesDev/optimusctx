@@ -373,6 +373,85 @@ func TestEvalRunPersistenceReplacesStoredResults(t *testing.T) {
 	}
 }
 
+func TestEvalReportSummaries(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	runOne, err := store.SaveEvalRun(ctx, EvalRunRecord{
+		RepositoryID:    repoID,
+		ScenarioID:      "mcp-go-basic-v1",
+		ScenarioVersion: "v1",
+		FixtureID:       "go-basic",
+		FixtureVersion:  "v1",
+		Status:          EvalRunStatusPassed,
+		Passed:          true,
+		WorkspacePath:   layout.RepoRoot,
+		ArtifactRoot:    layout.EvalRunDir(1),
+		StartedAt:       time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC),
+		CompletedAt:     time.Date(2026, 3, 16, 10, 1, 0, 0, time.UTC),
+	}, nil, nil)
+	if err != nil {
+		t.Fatalf("SaveEvalRun(runOne) error = %v", err)
+	}
+
+	runTwo, err := store.SaveEvalRun(ctx, EvalRunRecord{
+		RepositoryID:    repoID,
+		ScenarioID:      "cli-go-stale-v1",
+		ScenarioVersion: "v1",
+		FixtureID:       "go-basic",
+		FixtureVersion:  "v1",
+		Status:          EvalRunStatusPassed,
+		Passed:          true,
+		WorkspacePath:   layout.RepoRoot,
+		ArtifactRoot:    layout.EvalRunDir(2),
+		StartedAt:       time.Date(2026, 3, 16, 11, 0, 0, 0, time.UTC),
+		CompletedAt:     time.Date(2026, 3, 16, 11, 1, 0, 0, time.UTC),
+	}, nil, nil)
+	if err != nil {
+		t.Fatalf("SaveEvalRun(runTwo) error = %v", err)
+	}
+
+	runThree, err := store.SaveEvalRun(ctx, EvalRunRecord{
+		RepositoryID:    repoID,
+		ScenarioID:      "mcp-go-worktree-v1",
+		ScenarioVersion: "v1",
+		FixtureID:       "go-worktree",
+		FixtureVersion:  "v1",
+		Status:          EvalRunStatusFailed,
+		Passed:          false,
+		WorkspacePath:   layout.RepoRoot,
+		ArtifactRoot:    layout.EvalRunDir(3),
+		StartedAt:       time.Date(2026, 3, 16, 12, 0, 0, 0, time.UTC),
+		CompletedAt:     time.Date(2026, 3, 16, 12, 1, 0, 0, time.UTC),
+	}, nil, nil)
+	if err != nil {
+		t.Fatalf("SaveEvalRun(runThree) error = %v", err)
+	}
+
+	runs, err := store.ListEvalRuns(ctx, repoID)
+	if err != nil {
+		t.Fatalf("ListEvalRuns() error = %v", err)
+	}
+
+	if got, want := len(runs), 3; got != want {
+		t.Fatalf("len(runs) = %d, want %d", got, want)
+	}
+	if runs[0].ID != runThree.ID || runs[1].ID != runTwo.ID || runs[2].ID != runOne.ID {
+		t.Fatalf("run order = [%d %d %d], want [%d %d %d]", runs[0].ID, runs[1].ID, runs[2].ID, runThree.ID, runTwo.ID, runOne.ID)
+	}
+	if runs[0].ScenarioID != "mcp-go-worktree-v1" || runs[1].ScenarioID != "cli-go-stale-v1" || runs[2].ScenarioID != "mcp-go-basic-v1" {
+		t.Fatalf("scenario order = [%s %s %s]", runs[0].ScenarioID, runs[1].ScenarioID, runs[2].ScenarioID)
+	}
+}
+
 func assertTablesExist(t *testing.T, db *sql.DB, tableNames ...string) {
 	t.Helper()
 

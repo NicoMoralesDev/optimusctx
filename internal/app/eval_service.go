@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/niccrow/optimusctx/internal/repository"
@@ -19,6 +20,36 @@ type EvalService struct {
 	OpenStore     func(context.Context, state.Layout, string) (*sqlite.Store, error)
 	ResolveLayout func(string) (state.Layout, error)
 	Now           func() time.Time
+}
+
+type EvalRequirementCoverageReport struct {
+	RepositoryRoot    string
+	GeneratedAt       time.Time
+	EvalArtifactRoot  string
+	ScenarioInventory []EvalScenarioCoverageSummary
+	Requirements      []EvalRequirementCoverage
+}
+
+type EvalScenarioCoverageSummary struct {
+	ScenarioID     string
+	ScenarioName   string
+	Status         string
+	Passed         bool
+	RunID          int64
+	FixtureID      string
+	FixtureVersion string
+	ArtifactRoot   string
+	RerunCommand   string
+	ArtifactPaths  []string
+}
+
+type EvalRequirementCoverage struct {
+	RequirementID string
+	Summary       string
+	Covered       bool
+	ScenarioIDs   []string
+	RerunCommands []string
+	Evidence      []EvalScenarioCoverageSummary
 }
 
 func NewEvalService() EvalService {
@@ -117,11 +148,167 @@ func (s EvalService) Run(ctx context.Context, request EvalRunRequest) (repositor
 	return result, runErr
 }
 
+func (s EvalService) RequirementCoverageReport(ctx context.Context, startPath string) (EvalRequirementCoverageReport, error) {
+	root, err := s.Locator.Resolve(startPath)
+	if err != nil {
+		return EvalRequirementCoverageReport{}, fmt.Errorf("resolve repository root: %w", err)
+	}
+
+	layoutResolver := s.ResolveLayout
+	if layoutResolver == nil {
+		layoutResolver = state.ResolveLayout
+	}
+	layout, err := layoutResolver(root.RootPath)
+	if err != nil {
+		return EvalRequirementCoverageReport{}, fmt.Errorf("resolve state layout: %w", err)
+	}
+
+	openStore := s.OpenStore
+	if openStore == nil {
+		openStore = func(ctx context.Context, layout state.Layout, detectionMode string) (*sqlite.Store, error) {
+			return sqlite.OpenOrCreateStore(ctx, layout, detectionMode)
+		}
+	}
+
+	store, err := openStore(ctx, layout, root.DetectionMode)
+	if err != nil {
+		return EvalRequirementCoverageReport{}, fmt.Errorf("open eval store: %w", err)
+	}
+	defer store.Close()
+
+	repositoryID, err := store.LookupRepositoryID(ctx, root.RootPath)
+	if err != nil {
+		return EvalRequirementCoverageReport{}, fmt.Errorf("lookup repository: %w", err)
+	}
+	runs, err := store.ListEvalRuns(ctx, repositoryID)
+	if err != nil {
+		return EvalRequirementCoverageReport{}, fmt.Errorf("list eval runs: %w", err)
+	}
+
+	latestByScenario := make(map[string]EvalScenarioCoverageSummary, len(runs))
+	for _, run := range runs {
+		if _, exists := latestByScenario[run.ScenarioID]; exists {
+			continue
+		}
+		_, _, artifacts, err := store.LoadEvalRun(ctx, run.ID)
+		if err != nil {
+			return EvalRequirementCoverageReport{}, fmt.Errorf("load eval run %d: %w", run.ID, err)
+		}
+		latestByScenario[run.ScenarioID] = evalScenarioCoverageSummary(run, artifacts)
+	}
+
+	inventoryIDs := make([]string, 0, len(latestByScenario))
+	for scenarioID := range latestByScenario {
+		inventoryIDs = append(inventoryIDs, scenarioID)
+	}
+	sort.Strings(inventoryIDs)
+
+	inventory := make([]EvalScenarioCoverageSummary, 0, len(inventoryIDs))
+	for _, scenarioID := range inventoryIDs {
+		inventory = append(inventory, latestByScenario[scenarioID])
+	}
+
+	requirements := make([]EvalRequirementCoverage, 0, len(evalRequirementCoverageDefinitions))
+	for _, definition := range evalRequirementCoverageDefinitions {
+		requirement := EvalRequirementCoverage{
+			RequirementID: definition.RequirementID,
+			Summary:       definition.Summary,
+			ScenarioIDs:   append([]string(nil), definition.ScenarioIDs...),
+		}
+		requirement.RerunCommands = make([]string, 0, len(definition.ScenarioIDs))
+		requirement.Evidence = make([]EvalScenarioCoverageSummary, 0, len(definition.ScenarioIDs))
+		requirement.Covered = true
+		for _, scenarioID := range definition.ScenarioIDs {
+			requirement.RerunCommands = append(requirement.RerunCommands, evalScenarioRerunCommand(scenarioID))
+			summary, ok := latestByScenario[scenarioID]
+			if !ok {
+				requirement.Covered = false
+				continue
+			}
+			requirement.Evidence = append(requirement.Evidence, summary)
+			if !summary.Passed {
+				requirement.Covered = false
+			}
+		}
+		requirements = append(requirements, requirement)
+	}
+
+	return EvalRequirementCoverageReport{
+		RepositoryRoot:    root.RootPath,
+		GeneratedAt:       s.nowUTC(),
+		EvalArtifactRoot:  layout.EvalDir,
+		ScenarioInventory: inventory,
+		Requirements:      requirements,
+	}, nil
+}
+
 func (s EvalService) nowUTC() time.Time {
 	if s.Now != nil {
 		return s.Now().UTC()
 	}
 	return time.Now().UTC()
+}
+
+type evalRequirementCoverageDefinition struct {
+	RequirementID string
+	Summary       string
+	ScenarioIDs   []string
+}
+
+var evalRequirementCoverageDefinitions = []evalRequirementCoverageDefinition{
+	{
+		RequirementID: "EVAL-02",
+		Summary:       "Repeatable MCP evidence must prove the shipped stdio readiness, initialize, tools/list, and full query or ops tool surface from persisted transcript and tool-response artifacts.",
+		ScenarioIDs:   []string{"mcp-go-basic-v1", "mcp-go-worktree-v1"},
+	},
+	{
+		RequirementID: "EVAL-03",
+		Summary:       "Functional evidence must prove stale, partially degraded, and recovered runtime behavior through the shipped CLI or MCP surfaces with persisted repo-local artifacts.",
+		ScenarioIDs:   []string{"cli-go-stale-v1", "mcp-go-degraded-v1", "mcp-go-recovery-v1"},
+	},
+}
+
+func evalScenarioCoverageSummary(run sqlite.EvalRunRecord, artifacts []sqlite.EvalArtifactRecord) EvalScenarioCoverageSummary {
+	paths := make([]string, 0, len(artifacts))
+	for _, artifact := range artifacts {
+		if artifact.StoredPath == "" {
+			continue
+		}
+		paths = append(paths, artifact.StoredPath)
+	}
+	sort.Strings(paths)
+
+	return EvalScenarioCoverageSummary{
+		ScenarioID:     run.ScenarioID,
+		ScenarioName:   evalScenarioDisplayName(run),
+		Status:         string(run.Status),
+		Passed:         run.Passed,
+		RunID:          run.ID,
+		FixtureID:      run.FixtureID,
+		FixtureVersion: run.FixtureVersion,
+		ArtifactRoot:   run.ArtifactRoot,
+		RerunCommand:   evalScenarioRerunCommand(run.ScenarioID),
+		ArtifactPaths:  paths,
+	}
+}
+
+func evalScenarioDisplayName(run sqlite.EvalRunRecord) string {
+	if run.MetadataJSON == "" {
+		return run.ScenarioID
+	}
+	var metadata map[string]any
+	if err := json.Unmarshal([]byte(run.MetadataJSON), &metadata); err != nil {
+		return run.ScenarioID
+	}
+	name, _ := metadata["scenarioName"].(string)
+	if name == "" {
+		return run.ScenarioID
+	}
+	return name
+}
+
+func evalScenarioRerunCommand(scenarioID string) string {
+	return fmt.Sprintf("go run ./cmd/optimusctx eval --scenario %s", scenarioID)
 }
 
 func persistEvalEvidence(artifactRoot string, result repository.EvalRunResult) ([]sqlite.EvalStepRecord, []sqlite.EvalArtifactRecord, error) {

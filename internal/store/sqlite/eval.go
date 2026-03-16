@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sort"
 	"time"
 )
 
@@ -124,6 +125,87 @@ func (s *Store) LoadEvalRun(ctx context.Context, runID int64) (EvalRunRecord, []
 	}
 
 	return run, steps, artifacts, nil
+}
+
+func (s *Store) ListEvalRuns(ctx context.Context, repositoryID int64) ([]EvalRunRecord, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("list eval runs: store is not initialized")
+	}
+	if repositoryID == 0 {
+		return nil, fmt.Errorf("list eval runs: repository ID is required")
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			id,
+			repository_id,
+			scenario_id,
+			scenario_version,
+			fixture_id,
+			fixture_version,
+			status,
+			passed,
+			workspace_path,
+			artifact_root,
+			started_at,
+			completed_at,
+			metadata_json,
+			created_at,
+			updated_at
+		FROM eval_runs
+		WHERE repository_id = ?
+	`, repositoryID)
+	if err != nil {
+		return nil, fmt.Errorf("list eval runs for repository %d: %w", repositoryID, err)
+	}
+	defer rows.Close()
+
+	var records []EvalRunRecord
+	for rows.Next() {
+		var record EvalRunRecord
+		var status string
+		var startedAt, completedAt, metadataJSON, createdAt, updatedAt sql.NullString
+		var passed int
+		if err := rows.Scan(
+			&record.ID,
+			&record.RepositoryID,
+			&record.ScenarioID,
+			&record.ScenarioVersion,
+			&record.FixtureID,
+			&record.FixtureVersion,
+			&status,
+			&passed,
+			&record.WorkspacePath,
+			&record.ArtifactRoot,
+			&startedAt,
+			&completedAt,
+			&metadataJSON,
+			&createdAt,
+			&updatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan eval run for repository %d: %w", repositoryID, err)
+		}
+		record.Status = EvalRunStatus(status)
+		record.Passed = passed != 0
+		record.StartedAt = parseOptionalRFC3339(startedAt)
+		record.CompletedAt = parseOptionalRFC3339(completedAt)
+		record.MetadataJSON = metadataJSON.String
+		record.CreatedAt = parseOptionalRFC3339(createdAt)
+		record.UpdatedAt = parseOptionalRFC3339(updatedAt)
+		records = append(records, record)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate eval runs for repository %d: %w", repositoryID, err)
+	}
+
+	sort.SliceStable(records, func(i, j int) bool {
+		if records[i].StartedAt.Equal(records[j].StartedAt) {
+			return records[i].ID > records[j].ID
+		}
+		return records[i].StartedAt.After(records[j].StartedAt)
+	})
+
+	return records, nil
 }
 
 func validateEvalRun(run EvalRunRecord) error {

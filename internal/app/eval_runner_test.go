@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/niccrow/optimusctx/internal/repository"
+	"github.com/niccrow/optimusctx/internal/state"
 	"github.com/niccrow/optimusctx/internal/store/sqlite"
 )
 
@@ -950,6 +951,103 @@ func TestEvalScenarioRerun(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(fixturesRoot, "go-basic", "v1", "repository", "manual-only.txt")); !os.IsNotExist(err) {
 		t.Fatalf("fixture source should remain immutable across reruns, err=%v", err)
+	}
+}
+
+func TestEvalRequirementCoverageReport(t *testing.T) {
+	repoRoot := initRepo(t)
+	layout, err := state.ResolveLayout(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, err := sqlite.OpenOrCreateStore(context.Background(), layout, repository.DetectionModeGit)
+	if err != nil {
+		t.Fatalf("OpenOrCreateStore() error = %v", err)
+	}
+	defer store.Close()
+
+	repoRecord, err := store.UpsertRepository(context.Background(), testRepoRoot(repoRoot), time.Date(2026, 3, 16, 13, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("UpsertRepository() error = %v", err)
+	}
+
+	saveRun := func(startedAt time.Time, scenarioID string, scenarioName string, artifactName string) int64 {
+		run, err := store.SaveEvalRun(context.Background(), sqlite.EvalRunRecord{
+			RepositoryID:    repoRecord.ID,
+			ScenarioID:      scenarioID,
+			ScenarioVersion: "v1",
+			FixtureID:       "go-basic",
+			FixtureVersion:  "v1",
+			Status:          sqlite.EvalRunStatusPassed,
+			Passed:          true,
+			WorkspacePath:   repoRoot,
+			ArtifactRoot:    layout.EvalDir,
+			StartedAt:       startedAt,
+			CompletedAt:     startedAt.Add(time.Minute),
+			MetadataJSON:    `{"scenarioName":"` + scenarioName + `"}`,
+		}, nil, []sqlite.EvalArtifactRecord{{
+			ArtifactID: artifactName,
+			Kind:       "file",
+			StoredPath: filepath.Join(layout.EvalDir, scenarioID, artifactName+".json"),
+			Required:   true,
+			Present:    true,
+			SizeBytes:  128,
+		}})
+		if err != nil {
+			t.Fatalf("SaveEvalRun(%s) error = %v", scenarioID, err)
+		}
+		return run.ID
+	}
+
+	recoveryRunID := saveRun(time.Date(2026, 3, 16, 13, 5, 0, 0, time.UTC), "mcp-go-recovery-v1", "MCP degraded-to-recovery flow on basic Go fixture", "refresh-recovered")
+	saveRun(time.Date(2026, 3, 16, 13, 1, 0, 0, time.UTC), "mcp-go-basic-v1", "MCP initialize and tools/list on basic Go fixture", "mcp-transcript")
+	saveRun(time.Date(2026, 3, 16, 13, 2, 0, 0, time.UTC), "mcp-go-worktree-v1", "MCP full tool flow on nested worktree fixture", "health-response")
+	saveRun(time.Date(2026, 3, 16, 13, 3, 0, 0, time.UTC), "cli-go-stale-v1", "CLI stale and watch-diagnostic flow on basic Go fixture", "doctor-stdout")
+	saveRun(time.Date(2026, 3, 16, 13, 4, 0, 0, time.UTC), "mcp-go-degraded-v1", "MCP degraded refresh flow on basic Go fixture", "refresh-error")
+
+	service := NewEvalService()
+	report, err := service.RequirementCoverageReport(context.Background(), repoRoot)
+	if err != nil {
+		t.Fatalf("RequirementCoverageReport() error = %v", err)
+	}
+
+	if report.RepositoryRoot != repoRoot {
+		t.Fatalf("RepositoryRoot = %q, want %q", report.RepositoryRoot, repoRoot)
+	}
+	if report.EvalArtifactRoot != layout.EvalDir {
+		t.Fatalf("EvalArtifactRoot = %q, want %q", report.EvalArtifactRoot, layout.EvalDir)
+	}
+	if got, want := len(report.ScenarioInventory), 5; got != want {
+		t.Fatalf("len(ScenarioInventory) = %d, want %d", got, want)
+	}
+	if report.ScenarioInventory[0].ScenarioID != "cli-go-stale-v1" {
+		t.Fatalf("first inventory scenario = %q, want cli-go-stale-v1", report.ScenarioInventory[0].ScenarioID)
+	}
+	if report.ScenarioInventory[4].ScenarioID != "mcp-go-worktree-v1" {
+		t.Fatalf("last inventory scenario = %q, want mcp-go-worktree-v1", report.ScenarioInventory[4].ScenarioID)
+	}
+
+	if got, want := len(report.Requirements), 2; got != want {
+		t.Fatalf("len(Requirements) = %d, want %d", got, want)
+	}
+	if !report.Requirements[0].Covered || report.Requirements[0].RequirementID != "EVAL-02" {
+		t.Fatalf("EVAL-02 coverage = %+v", report.Requirements[0])
+	}
+	if !report.Requirements[1].Covered || report.Requirements[1].RequirementID != "EVAL-03" {
+		t.Fatalf("EVAL-03 coverage = %+v", report.Requirements[1])
+	}
+	if got, want := report.Requirements[0].RerunCommands[0], "go run ./cmd/optimusctx eval --scenario mcp-go-basic-v1"; got != want {
+		t.Fatalf("EVAL-02 rerun command = %q, want %q", got, want)
+	}
+	if got, want := report.Requirements[1].Evidence[2].RunID, recoveryRunID; got != want {
+		t.Fatalf("recovery run ID = %d, want %d", got, want)
+	}
+	if got, want := report.Requirements[1].Evidence[2].ArtifactRoot, layout.EvalDir; got != want {
+		t.Fatalf("recovery artifact root = %q, want %q", got, want)
+	}
+	if got, want := report.Requirements[1].Evidence[2].ArtifactPaths[0], filepath.Join(layout.EvalDir, "mcp-go-recovery-v1", "refresh-recovered.json"); got != want {
+		t.Fatalf("recovery artifact path = %q, want %q", got, want)
 	}
 }
 
