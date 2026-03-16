@@ -1,10 +1,12 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/niccrow/optimusctx/internal/repository"
 )
@@ -160,6 +162,120 @@ func TestBenchmarkCorpusValidation(t *testing.T) {
 	}
 }
 
+func TestBenchmarkLaneDefinitions(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	fixturesRoot := filepath.Join(root, "fixtures")
+	suitesDir := filepath.Join(root, "benchmarks")
+	writeEvalFixtureFile(t, filepath.Join(fixturesRoot, "go-benchmark", "v1", "repository", "go.mod"), "module fixture/benchmark\n\ngo 1.23.0\n")
+	writeBenchmarkSuiteFile(t, filepath.Join(suitesDir, "suite.json"), validBenchmarkSuite())
+
+	suite, err := NewBenchmarkRunner().LoadSuite(BenchmarkSuiteRequest{
+		SuiteID:      "go-benchmark-discovery-v1",
+		SuitesDir:    suitesDir,
+		FixturesRoot: fixturesRoot,
+	})
+	if err != nil {
+		t.Fatalf("LoadSuite() error = %v", err)
+	}
+
+	if suite.Lanes[0].StartMarker == "" || suite.Lanes[0].SuccessMarker == "" {
+		t.Fatalf("lane markers missing: %+v", suite.Lanes[0])
+	}
+	if suite.Lanes[0].StopCondition.Marker != "target_identified" {
+		t.Fatalf("discovery stop marker = %q", suite.Lanes[0].StopCondition.Marker)
+	}
+	if suite.Lanes[1].StopCondition.Marker != "context_ready" {
+		t.Fatalf("context stop marker = %q", suite.Lanes[1].StopCondition.Marker)
+	}
+}
+
+func TestBenchmarkDiscoveryTiming(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 3, 16, 12, 0, 0, 0, time.UTC)
+	runner := NewBenchmarkRunner()
+	runner.Now = func() time.Time {
+		current := now
+		now = now.Add(250 * time.Millisecond)
+		return current
+	}
+	runner.MkdirTemp = func(string, string) (string, error) {
+		return t.TempDir(), nil
+	}
+	runner.CopyTree = func(src string, dst string) error {
+		return copyEvalTree(src, dst)
+	}
+	runner.GitInit = func(context.Context, string) error { return nil }
+	runner.RunCommand = func(context.Context, BenchmarkCommandInvocation) (BenchmarkCommandExecutionResult, error) {
+		return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
+	}
+	runner.RunTool = func(_ context.Context, invocation BenchmarkToolInvocation) (BenchmarkToolExecutionResult, error) {
+		switch invocation.Name {
+		case "optimusctx.repository_map":
+			return BenchmarkToolExecutionResult{Payload: repository.RepositoryMap{
+				RepositoryRoot: invocation.WorkingDir,
+				Directories: []repository.RepositoryMapDirectory{{
+					Path: "internal/http/handler",
+					Files: []repository.RepositoryMapFile{{
+						Path: "internal/http/handler/rollout.go",
+					}},
+				}},
+			}}, nil
+		case "optimusctx.symbol_lookup":
+			return BenchmarkToolExecutionResult{Payload: repository.SymbolLookupResult{
+				Matches: []repository.SymbolLookupMatch{{
+					Path: "internal/http/handler/rollout.go",
+					Name: "LoadRolloutConfig",
+				}},
+			}}, nil
+		case "optimusctx.targeted_context":
+			return BenchmarkToolExecutionResult{Payload: repository.TargetedContextResult{
+				Path:   "internal/http/handler/rollout.go",
+				Source: []string{"func LoadRolloutConfig() {}", "return cfg"},
+			}}, nil
+		default:
+			t.Fatalf("unexpected tool %q", invocation.Name)
+			return BenchmarkToolExecutionResult{}, nil
+		}
+	}
+
+	result, err := runner.Run(context.Background(), BenchmarkRunRequest{
+		SuiteID:      "go-benchmark-discovery-v1",
+		SuitesDir:    filepath.Join("..", "..", "testdata", "eval", "benchmarks"),
+		FixturesRoot: filepath.Join("..", "..", "testdata", "eval", "fixtures"),
+	})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if len(result.Arms) != 2 {
+		t.Fatalf("len(result.Arms) = %d, want 2", len(result.Arms))
+	}
+
+	discovery := result.Arms[0].LaneResults[0]
+	if !discovery.Success {
+		t.Fatalf("discovery lane = %+v, want success", discovery)
+	}
+	if discovery.Elapsed <= 0 {
+		t.Fatalf("discovery elapsed = %s, want > 0", discovery.Elapsed)
+	}
+	if discovery.Effort.ActionCount == 0 {
+		t.Fatalf("discovery effort = %+v, want actions", discovery.Effort)
+	}
+
+	contextLane := result.Arms[1].LaneResults[1]
+	if !contextLane.Success {
+		t.Fatalf("context lane = %+v, want success", contextLane)
+	}
+	if contextLane.Effort.BytesRead == 0 {
+		t.Fatalf("context bytes = %d, want > 0", contextLane.Effort.BytesRead)
+	}
+	if !strings.Contains(strings.Join(contextLane.Effort.ConsultedArtifacts, ","), "internal/http/handler/rollout.go") {
+		t.Fatalf("context consulted artifacts = %+v", contextLane.Effort.ConsultedArtifacts)
+	}
+}
+
 func validBenchmarkSuite() repository.BenchmarkSuiteDefinition {
 	return repository.BenchmarkSuiteDefinition{
 		SchemaVersion: repository.BenchmarkSuiteSchemaV1,
@@ -182,7 +298,9 @@ func validBenchmarkSuite() repository.BenchmarkSuiteDefinition {
 		},
 		Lanes: []repository.BenchmarkLaneDefinition{
 			{
-				Name: repository.BenchmarkLaneDiscovery,
+				Name:          repository.BenchmarkLaneDiscovery,
+				StartMarker:   "discovery_started",
+				SuccessMarker: "target_identified",
 				StopCondition: repository.BenchmarkStopCondition{
 					Kind:   repository.BenchmarkStopConditionKindMarker,
 					Marker: "target_identified",
@@ -193,7 +311,9 @@ func validBenchmarkSuite() repository.BenchmarkSuiteDefinition {
 				},
 			},
 			{
-				Name: repository.BenchmarkLaneContextAssembly,
+				Name:          repository.BenchmarkLaneContextAssembly,
+				StartMarker:   "context_started",
+				SuccessMarker: "context_ready",
 				StopCondition: repository.BenchmarkStopCondition{
 					Kind:   repository.BenchmarkStopConditionKindMarker,
 					Marker: "context_ready",

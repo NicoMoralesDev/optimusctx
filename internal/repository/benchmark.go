@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 const BenchmarkSuiteSchemaV1 = "optimusctx/benchmark-suite@v1"
@@ -86,6 +87,8 @@ type BenchmarkTaskDefinition struct {
 type BenchmarkLaneDefinition struct {
 	Name          BenchmarkLane          `json:"name"`
 	Description   string                 `json:"description,omitempty"`
+	StartMarker   string                 `json:"startMarker,omitempty"`
+	SuccessMarker string                 `json:"successMarker,omitempty"`
 	StopCondition BenchmarkStopCondition `json:"stopCondition"`
 	Metrics       []BenchmarkMetric      `json:"metrics"`
 }
@@ -125,6 +128,47 @@ type BenchmarkTreatmentAction struct {
 	Command EvalCommandName           `json:"command,omitempty"`
 	Args    []string                  `json:"args,omitempty"`
 	Tool    string                    `json:"tool,omitempty"`
+}
+
+type BenchmarkRunResult struct {
+	SchemaVersion string                  `json:"schemaVersion"`
+	SuiteID       string                  `json:"suiteId"`
+	SuiteVersion  string                  `json:"suiteVersion"`
+	FixtureID     string                  `json:"fixtureId"`
+	FixturePath   string                  `json:"fixturePath"`
+	WorkspacePath string                  `json:"workspacePath"`
+	StartedAt     time.Time               `json:"startedAt"`
+	FinishedAt    time.Time               `json:"finishedAt"`
+	Arms          []BenchmarkArmRunResult `json:"arms"`
+}
+
+type BenchmarkArmRunResult struct {
+	Kind        BenchmarkArmKind         `json:"kind"`
+	Name        string                   `json:"name"`
+	StartedAt   time.Time                `json:"startedAt"`
+	FinishedAt  time.Time                `json:"finishedAt"`
+	LaneResults []BenchmarkLaneRunResult `json:"laneResults"`
+}
+
+type BenchmarkLaneRunResult struct {
+	Lane          BenchmarkLane       `json:"lane"`
+	StartMarker   string              `json:"startMarker"`
+	SuccessMarker string              `json:"successMarker"`
+	StopMarker    string              `json:"stopMarker"`
+	StartedAt     time.Time           `json:"startedAt"`
+	FinishedAt    time.Time           `json:"finishedAt"`
+	Elapsed       time.Duration       `json:"elapsed"`
+	Success       bool                `json:"success"`
+	Effort        BenchmarkLaneEffort `json:"effort"`
+}
+
+type BenchmarkLaneEffort struct {
+	ActionCount           int64    `json:"actionCount"`
+	BroadSearchActions    int64    `json:"broadSearchActions"`
+	TargetedLookupActions int64    `json:"targetedLookupActions"`
+	FileReadActions       int64    `json:"fileReadActions"`
+	BytesRead             int64    `json:"bytesRead"`
+	ConsultedArtifacts    []string `json:"consultedArtifacts,omitempty"`
 }
 
 func (s BenchmarkSuiteDefinition) Validate() error {
@@ -193,6 +237,12 @@ func validateBenchmarkLanes(lanes []BenchmarkLaneDefinition) (map[BenchmarkLane]
 		if _, exists := seen[lane.Name]; exists {
 			return nil, fmt.Errorf("duplicate lane %q", lane.Name)
 		}
+		if strings.TrimSpace(lane.StartMarker) == "" {
+			lane.StartMarker = lane.StartMarkerName()
+		}
+		if strings.TrimSpace(lane.SuccessMarker) == "" {
+			lane.SuccessMarker = lane.SuccessMarkerName()
+		}
 		if err := lane.StopCondition.validate(); err != nil {
 			return nil, fmt.Errorf("lanes[%d].stopCondition: %w", idx, err)
 		}
@@ -226,6 +276,20 @@ func (s BenchmarkStopCondition) validate() error {
 		return fmt.Errorf("unsupported stop condition kind %q", s.Kind)
 	}
 	return nil
+}
+
+func (l BenchmarkLaneDefinition) StartMarkerName() string {
+	if strings.TrimSpace(l.StartMarker) != "" {
+		return l.StartMarker
+	}
+	return string(l.Name) + "_started"
+}
+
+func (l BenchmarkLaneDefinition) SuccessMarkerName() string {
+	if strings.TrimSpace(l.SuccessMarker) != "" {
+		return l.SuccessMarker
+	}
+	return l.StopCondition.Marker
 }
 
 func validateBenchmarkArms(arms []BenchmarkArmDefinition, lanes map[BenchmarkLane]BenchmarkLaneDefinition) error {
