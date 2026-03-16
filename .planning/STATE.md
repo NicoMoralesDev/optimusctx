@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 12
 current_phase_name: token attribution and evidence reporting
 current_plan: 2
-status: in_progress
+status: executing
 stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-03-16T13:51:33.443Z"
+last_updated: "2026-03-16T14:07:40.303Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 16
-  completed_plans: 13
-  percent: 100
+  completed_plans: 14
+  percent: 96
 ---
 
 # Planning State: OptimusCtx
@@ -29,7 +29,7 @@ progress:
 **Total Phases:** 5
 **Current Plan:** 2
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 100%
+**Progress:** [██████████] 96%
 **Last Activity:** 2026-03-16
 **Last Activity Description:** Phase 12 plan 01 complete, canonical token attribution and persistence evidence shipped
 
@@ -186,6 +186,7 @@ progress:
 | Phase 11-a-b-benchmark-methodology-and-workflow-timing P03 | 14min | 3 tasks | 9 files |
 | Phase 11-a-b-benchmark-methodology-and-workflow-timing P04 | 5min | 3 tasks | 7 files |
 | Phase 12 P01 | 364 | 3 tasks | 8 files |
+| Phase 12-token-attribution-and-evidence-reporting P02 | 33min | 3 tasks | 8 files |
 
 ## Decisions Made
 
@@ -305,6 +306,9 @@ progress:
 - [Phase 12]: Phase 12 benchmark token math stays on the shared bytes_div_4_ceiling policy and is labeled as estimated workflow-consumed tokens, not provider billing.
 - [Phase 12]: Treatment artifact attribution is step-scoped and typed in repository contracts so runner, store, exports, and summaries reuse one canonical vocabulary.
 - [Phase 12]: Attribution evidence persists inside existing benchmark run and lane metadata JSON so reporting can read canonical inputs without recomputing from logs.
+- [Phase 12]: Benchmark evidence exports are rebuilt from persisted benchmark runs and attribution metadata rather than ad hoc in-memory terminal output.
+- [Phase 12]: The rerun contract is a real shipped CLI path: optimusctx eval benchmark export --suite|--suite-file ... --attempts N.
+- [Phase 12]: Derived evidence persistence stores canonical bundle JSON plus queryable lane-summary and attribution rows on top of raw benchmark run tables.
 
 ## Blockers
 
