@@ -14,9 +14,9 @@
 
 ### Benchmarking
 
-- [ ] **BNCH-01**: User can run a fixed A/B benchmark methodology that compares a baseline repository-exploration workflow against an OptimusCtx-assisted workflow on the same tasks and repositories.
+- [x] **BNCH-01**: User can run a fixed A/B benchmark methodology that compares a baseline repository-exploration workflow against an OptimusCtx-assisted workflow on the same tasks and repositories.
 - [ ] **BNCH-02**: User can measure token savings using one explicit milestone estimator and attribute the savings to specific OptimusCtx artifact types such as repository map, exact lookup, L2 context, or pack export.
-- [ ] **BNCH-03**: User can measure workflow-speed improvement using repeatable timings for discovery, context assembly, refresh-after-change, and end-to-end task completion.
+- [x] **BNCH-03**: User can measure workflow-speed improvement using repeatable timings for discovery, context assembly, refresh-after-change, and end-to-end task completion.
 - [ ] **BNCH-04**: User can capture benchmark results in machine-readable artifacts and human-readable summaries that are reproducible from the same fixture inputs.
 
 ### Distribution
@@ -56,9 +56,9 @@
 | EVAL-02 | Phase 10 | Complete |
 | EVAL-03 | Phase 10 | Complete |
 | EVAL-04 | Phase 09 | Complete |
-| BNCH-01 | Phase 11 | Pending |
+| BNCH-01 | Phase 11 | Complete |
 | BNCH-02 | Phase 12 | Pending |
-| BNCH-03 | Phase 11 | Pending |
+| BNCH-03 | Phase 11 | Complete |
 | BNCH-04 | Phase 12 | Pending |
 | DIST-01 | Phase 13 | Pending |
 | DIST-02 | Phase 13 | Pending |

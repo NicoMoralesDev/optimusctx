@@ -56,7 +56,7 @@ Plans:
 
 Plans:
 
-- [ ] 11-01: benchmark scenario selection and baseline rules
+- [x] 11-01: benchmark scenario selection and baseline rules
 - [ ] 11-02: workflow timing capture for discovery and context assembly
 - [ ] 11-03: refresh-after-change and task-completion benchmark lanes
 - [ ] 11-04: repeated-run comparison and benchmark verification
@@ -102,8 +102,8 @@ Active milestone: `v1.1`
 
 Next step:
 
-- Start `11-01` — benchmark scenario selection and baseline rules
-- Phase 10 is complete with persisted functional evidence mapped to `EVAL-02` and `EVAL-03`
+- Continue with `11-02` — workflow timing capture for discovery and context assembly
+- Phase 11 now has a frozen benchmark methodology substrate, paired suite contracts, and committed fixture-backed corpus definitions
 
 ---
-*Last updated: 2026-03-16 after completing Phase 10 plan 04*
+*Last updated: 2026-03-16 after completing Phase 11 plan 01*

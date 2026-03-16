@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 11
 current_phase_name: a/b benchmark methodology and workflow timing
-current_plan: Not started
-status: planning
-stopped_at: Completed 10-04-PLAN.md
-last_updated: "2026-03-16T11:28:02.765Z"
+current_plan: "02"
+status: executing
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-03-16T12:05:01.071Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
+  total_plans: 12
+  completed_plans: 9
+  percent: 94
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to plan
+**Status:** Executing
 **Current Phase:** 11
 **Current Phase Name:** a/b benchmark methodology and workflow timing
 **Total Phases:** 5
-**Current Plan:** Not started
+**Current Plan:** 02
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 100%
+**Progress:** [█████████░] 94%
 **Last Activity:** 2026-03-16
-**Last Activity Description:** Phase 10 complete, transitioned to Phase 11
+**Last Activity Description:** Phase 11 plan 01 complete, benchmark methodology substrate established
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: v1.1 validation, benchmarking, and distribution
 - Active phase: 11-benchmark-methodology-and-workflow-timing
-- Next planning action: start Phase 11 plan 01
+- Next planning action: execute Phase 11 plan 02
 - Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
 - Coverage status: v1.0 shipped; v1.1 requirements are mapped across Phases 09-13
 
@@ -54,6 +54,9 @@ progress:
 - v1.1 will stay a proof-and-distribution milestone, not a new runtime-capability milestone.
 - Functional validation will use versioned fixture repositories, rerunnable scenario definitions, and the real shipped CLI and MCP surfaces.
 - Benchmark claims will use a fixed baseline-vs-OptimusCtx methodology with one token estimator and explicit artifact attribution.
+- Baseline workflows are restricted to typed listing, exact-search, bounded-read, git-file, and explicit lane-complete actions rather than arbitrary shell steps.
+- Benchmark suites stay JSON-backed and fixture-referenced so later timing and reporting plans reuse committed corpus definitions instead of inline test data.
+- Treatment workflows are limited to shipped CLI commands and MCP tools, preventing benchmark-only shortcuts from contaminating later A/B claims.
 - Distribution will stay narrow: cross-platform archives, first package-manager channels, install verification, and a written rollout plan.
 - The default eval path now persists runs under the source repository's `.optimusctx/eval/run-<id>` tree instead of leaving evidence in temp workspaces.
 - Eval runner pre-creates file-artifact parent directories so real CLI commands can write deterministic outputs without manual setup.
@@ -87,6 +90,7 @@ progress:
 - Plan `09-01` is complete with canonical evaluation contracts, committed fixture repositories, scenario definitions, and repository-backed schema validation tests.
 - Plan `09-03` is complete with repository-local eval artifact paths, dedicated eval run persistence tables, and contract tests for rerunnable evidence storage.
 - Plan `09-04` is complete with fresh-workspace rerun coverage, persisted eval run evidence, and README guidance for the shipped `eval` workflow.
+- Plan `11-01` is complete with canonical benchmark suite contracts, app-layer suite selection enforcement, and a frozen benchmark corpus for later timing plans.
 - Plan `01-01` is complete with a working Go CLI scaffold, version output, and bootstrap documentation.
 - Plan `01-02` is complete with repository root detection, ignore-aware discovery, and persistence-ready metadata records under `internal/repository`.
 - Plan `01-03` is complete with repository-local `.optimusctx` layout helpers, SQLite migrations, and store initialization under `internal/state` and `internal/store`.
@@ -177,6 +181,7 @@ progress:
 | Phase 09-evaluation-harness-and-fixture-foundation P04 | 10min | 3 tasks | 7 files |
 | Phase 10-functional-runtime-validation P01 | 10m | 3 tasks | 12 files |
 | Phase 10-functional-runtime-validation P02 | 14min | 3 tasks | 10 files |
+| Phase 11-a-b-benchmark-methodology-and-workflow-timing P01 | 1m | 3 tasks | 14 files |
 
 ## Decisions Made
 
@@ -282,6 +287,9 @@ progress:
 - [Phase 10-functional-runtime-validation]: Eval scenarios now use typed state mutations and step-scoped refresh failure hooks instead of shell setup or ad hoc SQL.
 - [Phase 10]: Functional milestone reporting stays internal and reads persisted eval evidence instead of adding a new CLI report surface.
 - [Phase 10]: Requirement coverage for EVAL-02 and EVAL-03 is defined by explicit Phase 10 scenario IDs and latest stored run evidence.
+- [Phase 11]: Baseline workflows are restricted to typed listing, exact-search, bounded-read, git-file, and explicit lane-complete actions rather than arbitrary shell steps.
+- [Phase 11]: Benchmark suites stay JSON-backed and fixture-referenced so later timing and reporting plans reuse committed corpus definitions instead of inline test data.
+- [Phase 11]: Treatment workflows are limited to shipped CLI commands and MCP tools, preventing benchmark-only shortcuts from contaminating later A/B claims.
 
 ## Blockers
 
@@ -289,8 +297,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T11:22:13Z
-**Stopped At:** Completed 10-04-PLAN.md
+**Last Date:** 2026-03-16T12:04:50.975Z
+**Stopped At:** Completed 11-01-PLAN.md
 **Resume File:** None
 
 ---
