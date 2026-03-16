@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: validation-benchmarking-and-distribution
+milestone: v1.0
+milestone_name: milestone
 current_phase: 09
 current_phase_name: evaluation-harness-and-fixture-foundation
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 09-03-PLAN.md
-last_updated: "2026-03-16T00:10:30Z"
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-03-16T00:13:04.040Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 20
-  completed_plans: 2
-  percent: 10
+  total_plans: 4
+  completed_plans: 3
+  percent: 98
 ---
 
 # Planning State: OptimusCtx
@@ -27,9 +27,9 @@ progress:
 **Current Phase:** 09
 **Current Phase Name:** evaluation-harness-and-fixture-foundation
 **Total Phases:** 5
-**Current Plan:** 2
+**Current Plan:** 3
 **Total Plans in Phase:** 4
-**Progress:** [█░░░░░░░░░] 10%
+**Progress:** [██████████] 98%
 **Last Activity:** 2026-03-16
 **Last Activity Description:** Phase 09 plan 03 completed with deterministic eval artifact layout and dedicated eval persistence
 
@@ -169,6 +169,7 @@ progress:
 | Phase 08 P04 | 2min | 3 tasks | 2 files |
 | Phase 09-evaluation-harness-and-fixture-foundation P01 | 18min | 3 tasks | 13 files |
 | Phase 09 P03 | 8min | 3 tasks | 7 files |
+| Phase 09 P02 | 12min | 3 tasks | 5 files |
 
 ## Decisions Made
 
@@ -260,6 +261,9 @@ progress:
 - [Phase 09]: The initial command surface is intentionally narrow: init, refresh, doctor, and pack_export with CLI-only sequencing rules.
 - [Phase 09]: Evaluation artifacts live in .optimusctx/eval/ as a sibling of logs and tmp so evidence stays explicit and separate from transient operational state.
 - [Phase 09]: Eval evidence persists in dedicated eval_runs, eval_steps, and eval_artifacts tables instead of extending refresh-history tables.
+- [Phase 09]: Evaluation steps execute through the existing root command surface in-process so scenario results match shipped CLI behavior without shell-script glue.
+- [Phase 09]: Fixture repositories are materialized by copying committed trees and initializing a fresh Git repository before scenario execution.
+- [Phase 09]: EvalRunner applies NewEvalRunner defaults to partial configurations so tests and future extensions can override only the seams they need.
 
 ## Blockers
 
@@ -267,8 +271,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T00:09:49.082Z
-**Stopped At:** Completed 09-03-PLAN.md
+**Last Date:** 2026-03-16T00:13:04.038Z
+**Stopped At:** Completed 09-02-PLAN.md
 **Resume File:** None
 
 ---
