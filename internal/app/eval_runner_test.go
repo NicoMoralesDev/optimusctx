@@ -13,7 +13,7 @@ import (
 	"github.com/niccrow/optimusctx/internal/repository"
 )
 
-func TestEvalRunnerExecutesScenario(t *testing.T) {
+func TestEvalRunnerExecutesCLIWorkflow(t *testing.T) {
 	sourceRoot := t.TempDir()
 	fixturesRoot := filepath.Join(sourceRoot, "fixtures")
 	scenariosDir := filepath.Join(sourceRoot, "scenarios")
@@ -40,6 +40,12 @@ func TestEvalRunnerExecutesScenario(t *testing.T) {
 					Surface:  repository.EvalCommandSurfaceCLI,
 					Command:  repository.EvalCommandInit,
 					ExitCode: 0,
+				},
+				Setup: []repository.EvalSetupAction{
+					{Kind: repository.EvalSetupActionWriteFile, Path: "README.md", Content: "# fixture\n"},
+				},
+				Assert: []repository.EvalAssertion{
+					{Kind: repository.EvalAssertionKindContains, Target: repository.EvalAssertionTargetStdout, Contains: "initialized"},
 				},
 			},
 			{
@@ -91,6 +97,16 @@ func TestEvalRunnerExecutesScenario(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(invocation.WorkingDir, ".git")); err != nil {
 			t.Fatalf("materialized fixture missing .git directory: %v", err)
 		}
+		if reflect.DeepEqual(invocation.Args, []string{"init"}) {
+			content, err := os.ReadFile(filepath.Join(invocation.WorkingDir, "README.md"))
+			if err != nil {
+				t.Fatalf("setup file missing: %v", err)
+			}
+			if string(content) != "# fixture\n" {
+				t.Fatalf("setup file content = %q", string(content))
+			}
+			return EvalCommandExecutionResult{Stdout: "initialized\n", ExitCode: 0}, nil
+		}
 		if reflect.DeepEqual(invocation.Args, []string{"pack", "export", "--format", "json", "--output", "artifacts/pack.json"}) {
 			writeEvalFixtureFile(t, filepath.Join(invocation.WorkingDir, "artifacts", "pack.json"), "{\"ok\":true}\n")
 		}
@@ -124,7 +140,7 @@ func TestEvalRunnerExecutesScenario(t *testing.T) {
 	}
 }
 
-func TestEvalRunnerCapturesStepResults(t *testing.T) {
+func TestEvalCLIWorkflowAssertions(t *testing.T) {
 	sourceRoot := t.TempDir()
 	fixturesRoot := filepath.Join(sourceRoot, "fixtures")
 	scenarioPath := filepath.Join(sourceRoot, "scenarios", "capture.json")
@@ -152,6 +168,10 @@ func TestEvalRunnerCapturesStepResults(t *testing.T) {
 					Command:  repository.EvalCommandInit,
 					ExitCode: 0,
 				},
+				Assert: []repository.EvalAssertion{
+					{Kind: repository.EvalAssertionKindContains, Target: repository.EvalAssertionTargetStdout, Contains: "initialized"},
+					{Kind: repository.EvalAssertionKindContains, Target: repository.EvalAssertionTargetStderr, Contains: "warning"},
+				},
 				CaptureArtifact: []string{"stdout", "stderr"},
 			},
 			{
@@ -163,6 +183,14 @@ func TestEvalRunnerCapturesStepResults(t *testing.T) {
 					Command:  repository.EvalCommandRefresh,
 					ExitCode: 0,
 				},
+				Setup: []repository.EvalSetupAction{
+					{Kind: repository.EvalSetupActionOverwriteFile, Path: "state.json", Content: "{\"prepared\":true}\n"},
+				},
+				Assert: []repository.EvalAssertion{
+					{Kind: repository.EvalAssertionKindJSONFieldPresent, Target: repository.EvalAssertionTargetArtifact, Artifact: "refresh-json", Path: "summary.freshness"},
+					{Kind: repository.EvalAssertionKindJSONFieldEquals, Target: repository.EvalAssertionTargetArtifact, Artifact: "refresh-json", Path: "summary.status", Equals: "ok"},
+				},
+				CaptureArtifact: []string{"refresh-json"},
 			},
 			{
 				ID:   "pack",
@@ -173,12 +201,16 @@ func TestEvalRunnerCapturesStepResults(t *testing.T) {
 					Command:  repository.EvalCommandPackExport,
 					ExitCode: 0,
 				},
+				Assert: []repository.EvalAssertion{
+					{Kind: repository.EvalAssertionKindJSONFieldEquals, Target: repository.EvalAssertionTargetArtifact, Artifact: "pack", Path: "status", Equals: "ok"},
+				},
 				CaptureArtifact: []string{"pack"},
 			},
 		},
 		Artifacts: []repository.EvalArtifactRef{
 			{ID: "stdout", Kind: repository.EvalArtifactKindStdout, Required: true},
 			{ID: "stderr", Kind: repository.EvalArtifactKindStderr, Required: true},
+			{ID: "refresh-json", Kind: repository.EvalArtifactKindFile, Path: "artifacts/refresh.json", Required: true},
 			{ID: "pack", Kind: repository.EvalArtifactKindFile, Path: "artifacts/pack.json", Required: true},
 		},
 	})
@@ -186,6 +218,17 @@ func TestEvalRunnerCapturesStepResults(t *testing.T) {
 	runner := NewEvalRunner()
 	runner.Now = newDeterministicEvalClock()
 	runner.RunCommand = func(_ context.Context, invocation EvalCommandInvocation) (EvalCommandExecutionResult, error) {
+		if reflect.DeepEqual(invocation.Args, []string{"refresh"}) {
+			content, err := os.ReadFile(filepath.Join(invocation.WorkingDir, "state.json"))
+			if err != nil {
+				t.Fatalf("refresh setup file missing: %v", err)
+			}
+			if string(content) != "{\"prepared\":true}\n" {
+				t.Fatalf("refresh setup file content = %q", string(content))
+			}
+			writeEvalFixtureFile(t, filepath.Join(invocation.WorkingDir, "artifacts", "refresh.json"), "{\"summary\":{\"freshness\":\"fresh\",\"status\":\"ok\"}}\n")
+			return EvalCommandExecutionResult{Stdout: "refreshed\n", ExitCode: 0}, nil
+		}
 		if strings.HasPrefix(strings.Join(invocation.Args, " "), "pack export") {
 			writeEvalFixtureFile(t, filepath.Join(invocation.WorkingDir, "artifacts", "pack.json"), "{\"status\":\"ok\"}\n")
 			return EvalCommandExecutionResult{Stdout: "packed\n", ExitCode: 0}, nil
@@ -231,8 +274,111 @@ func TestEvalRunnerCapturesStepResults(t *testing.T) {
 	if second.Artifacts[0].Location == "" || second.Artifacts[0].Bytes == 0 {
 		t.Fatalf("second step artifact = %+v", second.Artifacts[0])
 	}
-	if len(result.Artifacts) != 3 {
-		t.Fatalf("len(result.Artifacts) = %d, want 3", len(result.Artifacts))
+	if len(result.Artifacts) != 4 {
+		t.Fatalf("len(result.Artifacts) = %d, want 4", len(result.Artifacts))
+	}
+}
+
+func TestEvalRunnerPersistsCLIArtifacts(t *testing.T) {
+	sourceRoot := t.TempDir()
+	fixturesRoot := filepath.Join(sourceRoot, "fixtures")
+	scenarioPath := filepath.Join(sourceRoot, "scenarios", "persist.json")
+
+	writeEvalFixtureFile(t, filepath.Join(fixturesRoot, "go-basic", "v1", "repository", "main.go"), "package main\n")
+	writeEvalScenarioFile(t, scenarioPath, repository.EvalScenarioDefinition{
+		SchemaVersion: repository.EvalScenarioSchemaV1,
+		ID:            "persist",
+		Version:       "v1",
+		Name:          "Persist",
+		Fixture: repository.EvalFixtureRef{
+			ID:           "go-basic",
+			Version:      "v1",
+			Path:         "go-basic/v1/repository",
+			Materialize:  repository.EvalFixtureModeCopyTree,
+			WorkspaceDir: "workspace",
+		},
+		Steps: []repository.EvalScenarioStep{
+			{
+				ID:   "init",
+				Name: "Initialize",
+				Kind: repository.EvalStepKindCommand,
+				Expect: repository.EvalExpectedCommand{
+					Surface:  repository.EvalCommandSurfaceCLI,
+					Command:  repository.EvalCommandInit,
+					ExitCode: 0,
+				},
+				CaptureArtifact: []string{"init-stdout"},
+			},
+			{
+				ID:   "refresh",
+				Name: "Refresh",
+				Kind: repository.EvalStepKindCommand,
+				Expect: repository.EvalExpectedCommand{
+					Surface:  repository.EvalCommandSurfaceCLI,
+					Command:  repository.EvalCommandRefresh,
+					ExitCode: 0,
+				},
+			},
+			{
+				ID:   "pack",
+				Name: "Pack",
+				Kind: repository.EvalStepKindCommand,
+				Expect: repository.EvalExpectedCommand{
+					Surface:  repository.EvalCommandSurfaceCLI,
+					Command:  repository.EvalCommandPackExport,
+					Args:     []string{"--format", "json"},
+					ExitCode: 0,
+				},
+				CaptureArtifact: []string{"pack"},
+			},
+		},
+		Artifacts: []repository.EvalArtifactRef{
+			{ID: "init-stdout", Kind: repository.EvalArtifactKindStdout, Required: true},
+			{ID: "pack", Kind: repository.EvalArtifactKindFile, Path: "artifacts/pack.json", Required: true},
+		},
+	})
+
+	runner := NewEvalRunner()
+	runner.Now = newDeterministicEvalClock()
+	runner.RunCommand = func(_ context.Context, invocation EvalCommandInvocation) (EvalCommandExecutionResult, error) {
+		if strings.HasPrefix(strings.Join(invocation.Args, " "), "pack export") {
+			writeEvalFixtureFile(t, filepath.Join(invocation.WorkingDir, "artifacts", "pack.json"), "{\"status\":\"ok\"}\n")
+			return EvalCommandExecutionResult{Stdout: "packed\n", ExitCode: 0}, nil
+		}
+		return EvalCommandExecutionResult{Stdout: "initialized\n", ExitCode: 0}, nil
+	}
+
+	result, err := runner.Run(context.Background(), EvalRunRequest{
+		ScenarioPath: scenarioPath,
+		FixturesRoot: fixturesRoot,
+	})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	artifactRoot := filepath.Join(sourceRoot, "persisted")
+	stepRecords, artifactRecords, err := persistEvalEvidence(artifactRoot, result)
+	if err != nil {
+		t.Fatalf("persistEvalEvidence() error = %v", err)
+	}
+	if len(stepRecords) != 3 || len(artifactRecords) != 2 {
+		t.Fatalf("persisted record counts = %d steps, %d artifacts", len(stepRecords), len(artifactRecords))
+	}
+	if stepRecords[0].StdoutPath == "" {
+		t.Fatalf("expected init stdout path, got %+v", stepRecords[0])
+	}
+	if _, err := os.Stat(stepRecords[0].StdoutPath); err != nil {
+		t.Fatalf("Stat(init stdout) error = %v", err)
+	}
+	if artifactRecords[1].StoredPath != filepath.Join(artifactRoot, "artifacts", "pack.json") {
+		t.Fatalf("pack stored path = %q", artifactRecords[1].StoredPath)
+	}
+	content, err := os.ReadFile(artifactRecords[1].StoredPath)
+	if err != nil {
+		t.Fatalf("ReadFile(pack stored path) error = %v", err)
+	}
+	if string(content) != "{\"status\":\"ok\"}\n" {
+		t.Fatalf("pack stored content = %q", string(content))
 	}
 }
 
