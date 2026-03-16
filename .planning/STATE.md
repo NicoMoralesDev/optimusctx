@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 12
 current_phase_name: token attribution and evidence reporting
-current_plan: 3
-status: in_progress
-stopped_at: Completed 12-02-PLAN.md
-last_updated: "2026-03-16T14:08:16Z"
+current_plan: 4
+status: executing
+stopped_at: Completed 12-03-PLAN.md
+last_updated: "2026-03-16T14:18:08.767Z"
 last_activity: 2026-03-16
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 16
-  completed_plans: 14
-  percent: 96
+  completed_plans: 15
+  percent: 98
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase in progress
+**Status:** Ready to execute
 **Current Phase:** 12
 **Current Phase Name:** token attribution and evidence reporting
 **Total Phases:** 5
-**Current Plan:** 3
+**Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [██████████] 96%
+**Progress:** [██████████] 98%
 **Last Activity:** 2026-03-16
-**Last Activity Description:** Phase 12 plan 02 complete, deterministic benchmark evidence bundle export shipped
+**Last Activity Description:** Phase 12 plan 03 complete, human-readable benchmark reports now render from persisted evidence bundles
 
 ## Project Memory
 
@@ -187,6 +187,7 @@ progress:
 | Phase 11-a-b-benchmark-methodology-and-workflow-timing P04 | 5min | 3 tasks | 7 files |
 | Phase 12 P01 | 364 | 3 tasks | 8 files |
 | Phase 12-token-attribution-and-evidence-reporting P02 | 33min | 3 tasks | 8 files |
+| Phase 12 P03 | 9min | 3 tasks | 5 files |
 
 ## Decisions Made
 
@@ -309,6 +310,9 @@ progress:
 - [Phase 12]: Benchmark evidence exports are rebuilt from persisted benchmark runs and attribution metadata rather than ad hoc in-memory terminal output.
 - [Phase 12]: The rerun contract is a real shipped CLI path: optimusctx eval benchmark export --suite|--suite-file ... --attempts N.
 - [Phase 12]: Derived evidence persistence stores canonical bundle JSON plus queryable lane-summary and attribution rows on top of raw benchmark run tables.
+- [Phase 12]: Human-readable benchmark reports render from normalized persisted evidence bundles instead of bespoke CLI aggregation.
+- [Phase 12]: Lane token comparisons use bytes_div_4_ceiling for baseline bytes-read and treatment attribution totals.
+- [Phase 12]: Operator-facing attribution labels stay on BNCH-02 terms such as Repository Map, Exact Lookup, L2 Context, and Pack Export.
 
 ## Blockers
 
@@ -316,8 +320,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T13:51:25.537Z
-**Stopped At:** Completed 12-01-PLAN.md
+**Last Date:** 2026-03-16T14:18:08.764Z
+**Stopped At:** Completed 12-03-PLAN.md
 **Resume File:** None
 
 ---

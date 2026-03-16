@@ -74,7 +74,7 @@ Plans:
 
 - [x] 12-01: token accounting contract and artifact attribution
 - [x] 12-02: benchmark result storage and export format
-- [ ] 12-03: human-readable benchmark summaries and comparison reports
+- [x] 12-03: human-readable benchmark summaries and comparison reports
 - [ ] 12-04: reproducibility checks and milestone verification
 
 **Requirements covered:** `BNCH-02`, `BNCH-04`  
@@ -102,8 +102,8 @@ Active milestone: `v1.1`
 
 Next step:
 
-- Continue with `12-03` — human-readable benchmark summaries and comparison reports
-- Phase 12 now has canonical token attribution plus persisted machine-readable benchmark evidence bundles and a shipped export path for later reporting work
+- Continue with `12-04` — reproducibility checks and milestone verification
+- Phase 12 now has canonical token attribution plus persisted machine-readable and human-readable benchmark evidence surfaces for final reproducibility review
 
 ---
-*Last updated: 2026-03-16 after completing Phase 12 plan 02*
+*Last updated: 2026-03-16 after completing Phase 12 plan 03*
