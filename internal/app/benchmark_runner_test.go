@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -318,6 +319,175 @@ func TestBenchmarkRefreshAfterChangeLane(t *testing.T) {
 	}
 	if !strings.Contains(strings.Join(refreshLane.EvidencePaths, ","), "docs/notes.txt") {
 		t.Fatalf("refresh evidence = %+v", refreshLane.EvidencePaths)
+	}
+}
+
+func TestBenchmarkTokenEstimation(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 3, 16, 12, 0, 0, 0, time.UTC)
+	runner := NewBenchmarkRunner()
+	runner.Now = func() time.Time {
+		current := now
+		now = now.Add(250 * time.Millisecond)
+		return current
+	}
+	runner.MkdirTemp = func(string, string) (string, error) { return t.TempDir(), nil }
+	runner.CopyTree = func(src string, dst string) error { return copyEvalTree(src, dst) }
+	runner.GitInit = func(context.Context, string) error { return nil }
+	runner.RunCommand = func(context.Context, BenchmarkCommandInvocation) (BenchmarkCommandExecutionResult, error) {
+		return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
+	}
+	runner.RunTool = func(_ context.Context, invocation BenchmarkToolInvocation) (BenchmarkToolExecutionResult, error) {
+		switch invocation.Name {
+		case "optimusctx.repository_map":
+			return BenchmarkToolExecutionResult{Payload: repository.RepositoryMap{
+				Directories: []repository.RepositoryMapDirectory{{
+					Path: "internal/http/handler",
+					Files: []repository.RepositoryMapFile{{
+						Path: "internal/http/handler/rollout.go",
+					}},
+				}},
+			}}, nil
+		case "optimusctx.symbol_lookup":
+			return BenchmarkToolExecutionResult{Payload: repository.SymbolLookupResult{
+				Matches: []repository.SymbolLookupMatch{{
+					Path: "internal/http/handler/rollout.go",
+					Name: "LoadRolloutConfig",
+				}},
+			}}, nil
+		case "optimusctx.targeted_context":
+			return BenchmarkToolExecutionResult{Payload: repository.TargetedContextResult{
+				Path:   "internal/http/handler/rollout.go",
+				Source: []string{"func LoadRolloutConfig() {}", "return cfg"},
+			}}, nil
+		default:
+			t.Fatalf("unexpected tool %q", invocation.Name)
+			return BenchmarkToolExecutionResult{}, nil
+		}
+	}
+
+	result, err := runner.Run(context.Background(), BenchmarkRunRequest{
+		SuiteID:      "go-benchmark-discovery-v1",
+		SuitesDir:    filepath.Join("..", "..", "testdata", "eval", "benchmarks"),
+		FixturesRoot: filepath.Join("..", "..", "testdata", "eval", "fixtures"),
+	})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	baselineContext := result.Arms[0].LaneResults[1]
+	if len(baselineContext.Attribution) != 2 {
+		t.Fatalf("baseline context attribution = %+v, want 2 records", baselineContext.Attribution)
+	}
+	for _, got := range baselineContext.Attribution {
+		if got.SourceKind != repository.BenchmarkTokenEstimateSourceBoundedFileContent {
+			t.Fatalf("baseline source kind = %q", got.SourceKind)
+		}
+		if got.EstimatedBytes == 0 || got.EstimatedTokens == 0 {
+			t.Fatalf("baseline attribution = %+v, want estimated bytes/tokens", got)
+		}
+	}
+
+	treatmentContext := result.Arms[1].LaneResults[1]
+	if len(treatmentContext.Attribution) != 1 {
+		t.Fatalf("treatment context attribution = %+v, want 1 record", treatmentContext.Attribution)
+	}
+	got := treatmentContext.Attribution[0]
+	if got.Tool != "optimusctx.targeted_context" {
+		t.Fatalf("treatment tool = %q", got.Tool)
+	}
+	if got.ArtifactType != repository.BenchmarkArtifactTypeL2Context {
+		t.Fatalf("artifact type = %q", got.ArtifactType)
+	}
+	if got.ReportLabel != repository.BenchmarkReportArtifactLabelL2Context {
+		t.Fatalf("report label = %q", got.ReportLabel)
+	}
+	if got.SourceKind != repository.BenchmarkTokenEstimateSourceDirectPayload {
+		t.Fatalf("source kind = %q", got.SourceKind)
+	}
+	if got.EstimatedBytes != int64(len("func LoadRolloutConfig() {}\nreturn cfg")) {
+		t.Fatalf("estimated bytes = %d", got.EstimatedBytes)
+	}
+	if got.EstimatedTokens != repository.EstimateBenchmarkTokensFromBytes(got.EstimatedBytes) {
+		t.Fatalf("estimated tokens = %d", got.EstimatedTokens)
+	}
+}
+
+func TestBenchmarkStepArtifactAttribution(t *testing.T) {
+	t.Parallel()
+
+	clock := newDeterministicBenchmarkClock()
+	runner := NewBenchmarkRunner()
+	runner.Now = clock
+	runner.MkdirTemp = func(string, string) (string, error) { return t.TempDir(), nil }
+	runner.CopyTree = func(src string, dst string) error { return copyEvalTree(src, dst) }
+	runner.GitInit = func(context.Context, string) error { return nil }
+	runner.RunCommand = func(_ context.Context, invocation BenchmarkCommandInvocation) (BenchmarkCommandExecutionResult, error) {
+		if len(invocation.Args) >= 2 && strings.Join(invocation.Args[:2], " ") == "pack export" {
+			outputPath := filepath.Join(invocation.WorkingDir, "artifacts", "pack.json")
+			artifact := repository.PackExportArtifact{
+				Manifest: repository.PackExportManifest{
+					IncludedSections: []repository.PackExportSectionRecord{
+						{Kind: repository.PackExportSectionRepositoryContext, Included: true, EstimatedTokens: 18},
+						{Kind: repository.PackExportSectionTargetContext, Included: true, EstimatedTokens: 22},
+					},
+				},
+			}
+			content, err := json.Marshal(artifact)
+			if err != nil {
+				return BenchmarkCommandExecutionResult{}, err
+			}
+			if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
+				return BenchmarkCommandExecutionResult{}, err
+			}
+			if err := os.WriteFile(outputPath, content, 0o644); err != nil {
+				return BenchmarkCommandExecutionResult{}, err
+			}
+		}
+		return BenchmarkCommandExecutionResult{ExitCode: 0}, nil
+	}
+
+	result, err := runner.Run(context.Background(), BenchmarkRunRequest{
+		SuitePath:     writeBenchmarkMutationSuite(t),
+		FixturesRoot:  filepath.Join("..", "..", "testdata", "eval", "fixtures"),
+		WorkspaceRoot: t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	refreshLane := result.Arms[1].LaneResults[0]
+	if len(refreshLane.Attribution) != 1 {
+		t.Fatalf("refresh lane attribution = %+v, want 1 record", refreshLane.Attribution)
+	}
+	if refreshLane.Attribution[0].Command != repository.EvalCommandRefresh {
+		t.Fatalf("refresh command = %q", refreshLane.Attribution[0].Command)
+	}
+	if refreshLane.Attribution[0].ArtifactType != repository.BenchmarkArtifactTypeRefresh {
+		t.Fatalf("refresh artifact type = %q", refreshLane.Attribution[0].ArtifactType)
+	}
+
+	taskLane := result.Arms[1].LaneResults[1]
+	if len(taskLane.Attribution) != 3 {
+		t.Fatalf("task lane attribution = %+v, want 3 records", taskLane.Attribution)
+	}
+	for _, record := range taskLane.Attribution {
+		if record.StepID != "pack" {
+			t.Fatalf("step id = %q, want pack", record.StepID)
+		}
+		if record.ArtifactType != repository.BenchmarkArtifactTypePackExport {
+			t.Fatalf("artifact type = %q, want pack_export", record.ArtifactType)
+		}
+	}
+	if taskLane.Attribution[0].SourceKind != repository.BenchmarkTokenEstimateSourcePackExportSection {
+		t.Fatalf("source kind = %q", taskLane.Attribution[0].SourceKind)
+	}
+	if taskLane.Attribution[0].EstimatedTokens != 18 || taskLane.Attribution[1].EstimatedTokens != 22 {
+		t.Fatalf("pack export section tokens = [%d %d]", taskLane.Attribution[0].EstimatedTokens, taskLane.Attribution[1].EstimatedTokens)
+	}
+	if taskLane.Attribution[2].EstimatedTokens != 0 {
+		t.Fatalf("command attribution = %+v, want zero-token command record", taskLane.Attribution[2])
 	}
 }
 
