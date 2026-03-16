@@ -27,11 +27,11 @@ func TestMigrationRunnerAppliesFreshDatabase(t *testing.T) {
 	}
 
 	versions := appliedVersions(t, db)
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4}) {
-		t.Fatalf("versions = %v, want [1 2 3 4]", versions)
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5}) {
+		t.Fatalf("versions = %v, want [1 2 3 4 5]", versions)
 	}
 
-	assertTablesExist(t, db, "schema_migrations", "repositories", "directories", "files", "refresh_runs", "refresh_file_events", "file_extractions", "symbols", "eval_runs", "eval_steps", "eval_artifacts")
+	assertTablesExist(t, db, "schema_migrations", "repositories", "directories", "files", "refresh_runs", "refresh_file_events", "file_extractions", "symbols", "eval_runs", "eval_steps", "eval_artifacts", "benchmark_runs", "benchmark_lane_samples", "benchmark_lane_metrics")
 }
 
 func TestApplyMigrationsIsNoOpWhenAlreadyCurrent(t *testing.T) {
@@ -88,6 +88,10 @@ func TestApplyMigrationsCreatesRequiredIndexes(t *testing.T) {
 	assertIndexColumns(t, db, "eval_runs", []string{"repository_id", "scenario_id", "started_at"})
 	assertIndexColumns(t, db, "eval_steps", []string{"eval_run_id", "ordinal"})
 	assertIndexColumns(t, db, "eval_artifacts", []string{"eval_run_id", "step_id"})
+	assertIndexColumns(t, db, "benchmark_runs", []string{"repository_id", "suite_id", "started_at"})
+	assertIndexColumns(t, db, "benchmark_runs", []string{"repository_id", "arm_kind", "started_at"})
+	assertIndexColumns(t, db, "benchmark_lane_samples", []string{"benchmark_run_id", "lane"})
+	assertIndexColumns(t, db, "benchmark_lane_metrics", []string{"benchmark_lane_sample_id", "metric_name"})
 }
 
 func TestApplyMigrationsAddsRefreshStateColumns(t *testing.T) {
@@ -147,6 +151,12 @@ func TestApplyMigrationsAddsRefreshStateColumns(t *testing.T) {
 	assertColumnExists(t, db, "eval_steps", "stdout_path")
 	assertColumnExists(t, db, "eval_artifacts", "artifact_id")
 	assertColumnExists(t, db, "eval_artifacts", "stored_path")
+	assertColumnExists(t, db, "benchmark_runs", "suite_id")
+	assertColumnExists(t, db, "benchmark_runs", "arm_kind")
+	assertColumnExists(t, db, "benchmark_lane_samples", "lane")
+	assertColumnExists(t, db, "benchmark_lane_samples", "elapsed_ms")
+	assertColumnExists(t, db, "benchmark_lane_metrics", "metric_name")
+	assertColumnExists(t, db, "benchmark_lane_metrics", "value_text")
 }
 
 func TestExtractionSchemaContracts(t *testing.T) {
