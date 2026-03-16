@@ -56,7 +56,29 @@ The workflow publishes these versioned artifacts to GitHub Releases:
 
 Release builds inject truthful build metadata into the shipped binary. After downloading an archive, `optimusctx version` prints the release `version`, `commit`, and `build_date` that were passed through the canonical release definition.
 
-This repository does not yet claim Homebrew, Scoop, signed artifacts, or SBOM support. Those remain future distribution work, so the current release story is only GitHub-hosted archives plus checksums for the single-binary runtime.
+## Package-manager channels for v1.1
+
+Phase 13 adds exactly two package-manager channels on top of the GitHub-hosted archives:
+
+- Homebrew for macOS and Linux, published to `niccrow/homebrew-tap`
+- Scoop for Windows, published to `niccrow/scoop-bucket`
+
+Those manifests are derived from the same archive names and SHA-256 checksums produced by [`.goreleaser.yml`](./.goreleaser.yml). They do not introduce a second release source or any installer-only runtime behavior.
+
+Install commands stay narrow and channel-specific:
+
+```bash
+brew install niccrow/tap/optimusctx
+```
+
+```powershell
+scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git
+scoop install niccrow/optimusctx
+```
+
+For release operators, the publication targets are `niccrow/homebrew-tap` and `niccrow/scoop-bucket`. Any workflow that writes those repositories should authenticate with `HOMEBREW_TAP_GITHUB_TOKEN` and `SCOOP_BUCKET_GITHUB_TOKEN`.
+
+Homebrew and Scoop are the only package-manager channels claimed for v1.1. This repository does not yet claim `.deb`, `.rpm`, WinGet, Chocolatey, signed artifacts, or SBOM support.
 
 ## Smoke test in a fresh temp repository
 

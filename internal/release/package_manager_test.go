@@ -93,6 +93,39 @@ func TestScoopManifestRendering(t *testing.T) {
 	}
 }
 
+func TestPackageManagerPublicationConfig(t *testing.T) {
+	homebrew := defaultHomebrewTapTarget()
+	if got, want := homebrew.Repository.Owner, "niccrow"; got != want {
+		t.Fatalf("homebrew owner = %q, want %q", got, want)
+	}
+	if got, want := homebrew.Repository.Name, "homebrew-tap"; got != want {
+		t.Fatalf("homebrew repo = %q, want %q", got, want)
+	}
+	if got, want := homebrew.TokenEnvVar, "HOMEBREW_TAP_GITHUB_TOKEN"; got != want {
+		t.Fatalf("homebrew token env = %q, want %q", got, want)
+	}
+	if got, want := homebrew.InstallValue, "niccrow/tap/optimusctx"; got != want {
+		t.Fatalf("homebrew install value = %q, want %q", got, want)
+	}
+
+	scoop := defaultScoopBucketTarget()
+	if got, want := scoop.Repository.Owner, "niccrow"; got != want {
+		t.Fatalf("scoop owner = %q, want %q", got, want)
+	}
+	if got, want := scoop.Repository.Name, "scoop-bucket"; got != want {
+		t.Fatalf("scoop repo = %q, want %q", got, want)
+	}
+	if got, want := scoop.TokenEnvVar, "SCOOP_BUCKET_GITHUB_TOKEN"; got != want {
+		t.Fatalf("scoop token env = %q, want %q", got, want)
+	}
+	if got, want := scoop.BucketAddURL, "https://github.com/niccrow/scoop-bucket.git"; got != want {
+		t.Fatalf("scoop bucket url = %q, want %q", got, want)
+	}
+	if got, want := scoop.InstallValue, "niccrow/optimusctx"; got != want {
+		t.Fatalf("scoop install value = %q, want %q", got, want)
+	}
+}
+
 func mustPackageManagerRelease(t *testing.T, version string) packageManagerRelease {
 	t.Helper()
 

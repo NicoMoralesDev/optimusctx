@@ -205,6 +205,26 @@ func TestInstallCommandRejectsUnsupportedClient(t *testing.T) {
 	}
 }
 
+func TestPackageManagerInstallDocs(t *testing.T) {
+	readme := readCLIRepoFile(t, "README.md")
+
+	for _, want := range []string{
+		"Homebrew for macOS and Linux, published to `niccrow/homebrew-tap`",
+		"Scoop for Windows, published to `niccrow/scoop-bucket`",
+		"brew install niccrow/tap/optimusctx",
+		"scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git",
+		"scoop install niccrow/optimusctx",
+		"HOMEBREW_TAP_GITHUB_TOKEN",
+		"SCOOP_BUCKET_GITHUB_TOKEN",
+		"Homebrew and Scoop are the only package-manager channels claimed for v1.1.",
+		"This repository does not yet claim `.deb`, `.rpm`, WinGet, Chocolatey, signed artifacts, or SBOM support.",
+	} {
+		if !strings.Contains(readme, want) {
+			t.Fatalf("README.md missing %q", want)
+		}
+	}
+}
+
 func appSnippetOutput(t *testing.T) string {
 	t.Helper()
 
@@ -229,4 +249,15 @@ func extractConfigDocument(t *testing.T, output string) repository.ClientConfigD
 		t.Fatalf("Unmarshal(config JSON) error = %v\noutput=%q", err, output[start:end+1])
 	}
 	return document
+}
+
+func readCLIRepoFile(t *testing.T, relPath string) string {
+	t.Helper()
+
+	content, err := os.ReadFile(filepath.Join("..", "..", relPath))
+	if err != nil {
+		t.Fatalf("ReadFile(%q) error = %v", relPath, err)
+	}
+
+	return string(content)
 }
