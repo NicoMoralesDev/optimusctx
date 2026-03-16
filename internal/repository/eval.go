@@ -53,9 +53,11 @@ const (
 type EvalSetupActionKind string
 
 const (
-	EvalSetupActionWriteFile     EvalSetupActionKind = "write_file"
-	EvalSetupActionOverwriteFile EvalSetupActionKind = "overwrite_file"
-	EvalSetupActionDeleteFile    EvalSetupActionKind = "delete_file"
+	EvalSetupActionWriteFile            EvalSetupActionKind = "write_file"
+	EvalSetupActionOverwriteFile        EvalSetupActionKind = "overwrite_file"
+	EvalSetupActionDeleteFile           EvalSetupActionKind = "delete_file"
+	EvalSetupActionSeedWatchStatus      EvalSetupActionKind = "seed_watch_status"
+	EvalSetupActionInjectRefreshFailure EvalSetupActionKind = "inject_refresh_failure"
 )
 
 type EvalAssertionTarget string
@@ -97,9 +99,24 @@ type EvalArtifactRef struct {
 }
 
 type EvalSetupAction struct {
-	Kind    EvalSetupActionKind `json:"kind"`
-	Path    string              `json:"path"`
-	Content string              `json:"content,omitempty"`
+	Kind           EvalSetupActionKind  `json:"kind"`
+	Path           string               `json:"path,omitempty"`
+	Content        string               `json:"content,omitempty"`
+	WatchStatus    *EvalWatchStatusSeed `json:"watchStatus,omitempty"`
+	FailureStage   string               `json:"failureStage,omitempty"`
+	FailureMessage string               `json:"failureMessage,omitempty"`
+}
+
+type EvalWatchStatusSeed struct {
+	PID                    int64  `json:"pid"`
+	BinaryVersion          string `json:"binaryVersion,omitempty"`
+	StartedAt              string `json:"startedAt"`
+	LastHeartbeatAt        string `json:"lastHeartbeatAt"`
+	LastEventAt            string `json:"lastEventAt,omitempty"`
+	LastRefreshStartedAt   string `json:"lastRefreshStartedAt,omitempty"`
+	LastRefreshCompletedAt string `json:"lastRefreshCompletedAt,omitempty"`
+	LastRefreshGeneration  int64  `json:"lastRefreshGeneration,omitempty"`
+	LastError              string `json:"lastError,omitempty"`
 }
 
 type EvalAssertion struct {
@@ -412,21 +429,83 @@ func validateEvalMCPSession(session *EvalMCPSession, artifactIDs map[string]stru
 
 func validateEvalSetupActions(actions []EvalSetupAction) error {
 	for idx, action := range actions {
-		if err := validateEvalRelativePath(action.Path); err != nil {
-			return fmt.Errorf("setup[%d]: %w", idx, err)
-		}
 		switch action.Kind {
 		case EvalSetupActionWriteFile:
+			if err := validateEvalRelativePath(action.Path); err != nil {
+				return fmt.Errorf("setup[%d]: %w", idx, err)
+			}
 			// Empty content is allowed so scenarios can create sentinel files deterministically.
+			if action.WatchStatus != nil || action.FailureStage != "" || action.FailureMessage != "" {
+				return fmt.Errorf("setup[%d]: watchStatus/failureStage/failureMessage must be empty for %q", idx, action.Kind)
+			}
 		case EvalSetupActionOverwriteFile:
+			if err := validateEvalRelativePath(action.Path); err != nil {
+				return fmt.Errorf("setup[%d]: %w", idx, err)
+			}
 			// Empty content is allowed so tests can deterministically truncate files.
+			if action.WatchStatus != nil || action.FailureStage != "" || action.FailureMessage != "" {
+				return fmt.Errorf("setup[%d]: watchStatus/failureStage/failureMessage must be empty for %q", idx, action.Kind)
+			}
 		case EvalSetupActionDeleteFile:
+			if err := validateEvalRelativePath(action.Path); err != nil {
+				return fmt.Errorf("setup[%d]: %w", idx, err)
+			}
 			if action.Content != "" {
 				return fmt.Errorf("setup[%d]: content must be empty for %q", idx, action.Kind)
+			}
+			if action.WatchStatus != nil || action.FailureStage != "" || action.FailureMessage != "" {
+				return fmt.Errorf("setup[%d]: watchStatus/failureStage/failureMessage must be empty for %q", idx, action.Kind)
+			}
+		case EvalSetupActionSeedWatchStatus:
+			if action.Path != "" || action.Content != "" || action.FailureStage != "" || action.FailureMessage != "" {
+				return fmt.Errorf("setup[%d]: path/content/failureStage/failureMessage must be empty for %q", idx, action.Kind)
+			}
+			if err := validateEvalWatchStatusSeed(action.WatchStatus); err != nil {
+				return fmt.Errorf("setup[%d]: %w", idx, err)
+			}
+		case EvalSetupActionInjectRefreshFailure:
+			if action.Path != "" || action.Content != "" || action.WatchStatus != nil {
+				return fmt.Errorf("setup[%d]: path/content/watchStatus must be empty for %q", idx, action.Kind)
+			}
+			if strings.TrimSpace(action.FailureStage) == "" {
+				return fmt.Errorf("setup[%d]: failureStage is required for %q", idx, action.Kind)
+			}
+			if strings.TrimSpace(action.FailureMessage) == "" {
+				return fmt.Errorf("setup[%d]: failureMessage is required for %q", idx, action.Kind)
 			}
 		default:
 			return fmt.Errorf("setup[%d]: unsupported kind %q", idx, action.Kind)
 		}
+	}
+	return nil
+}
+
+func validateEvalWatchStatusSeed(seed *EvalWatchStatusSeed) error {
+	if seed == nil {
+		return errors.New("watchStatus is required")
+	}
+	if seed.PID <= 0 {
+		return errors.New("watchStatus.pid must be > 0")
+	}
+	for field, value := range map[string]string{
+		"startedAt":              seed.StartedAt,
+		"lastHeartbeatAt":        seed.LastHeartbeatAt,
+		"lastEventAt":            seed.LastEventAt,
+		"lastRefreshStartedAt":   seed.LastRefreshStartedAt,
+		"lastRefreshCompletedAt": seed.LastRefreshCompletedAt,
+	} {
+		if strings.TrimSpace(value) == "" {
+			if field == "startedAt" || field == "lastHeartbeatAt" {
+				return fmt.Errorf("watchStatus.%s is required", field)
+			}
+			continue
+		}
+		if _, err := time.Parse(time.RFC3339, value); err != nil {
+			return fmt.Errorf("watchStatus.%s must be RFC3339: %w", field, err)
+		}
+	}
+	if seed.LastRefreshGeneration < 0 {
+		return errors.New("watchStatus.lastRefreshGeneration must be >= 0")
 	}
 	return nil
 }

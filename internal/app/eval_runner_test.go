@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -13,6 +14,106 @@ import (
 	"github.com/niccrow/optimusctx/internal/repository"
 	"github.com/niccrow/optimusctx/internal/store/sqlite"
 )
+
+func TestEvalWorkspaceMutations(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "main.go"), "package main\n\nfunc Initial() {}\n")
+	writeRepoFile(t, filepath.Join(repoRoot, "obsolete.txt"), "remove me\n")
+
+	refresh := NewRefreshService()
+	initial, err := refresh.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	})
+	if err != nil {
+		t.Fatalf("Refresh() baseline error = %v", err)
+	}
+
+	controls, err := applyEvalSetupActions(repoRoot, []repository.EvalSetupAction{
+		{Kind: repository.EvalSetupActionWriteFile, Path: "README.md", Content: "# fixture\n"},
+		{Kind: repository.EvalSetupActionOverwriteFile, Path: "main.go", Content: "package main\n\nfunc Mutated() {}\n"},
+		{Kind: repository.EvalSetupActionDeleteFile, Path: "obsolete.txt"},
+		{
+			Kind: repository.EvalSetupActionSeedWatchStatus,
+			WatchStatus: &repository.EvalWatchStatusSeed{
+				PID:                    777,
+				BinaryVersion:          "dev",
+				StartedAt:              "2026-03-15T17:59:50Z",
+				LastHeartbeatAt:        "2026-03-15T18:00:00Z",
+				LastEventAt:            "2026-03-15T18:00:00Z",
+				LastRefreshCompletedAt: "2026-03-15T18:00:00Z",
+				LastRefreshGeneration:  initial.Generation,
+				LastError:              "watch observer overflowed; falling back to full refresh",
+			},
+		},
+		{
+			Kind:           repository.EvalSetupActionInjectRefreshFailure,
+			FailureStage:   "after_files",
+			FailureMessage: "forced eval failure",
+		},
+	})
+	if err != nil {
+		t.Fatalf("applyEvalSetupActions() error = %v", err)
+	}
+	if controls.RefreshFailure == nil {
+		t.Fatal("expected refresh failure control")
+	}
+
+	readme, err := os.ReadFile(filepath.Join(repoRoot, "README.md"))
+	if err != nil {
+		t.Fatalf("ReadFile(README.md) error = %v", err)
+	}
+	if string(readme) != "# fixture\n" {
+		t.Fatalf("README.md = %q", string(readme))
+	}
+	mainContent, err := os.ReadFile(filepath.Join(repoRoot, "main.go"))
+	if err != nil {
+		t.Fatalf("ReadFile(main.go) error = %v", err)
+	}
+	if !strings.Contains(string(mainContent), "Mutated") {
+		t.Fatalf("main.go = %q, want mutated content", string(mainContent))
+	}
+	if _, err := os.Stat(filepath.Join(repoRoot, "obsolete.txt")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("obsolete.txt should be deleted, err=%v", err)
+	}
+
+	watchStatusPath := filepath.Join(repoRoot, ".optimusctx", "tmp", repository.DefaultWatchStatusFilename)
+	statusPayload, err := os.ReadFile(watchStatusPath)
+	if err != nil {
+		t.Fatalf("ReadFile(watch-status.json) error = %v", err)
+	}
+	var record repository.WatchStatusRecord
+	if err := json.Unmarshal(statusPayload, &record); err != nil {
+		t.Fatalf("Unmarshal(watch-status.json) error = %v", err)
+	}
+	if record.RepoRoot != repoRoot || record.LastRefreshGeneration != initial.Generation {
+		t.Fatalf("watch status record = %+v", record)
+	}
+	if record.LastError != "watch observer overflowed; falling back to full refresh" {
+		t.Fatalf("watch status error = %q", record.LastError)
+	}
+
+	_, refreshErr := withEvalStepControls(controls, func() (repository.EvalStepResult, error) {
+		result, err := refresh.Refresh(context.Background(), RefreshRequest{
+			StartPath: repoRoot,
+			Reason:    repository.RefreshReasonManual,
+		})
+		if err == nil {
+			t.Fatal("Refresh() error = nil, want injected failure")
+		}
+		if result.FreshnessStatus != repository.FreshnessStatusPartiallyDegraded {
+			t.Fatalf("freshness = %q, want partially_degraded", result.FreshnessStatus)
+		}
+		if result.Generation != initial.Generation+1 {
+			t.Fatalf("generation = %d, want %d", result.Generation, initial.Generation+1)
+		}
+		return repository.EvalStepResult{}, err
+	})
+	if refreshErr == nil || !strings.Contains(refreshErr.Error(), "forced eval failure") {
+		t.Fatalf("Refresh() error = %v, want forced eval failure", refreshErr)
+	}
+}
 
 func TestEvalRunnerExecutesCLIWorkflow(t *testing.T) {
 	sourceRoot := t.TempDir()

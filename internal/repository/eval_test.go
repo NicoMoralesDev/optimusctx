@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestEvalScenarioContracts(t *testing.T) {
@@ -169,6 +170,98 @@ func TestEvalAssertions(t *testing.T) {
 	}
 	if !reflect.DeepEqual(decoded, scenario) {
 		t.Fatalf("decoded scenario mismatch\n got: %#v\nwant: %#v", decoded, scenario)
+	}
+}
+
+func TestEvalStateMutationValidation(t *testing.T) {
+	t.Parallel()
+
+	scenario := EvalScenarioDefinition{
+		SchemaVersion: EvalScenarioSchemaV1,
+		ID:            "state-mutations-v1",
+		Version:       "v1",
+		Name:          "State mutations",
+		Fixture: EvalFixtureRef{
+			ID:          "go-basic",
+			Version:     "v1",
+			Path:        "go-basic/v1/repository",
+			Materialize: EvalFixtureModeCopyTree,
+		},
+		Steps: []EvalScenarioStep{
+			{
+				ID:   "init",
+				Name: "Initialize",
+				Kind: EvalStepKindCommand,
+				Expect: EvalExpectedCommand{
+					Surface:  EvalCommandSurfaceCLI,
+					Command:  EvalCommandInit,
+					ExitCode: 0,
+				},
+			},
+			{
+				ID:   "refresh",
+				Name: "Refresh with seeded state",
+				Kind: EvalStepKindCommand,
+				Expect: EvalExpectedCommand{
+					Surface:  EvalCommandSurfaceCLI,
+					Command:  EvalCommandRefresh,
+					ExitCode: 1,
+				},
+				Setup: []EvalSetupAction{
+					{
+						Kind: EvalSetupActionSeedWatchStatus,
+						WatchStatus: &EvalWatchStatusSeed{
+							PID:                    777,
+							BinaryVersion:          "dev",
+							StartedAt:              "2026-03-15T18:00:00Z",
+							LastHeartbeatAt:        "2026-03-15T18:00:05Z",
+							LastRefreshCompletedAt: "2026-03-15T18:00:05Z",
+							LastRefreshGeneration:  2,
+							LastError:              "watch observer overflowed; falling back to full refresh",
+						},
+					},
+					{
+						Kind:           EvalSetupActionInjectRefreshFailure,
+						FailureStage:   "after_files",
+						FailureMessage: "forced eval failure",
+					},
+				},
+			},
+		},
+	}
+
+	if err := scenario.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	t.Run("rejects invalid watch status timestamps", func(t *testing.T) {
+		bad := scenario
+		bad.Steps = append([]EvalScenarioStep(nil), scenario.Steps...)
+		bad.Steps[1].Setup = append([]EvalSetupAction(nil), scenario.Steps[1].Setup...)
+		badSeed := *bad.Steps[1].Setup[0].WatchStatus
+		badSeed.LastHeartbeatAt = "not-a-time"
+		bad.Steps[1].Setup[0].WatchStatus = &badSeed
+
+		err := bad.Validate()
+		if err == nil || !strings.Contains(err.Error(), "watchStatus.lastHeartbeatAt must be RFC3339") {
+			t.Fatalf("Validate() error = %v, want invalid timestamp", err)
+		}
+	})
+
+	t.Run("rejects missing refresh failure stage", func(t *testing.T) {
+		bad := scenario
+		bad.Steps = append([]EvalScenarioStep(nil), scenario.Steps...)
+		bad.Steps[1].Setup = append([]EvalSetupAction(nil), scenario.Steps[1].Setup...)
+		bad.Steps[1].Setup[1].FailureStage = ""
+
+		err := bad.Validate()
+		if err == nil || !strings.Contains(err.Error(), "failureStage is required") {
+			t.Fatalf("Validate() error = %v, want missing failureStage", err)
+		}
+	})
+
+	if _, err := time.Parse(time.RFC3339, scenario.Steps[1].Setup[0].WatchStatus.StartedAt); err != nil {
+		t.Fatalf("seed time should be RFC3339: %v", err)
 	}
 }
 

@@ -87,6 +87,8 @@ func NewRefreshService() RefreshService {
 }
 
 func (s RefreshService) Refresh(ctx context.Context, request RefreshRequest) (RefreshResult, error) {
+	request.InjectFailure = chainRefreshFailures(request.InjectFailure, currentEvalRefreshFailure())
+
 	root, err := s.Locator.Resolve(request.StartPath)
 	if err != nil {
 		if errors.Is(err, repository.ErrRepositoryNotFound) {
@@ -211,6 +213,23 @@ func (s RefreshService) Refresh(ctx context.Context, request RefreshRequest) (Re
 		Generation:          applyResult.Generation,
 		FreshnessStatus:     applyResult.FreshnessStatus,
 	}, nil
+}
+
+func chainRefreshFailures(existing func(string) error, injected *evalRefreshFailureControl) func(string) error {
+	if injected == nil {
+		return existing
+	}
+	return func(stage string) error {
+		if existing != nil {
+			if err := existing(stage); err != nil {
+				return err
+			}
+		}
+		if stage == injected.Stage {
+			return errors.New(injected.Message)
+		}
+		return nil
+	}
 }
 
 func normalizeChangedHints(root string, hints []string) []string {

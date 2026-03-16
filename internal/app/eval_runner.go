@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/niccrow/optimusctx/internal/repository"
@@ -57,6 +58,20 @@ type EvalMCPSessionExecutionResult struct {
 }
 
 type EvalMCPSessionExecutor func(context.Context, EvalMCPSessionInvocation) (EvalMCPSessionExecutionResult, error)
+
+type evalRefreshFailureControl struct {
+	Stage   string
+	Message string
+}
+
+type evalStepControls struct {
+	RefreshFailure *evalRefreshFailureControl
+}
+
+var (
+	evalRefreshFailureMu     sync.Mutex
+	evalRefreshFailureActive *evalRefreshFailureControl
+)
 
 type EvalRunner struct {
 	LoadScenario              func(string) (repository.EvalScenarioDefinition, error)
@@ -129,7 +144,8 @@ func (r EvalRunner) Run(ctx context.Context, request EvalRunRequest) (repository
 	seenArtifacts := make(map[string]repository.EvalArtifactResult, len(artifactIndex))
 
 	for _, step := range scenario.Steps {
-		if err := applyEvalSetupActions(workspaceRoot, step.Setup); err != nil {
+		controls, err := applyEvalSetupActions(workspaceRoot, step.Setup)
+		if err != nil {
 			runResult.FinishedAt = r.Now().UTC()
 			runResult.Passed = false
 			runResult.Artifacts = collectEvalArtifacts(scenario.Artifacts, seenArtifacts)
@@ -143,7 +159,7 @@ func (r EvalRunner) Run(ctx context.Context, request EvalRunRequest) (repository
 		}
 
 		stepStartedAt := r.Now().UTC()
-		stepResult, execErr := r.executeEvalStep(ctx, workspaceRoot, step, artifactIndex)
+		stepResult, execErr := r.executeEvalStep(ctx, workspaceRoot, step, artifactIndex, controls)
 		stepFinishedAt := r.Now().UTC()
 		stepResult.Step = step
 		stepResult.StartedAt = stepStartedAt
@@ -200,32 +216,47 @@ func (r EvalRunner) Run(ctx context.Context, request EvalRunRequest) (repository
 	return runResult, nil
 }
 
-func applyEvalSetupActions(workspaceRoot string, actions []repository.EvalSetupAction) error {
+func applyEvalSetupActions(workspaceRoot string, actions []repository.EvalSetupAction) (evalStepControls, error) {
+	var controls evalStepControls
 	for _, action := range actions {
-		path := filepath.Join(workspaceRoot, filepath.FromSlash(action.Path))
 		switch action.Kind {
 		case repository.EvalSetupActionWriteFile:
+			path := filepath.Join(workspaceRoot, filepath.FromSlash(action.Path))
 			if _, err := os.Stat(path); err == nil {
-				return fmt.Errorf("setup action %q requires missing path %q", action.Kind, action.Path)
+				return evalStepControls{}, fmt.Errorf("setup action %q requires missing path %q", action.Kind, action.Path)
 			} else if !errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("stat setup path %q: %w", action.Path, err)
+				return evalStepControls{}, fmt.Errorf("stat setup path %q: %w", action.Path, err)
 			}
 			if err := writeEvalSetupFile(path, action.Content); err != nil {
-				return fmt.Errorf("write setup file %q: %w", action.Path, err)
+				return evalStepControls{}, fmt.Errorf("write setup file %q: %w", action.Path, err)
 			}
 		case repository.EvalSetupActionOverwriteFile:
+			path := filepath.Join(workspaceRoot, filepath.FromSlash(action.Path))
 			if err := writeEvalSetupFile(path, action.Content); err != nil {
-				return fmt.Errorf("overwrite setup file %q: %w", action.Path, err)
+				return evalStepControls{}, fmt.Errorf("overwrite setup file %q: %w", action.Path, err)
 			}
 		case repository.EvalSetupActionDeleteFile:
+			path := filepath.Join(workspaceRoot, filepath.FromSlash(action.Path))
 			if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("delete setup file %q: %w", action.Path, err)
+				return evalStepControls{}, fmt.Errorf("delete setup file %q: %w", action.Path, err)
+			}
+		case repository.EvalSetupActionSeedWatchStatus:
+			if action.WatchStatus == nil {
+				return evalStepControls{}, errors.New("seed_watch_status requires watchStatus")
+			}
+			if err := seedEvalWatchStatus(workspaceRoot, *action.WatchStatus); err != nil {
+				return evalStepControls{}, err
+			}
+		case repository.EvalSetupActionInjectRefreshFailure:
+			controls.RefreshFailure = &evalRefreshFailureControl{
+				Stage:   action.FailureStage,
+				Message: action.FailureMessage,
 			}
 		default:
-			return fmt.Errorf("unsupported setup action %q", action.Kind)
+			return evalStepControls{}, fmt.Errorf("unsupported setup action %q", action.Kind)
 		}
 	}
-	return nil
+	return controls, nil
 }
 
 func writeEvalSetupFile(path string, content string) error {
@@ -336,48 +367,98 @@ func (r EvalRunner) prepareWorkspace(ctx context.Context, request EvalRunRequest
 	return workspaceRoot, nil
 }
 
-func (r EvalRunner) executeEvalStep(ctx context.Context, workspaceRoot string, step repository.EvalScenarioStep, artifactIndex map[string]repository.EvalArtifactRef) (repository.EvalStepResult, error) {
-	switch step.Kind {
-	case repository.EvalStepKindCommand:
-		execution, err := r.RunCommand(ctx, EvalCommandInvocation{
-			Args:       buildEvalStepArgs(step, artifactIndex),
-			WorkingDir: workspaceRoot,
-		})
-		return repository.EvalStepResult{
-			ExitCode: execution.ExitCode,
-			Passed:   execution.ExitCode == step.Expect.ExitCode,
-			Stdout:   execution.Stdout,
-			Stderr:   execution.Stderr,
-		}, err
-	case repository.EvalStepKindMCPSession:
-		if step.Session == nil {
-			return repository.EvalStepResult{}, errors.New("mcp_session step is missing session configuration")
-		}
-		execution, err := r.RunMCPSession(ctx, EvalMCPSessionInvocation{
-			WorkingDir: workspaceRoot,
-			Session:    *step.Session,
-		})
-		if writeErr := persistEvalMCPSessionArtifacts(workspaceRoot, *step.Session, artifactIndex, execution); writeErr != nil {
+func seedEvalWatchStatus(workspaceRoot string, seed repository.EvalWatchStatusSeed) error {
+	record := repository.WatchStatusRecord{
+		PID:                   int(seed.PID),
+		RepoRoot:              workspaceRoot,
+		BinaryVersion:         seed.BinaryVersion,
+		StartedAt:             seed.StartedAt,
+		LastHeartbeatAt:       seed.LastHeartbeatAt,
+		LastEventAt:           seed.LastEventAt,
+		LastRefreshStartedAt:  seed.LastRefreshStartedAt,
+		LastRefreshDoneAt:     seed.LastRefreshCompletedAt,
+		LastRefreshGeneration: seed.LastRefreshGeneration,
+		LastError:             seed.LastError,
+	}
+	data, err := json.MarshalIndent(record, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode watch status: %w", err)
+	}
+	data = append(data, '\n')
+	statusPath := filepath.Join(workspaceRoot, ".optimusctx", "tmp", repository.DefaultWatchStatusFilename)
+	if err := writeEvalSetupFile(statusPath, string(data)); err != nil {
+		return fmt.Errorf("seed watch status: %w", err)
+	}
+	return nil
+}
+
+func (r EvalRunner) executeEvalStep(ctx context.Context, workspaceRoot string, step repository.EvalScenarioStep, artifactIndex map[string]repository.EvalArtifactRef, controls evalStepControls) (repository.EvalStepResult, error) {
+	return withEvalStepControls(controls, func() (repository.EvalStepResult, error) {
+		switch step.Kind {
+		case repository.EvalStepKindCommand:
+			execution, err := r.RunCommand(ctx, EvalCommandInvocation{
+				Args:       buildEvalStepArgs(step, artifactIndex),
+				WorkingDir: workspaceRoot,
+			})
 			return repository.EvalStepResult{
-				ExitCode: 1,
-				Passed:   false,
+				ExitCode: execution.ExitCode,
+				Passed:   execution.ExitCode == step.Expect.ExitCode,
 				Stdout:   execution.Stdout,
 				Stderr:   execution.Stderr,
-			}, writeErr
+			}, err
+		case repository.EvalStepKindMCPSession:
+			if step.Session == nil {
+				return repository.EvalStepResult{}, errors.New("mcp_session step is missing session configuration")
+			}
+			execution, err := r.RunMCPSession(ctx, EvalMCPSessionInvocation{
+				WorkingDir: workspaceRoot,
+				Session:    *step.Session,
+			})
+			if writeErr := persistEvalMCPSessionArtifacts(workspaceRoot, *step.Session, artifactIndex, execution); writeErr != nil {
+				return repository.EvalStepResult{
+					ExitCode: 1,
+					Passed:   false,
+					Stdout:   execution.Stdout,
+					Stderr:   execution.Stderr,
+				}, writeErr
+			}
+			result := repository.EvalStepResult{
+				ExitCode: 0,
+				Passed:   err == nil,
+				Stdout:   execution.Stdout,
+				Stderr:   execution.Stderr,
+			}
+			if err != nil {
+				result.ExitCode = 1
+			}
+			return result, err
+		default:
+			return repository.EvalStepResult{}, fmt.Errorf("unsupported step kind %q", step.Kind)
 		}
-		result := repository.EvalStepResult{
-			ExitCode: 0,
-			Passed:   err == nil,
-			Stdout:   execution.Stdout,
-			Stderr:   execution.Stderr,
-		}
-		if err != nil {
-			result.ExitCode = 1
-		}
-		return result, err
-	default:
-		return repository.EvalStepResult{}, fmt.Errorf("unsupported step kind %q", step.Kind)
+	})
+}
+
+func withEvalStepControls(controls evalStepControls, fn func() (repository.EvalStepResult, error)) (repository.EvalStepResult, error) {
+	evalRefreshFailureMu.Lock()
+	previous := evalRefreshFailureActive
+	evalRefreshFailureActive = controls.RefreshFailure
+	evalRefreshFailureMu.Unlock()
+	defer func() {
+		evalRefreshFailureMu.Lock()
+		evalRefreshFailureActive = previous
+		evalRefreshFailureMu.Unlock()
+	}()
+	return fn()
+}
+
+func currentEvalRefreshFailure() *evalRefreshFailureControl {
+	evalRefreshFailureMu.Lock()
+	defer evalRefreshFailureMu.Unlock()
+	if evalRefreshFailureActive == nil {
+		return nil
 	}
+	copy := *evalRefreshFailureActive
+	return &copy
 }
 
 func buildEvalStepArgs(step repository.EvalScenarioStep, artifactIndex map[string]repository.EvalArtifactRef) []string {
