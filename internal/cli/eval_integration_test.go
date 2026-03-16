@@ -405,7 +405,7 @@ func TestBenchmarkAttributionTables(t *testing.T) {
 			return stdout.String()
 		}
 		refreshOutput := render("go-benchmark-refresh-v1")
-		assertContains(t, refreshOutput, "treatment artifact attribution")
+		assertContains(t, refreshOutput, "counted agent-input attribution")
 		assertContains(t, refreshOutput, "L2 Context")
 		assertContains(t, refreshOutput, "Operational")
 

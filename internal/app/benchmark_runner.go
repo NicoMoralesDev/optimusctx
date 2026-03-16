@@ -733,11 +733,13 @@ func (s *benchmarkArmState) markLaneComplete(workspaceRoot string, lane reposito
 
 func (s *benchmarkArmState) tryCompleteLane(workspaceRoot string, lane repository.BenchmarkLane, finishedAt time.Time) error {
 	current := s.lanes[lane]
-	if current.success || !current.stopReached || len(current.definition.Assertions) == 0 {
+	if current.success || !current.stopReached {
 		return nil
 	}
-	if err := s.evaluateLaneAssertions(workspaceRoot, lane); err != nil {
-		return nil
+	if len(current.definition.Assertions) > 0 {
+		if err := s.evaluateLaneAssertions(workspaceRoot, lane); err != nil {
+			return nil
+		}
 	}
 	verification, err := s.verifyLaneFinalArtifact(workspaceRoot, lane)
 	if err != nil {

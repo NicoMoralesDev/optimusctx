@@ -403,8 +403,8 @@ func TestBenchmarkAgentInputProjection(t *testing.T) {
 	}
 
 	baselineDiscovery := result.Arms[0].LaneResults[0]
-	if len(baselineDiscovery.Attribution) != 1 {
-		t.Fatalf("baseline discovery attribution = %+v, want 1 counted-input record", baselineDiscovery.Attribution)
+	if len(baselineDiscovery.Attribution) != 2 {
+		t.Fatalf("baseline discovery attribution = %+v, want counted input plus final-artifact verification", baselineDiscovery.Attribution)
 	}
 	if baselineDiscovery.Attribution[0].Boundary != repository.BenchmarkEvidenceBoundaryAgentInput {
 		t.Fatalf("baseline discovery boundary = %q", baselineDiscovery.Attribution[0].Boundary)
@@ -412,10 +412,13 @@ func TestBenchmarkAgentInputProjection(t *testing.T) {
 	if baselineDiscovery.Attribution[0].SourceKind != repository.BenchmarkTokenEstimateSourcePathEstimate {
 		t.Fatalf("baseline discovery source kind = %q", baselineDiscovery.Attribution[0].SourceKind)
 	}
+	if baselineDiscovery.Attribution[1].Boundary != repository.BenchmarkEvidenceBoundaryFinalArtifactVerified {
+		t.Fatalf("baseline discovery verification boundary = %q", baselineDiscovery.Attribution[1].Boundary)
+	}
 
 	baselineContext := result.Arms[0].LaneResults[1]
-	if len(baselineContext.Attribution) != 1 {
-		t.Fatalf("baseline context attribution = %+v, want 1 counted-input record", baselineContext.Attribution)
+	if len(baselineContext.Attribution) != 2 {
+		t.Fatalf("baseline context attribution = %+v, want counted input plus final-artifact verification", baselineContext.Attribution)
 	}
 	if baselineContext.Attribution[0].Boundary != repository.BenchmarkEvidenceBoundaryAgentInput {
 		t.Fatalf("baseline context boundary = %q", baselineContext.Attribution[0].Boundary)
@@ -426,10 +429,13 @@ func TestBenchmarkAgentInputProjection(t *testing.T) {
 	if baselineContext.Attribution[0].EstimatedBytes == 0 || baselineContext.Attribution[0].EstimatedTokens == 0 {
 		t.Fatalf("baseline attribution = %+v, want estimated bytes/tokens", baselineContext.Attribution[0])
 	}
+	if baselineContext.Attribution[1].Boundary != repository.BenchmarkEvidenceBoundaryFinalArtifactVerified {
+		t.Fatalf("baseline context verification boundary = %q", baselineContext.Attribution[1].Boundary)
+	}
 
 	treatmentDiscovery := result.Arms[1].LaneResults[0]
-	if len(treatmentDiscovery.Attribution) != 3 {
-		t.Fatalf("treatment discovery attribution = %+v, want raw repository-map + raw lookup + projected lookup", treatmentDiscovery.Attribution)
+	if len(treatmentDiscovery.Attribution) != 4 {
+		t.Fatalf("treatment discovery attribution = %+v, want raw repository-map + raw lookup + projected lookup + final-artifact verification", treatmentDiscovery.Attribution)
 	}
 	if treatmentDiscovery.Attribution[0].Boundary != repository.BenchmarkEvidenceBoundarySystemProvenance {
 		t.Fatalf("repository map boundary = %q", treatmentDiscovery.Attribution[0].Boundary)
@@ -443,10 +449,13 @@ func TestBenchmarkAgentInputProjection(t *testing.T) {
 	if treatmentDiscovery.Attribution[2].ArtifactType != repository.BenchmarkArtifactTypeExactLookup {
 		t.Fatalf("lookup artifact type = %q", treatmentDiscovery.Attribution[2].ArtifactType)
 	}
+	if treatmentDiscovery.Attribution[3].Boundary != repository.BenchmarkEvidenceBoundaryFinalArtifactVerified {
+		t.Fatalf("discovery verification boundary = %q", treatmentDiscovery.Attribution[3].Boundary)
+	}
 
 	treatmentContext := result.Arms[1].LaneResults[1]
-	if len(treatmentContext.Attribution) != 2 {
-		t.Fatalf("treatment context attribution = %+v, want provenance plus counted projection", treatmentContext.Attribution)
+	if len(treatmentContext.Attribution) != 3 {
+		t.Fatalf("treatment context attribution = %+v, want provenance plus counted projection plus final-artifact verification", treatmentContext.Attribution)
 	}
 	if treatmentContext.Attribution[0].Boundary != repository.BenchmarkEvidenceBoundarySystemProvenance {
 		t.Fatalf("targeted_context provenance boundary = %q", treatmentContext.Attribution[0].Boundary)
@@ -472,6 +481,9 @@ func TestBenchmarkAgentInputProjection(t *testing.T) {
 	}
 	if got.EstimatedTokens != repository.EstimateBenchmarkTokensFromBytes(got.EstimatedBytes) {
 		t.Fatalf("estimated tokens = %d", got.EstimatedTokens)
+	}
+	if treatmentContext.Attribution[2].Boundary != repository.BenchmarkEvidenceBoundaryFinalArtifactVerified {
+		t.Fatalf("context verification boundary = %q", treatmentContext.Attribution[2].Boundary)
 	}
 }
 
@@ -499,11 +511,12 @@ func TestBenchmarkAttributionBoundary(t *testing.T) {
 	}
 
 	refreshLane := result.Arms[1].LaneResults[0]
-	if len(refreshLane.Attribution) != 4 {
-		t.Fatalf("refresh lane attribution = %+v, want provenance plus counted health projection", refreshLane.Attribution)
+	if len(refreshLane.Attribution) != 5 {
+		t.Fatalf("refresh lane attribution = %+v, want provenance plus final-artifact verification plus counted health projection", refreshLane.Attribution)
 	}
 	var foundRefreshOutput bool
 	var foundRefreshMarker bool
+	var foundReadinessVerification bool
 	var foundHealthProvenance bool
 	var foundHealthProjection bool
 	for _, record := range refreshLane.Attribution {
@@ -512,19 +525,21 @@ func TestBenchmarkAttributionBoundary(t *testing.T) {
 			foundRefreshOutput = true
 		case record.StepID == "refresh" && record.Command == repository.EvalCommandRefresh && record.Boundary == repository.BenchmarkEvidenceBoundarySystemProvenance && record.EstimatedTokens == 0:
 			foundRefreshMarker = true
+		case record.StepID == "refresh-readiness" && record.Boundary == repository.BenchmarkEvidenceBoundaryFinalArtifactVerified:
+			foundReadinessVerification = true
 		case record.StepID == "health" && record.Tool == "optimusctx.health" && record.Boundary == repository.BenchmarkEvidenceBoundarySystemProvenance:
 			foundHealthProvenance = true
 		case record.StepID == "health" && record.Tool == "optimusctx.health" && record.Boundary == repository.BenchmarkEvidenceBoundaryAgentInput:
 			foundHealthProjection = true
 		}
 	}
-	if !foundRefreshOutput || !foundRefreshMarker || !foundHealthProvenance || !foundHealthProjection {
-		t.Fatalf("refresh lane attribution = %+v, want refresh output + refresh marker + raw health + projected health summary", refreshLane.Attribution)
+	if !foundRefreshOutput || !foundRefreshMarker || !foundReadinessVerification || !foundHealthProvenance || !foundHealthProjection {
+		t.Fatalf("refresh lane attribution = %+v, want refresh output + refresh marker + final-artifact verification + raw health + projected health summary", refreshLane.Attribution)
 	}
 
 	taskLane := result.Arms[1].LaneResults[1]
-	if len(taskLane.Attribution) != 2 {
-		t.Fatalf("task lane attribution = %+v, want provenance plus counted context projection", taskLane.Attribution)
+	if len(taskLane.Attribution) != 3 {
+		t.Fatalf("task lane attribution = %+v, want provenance plus counted context projection plus final-artifact verification", taskLane.Attribution)
 	}
 	if taskLane.Attribution[0].Boundary != repository.BenchmarkEvidenceBoundarySystemProvenance {
 		t.Fatalf("task provenance boundary = %q", taskLane.Attribution[0].Boundary)
@@ -543,6 +558,9 @@ func TestBenchmarkAttributionBoundary(t *testing.T) {
 	}
 	if taskLane.Attribution[1].EstimatedTokens == 0 {
 		t.Fatalf("context attribution = %+v, want non-zero estimated tokens", taskLane.Attribution[1])
+	}
+	if taskLane.Attribution[2].Boundary != repository.BenchmarkEvidenceBoundaryFinalArtifactVerified {
+		t.Fatalf("task verification boundary = %q", taskLane.Attribution[2].Boundary)
 	}
 }
 

@@ -360,7 +360,7 @@ func executeEvalCLIMCPSession(_ context.Context, invocation app.EvalMCPSessionIn
 }
 
 func writeEvalHelp(stdout io.Writer) error {
-	_, err := io.WriteString(stdout, "Usage:\n  optimusctx eval [--scenario ID | --scenario-file PATH]\n  optimusctx eval benchmark export [--suite ID | --suite-file PATH] [--attempts N] [--output PATH]\n  optimusctx eval benchmark report [--suite ID | --suite-file PATH] [--attempts N] [--output PATH]\n  optimusctx eval benchmark verify [--suite ID | --suite-file PATH] [--attempts N]\n\nRun versioned evaluation scenarios or render deterministic benchmark evidence through the shipped CLI boundary.\n")
+	_, err := io.WriteString(stdout, "Usage:\n  optimusctx eval [--scenario ID | --scenario-file PATH]\n  optimusctx eval benchmark export [--suite ID | --suite-file PATH] [--attempts N] [--output PATH]\n  optimusctx eval benchmark report [--suite ID | --suite-file PATH] [--attempts N] [--output PATH]\n  optimusctx eval benchmark verify [--suite ID | --suite-file PATH] [--attempts N]\n\nRun versioned evaluation scenarios or render deterministic counted-input benchmark evidence through the shipped CLI boundary.\n")
 	return err
 }
 

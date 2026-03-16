@@ -122,6 +122,29 @@ func TestBenchmarkHumanSummaryInputs(t *testing.T) {
 	}
 }
 
+func TestBenchmarkHumanSummaryFinalArtifactFailures(t *testing.T) {
+	t.Parallel()
+
+	suite := benchmarkServiceSuite()
+	failed := benchmarkEvidenceRunResult("/tmp/repo", true)
+	failed.Arms[1].LaneResults[1].Success = false
+	failed.Arms[1].LaneResults[1].FinalArtifact = &repository.BenchmarkLaneFinalArtifactVerification{
+		ContractID:    "updated-notes-context",
+		Path:          "artifacts/updated-notes.txt",
+		Passed:        false,
+		FailureReason: "final artifact assert[0]: \"artifacts/updated-notes.txt\" does not contain \"mutated benchmark note\"",
+	}
+	attempts := []BenchmarkAttemptResult{{Attempt: 1, Result: failed}}
+
+	summary := summarizeBenchmarkAttempts(attempts, suite)
+	if len(summary.InvalidRunReasons) != 1 {
+		t.Fatalf("InvalidRunReasons = %+v, want one explicit final-artifact failure", summary.InvalidRunReasons)
+	}
+	if !strings.Contains(summary.InvalidRunReasons[0], "final artifact \"updated-notes-context\" failed") {
+		t.Fatalf("InvalidRunReasons = %+v", summary.InvalidRunReasons)
+	}
+}
+
 func TestBenchmarkComparisonReportRendering(t *testing.T) {
 	t.Parallel()
 
@@ -137,12 +160,14 @@ func TestBenchmarkComparisonReportRendering(t *testing.T) {
 	for _, fragment := range []string{
 		"benchmark report",
 		"lane comparison",
+		"counted agent-input attribution",
 		"Refresh After Change",
 		"Task Completion",
 		"Operational",
 		"L2 Context",
 		"estimated tokens use bytes_div_4_ceiling",
 		"not provider-billed token invoices",
+		"excluded from counted totals unless the suite projects it into agent input",
 		"fixes benchmark truthfulness",
 	} {
 		if !strings.Contains(report, fragment) {

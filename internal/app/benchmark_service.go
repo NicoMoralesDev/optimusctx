@@ -589,6 +589,9 @@ func summarizeBenchmarkAttempts(attempts []BenchmarkAttemptResult, suite reposit
 				}
 				if !lane.Success {
 					reason := fmt.Sprintf("attempt %d %s/%s did not satisfy stop condition", attempt.Attempt, arm.Kind, lane.Lane)
+					if lane.FinalArtifact != nil && !lane.FinalArtifact.Passed {
+						reason = fmt.Sprintf("attempt %d %s/%s final artifact %q failed: %s", attempt.Attempt, arm.Kind, lane.Lane, lane.FinalArtifact.ContractID, lane.FinalArtifact.FailureReason)
+					}
 					laneSummary.InvalidAttemptCount++
 					laneSummary.RejectedAttemptReasons = appendIfMissing(laneSummary.RejectedAttemptReasons, reason)
 					rejectionSet[reason] = struct{}{}
@@ -1008,7 +1011,7 @@ func RenderBenchmarkComparisonReport(summary BenchmarkHumanSummary) string {
 			_, _ = fmt.Fprintf(&b, "  caveat: %s\n", reason)
 		}
 	}
-	_, _ = fmt.Fprintf(&b, "\ntreatment artifact attribution\n")
+	_, _ = fmt.Fprintf(&b, "\ncounted agent-input attribution\n")
 	for _, row := range summary.AttributionRows {
 		_, _ = fmt.Fprintf(&b, "- %s / %s: median estimated tokens=%d total estimated tokens=%d\n",
 			renderBenchmarkLaneLabel(row.Lane),
@@ -1029,6 +1032,7 @@ func RenderBenchmarkComparisonReport(summary BenchmarkHumanSummary) string {
 	_, _ = fmt.Fprintf(&b, "\ncaveats\n")
 	_, _ = fmt.Fprintf(&b, "- estimated tokens use %s\n", summary.EstimatorPolicy)
 	_, _ = fmt.Fprintf(&b, "- %s are %s\n", summary.UsageClaim, summary.BillingDisambiguator)
+	_, _ = fmt.Fprintf(&b, "- raw CLI and MCP payload provenance stays in exported evidence for auditability but is excluded from counted totals unless the suite projects it into agent input\n")
 	_, _ = fmt.Fprintf(&b, "- phase 14 fixes benchmark truthfulness around declared agent inputs and comparable final artifacts, not provider billing or product payload size\n")
 	_, _ = fmt.Fprintf(&b, "- results describe only the recorded frozen-suite attempts and explicit estimator output\n")
 	_, _ = fmt.Fprintf(&b, "\nrerun\n%s\n", summary.RerunCommand)
