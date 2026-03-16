@@ -49,6 +49,30 @@ const (
 	EvalArtifactKindFile   EvalArtifactKind = "file"
 )
 
+type EvalSetupActionKind string
+
+const (
+	EvalSetupActionWriteFile     EvalSetupActionKind = "write_file"
+	EvalSetupActionOverwriteFile EvalSetupActionKind = "overwrite_file"
+	EvalSetupActionDeleteFile    EvalSetupActionKind = "delete_file"
+)
+
+type EvalAssertionTarget string
+
+const (
+	EvalAssertionTargetStdout   EvalAssertionTarget = "stdout"
+	EvalAssertionTargetStderr   EvalAssertionTarget = "stderr"
+	EvalAssertionTargetArtifact EvalAssertionTarget = "artifact"
+)
+
+type EvalAssertionKind string
+
+const (
+	EvalAssertionKindContains         EvalAssertionKind = "contains"
+	EvalAssertionKindJSONFieldPresent EvalAssertionKind = "json_field_present"
+	EvalAssertionKindJSONFieldEquals  EvalAssertionKind = "json_field_equals"
+)
+
 type EvalFixtureRef struct {
 	ID           string          `json:"id"`
 	Version      string          `json:"version"`
@@ -71,11 +95,28 @@ type EvalArtifactRef struct {
 	Required bool             `json:"required"`
 }
 
+type EvalSetupAction struct {
+	Kind    EvalSetupActionKind `json:"kind"`
+	Path    string              `json:"path"`
+	Content string              `json:"content,omitempty"`
+}
+
+type EvalAssertion struct {
+	Kind     EvalAssertionKind   `json:"kind"`
+	Target   EvalAssertionTarget `json:"target"`
+	Artifact string              `json:"artifact,omitempty"`
+	Path     string              `json:"path,omitempty"`
+	Contains string              `json:"contains,omitempty"`
+	Equals   any                 `json:"equals,omitempty"`
+}
+
 type EvalScenarioStep struct {
 	ID              string              `json:"id"`
 	Name            string              `json:"name"`
 	Kind            EvalStepKind        `json:"kind"`
 	Expect          EvalExpectedCommand `json:"expect"`
+	Setup           []EvalSetupAction   `json:"setup,omitempty"`
+	Assert          []EvalAssertion     `json:"assert,omitempty"`
 	CaptureArtifact []string            `json:"captureArtifact,omitempty"`
 }
 
@@ -246,8 +287,97 @@ func validateEvalSteps(steps []EvalScenarioStep, artifacts []EvalArtifactRef) er
 				return fmt.Errorf("steps[%d]: captureArtifact references unknown artifact %q", idx, artifactID)
 			}
 		}
+		if err := validateEvalSetupActions(step.Setup); err != nil {
+			return fmt.Errorf("steps[%d]: %w", idx, err)
+		}
+		if err := validateEvalAssertions(step.Assert, artifactIDs); err != nil {
+			return fmt.Errorf("steps[%d]: %w", idx, err)
+		}
 	}
 
+	return nil
+}
+
+func validateEvalSetupActions(actions []EvalSetupAction) error {
+	for idx, action := range actions {
+		if err := validateEvalRelativePath(action.Path); err != nil {
+			return fmt.Errorf("setup[%d]: %w", idx, err)
+		}
+		switch action.Kind {
+		case EvalSetupActionWriteFile:
+			// Empty content is allowed so scenarios can create sentinel files deterministically.
+		case EvalSetupActionOverwriteFile:
+			// Empty content is allowed so tests can deterministically truncate files.
+		case EvalSetupActionDeleteFile:
+			if action.Content != "" {
+				return fmt.Errorf("setup[%d]: content must be empty for %q", idx, action.Kind)
+			}
+		default:
+			return fmt.Errorf("setup[%d]: unsupported kind %q", idx, action.Kind)
+		}
+	}
+	return nil
+}
+
+func validateEvalAssertions(assertions []EvalAssertion, artifactIDs map[string]struct{}) error {
+	for idx, assertion := range assertions {
+		switch assertion.Target {
+		case EvalAssertionTargetStdout, EvalAssertionTargetStderr:
+			if assertion.Artifact != "" {
+				return fmt.Errorf("assert[%d]: artifact must be empty for %q target", idx, assertion.Target)
+			}
+		case EvalAssertionTargetArtifact:
+			if strings.TrimSpace(assertion.Artifact) == "" {
+				return fmt.Errorf("assert[%d]: artifact is required for %q target", idx, assertion.Target)
+			}
+			if _, ok := artifactIDs[assertion.Artifact]; !ok {
+				return fmt.Errorf("assert[%d]: unknown artifact %q", idx, assertion.Artifact)
+			}
+		default:
+			return fmt.Errorf("assert[%d]: unsupported target %q", idx, assertion.Target)
+		}
+
+		switch assertion.Kind {
+		case EvalAssertionKindContains:
+			if assertion.Contains == "" {
+				return fmt.Errorf("assert[%d]: contains is required for %q", idx, assertion.Kind)
+			}
+			if assertion.Path != "" || assertion.Equals != nil {
+				return fmt.Errorf("assert[%d]: path/equals must be empty for %q", idx, assertion.Kind)
+			}
+		case EvalAssertionKindJSONFieldPresent:
+			if strings.TrimSpace(assertion.Path) == "" {
+				return fmt.Errorf("assert[%d]: path is required for %q", idx, assertion.Kind)
+			}
+			if assertion.Contains != "" || assertion.Equals != nil {
+				return fmt.Errorf("assert[%d]: contains/equals must be empty for %q", idx, assertion.Kind)
+			}
+		case EvalAssertionKindJSONFieldEquals:
+			if strings.TrimSpace(assertion.Path) == "" {
+				return fmt.Errorf("assert[%d]: path is required for %q", idx, assertion.Kind)
+			}
+			if assertion.Contains != "" {
+				return fmt.Errorf("assert[%d]: contains must be empty for %q", idx, assertion.Kind)
+			}
+		default:
+			return fmt.Errorf("assert[%d]: unsupported kind %q", idx, assertion.Kind)
+		}
+	}
+	return nil
+}
+
+func validateEvalRelativePath(path string) error {
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
+		return errors.New("path is required")
+	}
+	if filepath.IsAbs(trimmed) {
+		return fmt.Errorf("path %q must be relative", path)
+	}
+	cleaned := filepath.Clean(filepath.FromSlash(trimmed))
+	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("path %q must stay within the workspace", path)
+	}
 	return nil
 }
 

@@ -34,6 +34,12 @@ func TestEvalScenarioContracts(t *testing.T) {
 					Command:  EvalCommandInit,
 					ExitCode: 0,
 				},
+				Setup: []EvalSetupAction{
+					{Kind: EvalSetupActionWriteFile, Path: "README.md", Content: "# fixture\n"},
+				},
+				Assert: []EvalAssertion{
+					{Kind: EvalAssertionKindContains, Target: EvalAssertionTargetStdout, Contains: "initialized"},
+				},
 				CaptureArtifact: []string{"init-stdout"},
 			},
 			{
@@ -55,7 +61,10 @@ func TestEvalScenarioContracts(t *testing.T) {
 					Command:  EvalCommandDoctor,
 					ExitCode: 0,
 				},
-				CaptureArtifact: []string{"doctor-stdout"},
+				Assert: []EvalAssertion{
+					{Kind: EvalAssertionKindJSONFieldPresent, Target: EvalAssertionTargetArtifact, Artifact: "doctor-json", Path: "repository.root_path"},
+				},
+				CaptureArtifact: []string{"doctor-stdout", "doctor-json"},
 			},
 			{
 				ID:   "pack-export",
@@ -73,6 +82,7 @@ func TestEvalScenarioContracts(t *testing.T) {
 		Artifacts: []EvalArtifactRef{
 			{ID: "init-stdout", Kind: EvalArtifactKindStdout, Required: true},
 			{ID: "doctor-stdout", Kind: EvalArtifactKindStdout, Required: true},
+			{ID: "doctor-json", Kind: EvalArtifactKindFile, Path: "artifacts/doctor.json", Required: false},
 			{ID: "pack-file", Kind: EvalArtifactKindFile, Path: "artifacts/pack.json", Required: true},
 		},
 	}
@@ -84,6 +94,73 @@ func TestEvalScenarioContracts(t *testing.T) {
 	encoded, err := json.MarshalIndent(scenario, "", "  ")
 	if err != nil {
 		t.Fatalf("MarshalIndent() error = %v", err)
+	}
+
+	var decoded EvalScenarioDefinition
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	if !reflect.DeepEqual(decoded, scenario) {
+		t.Fatalf("decoded scenario mismatch\n got: %#v\nwant: %#v", decoded, scenario)
+	}
+}
+
+func TestEvalAssertions(t *testing.T) {
+	t.Parallel()
+
+	scenario := EvalScenarioDefinition{
+		SchemaVersion: EvalScenarioSchemaV1,
+		ID:            "assertions-v1",
+		Version:       "v1",
+		Name:          "Assertions",
+		Fixture: EvalFixtureRef{
+			ID:          "go-basic",
+			Version:     "v1",
+			Path:        "go-basic/v1/repository",
+			Materialize: EvalFixtureModeCopyTree,
+		},
+		Steps: []EvalScenarioStep{
+			{
+				ID:   "init",
+				Name: "Initialize",
+				Kind: EvalStepKindCommand,
+				Expect: EvalExpectedCommand{
+					Surface:  EvalCommandSurfaceCLI,
+					Command:  EvalCommandInit,
+					ExitCode: 0,
+				},
+				Assert: []EvalAssertion{
+					{Kind: EvalAssertionKindContains, Target: EvalAssertionTargetStdout, Contains: "initialized"},
+				},
+			},
+			{
+				ID:   "refresh",
+				Name: "Refresh",
+				Kind: EvalStepKindCommand,
+				Expect: EvalExpectedCommand{
+					Surface:  EvalCommandSurfaceCLI,
+					Command:  EvalCommandRefresh,
+					ExitCode: 0,
+				},
+				Assert: []EvalAssertion{
+					{Kind: EvalAssertionKindJSONFieldPresent, Target: EvalAssertionTargetArtifact, Artifact: "refresh-json", Path: "summary.freshness"},
+					{Kind: EvalAssertionKindJSONFieldEquals, Target: EvalAssertionTargetArtifact, Artifact: "refresh-json", Path: "summary.status", Equals: "ok"},
+				},
+				CaptureArtifact: []string{"refresh-json"},
+			},
+		},
+		Artifacts: []EvalArtifactRef{
+			{ID: "refresh-json", Kind: EvalArtifactKindFile, Path: "artifacts/refresh.json", Required: true},
+		},
+	}
+
+	if err := scenario.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	encoded, err := json.Marshal(scenario)
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
 	}
 
 	var decoded EvalScenarioDefinition
@@ -204,6 +281,76 @@ func TestEvalScenarioValidation(t *testing.T) {
 			t.Fatalf("Validate() error = %v, want pack_export ordering error", err)
 		}
 	})
+
+	t.Run("rejects setup paths outside workspace", func(t *testing.T) {
+		scenario := EvalScenarioDefinition{
+			SchemaVersion: EvalScenarioSchemaV1,
+			ID:            "bad-setup-v1",
+			Version:       "v1",
+			Name:          "Bad setup",
+			Fixture: EvalFixtureRef{
+				ID:          "go-basic",
+				Version:     "v1",
+				Path:        "go-basic/v1/repository",
+				Materialize: EvalFixtureModeCopyTree,
+			},
+			Steps: []EvalScenarioStep{
+				{
+					ID:   "init",
+					Name: "Initialize",
+					Kind: EvalStepKindCommand,
+					Expect: EvalExpectedCommand{
+						Surface:  EvalCommandSurfaceCLI,
+						Command:  EvalCommandInit,
+						ExitCode: 0,
+					},
+					Setup: []EvalSetupAction{
+						{Kind: EvalSetupActionDeleteFile, Path: "../escape.txt"},
+					},
+				},
+			},
+		}
+
+		err := scenario.Validate()
+		if err == nil || !strings.Contains(err.Error(), "must stay within the workspace") {
+			t.Fatalf("Validate() error = %v, want workspace boundary error", err)
+		}
+	})
+
+	t.Run("rejects artifact assertions without known artifact refs", func(t *testing.T) {
+		scenario := EvalScenarioDefinition{
+			SchemaVersion: EvalScenarioSchemaV1,
+			ID:            "bad-assert-v1",
+			Version:       "v1",
+			Name:          "Bad assertion",
+			Fixture: EvalFixtureRef{
+				ID:          "go-basic",
+				Version:     "v1",
+				Path:        "go-basic/v1/repository",
+				Materialize: EvalFixtureModeCopyTree,
+			},
+			Steps: []EvalScenarioStep{
+				{
+					ID:   "init",
+					Name: "Initialize",
+					Kind: EvalStepKindCommand,
+					Expect: EvalExpectedCommand{
+						Surface:  EvalCommandSurfaceCLI,
+						Command:  EvalCommandInit,
+						ExitCode: 0,
+					},
+					Assert: []EvalAssertion{
+						{Kind: EvalAssertionKindJSONFieldPresent, Target: EvalAssertionTargetArtifact, Artifact: "missing", Path: "summary.status"},
+					},
+				},
+			},
+		}
+
+		err := scenario.Validate()
+		if err == nil || !strings.Contains(err.Error(), `unknown artifact "missing"`) {
+			t.Fatalf("Validate() error = %v, want missing artifact assertion error", err)
+		}
+	})
 }
 
 func TestEvalFixtureReferences(t *testing.T) {
@@ -262,6 +409,13 @@ func TestEvalFixtureReferences(t *testing.T) {
 		}
 		if !reflect.DeepEqual(commands, expectedCommands[scenario.ID]) {
 			t.Fatalf("scenario %q commands = %v, want %v", scenario.ID, commands, expectedCommands[scenario.ID])
+		}
+		for _, step := range scenario.Steps {
+			for _, action := range step.Setup {
+				if err := validateEvalRelativePath(action.Path); err != nil {
+					t.Fatalf("scenario %q setup path %q invalid: %v", scenario.ID, action.Path, err)
+				}
+			}
 		}
 	}
 }
