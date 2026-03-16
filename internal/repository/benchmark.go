@@ -13,6 +13,12 @@ import (
 
 const BenchmarkSuiteSchemaV1 = "optimusctx/benchmark-suite@v1"
 
+const (
+	BenchmarkTokenEstimatorPolicyName          = "bytes_div_4_ceiling"
+	BenchmarkTokenEstimateUsageClaim           = "estimated workflow-consumed tokens"
+	BenchmarkTokenEstimateBillingDisambiguator = "not provider-billed token invoices"
+)
+
 type BenchmarkArmKind string
 
 const (
@@ -62,6 +68,57 @@ const (
 	BenchmarkTreatmentSurfaceCLI BenchmarkTreatmentSurface = "cli"
 	BenchmarkTreatmentSurfaceMCP BenchmarkTreatmentSurface = "mcp"
 )
+
+type BenchmarkArtifactType string
+
+const (
+	BenchmarkArtifactTypeRepositoryMap BenchmarkArtifactType = "repository_map"
+	BenchmarkArtifactTypeExactLookup   BenchmarkArtifactType = "exact_lookup"
+	BenchmarkArtifactTypeL2Context     BenchmarkArtifactType = "l2_context"
+	BenchmarkArtifactTypePackExport    BenchmarkArtifactType = "pack_export"
+	BenchmarkArtifactTypeHealth        BenchmarkArtifactType = "health"
+	BenchmarkArtifactTypeRefresh       BenchmarkArtifactType = "refresh"
+)
+
+type BenchmarkReportArtifactLabel string
+
+const (
+	BenchmarkReportArtifactLabelRepositoryMap BenchmarkReportArtifactLabel = "repository_map"
+	BenchmarkReportArtifactLabelExactLookup   BenchmarkReportArtifactLabel = "exact_lookup"
+	BenchmarkReportArtifactLabelL2Context     BenchmarkReportArtifactLabel = "l2_context"
+	BenchmarkReportArtifactLabelPackExport    BenchmarkReportArtifactLabel = "pack_export"
+	BenchmarkReportArtifactLabelOperational   BenchmarkReportArtifactLabel = "operational"
+)
+
+type BenchmarkTokenEstimateSourceKind string
+
+const (
+	BenchmarkTokenEstimateSourceBoundedFileContent BenchmarkTokenEstimateSourceKind = "bounded_file_content"
+	BenchmarkTokenEstimateSourceDirectPayload      BenchmarkTokenEstimateSourceKind = "direct_payload"
+	BenchmarkTokenEstimateSourcePathEstimate       BenchmarkTokenEstimateSourceKind = "path_estimate"
+	BenchmarkTokenEstimateSourcePackExportSection  BenchmarkTokenEstimateSourceKind = "pack_export_section_estimate"
+)
+
+type BenchmarkTokenEstimateContract struct {
+	Policy               BudgetEstimatePolicy `json:"policy"`
+	UsageClaim           string               `json:"usageClaim"`
+	BillingDisambiguator string               `json:"billingDisambiguator"`
+}
+
+type BenchmarkArtifactConsumption struct {
+	StepID          string                           `json:"stepId"`
+	StepName        string                           `json:"stepName,omitempty"`
+	Lane            BenchmarkLane                    `json:"lane"`
+	Surface         BenchmarkTreatmentSurface        `json:"surface,omitempty"`
+	Command         EvalCommandName                  `json:"command,omitempty"`
+	Tool            string                           `json:"tool,omitempty"`
+	ArtifactType    BenchmarkArtifactType            `json:"artifactType,omitempty"`
+	ReportLabel     BenchmarkReportArtifactLabel     `json:"reportLabel,omitempty"`
+	SourceKind      BenchmarkTokenEstimateSourceKind `json:"sourceKind"`
+	ArtifactPath    string                           `json:"artifactPath,omitempty"`
+	EstimatedBytes  int64                            `json:"estimatedBytes,omitempty"`
+	EstimatedTokens int64                            `json:"estimatedTokens,omitempty"`
+}
 
 type BenchmarkSuiteDefinition struct {
 	SchemaVersion string                    `json:"schemaVersion"`
@@ -162,19 +219,20 @@ type BenchmarkArmRunResult struct {
 }
 
 type BenchmarkLaneRunResult struct {
-	Lane           BenchmarkLane        `json:"lane"`
-	StartMarker    string               `json:"startMarker"`
-	SuccessMarker  string               `json:"successMarker"`
-	StopMarker     string               `json:"stopMarker"`
-	SetupAppliedAt time.Time            `json:"setupAppliedAt,omitempty"`
-	StartedAt      time.Time            `json:"startedAt"`
-	FinishedAt     time.Time            `json:"finishedAt"`
-	Elapsed        time.Duration        `json:"elapsed"`
-	Success        bool                 `json:"success"`
-	Setup          []EvalSetupAction    `json:"setup,omitempty"`
-	Assertions     []BenchmarkAssertion `json:"assert,omitempty"`
-	EvidencePaths  []string             `json:"evidencePaths,omitempty"`
-	Effort         BenchmarkLaneEffort  `json:"effort"`
+	Lane           BenchmarkLane                  `json:"lane"`
+	StartMarker    string                         `json:"startMarker"`
+	SuccessMarker  string                         `json:"successMarker"`
+	StopMarker     string                         `json:"stopMarker"`
+	SetupAppliedAt time.Time                      `json:"setupAppliedAt,omitempty"`
+	StartedAt      time.Time                      `json:"startedAt"`
+	FinishedAt     time.Time                      `json:"finishedAt"`
+	Elapsed        time.Duration                  `json:"elapsed"`
+	Success        bool                           `json:"success"`
+	Setup          []EvalSetupAction              `json:"setup,omitempty"`
+	Assertions     []BenchmarkAssertion           `json:"assert,omitempty"`
+	EvidencePaths  []string                       `json:"evidencePaths,omitempty"`
+	Effort         BenchmarkLaneEffort            `json:"effort"`
+	Attribution    []BenchmarkArtifactConsumption `json:"attribution,omitempty"`
 }
 
 type BenchmarkLaneEffort struct {
@@ -184,6 +242,72 @@ type BenchmarkLaneEffort struct {
 	FileReadActions       int64    `json:"fileReadActions"`
 	BytesRead             int64    `json:"bytesRead"`
 	ConsultedArtifacts    []string `json:"consultedArtifacts,omitempty"`
+}
+
+func DefaultBenchmarkTokenEstimateContract() BenchmarkTokenEstimateContract {
+	return BenchmarkTokenEstimateContract{
+		Policy: BudgetEstimatePolicy{
+			Name:          BenchmarkTokenEstimatorPolicyName,
+			BytesPerToken: 4,
+		},
+		UsageClaim:           BenchmarkTokenEstimateUsageClaim,
+		BillingDisambiguator: BenchmarkTokenEstimateBillingDisambiguator,
+	}
+}
+
+func EstimateBenchmarkTokensFromBytes(byteCount int64) int64 {
+	if byteCount <= 0 {
+		return 0
+	}
+	policy := DefaultBenchmarkTokenEstimateContract().Policy
+	return (byteCount + policy.BytesPerToken - 1) / policy.BytesPerToken
+}
+
+func BenchmarkArtifactTypeForTool(tool string) (BenchmarkArtifactType, bool) {
+	switch tool {
+	case "optimusctx.repository_map":
+		return BenchmarkArtifactTypeRepositoryMap, true
+	case "optimusctx.symbol_lookup", "optimusctx.structure_lookup":
+		return BenchmarkArtifactTypeExactLookup, true
+	case "optimusctx.layered_context_l1", "optimusctx.targeted_context", "optimusctx.pack":
+		return BenchmarkArtifactTypeL2Context, true
+	case "optimusctx.health":
+		return BenchmarkArtifactTypeHealth, true
+	case "optimusctx.refresh":
+		return BenchmarkArtifactTypeRefresh, true
+	default:
+		return "", false
+	}
+}
+
+func BenchmarkArtifactTypeForCommand(command EvalCommandName) (BenchmarkArtifactType, bool) {
+	switch command {
+	case EvalCommandPackExport:
+		return BenchmarkArtifactTypePackExport, true
+	case EvalCommandRefresh:
+		return BenchmarkArtifactTypeRefresh, true
+	case EvalCommandDoctor:
+		return BenchmarkArtifactTypeHealth, true
+	default:
+		return "", false
+	}
+}
+
+func BenchmarkReportLabelForArtifactType(artifactType BenchmarkArtifactType) BenchmarkReportArtifactLabel {
+	switch artifactType {
+	case BenchmarkArtifactTypeRepositoryMap:
+		return BenchmarkReportArtifactLabelRepositoryMap
+	case BenchmarkArtifactTypeExactLookup:
+		return BenchmarkReportArtifactLabelExactLookup
+	case BenchmarkArtifactTypeL2Context:
+		return BenchmarkReportArtifactLabelL2Context
+	case BenchmarkArtifactTypePackExport:
+		return BenchmarkReportArtifactLabelPackExport
+	case BenchmarkArtifactTypeHealth, BenchmarkArtifactTypeRefresh:
+		return BenchmarkReportArtifactLabelOperational
+	default:
+		return ""
+	}
 }
 
 func (s BenchmarkSuiteDefinition) Validate() error {

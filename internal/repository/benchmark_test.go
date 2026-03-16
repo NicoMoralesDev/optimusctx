@@ -7,6 +7,83 @@ import (
 	"testing"
 )
 
+func TestBenchmarkTokenAttributionContract(t *testing.T) {
+	t.Parallel()
+
+	contract := DefaultBenchmarkTokenEstimateContract()
+	if contract.Policy.Name != "bytes_div_4_ceiling" {
+		t.Fatalf("Policy.Name = %q, want bytes_div_4_ceiling", contract.Policy.Name)
+	}
+	if contract.Policy.BytesPerToken != 4 {
+		t.Fatalf("Policy.BytesPerToken = %d, want 4", contract.Policy.BytesPerToken)
+	}
+	if contract.UsageClaim != "estimated workflow-consumed tokens" {
+		t.Fatalf("UsageClaim = %q", contract.UsageClaim)
+	}
+	if contract.BillingDisambiguator != "not provider-billed token invoices" {
+		t.Fatalf("BillingDisambiguator = %q", contract.BillingDisambiguator)
+	}
+	if got := EstimateBenchmarkTokensFromBytes(17); got != 5 {
+		t.Fatalf("EstimateBenchmarkTokensFromBytes(17) = %d, want 5", got)
+	}
+	if got := EstimateBenchmarkTokensFromBytes(0); got != 0 {
+		t.Fatalf("EstimateBenchmarkTokensFromBytes(0) = %d, want 0", got)
+	}
+}
+
+func TestBenchmarkArtifactTypeAttribution(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name      string
+		tool      string
+		command   EvalCommandName
+		wantType  BenchmarkArtifactType
+		wantLabel BenchmarkReportArtifactLabel
+	}{
+		{name: "repository map tool", tool: "optimusctx.repository_map", wantType: BenchmarkArtifactTypeRepositoryMap, wantLabel: BenchmarkReportArtifactLabelRepositoryMap},
+		{name: "symbol lookup tool", tool: "optimusctx.symbol_lookup", wantType: BenchmarkArtifactTypeExactLookup, wantLabel: BenchmarkReportArtifactLabelExactLookup},
+		{name: "structure lookup tool", tool: "optimusctx.structure_lookup", wantType: BenchmarkArtifactTypeExactLookup, wantLabel: BenchmarkReportArtifactLabelExactLookup},
+		{name: "targeted context tool", tool: "optimusctx.targeted_context", wantType: BenchmarkArtifactTypeL2Context, wantLabel: BenchmarkReportArtifactLabelL2Context},
+		{name: "layered context tool", tool: "optimusctx.layered_context_l1", wantType: BenchmarkArtifactTypeL2Context, wantLabel: BenchmarkReportArtifactLabelL2Context},
+		{name: "pack export command", command: EvalCommandPackExport, wantType: BenchmarkArtifactTypePackExport, wantLabel: BenchmarkReportArtifactLabelPackExport},
+		{name: "refresh command", command: EvalCommandRefresh, wantType: BenchmarkArtifactTypeRefresh, wantLabel: BenchmarkReportArtifactLabelOperational},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				gotType BenchmarkArtifactType
+				ok      bool
+			)
+			if tc.tool != "" {
+				gotType, ok = BenchmarkArtifactTypeForTool(tc.tool)
+			} else {
+				gotType, ok = BenchmarkArtifactTypeForCommand(tc.command)
+			}
+			if !ok {
+				t.Fatalf("expected attribution mapping for %+v", tc)
+			}
+			if gotType != tc.wantType {
+				t.Fatalf("artifact type = %q, want %q", gotType, tc.wantType)
+			}
+			if got := BenchmarkReportLabelForArtifactType(gotType); got != tc.wantLabel {
+				t.Fatalf("report label = %q, want %q", got, tc.wantLabel)
+			}
+		})
+	}
+
+	if _, ok := BenchmarkArtifactTypeForTool("optimusctx.unknown"); ok {
+		t.Fatal("unknown tool unexpectedly mapped")
+	}
+	if got := BenchmarkReportLabelForArtifactType(""); got != "" {
+		t.Fatalf("empty artifact label = %q, want empty", got)
+	}
+}
+
 func TestBenchmarkSuiteContracts(t *testing.T) {
 	t.Parallel()
 
