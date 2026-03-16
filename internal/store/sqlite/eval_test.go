@@ -260,6 +260,119 @@ func TestEvalArtifactPersistence(t *testing.T) {
 	}
 }
 
+func TestEvalRunPersistenceReplacesStoredResults(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	layout, err := state.ResolveLayout(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	store, repoID := openStoreWithRepository(t, ctx, layout)
+	defer store.Close()
+
+	run, err := store.SaveEvalRun(ctx, EvalRunRecord{
+		RepositoryID:    repoID,
+		ScenarioID:      "refresh-contract-v1",
+		ScenarioVersion: "v1",
+		FixtureID:       "sample-go",
+		FixtureVersion:  "2026-03-15",
+		Status:          EvalRunStatusRunning,
+		WorkspacePath:   layout.RepoRoot,
+		ArtifactRoot:    layout.EvalRunDir(9),
+		StartedAt:       time.Date(2026, 3, 15, 19, 0, 0, 0, time.UTC),
+	}, []EvalStepRecord{{
+		StepID:     "refresh",
+		Ordinal:    0,
+		Name:       "Refresh repository",
+		Surface:    "cli",
+		Command:    "refresh",
+		ExitCode:   1,
+		Passed:     false,
+		StartedAt:  time.Date(2026, 3, 15, 19, 0, 0, 0, time.UTC),
+		FinishedAt: time.Date(2026, 3, 15, 19, 0, 20, 0, time.UTC),
+	}}, []EvalArtifactRecord{{
+		StepID:     "refresh",
+		ArtifactID: "stderr",
+		Kind:       "stderr",
+		StoredPath: layout.EvalRunDir(9) + "/refresh/stderr.txt",
+		Required:   true,
+		Present:    true,
+		SizeBytes:  64,
+	}})
+	if err != nil {
+		t.Fatalf("SaveEvalRun() initial error = %v", err)
+	}
+
+	run.Status = EvalRunStatusPassed
+	run.Passed = true
+	run.CompletedAt = time.Date(2026, 3, 15, 19, 1, 0, 0, time.UTC)
+	run.MetadataJSON = `{"rerun":true}`
+
+	run, err = store.SaveEvalRun(ctx, run, []EvalStepRecord{{
+		StepID:       "refresh",
+		Ordinal:      0,
+		Name:         "Refresh repository",
+		Surface:      "cli",
+		Command:      "refresh",
+		ArgsJSON:     `["refresh"]`,
+		ExitCode:     0,
+		Passed:       true,
+		StartedAt:    time.Date(2026, 3, 15, 19, 0, 30, 0, time.UTC),
+		FinishedAt:   time.Date(2026, 3, 15, 19, 1, 0, 0, time.UTC),
+		StdoutPath:   layout.EvalRunDir(9) + "/refresh/stdout.txt",
+		MetadataJSON: `{"generation":3}`,
+	}}, []EvalArtifactRecord{
+		{
+			ArtifactID:   "stdout",
+			Kind:         "stdout",
+			StoredPath:   layout.EvalRunDir(9) + "/refresh/stdout.txt",
+			Required:     true,
+			Present:      true,
+			SizeBytes:    256,
+			MetadataJSON: `{"lineCount":12}`,
+		},
+		{
+			StepID:       "refresh",
+			ArtifactID:   "pack-json",
+			Kind:         "file",
+			LogicalPath:  "artifacts/pack.json",
+			StoredPath:   layout.EvalRunDir(9) + "/artifacts/pack.json",
+			Required:     false,
+			Present:      true,
+			SizeBytes:    512,
+			MetadataJSON: `{"exported":true}`,
+		},
+	})
+	if err != nil {
+		t.Fatalf("SaveEvalRun() update error = %v", err)
+	}
+
+	gotRun, gotSteps, gotArtifacts, err := store.LoadEvalRun(ctx, run.ID)
+	if err != nil {
+		t.Fatalf("LoadEvalRun() error = %v", err)
+	}
+
+	if len(gotSteps) != 1 {
+		t.Fatalf("step count = %d, want 1", len(gotSteps))
+	}
+	if len(gotArtifacts) != 2 {
+		t.Fatalf("artifact count = %d, want 2", len(gotArtifacts))
+	}
+	if gotRun.Status != EvalRunStatusPassed || !gotRun.Passed {
+		t.Fatalf("run status = %+v", gotRun)
+	}
+	if gotSteps[0].ExitCode != 0 || gotSteps[0].StdoutPath == "" || gotSteps[0].StderrPath != "" {
+		t.Fatalf("step replacement failed: %+v", gotSteps[0])
+	}
+	for _, artifact := range gotArtifacts {
+		if artifact.ArtifactID == "stderr" {
+			t.Fatalf("stale artifact should have been replaced: %+v", gotArtifacts)
+		}
+	}
+}
+
 func assertTablesExist(t *testing.T, db *sql.DB, tableNames ...string) {
 	t.Helper()
 

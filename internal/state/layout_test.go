@@ -124,3 +124,27 @@ func TestLayoutEnsureIsIdempotent(t *testing.T) {
 		t.Fatalf("SchemaVersion = %d", second.SchemaVersion)
 	}
 }
+
+func TestResolveLayoutEvalRunDirIsDeterministic(t *testing.T) {
+	t.Parallel()
+
+	repoRoot := t.TempDir()
+
+	layout, err := ResolveLayout(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolveLayout() error = %v", err)
+	}
+
+	first := layout.EvalRunDir(27)
+	second := layout.EvalRunDir(27)
+
+	if first != second {
+		t.Fatalf("EvalRunDir() mismatch: %q != %q", first, second)
+	}
+	if first != filepath.Join(repoRoot, DirectoryName, "eval", "run-000027") {
+		t.Fatalf("EvalRunDir() = %q", first)
+	}
+	if layout.EvalRunDir(0) != layout.EvalDir {
+		t.Fatalf("EvalRunDir(0) = %q, want %q", layout.EvalRunDir(0), layout.EvalDir)
+	}
+}
