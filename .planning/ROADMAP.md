@@ -43,7 +43,14 @@ Plans:
 
 **Goal**: Unify release metadata, canonical tag handling, and GitHub Release orchestration so every downstream channel consumes the same archives, checksums, and release facts.
 **Depends on**: Phase 16
-**Plans**: 0 plans yet
+**Plans**: 4 plans
+
+Plans:
+
+- [ ] 17-01: canonical release metadata and deterministic asset contract
+- [ ] 17-02: fresh-versus-existing GitHub Release orchestration semantics
+- [ ] 17-03: downstream consumer rewiring to the shared release metadata contract
+- [ ] 17-04: canonical-root documentation and regression lock
 
 **Requirements covered:** `PUB-01`
 
