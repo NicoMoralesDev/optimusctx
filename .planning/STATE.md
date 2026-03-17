@@ -4,17 +4,17 @@ milestone: v1.2
 milestone_name: release automation and operator workflow
 current_phase: 16
 current_phase_name: release versioning and preflight guardrails
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-03-17T20:08:53.911Z"
+stopped_at: Completed 16-02-PLAN.md
+last_updated: "2026-03-17T20:21:55.590Z"
 last_activity: 2026-03-17
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 33
+  completed_plans: 2
+  percent: 67
 ---
 
 # Planning State: OptimusCtx
@@ -27,11 +27,11 @@ progress:
 **Current Phase:** 16
 **Current Phase Name:** release versioning and preflight guardrails
 **Total Phases:** 4
-**Current Plan:** 2
+**Current Plan:** 3
 **Total Plans in Phase:** 3
-**Progress:** [███░░░░░░░] 33%
+**Progress:** [███████░░░] 67%
 **Last Activity:** 2026-03-17
-**Last Activity Description:** Completed plan 16-01 canonical semver and release preparation contract
+**Last Activity Description:** Completed plan 16-02 git and prerequisite preflight probes plus JSON review model
 
 ## Project Memory
 
@@ -45,9 +45,9 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `16-release-versioning-and-preflight-guardrails`
-- Next execution action: execute `16-02` or continue `$gsd-execute-phase 16`
+- Next execution action: execute `16-03` or continue `$gsd-execute-phase 16`
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: v1.2 requirements are defined and mapped; Plan 16-01 is complete and Plans 16-02 through 16-03 remain pending
+- Coverage status: v1.2 requirements are defined and mapped; Plans 16-01 through 16-02 are complete and Plan 16-03 remains pending
 
 ## Recent Decisions
 
@@ -231,6 +231,7 @@ progress:
 | Phase 15 P02 | 9min | 2 tasks | 6 files |
 | Phase 15 P03 | 4min | 2 tasks | 9 files |
 | Phase 16 P01 | 2min | 2 tasks | 2 files |
+| Phase 16-release-versioning-and-preflight-guardrails P02 | 10min | 2 tasks | 3 files |
 
 ## Decisions Made
 
@@ -388,6 +389,8 @@ progress:
 - [Phase 15]: npm publication now runs after GitHub Release archive publication and uses a render step instead of expanding GoReleaser into a second package definition. — This keeps GitHub Releases as the single release source of truth while making npm a truthful downstream wrapper channel.
 - [Phase 16]: Release preparation accepts only MAJOR.MINOR.PATCH versions and emits only vMAJOR.MINOR.PATCH tags.
 - [Phase 16]: Legacy tags such as v1.1 canonicalize to v1.1.0 and block the same semantic release lane.
+- [Phase 16]: Remote tag verification failures stay explicit blockers instead of silently downgrading to warnings.
+- [Phase 16]: GitHub Release and npm reflect the current workflow as ready, while Homebrew and Scoop stay blocked until publication wiring exists.
 
 ## Blockers
 
@@ -395,23 +398,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-17T20:08:53.908Z
-**Stopped At:** Completed 16-01-PLAN.md
+**Last Date:** 2026-03-17T20:21:55.586Z
+**Stopped At:** Completed 16-02-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-17 after verifying Phase 15 and completing the v1.1 milestone bookkeeping*
-ase binary while avoiding silent client-config writes or writes outside the package directory.
-
-## Blockers
-
-None
-
-## Session
-
-**Last Date:** 2026-03-17T13:04:51.855Z
-**Stopped At:** Completed 15-01-PLAN.md
-**Resume File:** None
-
----
-*Last updated: 2026-03-17 after planning Phase 15 npm/npx distribution follow-up*
+*Last updated: 2026-03-17 after completing plan 16-02 git and prerequisite preflight probes plus JSON review model*

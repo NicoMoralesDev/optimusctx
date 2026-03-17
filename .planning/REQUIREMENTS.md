@@ -8,8 +8,8 @@
 ### Release Preparation
 
 - [x] **REL-01**: Operator can start a release from an interactive or guided configuration flow that proposes the next version and normalized git tag before publication begins.
-- [ ] **REL-02**: Operator gets preflight validation for duplicate tags, worktree state, and required release prerequisites before any tag creation or channel publication runs.
-- [ ] **REL-03**: Operator can review and confirm the exact release plan, derived tag, and target channels before the release process mutates git state or publishes artifacts.
+- [x] **REL-02**: Operator gets preflight validation for duplicate tags, worktree state, and required release prerequisites before any tag creation or channel publication runs.
+- [x] **REL-03**: Operator can review and confirm the exact release plan, derived tag, and target channels before the release process mutates git state or publishes artifacts.
 
 ### Publication
 
@@ -49,8 +49,8 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | REL-01 | Phase 16 | Complete |
-| REL-02 | Phase 16 | Pending |
-| REL-03 | Phase 16 | Pending |
+| REL-02 | Phase 16 | Complete |
+| REL-03 | Phase 16 | Complete |
 | PUB-01 | Phase 17 | Pending |
 | PUB-02 | Phase 18 | Pending |
 | PUB-03 | Phase 18 | Pending |
