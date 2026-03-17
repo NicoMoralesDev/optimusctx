@@ -86,13 +86,13 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.2` with Phase 16 complete and ready for verification
+Active milestone: `v1.2` with Phase 16 verified complete
 
 Next step:
 
-- Re-verify Phase 16 and milestone v1.2 release-preparation behavior against the selected-channel contract
-- Plan Phase 17 release orchestration work after Phase 16 verification closes
+- Plan Phase 17 release orchestration work
+- Continue milestone execution from the canonical GitHub Release contract into shared release metadata
 - Keep all new release-channel automation anchored to the existing GitHub Release archive contract
 
 ---
-*Last updated: 2026-03-17 after completing 16-04*
+*Last updated: 2026-03-17 after verifying and completing Phase 16*
