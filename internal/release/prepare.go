@@ -1,7 +1,12 @@
 package release
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"io/fs"
+	"os"
+	"os/exec"
 	"regexp"
 	"sort"
 	"strconv"
@@ -15,6 +20,26 @@ const (
 	ReleaseChannelNPM           = "npm"
 
 	releaseChannelReadinessPending = "pending"
+	releaseChannelReadinessReady   = "ready"
+	releaseChannelReadinessBlocked = "blocked"
+
+	releaseCheckStatusReady   = "ready"
+	releaseCheckStatusBlocked = "blocked"
+
+	defaultGitRemote = "origin"
+
+	releaseWorkflowPath     = ".github/workflows/release.yml"
+	releaseChecklistPath    = "docs/release-checklist.md"
+	goReleaserConfigPath    = ".goreleaser.yml"
+	npmRenderScriptPath     = "scripts/render-npm-package.sh"
+	homebrewTemplatePath    = "packaging/homebrew/optimusctx.rb.tmpl"
+	scoopTemplatePath       = "packaging/scoop/optimusctx.json.tmpl"
+	npmPackageConfigPath    = "packaging/npm/package.json"
+	channelCheckGitHub      = "channel-github-release"
+	channelCheckNPM         = "channel-npm"
+	channelCheckHomebrew    = "channel-homebrew"
+	channelCheckScoop       = "channel-scoop"
+	prerequisiteCheckPrefix = "prerequisite:"
 )
 
 var (
@@ -35,6 +60,14 @@ type ReleaseIssue struct {
 	Details []string `json:"details,omitempty"`
 }
 
+type ReleaseCheck struct {
+	Code    string   `json:"code"`
+	Target  string   `json:"target,omitempty"`
+	Status  string   `json:"status"`
+	Message string   `json:"message"`
+	Details []string `json:"details,omitempty"`
+}
+
 type ReleaseChannelPlan struct {
 	ID                string `json:"id"`
 	Name              string `json:"name"`
@@ -47,6 +80,32 @@ type ReleasePreparation struct {
 	Version  string               `json:"version"`
 	Tag      string               `json:"tag"`
 	Channels []ReleaseChannelPlan `json:"channels"`
+	Checks   []ReleaseCheck       `json:"checks"`
+	Warnings []ReleaseIssue       `json:"warnings"`
+	Blockers []ReleaseIssue       `json:"blockers"`
+}
+
+type GitProbe interface {
+	WorktreeStatus(ctx context.Context) (string, error)
+	LocalTags(ctx context.Context) ([]string, error)
+	RemoteTags(ctx context.Context, remote string) ([]string, error)
+}
+
+type ReleasePreparationOptions struct {
+	Git                GitProbe
+	Files              fs.FS
+	SelectedChannels   []string
+	RequireRemoteCheck bool
+	RemoteName         string
+}
+
+type systemGitProbe struct{}
+
+type jsonReleasePreparation struct {
+	Version  string               `json:"version"`
+	Tag      string               `json:"tag"`
+	Channels []ReleaseChannelPlan `json:"channels"`
+	Checks   []ReleaseCheck       `json:"checks"`
 	Warnings []ReleaseIssue       `json:"warnings"`
 	Blockers []ReleaseIssue       `json:"blockers"`
 }
@@ -140,10 +199,6 @@ func ProposeReleaseVersion(milestone string, existingTags []string) (string, err
 		}
 	}
 
-	if highestPatch < 0 {
-		highestPatch = -1
-	}
-
 	return releaseVersion{
 		Major: series.Major,
 		Minor: series.Minor,
@@ -174,15 +229,16 @@ func BuildReleasePreparation(versionInput string, milestone string, existingTags
 	preparation := ReleasePreparation{
 		Version:  version,
 		Tag:      tag,
-		Channels: defaultReleaseChannels(),
+		Channels: defaultReleaseChannels(nil),
+		Checks:   []ReleaseCheck{},
 		Warnings: []ReleaseIssue{},
 		Blockers: []ReleaseIssue{},
 	}
 
 	if exactMatches := exactTagConflicts(tag, existingTags); len(exactMatches) > 0 {
 		preparation.Blockers = append(preparation.Blockers, ReleaseIssue{
-			Code:    "exact-tag-conflict",
-			Message: fmt.Sprintf("release tag %s already exists", tag),
+			Code:    "local-tag-conflict",
+			Message: fmt.Sprintf("release tag %s already exists locally", tag),
 			Details: exactMatches,
 		})
 	}
@@ -198,6 +254,42 @@ func BuildReleasePreparation(versionInput string, milestone string, existingTags
 	return preparation, nil
 }
 
+func PrepareRelease(ctx context.Context, versionInput string, milestone string, options ReleasePreparationOptions) (ReleasePreparation, error) {
+	options = options.withDefaults()
+
+	localTags, err := options.Git.LocalTags(ctx)
+	if err != nil {
+		return ReleasePreparation{}, fmt.Errorf("list local tags: %w", err)
+	}
+
+	preparation, err := BuildReleasePreparation(versionInput, milestone, localTags)
+	if err != nil {
+		return ReleasePreparation{}, err
+	}
+	preparation.Channels = defaultReleaseChannels(options.SelectedChannels)
+	preparation.Checks = []ReleaseCheck{}
+
+	if err := applyGitPreflight(ctx, &preparation, options, localTags); err != nil {
+		return ReleasePreparation{}, err
+	}
+	if err := applyPrerequisiteChecks(&preparation, options); err != nil {
+		return ReleasePreparation{}, err
+	}
+
+	return preparation, nil
+}
+
+func (p ReleasePreparation) MarshalJSON() ([]byte, error) {
+	return json.Marshal(jsonReleasePreparation{
+		Version:  p.Version,
+		Tag:      p.Tag,
+		Channels: nonNilChannels(p.Channels),
+		Checks:   nonNilChecks(p.Checks),
+		Warnings: nonNilIssues(p.Warnings),
+		Blockers: nonNilIssues(p.Blockers),
+	})
+}
+
 func (p ReleasePreparation) SelectedChannelIDs() []string {
 	ids := make([]string, 0, len(p.Channels))
 	for _, channel := range p.Channels {
@@ -208,16 +300,22 @@ func (p ReleasePreparation) SelectedChannelIDs() []string {
 	return ids
 }
 
-func defaultReleaseChannels() []ReleaseChannelPlan {
+func defaultReleaseChannels(selected []string) []ReleaseChannelPlan {
 	policy := CurrentDistributionPolicy()
 	channels := make([]ReleaseChannelPlan, 0, len(policy.SupportedChannels))
+	selectedSet := make(map[string]struct{}, len(selected))
+	for _, id := range selected {
+		selectedSet[id] = struct{}{}
+	}
 
+	selectAll := len(selectedSet) == 0
 	for _, channel := range policy.SupportedChannels {
+		_, explicitlySelected := selectedSet[channel.ID]
 		channels = append(channels, ReleaseChannelPlan{
 			ID:                channel.ID,
 			Name:              channel.Name,
 			PublicationTarget: channel.PublicationTarget,
-			Selected:          true,
+			Selected:          selectAll || explicitlySelected,
 			Readiness:         releaseChannelReadinessPending,
 		})
 	}
@@ -261,6 +359,384 @@ func semanticTagAliases(targetTag string, existingTags []string) []string {
 
 	sort.Strings(conflicts)
 	return conflicts
+}
+
+func applyGitPreflight(ctx context.Context, preparation *ReleasePreparation, options ReleasePreparationOptions, localTags []string) error {
+	worktreeStatus, err := options.Git.WorktreeStatus(ctx)
+	if err != nil {
+		return fmt.Errorf("check worktree status: %w", err)
+	}
+	worktreeLines := nonEmptyLines(worktreeStatus)
+	if len(worktreeLines) > 0 {
+		preparation.Blockers = append(preparation.Blockers, ReleaseIssue{
+			Code:    "dirty-worktree",
+			Message: "release preparation requires a clean git worktree",
+			Details: worktreeLines,
+		})
+		preparation.Checks = append(preparation.Checks, ReleaseCheck{
+			Code:    "dirty-worktree",
+			Target:  "git-worktree",
+			Status:  releaseCheckStatusBlocked,
+			Message: "git status --porcelain reported uncommitted changes",
+			Details: worktreeLines,
+		})
+	} else {
+		preparation.Checks = append(preparation.Checks, ReleaseCheck{
+			Code:    "clean-worktree",
+			Target:  "git-worktree",
+			Status:  releaseCheckStatusReady,
+			Message: "git worktree is clean",
+		})
+	}
+
+	if exactMatches := exactTagConflicts(preparation.Tag, localTags); len(exactMatches) > 0 {
+		preparation.Checks = append(preparation.Checks, ReleaseCheck{
+			Code:    "local-tag-conflict",
+			Target:  "git-local-tags",
+			Status:  releaseCheckStatusBlocked,
+			Message: fmt.Sprintf("local tags already contain %s", preparation.Tag),
+			Details: exactMatches,
+		})
+	}
+	if semanticAliases := semanticTagAliases(preparation.Tag, localTags); len(semanticAliases) > 0 {
+		preparation.Checks = append(preparation.Checks, ReleaseCheck{
+			Code:    "semantic-tag-conflict",
+			Target:  "git-local-tags",
+			Status:  releaseCheckStatusBlocked,
+			Message: fmt.Sprintf("legacy local tags conflict with %s", preparation.Tag),
+			Details: semanticAliases,
+		})
+	}
+
+	if !options.RequireRemoteCheck && len(preparation.SelectedChannelIDs()) == 0 {
+		return nil
+	}
+
+	remoteTags, err := options.Git.RemoteTags(ctx, options.RemoteName)
+	if err != nil {
+		details := []string{
+			fmt.Sprintf("remote=%s", options.RemoteName),
+			err.Error(),
+		}
+		preparation.Blockers = append(preparation.Blockers, ReleaseIssue{
+			Code:    "remote-tag-check-unavailable",
+			Message: fmt.Sprintf("unable to verify remote tags on %s", options.RemoteName),
+			Details: details,
+		})
+		preparation.Checks = append(preparation.Checks, ReleaseCheck{
+			Code:    "remote-tag-check-unavailable",
+			Target:  "git-remote-tags",
+			Status:  releaseCheckStatusBlocked,
+			Message: fmt.Sprintf("git ls-remote --tags %s failed", options.RemoteName),
+			Details: details,
+		})
+		return nil
+	}
+
+	if exactMatches := exactTagConflicts(preparation.Tag, remoteTags); len(exactMatches) > 0 {
+		preparation.Blockers = append(preparation.Blockers, ReleaseIssue{
+			Code:    "remote-tag-conflict",
+			Message: fmt.Sprintf("release tag %s already exists on remote %s", preparation.Tag, options.RemoteName),
+			Details: exactMatches,
+		})
+		preparation.Checks = append(preparation.Checks, ReleaseCheck{
+			Code:    "remote-tag-conflict",
+			Target:  "git-remote-tags",
+			Status:  releaseCheckStatusBlocked,
+			Message: fmt.Sprintf("remote tags already contain %s", preparation.Tag),
+			Details: exactMatches,
+		})
+	} else {
+		preparation.Checks = append(preparation.Checks, ReleaseCheck{
+			Code:    "remote-tag-clear",
+			Target:  "git-remote-tags",
+			Status:  releaseCheckStatusReady,
+			Message: fmt.Sprintf("remote %s does not contain %s", options.RemoteName, preparation.Tag),
+		})
+	}
+
+	if semanticAliases := semanticTagAliases(preparation.Tag, remoteTags); len(semanticAliases) > 0 {
+		preparation.Blockers = append(preparation.Blockers, ReleaseIssue{
+			Code:    "semantic-tag-conflict",
+			Message: fmt.Sprintf("existing remote legacy tags %s conflict with requested tag %s", strings.Join(semanticAliases, ", "), preparation.Tag),
+			Details: semanticAliases,
+		})
+		preparation.Checks = append(preparation.Checks, ReleaseCheck{
+			Code:    "semantic-tag-conflict",
+			Target:  "git-remote-tags",
+			Status:  releaseCheckStatusBlocked,
+			Message: fmt.Sprintf("legacy remote tags conflict with %s", preparation.Tag),
+			Details: semanticAliases,
+		})
+	}
+
+	return nil
+}
+
+func applyPrerequisiteChecks(preparation *ReleasePreparation, options ReleasePreparationOptions) error {
+	requiredFiles := []string{
+		goReleaserConfigPath,
+		releaseWorkflowPath,
+		npmRenderScriptPath,
+		homebrewTemplatePath,
+		scoopTemplatePath,
+		npmPackageConfigPath,
+	}
+
+	fileContents := map[string]string{}
+	missingFiles := map[string]bool{}
+	for _, path := range requiredFiles {
+		content, err := readRequiredFile(options.Files, path)
+		if err != nil {
+			if errorsIs(err, fs.ErrNotExist) {
+				missingFiles[path] = true
+				preparation.Blockers = append(preparation.Blockers, ReleaseIssue{
+					Code:    "missing-release-prerequisite",
+					Message: fmt.Sprintf("required release prerequisite %s is missing", path),
+					Details: []string{path},
+				})
+				preparation.Checks = append(preparation.Checks, ReleaseCheck{
+					Code:    prerequisiteCheckPrefix + path,
+					Target:  path,
+					Status:  releaseCheckStatusBlocked,
+					Message: fmt.Sprintf("required release prerequisite %s is missing", path),
+					Details: []string{path},
+				})
+				continue
+			}
+			return fmt.Errorf("read prerequisite %s: %w", path, err)
+		}
+
+		fileContents[path] = content
+		preparation.Checks = append(preparation.Checks, ReleaseCheck{
+			Code:    prerequisiteCheckPrefix + path,
+			Target:  path,
+			Status:  releaseCheckStatusReady,
+			Message: fmt.Sprintf("required release prerequisite %s is present", path),
+		})
+	}
+
+	checklist := fileContents[releaseChecklistPath]
+	workflow := fileContents[releaseWorkflowPath]
+
+	setChannelReadiness(preparation, ReleaseChannelGitHubArchive, evaluateGitHubChannel(workflow, missingFiles))
+	setChannelReadiness(preparation, ReleaseChannelNPM, evaluateNPMChannel(workflow, missingFiles))
+	setChannelReadiness(preparation, ReleaseChannelHomebrew, evaluateHomebrewChannel(workflow, checklist, missingFiles))
+	setChannelReadiness(preparation, ReleaseChannelScoop, evaluateScoopChannel(workflow, checklist, missingFiles))
+
+	return nil
+}
+
+func evaluateGitHubChannel(workflow string, missingFiles map[string]bool) channelEvaluation {
+	if missingFiles[goReleaserConfigPath] || missingFiles[releaseWorkflowPath] {
+		return channelEvaluation{
+			ID:        ReleaseChannelGitHubArchive,
+			CheckCode: channelCheckGitHub,
+			Readiness: releaseChannelReadinessBlocked,
+			Message:   "GitHub Release publication is blocked because required release files are missing",
+			Details:   missingDetailList(missingFiles, goReleaserConfigPath, releaseWorkflowPath),
+			Blocker:   true,
+		}
+	}
+
+	requiredMarkers := []string{
+		"workflow_dispatch:",
+		"release_tag:",
+		"goreleaser/goreleaser-action@v6",
+		"args: release --clean",
+	}
+	if missing := missingMarkers(workflow, requiredMarkers...); len(missing) > 0 {
+		return channelEvaluation{
+			ID:        ReleaseChannelGitHubArchive,
+			CheckCode: channelCheckGitHub,
+			Readiness: releaseChannelReadinessBlocked,
+			Message:   "GitHub Release publication workflow is missing required release contract markers",
+			Details:   missing,
+			Blocker:   true,
+		}
+	}
+
+	return channelEvaluation{
+		ID:        ReleaseChannelGitHubArchive,
+		CheckCode: channelCheckGitHub,
+		Readiness: releaseChannelReadinessReady,
+		Message:   "GitHub Release publication contract is wired",
+	}
+}
+
+func evaluateNPMChannel(workflow string, missingFiles map[string]bool) channelEvaluation {
+	if missingFiles[releaseWorkflowPath] || missingFiles[npmRenderScriptPath] || missingFiles[npmPackageConfigPath] {
+		return channelEvaluation{
+			ID:        ReleaseChannelNPM,
+			CheckCode: channelCheckNPM,
+			Readiness: releaseChannelReadinessBlocked,
+			Message:   "npm publication is blocked because required npm release files are missing",
+			Details:   missingDetailList(missingFiles, releaseWorkflowPath, npmRenderScriptPath, npmPackageConfigPath),
+			Blocker:   true,
+		}
+	}
+
+	requiredMarkers := []string{
+		"name: Publish npm wrapper package",
+		"needs: release",
+		"bash scripts/render-npm-package.sh",
+		"npm publish --access public",
+		"NPM_TOKEN",
+	}
+	if missing := missingMarkers(workflow, requiredMarkers...); len(missing) > 0 {
+		return channelEvaluation{
+			ID:        ReleaseChannelNPM,
+			CheckCode: channelCheckNPM,
+			Readiness: releaseChannelReadinessBlocked,
+			Message:   "npm publication workflow is missing required release contract markers",
+			Details:   missing,
+			Blocker:   true,
+		}
+	}
+
+	return channelEvaluation{
+		ID:        ReleaseChannelNPM,
+		CheckCode: channelCheckNPM,
+		Readiness: releaseChannelReadinessReady,
+		Message:   "npm publication contract is wired",
+	}
+}
+
+func evaluateHomebrewChannel(workflow string, checklist string, missingFiles map[string]bool) channelEvaluation {
+	details := missingDetailList(missingFiles, homebrewTemplatePath)
+	if !strings.Contains(checklist, homebrewTapTokenEnv) {
+		details = append(details, homebrewTapTokenEnv)
+	}
+	if !strings.Contains(workflow, homebrewTapTokenEnv) {
+		details = append(details, "release workflow does not yet wire "+homebrewTapTokenEnv)
+	}
+
+	return channelEvaluation{
+		ID:        ReleaseChannelHomebrew,
+		CheckCode: channelCheckHomebrew,
+		Readiness: releaseChannelReadinessBlocked,
+		Message:   "Homebrew publication remains blocked until release automation wires the tap publication path",
+		Details:   details,
+	}
+}
+
+func evaluateScoopChannel(workflow string, checklist string, missingFiles map[string]bool) channelEvaluation {
+	details := missingDetailList(missingFiles, scoopTemplatePath)
+	if !strings.Contains(checklist, scoopBucketTokenEnv) {
+		details = append(details, scoopBucketTokenEnv)
+	}
+	if !strings.Contains(workflow, scoopBucketTokenEnv) {
+		details = append(details, "release workflow does not yet wire "+scoopBucketTokenEnv)
+	}
+
+	return channelEvaluation{
+		ID:        ReleaseChannelScoop,
+		CheckCode: channelCheckScoop,
+		Readiness: releaseChannelReadinessBlocked,
+		Message:   "Scoop publication remains blocked until release automation wires the bucket publication path",
+		Details:   details,
+	}
+}
+
+type channelEvaluation struct {
+	ID        string
+	CheckCode string
+	Readiness string
+	Message   string
+	Details   []string
+	Blocker   bool
+}
+
+func setChannelReadiness(preparation *ReleasePreparation, channelID string, evaluation channelEvaluation) {
+	for index := range preparation.Channels {
+		if preparation.Channels[index].ID != channelID {
+			continue
+		}
+		preparation.Channels[index].Readiness = evaluation.Readiness
+		break
+	}
+
+	status := releaseCheckStatusReady
+	if evaluation.Readiness == releaseChannelReadinessBlocked {
+		status = releaseCheckStatusBlocked
+	}
+	preparation.Checks = append(preparation.Checks, ReleaseCheck{
+		Code:    evaluation.CheckCode,
+		Target:  channelID,
+		Status:  status,
+		Message: evaluation.Message,
+		Details: evaluation.Details,
+	})
+
+	if evaluation.Readiness == releaseChannelReadinessBlocked {
+		preparation.Blockers = append(preparation.Blockers, ReleaseIssue{
+			Code:    evaluation.CheckCode,
+			Message: evaluation.Message,
+			Details: evaluation.Details,
+		})
+	}
+}
+
+func readRequiredFile(files fs.FS, path string) (string, error) {
+	content, err := fs.ReadFile(files, path)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
+}
+
+func missingMarkers(content string, markers ...string) []string {
+	var missing []string
+	for _, marker := range markers {
+		if !strings.Contains(content, marker) {
+			missing = append(missing, marker)
+		}
+	}
+	return missing
+}
+
+func missingDetailList(missingFiles map[string]bool, paths ...string) []string {
+	details := make([]string, 0, len(paths))
+	for _, path := range paths {
+		if missingFiles[path] {
+			details = append(details, path)
+		}
+	}
+	return details
+}
+
+func nonEmptyLines(content string) []string {
+	lines := strings.Split(content, "\n")
+	values := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		values = append(values, line)
+	}
+	return values
+}
+
+func nonNilChannels(channels []ReleaseChannelPlan) []ReleaseChannelPlan {
+	if channels == nil {
+		return []ReleaseChannelPlan{}
+	}
+	return channels
+}
+
+func nonNilChecks(checks []ReleaseCheck) []ReleaseCheck {
+	if checks == nil {
+		return []ReleaseCheck{}
+	}
+	return checks
+}
+
+func nonNilIssues(issues []ReleaseIssue) []ReleaseIssue {
+	if issues == nil {
+		return []ReleaseIssue{}
+	}
+	return issues
 }
 
 func parseMilestoneSeries(input string) (releaseVersion, error) {
@@ -312,4 +788,78 @@ func parseCanonicalReleaseVersion(input string) (releaseVersion, error) {
 
 func (v releaseVersion) String() string {
 	return fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
+}
+
+func (o ReleasePreparationOptions) withDefaults() ReleasePreparationOptions {
+	if o.Git == nil {
+		o.Git = systemGitProbe{}
+	}
+	if o.Files == nil {
+		o.Files = os.DirFS(".")
+	}
+	if o.RemoteName == "" {
+		o.RemoteName = defaultGitRemote
+	}
+	if !o.RequireRemoteCheck {
+		o.RequireRemoteCheck = true
+	}
+	return o
+}
+
+func (systemGitProbe) WorktreeStatus(ctx context.Context) (string, error) {
+	return runGitCommand(ctx, "status", "--porcelain")
+}
+
+func (systemGitProbe) LocalTags(ctx context.Context) ([]string, error) {
+	output, err := runGitCommand(ctx, "tag", "--list")
+	if err != nil {
+		return nil, err
+	}
+	return nonEmptyLines(output), nil
+}
+
+func (systemGitProbe) RemoteTags(ctx context.Context, remote string) ([]string, error) {
+	output, err := runGitCommand(ctx, "ls-remote", "--tags", remote)
+	if err != nil {
+		return nil, err
+	}
+	return parseRemoteTags(output), nil
+}
+
+func runGitCommand(ctx context.Context, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("%v: %w: %s", args, err, strings.TrimSpace(string(output)))
+	}
+	return string(output), nil
+}
+
+func parseRemoteTags(output string) []string {
+	seen := map[string]struct{}{}
+	for _, line := range strings.Split(output, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+
+		ref := fields[1]
+		ref = strings.TrimPrefix(ref, "refs/tags/")
+		ref = strings.TrimSuffix(ref, "^{}")
+		if ref == "" {
+			continue
+		}
+		seen[ref] = struct{}{}
+	}
+
+	tags := make([]string, 0, len(seen))
+	for tag := range seen {
+		tags = append(tags, tag)
+	}
+	sort.Strings(tags)
+	return tags
+}
+
+func errorsIs(err error, target error) bool {
+	return err != nil && target != nil && (err == target || strings.Contains(err.Error(), target.Error()))
 }
