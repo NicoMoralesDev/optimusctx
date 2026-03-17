@@ -297,6 +297,162 @@ func TestReleasePrepareConfirmGate(t *testing.T) {
 	})
 }
 
+func TestReleasePrepareSelectedChannelsReady(t *testing.T) {
+	t.Run("json output stays ready when only selected channels are ready", func(t *testing.T) {
+		deps := stubReleasePrepareDeps(t)
+		deps.preparation = release.ReleasePreparation{
+			Version: "1.2.0",
+			Tag:     "v1.2.0",
+			Channels: []release.ReleaseChannelPlan{
+				{
+					ID:                release.ReleaseChannelGitHubArchive,
+					Name:              "GitHub Release archives",
+					PublicationTarget: "github.com/niccrow/optimusctx releases",
+					Selected:          true,
+					Readiness:         "ready",
+				},
+				// Selected:          false keeps blocked unselected channels informational in the shared model.
+				{
+					ID:                release.ReleaseChannelHomebrew,
+					Name:              "Homebrew",
+					PublicationTarget: "niccrow/tap",
+					Selected:          false,
+					Readiness:         "blocked",
+				},
+				{
+					ID:                release.ReleaseChannelScoop,
+					Name:              "Scoop",
+					PublicationTarget: "niccrow/scoop-bucket",
+					Selected:          false,
+					Readiness:         "blocked",
+				},
+				{
+					ID:                release.ReleaseChannelNPM,
+					Name:              "npm",
+					PublicationTarget: "@niccrow/optimusctx",
+					Selected:          true,
+					Readiness:         "ready",
+				},
+			},
+			Checks: []release.ReleaseCheck{
+				{Code: "channel-github-release", Target: release.ReleaseChannelGitHubArchive, Status: "ready", Message: "GitHub ready"},
+				{Code: "channel-homebrew", Target: release.ReleaseChannelHomebrew, Status: "blocked", Message: "Homebrew still unwired"},
+				{Code: "channel-scoop", Target: release.ReleaseChannelScoop, Status: "blocked", Message: "Scoop still unwired"},
+				{Code: "channel-npm", Target: release.ReleaseChannelNPM, Status: "ready", Message: "npm ready"},
+			},
+			Blockers: []release.ReleaseIssue{},
+		}
+
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{
+			"release", "prepare",
+			"--channel", release.ReleaseChannelGitHubArchive,
+			"--channel", release.ReleaseChannelNPM,
+			"--json",
+		}, &stdout); err != nil {
+			t.Fatalf("Execute(release prepare selected channels --json) error = %v", err)
+		}
+
+		if got, want := deps.request.SelectedChannels, []string{release.ReleaseChannelGitHubArchive, release.ReleaseChannelNPM}; strings.Join(got, ",") != strings.Join(want, ",") {
+			t.Fatalf("selected channels = %v, want %v", got, want)
+		}
+
+		var payload releasePrepareJSONOutput
+		if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+			t.Fatalf("json.Unmarshal(stdout) error = %v; output=%s", err, stdout.String())
+		}
+
+		if got, want := payload.Status, "ready"; got != want {
+			t.Fatalf("\"status\" = %q, want %q", got, want)
+		}
+		if got := len(payload.Blockers); got != 0 {
+			t.Fatalf("blockers len = %d, want 0", got)
+		}
+		if got := len(payload.Channels); got != 4 {
+			t.Fatalf("channels len = %d, want 4", got)
+		}
+		if got := payload.Channels[0].Selected; !got {
+			t.Fatalf("github selected = %t, want true", got)
+		}
+		if got := payload.Channels[1].Selected; got {
+			t.Fatalf("homebrew selected = %t, want false", got)
+		}
+		if got := payload.Channels[1].Readiness; got != "blocked" {
+			t.Fatalf("homebrew readiness = %q, want %q", got, "blocked")
+		}
+		if got := payload.Channels[2].Selected; got {
+			t.Fatalf("scoop selected = %t, want false", got)
+		}
+		if got := payload.Channels[2].Readiness; got != "blocked" {
+			t.Fatalf("scoop readiness = %q, want %q", got, "blocked")
+		}
+		if got := payload.Channels[3].Selected; !got {
+			t.Fatalf("npm selected = %t, want true", got)
+		}
+	})
+
+	t.Run("confirm output stays review-only for the selected ready subset", func(t *testing.T) {
+		deps := stubReleasePrepareDeps(t)
+		deps.preparation = release.ReleasePreparation{
+			Version: "1.2.0",
+			Tag:     "v1.2.0",
+			Channels: []release.ReleaseChannelPlan{
+				{
+					ID:                release.ReleaseChannelGitHubArchive,
+					Name:              "GitHub Release archives",
+					PublicationTarget: "github.com/niccrow/optimusctx releases",
+					Selected:          true,
+					Readiness:         "ready",
+				},
+				// Selected:          false keeps blocked unselected channels informational in the shared model.
+				{
+					ID:                release.ReleaseChannelHomebrew,
+					Name:              "Homebrew",
+					PublicationTarget: "niccrow/tap",
+					Selected:          false,
+					Readiness:         "blocked",
+				},
+				{
+					ID:                release.ReleaseChannelScoop,
+					Name:              "Scoop",
+					PublicationTarget: "niccrow/scoop-bucket",
+					Selected:          false,
+					Readiness:         "blocked",
+				},
+				{
+					ID:                release.ReleaseChannelNPM,
+					Name:              "npm",
+					PublicationTarget: "@niccrow/optimusctx",
+					Selected:          true,
+					Readiness:         "ready",
+				},
+			},
+		}
+
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{
+			"release", "prepare",
+			"--channel", release.ReleaseChannelGitHubArchive,
+			"--channel", release.ReleaseChannelNPM,
+			"--confirm",
+		}, &stdout); err != nil {
+			t.Fatalf("Execute(release prepare selected channels --confirm) error = %v", err)
+		}
+
+		output := stdout.String()
+		for _, want := range []string{
+			"release plan confirmed",
+			"confirmed channels: github-release-archive, npm",
+			"no tag created",
+			"publication not started",
+		} {
+			if !strings.Contains(output, want) {
+				t.Fatalf("confirm output missing %q in %q", want, output)
+			}
+		}
+	})
+}
+
 type releasePrepareTestDeps struct {
 	milestone   string
 	preparation release.ReleasePreparation
