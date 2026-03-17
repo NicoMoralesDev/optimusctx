@@ -28,7 +28,7 @@ Plans:
 - [x] 16-01: canonical semver and release-preparation contract
 - [x] 16-02: git and prerequisite preflight probes plus JSON review model
 - [x] 16-03: operator-facing release prepare CLI and confirmation gate
-- [ ] 16-04: selected-channel blocker-scope gap closure
+- [x] 16-04: selected-channel blocker-scope gap closure
 
 **Requirements covered:** `REL-01`, `REL-02`, `REL-03`
 
@@ -86,13 +86,13 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.2` with Phase 16 gap closure planned
+Active milestone: `v1.2` with Phase 16 complete and ready for verification
 
 Next step:
 
-- Execute Phase 16 gap-closure plan `16-04` to make selected channels authoritative for blocker scope
-- Plan Phase 17 release orchestration work after Phase 16 re-verification passes
+- Re-verify Phase 16 and milestone v1.2 release-preparation behavior against the selected-channel contract
+- Plan Phase 17 release orchestration work after Phase 16 verification closes
 - Keep all new release-channel automation anchored to the existing GitHub Release archive contract
 
 ---
-*Last updated: 2026-03-17 after planning gap closure 16-04*
+*Last updated: 2026-03-17 after completing 16-04*

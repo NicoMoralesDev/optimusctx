@@ -4,16 +4,16 @@ milestone: v1.2
 milestone_name: release automation and operator workflow
 current_phase: 16
 current_phase_name: release versioning and preflight guardrails
-current_plan: 3
-status: verifying
-stopped_at: Completed 16-03-PLAN.md
-last_updated: "2026-03-17T20:40:06.840Z"
+current_plan: 4
+status: ready_for_verification
+stopped_at: Completed 16-04-PLAN.md
+last_updated: "2026-03-17T21:23:52.368Z"
 last_activity: 2026-03-17
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 4
+  completed_plans: 4
   percent: 100
 ---
 
@@ -27,11 +27,11 @@ progress:
 **Current Phase:** 16
 **Current Phase Name:** release versioning and preflight guardrails
 **Total Phases:** 4
-**Current Plan:** 3
-**Total Plans in Phase:** 3
+**Current Plan:** 4
+**Total Plans in Phase:** 4
 **Progress:** [██████████] 100%
 **Last Activity:** 2026-03-17
-**Last Activity Description:** Completed plan 16-03 operator-facing release prepare CLI and confirmation gate
+**Last Activity Description:** Completed plan 16-04 selected-channel blocker-scope gap closure
 
 ## Project Memory
 
@@ -47,7 +47,7 @@ progress:
 - Active phase: `16-release-versioning-and-preflight-guardrails`
 - Next execution action: plan Phase 17 or continue milestone verification
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: v1.2 requirements are defined and mapped; Plans 16-01 through 16-03 are complete
+- Coverage status: v1.2 requirements are defined and mapped; Plans 16-01 through 16-04 are complete
 
 ## Recent Decisions
 
@@ -233,6 +233,7 @@ progress:
 | Phase 16 P01 | 2min | 2 tasks | 2 files |
 | Phase 16-release-versioning-and-preflight-guardrails P02 | 10min | 2 tasks | 3 files |
 | Phase 16 P03 | 13min | 2 tasks | 3 files |
+| Phase 16 P04 | 2min | 2 tasks | 3 files |
 
 ## Decisions Made
 
@@ -395,6 +396,8 @@ progress:
 - [Phase 16]: The CLI resolves repository root and active milestone before calling internal/release.PrepareRelease so default release proposals stay in the current release lane.
 - [Phase 16]: Text and JSON release output both render the shared ReleasePreparation model instead of rebuilding version, tag, or channel logic in the CLI.
 - [Phase 16]: Phase 16 confirmation stays review-only: the operator can acknowledge the plan and get blocker-driven exit codes without creating a tag or starting publication.
+- [Phase 16]: Blocked readiness only becomes a blocker when the matching ReleaseChannelPlan is selected.
+- [Phase 16]: Homebrew and Scoop stay visible as blocked channels even when they are informational for a narrower selected release plan.
 
 ## Blockers
 
@@ -402,8 +405,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-17T20:40:06.837Z
-**Stopped At:** Completed 16-03-PLAN.md
+**Last Date:** 2026-03-17T21:23:52.364Z
+**Stopped At:** Completed 16-04-PLAN.md
 **Resume File:** None
 
 ---
