@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Existing v* tag to publish or republish
+        description: Existing v* tag whose canonical GitHub Release contract should be reused
         required: true
         type: string
 
@@ -16,13 +16,14 @@ permissions:
 
 jobs:
   release:
-    name: Build and publish release archives
+    name: Build and publish canonical GitHub Release assets
     runs-on: ubuntu-latest
 
     steps:
-      # Manual dispatches must point at an existing version tag so the
-      # published GitHub Release uses the same canonical archive contract.
-      - name: Resolve release ref
+      # Manual workflow_dispatch release_tag reruns must point at an existing
+      # tag so downstream publication reuses the same canonical GitHub Release
+      # archives, checksums, and release metadata contract.
+      - name: Resolve canonical release ref
         id: release_ref
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -59,16 +60,17 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # Lock the archive and checksum contract before publishing assets.
-      - name: Verify release contract
+      # Lock the canonical GitHub Release root and its create-versus-reuse
+      # orchestration contract before publishing assets.
+      - name: Verify canonical release contract
         env:
           GOCACHE: /tmp/optimusctx-gocache
           GOMODCACHE: /tmp/optimusctx-gomodcache
-        run: go test ./internal/release ./internal/cli -run 'TestArchiveMatrix|TestChecksumManifest|TestGitHubReleasePublicationConfig|TestReleaseMetadataInjection'
+        run: go test ./internal/release ./internal/cli -run 'TestArchiveMatrix|TestChecksumManifest|TestGitHubReleasePublicationConfig|TestGitHubReleaseWorkflowReuseContract|TestCanonicalReleaseMatchesGoReleaserContract|TestPlanReleaseOrchestrationCreate|TestPlanReleaseOrchestrationReuse|TestReleaseMetadataInjection'
 
-      # Publish versioned archives and checksums to GitHub Releases using the
-      # canonical .goreleaser.yml definition.
-      - name: Publish GitHub Release assets
+      # Publish versioned archives and checksums to the canonical GitHub
+      # Release root using the shared .goreleaser.yml contract.
+      - name: Publish canonical GitHub Release assets
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
@@ -83,7 +85,7 @@ jobs:
     needs: release
 
     steps:
-      - name: Resolve release ref
+      - name: Resolve canonical release ref
         id: release_ref
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -121,7 +123,7 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org
 
-      - name: Verify npm publish contract
+      - name: Verify npm publish contract against canonical release root
         env:
           GOCACHE: /tmp/optimusctx-gocache
           GOMODCACHE: /tmp/optimusctx-gomodcache

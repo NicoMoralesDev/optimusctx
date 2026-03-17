@@ -111,6 +111,12 @@ func TestCanonicalReleaseMatchesGoReleaserContract(t *testing.T) {
 	if !strings.Contains(workflow, `ref=refs/tags/$INPUT_TAG`) {
 		t.Fatalf(".github/workflows/release.yml must keep existing-tag release reuse")
 	}
+	if !strings.Contains(workflow, `canonical GitHub Release`) {
+		t.Fatalf(".github/workflows/release.yml must describe GitHub Release as canonical")
+	}
+	if !strings.Contains(workflow, `PlanReleaseOrchestrationCreate|TestPlanReleaseOrchestrationReuse`) {
+		t.Fatalf(".github/workflows/release.yml must verify orchestration create and reuse contracts")
+	}
 	if !strings.Contains(workflow, `uses: goreleaser/goreleaser-action@v6`) {
 		t.Fatalf(".github/workflows/release.yml must keep GitHub Release publication rooted in GoReleaser")
 	}
@@ -129,7 +135,8 @@ func TestGitHubReleasePublicationConfig(t *testing.T) {
 		`uses: goreleaser/goreleaser-action@v6`,
 		`args: release --clean`,
 		`GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}`,
-		`go test ./internal/release ./internal/cli -run 'TestArchiveMatrix|TestChecksumManifest|TestGitHubReleasePublicationConfig|TestReleaseMetadataInjection'`,
+		`canonical GitHub Release`,
+		`go test ./internal/release ./internal/cli -run 'TestArchiveMatrix|TestChecksumManifest|TestGitHubReleasePublicationConfig|TestGitHubReleaseWorkflowReuseContract|TestCanonicalReleaseMatchesGoReleaserContract|TestPlanReleaseOrchestrationCreate|TestPlanReleaseOrchestrationReuse|TestReleaseMetadataInjection'`,
 	} {
 		if !strings.Contains(workflow, want) {
 			t.Fatalf(".github/workflows/release.yml missing %q", want)
@@ -138,6 +145,34 @@ func TestGitHubReleasePublicationConfig(t *testing.T) {
 
 	if !strings.Contains(workflow, `ref=refs/tags/$INPUT_TAG`) {
 		t.Fatalf("manual release dispatch must resolve an existing tag ref")
+	}
+}
+
+func TestGitHubReleaseWorkflowReuseContract(t *testing.T) {
+	workflow := readRepoFile(t, ".github/workflows/release.yml")
+
+	for _, want := range []string{
+		`workflow_dispatch:`,
+		`release_tag:`,
+		`description: Existing v* tag whose canonical GitHub Release contract should be reused`,
+		`Manual workflow_dispatch release_tag reruns must point at an existing`,
+		`tag so downstream publication reuses the same canonical GitHub Release`,
+		`archives, checksums, and release metadata contract.`,
+		`name: Resolve canonical release ref`,
+		`name: Verify canonical release contract`,
+		`name: Publish canonical GitHub Release assets`,
+		`TestGitHubReleaseWorkflowReuseContract`,
+		`TestCanonicalReleaseMatchesGoReleaserContract`,
+		`TestPlanReleaseOrchestrationCreate`,
+		`TestPlanReleaseOrchestrationReuse`,
+	} {
+		if !strings.Contains(workflow, want) {
+			t.Fatalf(".github/workflows/release.yml missing %q", want)
+		}
+	}
+
+	if strings.Contains(workflow, `publish or republish`) {
+		t.Fatalf(".github/workflows/release.yml should describe manual reruns as canonical release reuse, not generic republish wording")
 	}
 }
 
