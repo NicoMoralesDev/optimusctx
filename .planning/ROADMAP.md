@@ -21,13 +21,14 @@
 
 **Goal**: Create a guided release-preparation flow that proposes a version and tag, validates release prerequisites, and stops cleanly before publication when the release state is invalid.
 **Depends on**: Phase 15
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
 
 - [x] 16-01: canonical semver and release-preparation contract
 - [x] 16-02: git and prerequisite preflight probes plus JSON review model
 - [x] 16-03: operator-facing release prepare CLI and confirmation gate
+- [ ] 16-04: selected-channel blocker-scope gap closure
 
 **Requirements covered:** `REL-01`, `REL-02`, `REL-03`
 
@@ -85,12 +86,13 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.2` with Phase 16 complete
+Active milestone: `v1.2` with Phase 16 gap closure planned
 
 Next step:
 
-- Plan Phase 17 release orchestration work on top of the shipped `release prepare` front door
+- Execute Phase 16 gap-closure plan `16-04` to make selected channels authoritative for blocker scope
+- Plan Phase 17 release orchestration work after Phase 16 re-verification passes
 - Keep all new release-channel automation anchored to the existing GitHub Release archive contract
 
 ---
-*Last updated: 2026-03-17 after completing plan 16-03*
+*Last updated: 2026-03-17 after planning gap closure 16-04*
