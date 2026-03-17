@@ -311,6 +311,34 @@ func TestReleaseChecklistPublicationCredentials(t *testing.T) {
 	}
 }
 
+func TestGitHubReleaseDocsStayCanonical(t *testing.T) {
+	checklist := readRepoFile(t, "docs/release-checklist.md")
+	installGuide := readRepoFile(t, "docs/install-and-verify.md")
+
+	for _, want := range []string{
+		`GitHub Release is the canonical root for archives, checksums, and downstream release facts.`,
+		`Use ` + "`workflow_dispatch`" + ` with ` + "`release_tag`" + ` when you need to reuse an existing tagged release contract for reruns or downstream publication recovery.`,
+		`Do not claim Homebrew publication is automated in Phase 17.`,
+		`Do not claim Scoop publication is automated in Phase 17.`,
+		`canonical tagged GitHub Release binary`,
+	} {
+		if !strings.Contains(checklist, want) {
+			t.Fatalf("docs/release-checklist.md missing %q", want)
+		}
+	}
+
+	for _, want := range []string{
+		`GitHub Release is the canonical root for release archives, checksum manifests, and downstream channel facts.`,
+		`The npm package is a wrapper over the canonical tagged GitHub Release binary.`,
+		`Download the archive that matches your OS and CPU from the canonical tagged GitHub Release.`,
+		`this phase does not yet claim automated Homebrew or Scoop publication fan-out`,
+	} {
+		if !strings.Contains(installGuide, want) {
+			t.Fatalf("docs/install-and-verify.md missing %q", want)
+		}
+	}
+}
+
 func yamlList(content, key string) []string {
 	lines := strings.Split(content, "\n")
 	needle := key + ":"

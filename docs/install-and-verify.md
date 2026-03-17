@@ -4,13 +4,15 @@ This guide explains how to install OptimusCtx, check that it works, and start us
 
 If you want the shorter user path from install to daily use, see [`quickstart.md`](./quickstart.md).
 
-Supported install channels for v1.1:
+Supported install channels for v1.2:
 
 - npm global install for the JavaScript ecosystem wrapper path
 - `npx` for ephemeral execution of the same wrapper package
 - Homebrew for macOS and Linux
 - Scoop for Windows
 - GitHub release archives for macOS, Linux, and Windows
+
+GitHub Release is the canonical root for release archives, checksum manifests, and downstream channel facts.
 
 The verification path below uses the shipped commands that matter for first-run confidence:
 
@@ -61,7 +63,7 @@ scoop install niccrow/optimusctx
 
 ### Fallback: install from a release archive
 
-Download the archive that matches your OS and CPU from GitHub Releases.
+Download the archive that matches your OS and CPU from the canonical tagged GitHub Release.
 
 macOS or Linux example:
 
@@ -223,11 +225,13 @@ This is the same MCP contract that `optimusctx snippet` prints, but `--write` is
 
 ## 7. Scope and support boundaries
 
-v1.1 intentionally keeps distribution narrow:
+v1.2 intentionally keeps distribution narrow:
 
 - supported release retrieval: GitHub release archives
 - supported package managers: Homebrew, Scoop, and the npm wrapper package
 - supported local verification: `version`, `init`, `doctor`, `snippet`, optional `install --client`
+- GitHub Release stays the canonical root even when a package-manager install path is used
+- this phase does not yet claim automated Homebrew or Scoop publication fan-out
 
 Not claimed in this milestone:
 
