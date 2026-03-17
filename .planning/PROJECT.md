@@ -15,11 +15,20 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 - Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `doctor`, `eval`, `install`, `version`
 - Product state: `v1.0` and `v1.1` are shipped, the `v1.1` audit passed, and functional, benchmark, and distribution evidence is archived
 
+## Current Milestone: v1.2 Release Automation and Operator Workflow
+
+**Goal:** Turn the existing release process into one operator-friendly flow that prepares version and tag state safely, publishes the supported channels from one canonical source, and documents verification and recovery end to end.
+
+**Target features:**
+- Interactive release preparation that proposes a version and tag, validates prerequisites, and blocks duplicate tags before publication
+- Automated multi-channel publication rooted in the same GitHub Release tag for archives, npm, Homebrew, and Scoop
+- One operator guide that covers release, republish, verification, and rollback from start to finish
+
 ## Next Milestone Goals
 
-- Extend benchmark depth with secondary tokenizer views and a watch-assisted edit-loop lane
-- Broaden trustworthy distribution with native Linux packages, signed artifacts, and SBOM coverage
-- Decide whether the next milestone stays on validation and distribution expansion or reopens core runtime capability work
+- Add an interactive or guided release-preparation entrypoint that validates the tag, worktree, and publication prerequisites before anything is published
+- Finish the missing channel automation so Homebrew and Scoop publish alongside the existing GitHub Release and npm flow
+- Give the release operator one trustworthy documented procedure for fresh release, selective republish, verification, and rollback
 
 ## Requirements
 
@@ -34,22 +43,22 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 ### Active
 
-- [ ] Secondary token metrics for named model tokenizers alongside the milestone-default estimator
-- [ ] Watch-assisted edit-loop benchmarking once the non-watch baseline remains stable
-- [ ] Native Linux package formats, signed artifacts, and SBOM metadata for released builds
+- [ ] Interactive release preparation that proposes a version and tag, rejects duplicate tags, and stops on missing prerequisites before publication
+- [ ] Automated publication across GitHub Releases, npm, Homebrew, and Scoop from one canonical tag and shared metadata contract
+- [ ] One operator workflow for release, republish, verification, and rollback documented against the real shipped channels
 
 ### Out of Scope
 
-- Hosted telemetry, dashboards, or managed services — the product remains local-first and proof-oriented.
+- Hosted telemetry, dashboards, or managed rollout services — the product remains local-first and operator-driven.
 - Default semantic retrieval or general-purpose RAG behavior — the wedge is still deterministic exact-first context optimization.
-- Automatic modification of repository instruction files or client configs — installation and integration remain explicit.
-- Broad installer sprawl without verification discipline — every new channel must stay truthful and test-backed.
+- Automatic modification of repository instruction files or client configs during install — installation and integration remain explicit.
+- New distribution channels beyond the currently supported set — `.deb`, `.rpm`, WinGet, Chocolatey, signing, and SBOMs stay deferred until the current channels are fully automated.
 
 ## Context
 
-v1.0 proved the core runtime wedge. v1.1 then proved the shipped product works end to end on fixture-backed CLI and MCP workflows, tightened benchmark claims around declared agent-facing inputs and comparable final artifacts, and expanded distribution through a narrow set of verifiable release channels. The codebase is now both product-bearing and evidence-bearing: functionality, benchmark methodology, and release policy are all backed by committed artifacts and verification files.
+v1.0 proved the core runtime wedge. v1.1 then proved the shipped product works end to end on fixture-backed CLI and MCP workflows, tightened benchmark claims around declared agent-facing inputs and comparable final artifacts, and expanded distribution through a narrow set of verifiable release channels.
 
-No milestone is currently active. The next planning cycle should start from fresh requirements rather than carrying forward the archived v1.1 scope file.
+v1.2 does not reopen the runtime surface. It focuses on the operator side of shipping what already exists: preparing a release safely, publishing every claimed channel from the same tagged source, and documenting how to run and recover the process without guesswork.
 
 <details>
 <summary>Archived v1.1 planning context</summary>
@@ -108,6 +117,8 @@ This repository is greenfield. The development process is expected to be heavily
 | Keep evaluation and benchmark evidence fixture-backed and repo-local | Milestone claims need rerunnable evidence anchored in committed inputs and persisted outputs | ✓ Shipped in v1.1 |
 | Count only declared agent-facing inputs in benchmark claims | Token savings must measure user-visible OptimusCtx value, not hidden system provenance | ✓ Shipped in v1.1 |
 | Keep GitHub Releases as the canonical binary source and package managers as wrappers | Distribution breadth is useful only if every channel stays truthful to the same shipped runtime | ✓ Shipped in v1.1 |
+| Release automation must fail before publication when version, tag, or prerequisite checks are invalid | The operator workflow should be safe to start and cheap to abort before touching release channels | — Pending in v1.2 |
+| Every downstream channel should derive from the same tag and release metadata contract | Multi-channel automation is only trustworthy if there is one source of truth for archives, checksums, and package metadata | — Pending in v1.2 |
 
 ---
-*Last updated: 2026-03-17 after archiving v1.1*
+*Last updated: 2026-03-17 after starting v1.2 milestone*

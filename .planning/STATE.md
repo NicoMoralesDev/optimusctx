@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: null
-milestone_name: null
-current_phase: null
-current_phase_name: null
-current_plan: null
-status: ready_for_next_milestone
-stopped_at: Archived v1.1 on 2026-03-17
-last_updated: "2026-03-17T15:59:49-03:00"
+milestone: v1.2
+milestone_name: release automation and operator workflow
+current_phase: 16
+current_phase_name: release versioning and preflight guardrails
+current_plan: Not started
+status: milestone_defined
+stopped_at: Started v1.2 on 2026-03-17
+last_updated: "2026-03-17T16:40:53-03:00"
 last_activity: 2026-03-17
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 27
-  completed_plans: 27
-  percent: 100
+  total_phases: 4
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Planning State: OptimusCtx
@@ -22,16 +22,16 @@ progress:
 **Initialized:** 2026-03-14
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
-**Requirements reference:** `.planning/milestones/v1.1-REQUIREMENTS.md` (latest shipped milestone)
-**Status:** Ready for next milestone planning
-**Current Phase:** None
-**Current Phase Name:** No active phase
-**Total Phases:** 7
-**Current Plan:** None
+**Requirements reference:** `.planning/REQUIREMENTS.md`
+**Status:** Milestone v1.2 defined
+**Current Phase:** 16
+**Current Phase Name:** release versioning and preflight guardrails
+**Total Phases:** 4
+**Current Plan:** Not started
 **Total Plans in Phase:** 0
-**Progress:** [██████████] 100%
+**Progress:** [░░░░░░░░░░] 0%
 **Last Activity:** 2026-03-17
-**Last Activity Description:** v1.1 milestone archived and planning reset for the next milestone
+**Last Activity Description:** v1.2 milestone started, requirements defined, and roadmap created
 
 ## Project Memory
 
@@ -43,14 +43,20 @@ progress:
 
 ## Current Planning Context
 
-- Active milestone: none; `v1.1` is archived
-- Active phase: none
-- Next planning action: run `$gsd-new-milestone` to define fresh requirements and the next phase sequence
+- Active milestone: `v1.2` release automation and operator workflow
+- Active phase: `16-release-versioning-and-preflight-guardrails`
+- Next planning action: run `$gsd-plan-phase 16`
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: the latest shipped scope is `v1.1`; no new milestone requirements are active yet
+- Coverage status: v1.2 requirements are defined and mapped; no plans have been created yet
 
 ## Recent Decisions
 
+- v1.2 focuses on release automation and operator workflow, not on new runtime retrieval capabilities.
+- The next release flow should start with interactive or guided version and tag preparation rather than ad hoc tag creation.
+- The release pipeline must fail before publication when the target tag already exists or prerequisites are missing.
+- GitHub Release remains the canonical source of truth; npm, Homebrew, and Scoop publish from the same tagged release metadata.
+- Channel publication should support selective reruns for an existing tag so one failed channel does not require rebuilding the whole release.
+- The release operator needs one end-to-end guide for release, verification, republish, and rollback over the real supported channels.
 - v1.1 will stay a proof-and-distribution milestone, not a new runtime-capability milestone.
 - Functional validation will use versioned fixture repositories, rerunnable scenario definitions, and the real shipped CLI and MCP surfaces.
 - Benchmark claims will use a fixed baseline-vs-OptimusCtx methodology with one token estimator and explicit artifact attribution.
@@ -81,6 +87,7 @@ progress:
 ## References
 
 - Source of truth for intent: `.planning/PROJECT.md`
+- Source of truth for current scope: `.planning/REQUIREMENTS.md`
 - Source of truth for last shipped scope: `.planning/milestones/v1.1-REQUIREMENTS.md`
 - Source of truth for phase sequence: `.planning/ROADMAP.md`
 - Source of truth for technical direction: `.planning/research/SUMMARY.md`
@@ -89,6 +96,10 @@ progress:
 
 ### Roadmap Evolution
 
+- Phase 16 added: Release versioning and preflight guardrails
+- Phase 17 added: Canonical release orchestration and metadata
+- Phase 18 added: Multi-channel publication fan-out
+- Phase 19 added: Operator verification, recovery, and end-to-end guide
 - Phase 14 added: Benchmark boundary redefinition and agent-input validation
 - Phase 14 planned: four plans cover schema repair, runtime enforcement, suite migration, and reproducibility closeout
 - Phase 14 complete: benchmark boundary repair, suite migration, reproducibility sign-off, and milestone reclose verified on the v2 methodology
