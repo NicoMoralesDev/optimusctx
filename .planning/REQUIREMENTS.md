@@ -61,9 +61,9 @@
 | BNCH-03 | Phase 11 | Complete |
 | BNCH-04 | Phase 12 | Complete |
 | DIST-01 | Phase 13 | Complete |
-| DIST-02 | Phase 13 | Complete |
-| DIST-03 | Phase 13 | Complete |
-| DIST-04 | Phase 13 | Complete |
+| DIST-02 | Phase 13, 15 | Complete |
+| DIST-03 | Phase 13, 15 | Complete |
+| DIST-04 | Phase 13, 15 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 12 total
@@ -72,4 +72,4 @@
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-16 after completing Phase 13*
+*Last updated: 2026-03-17 after completing Phase 15*
