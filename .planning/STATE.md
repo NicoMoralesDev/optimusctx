@@ -5,16 +5,16 @@ milestone_name: release automation and operator workflow
 current_phase: 17
 current_phase_name: canonical release orchestration and metadata
 current_plan: 4
-status: executing
-stopped_at: Completed 17-03-PLAN.md
-last_updated: "2026-03-17T22:52:26.260Z"
+status: verifying
+stopped_at: Completed 17-04-PLAN.md
+last_updated: "2026-03-17T23:04:55.996Z"
 last_activity: 2026-03-17
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
-  percent: 88
+  completed_plans: 8
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Executing
+**Status:** Phase complete — ready for verification
 **Current Phase:** 17
 **Current Phase Name:** canonical release orchestration and metadata
 **Total Phases:** 4
 **Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [█████████░] 88%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-17
-**Last Activity Description:** Completed plan 17-03 and advanced Phase 17 to plan 4
+**Last Activity Description:** Completed plan 17-04 and moved Phase 17 to verification
 
 ## Project Memory
 
@@ -45,9 +45,9 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `17-canonical-release-orchestration-and-metadata`
-- Next execution action: execute Plan 17-04 for canonical-root documentation and regression lock
+- Next execution action: verify completed Phase 17 outputs and start planning Phase 18 multi-channel publication fan-out
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: Phase 17 plans 01-03 are complete; plan 04 remains
+- Coverage status: Phase 17 plans 01-04 are complete and ready for verification
 
 ## Recent Decisions
 
@@ -237,6 +237,7 @@ progress:
 | Phase 17-canonical-release-orchestration-and-metadata P01 | 1m | 2 tasks | 3 files |
 | Phase 17 P02 | 7m | 2 tasks | 4 files |
 | Phase 17 P03 | 7m | 2 tasks | 6 files |
+| Phase 17 P04 | 8min | 2 tasks | 4 files |
 
 ## Decisions Made
 
@@ -406,6 +407,8 @@ progress:
 - [Phase 17]: Reuse mode requires an explicit release_tag and rejects any mismatch against the prepared canonical tag before downstream publication starts.
 - [Phase 17]: Homebrew, Scoop, and npm now consume canonical release asset URLs and checksum metadata instead of reconstructing tagged GitHub Release paths locally.
 - [Phase 17]: The npm render script preserves the committed Go-rendered package.json structure and retags its canonical release URLs for the requested version instead of inventing a second release URL rule set.
+- [Phase 17]: GitHub Release remains the canonical tagged root in workflow comments, verification commands, and operator docs rather than being treated as a peer publication channel.
+- [Phase 17]: workflow_dispatch release_tag is documented and tested as reuse of an existing tagged release contract, and Phase 17 docs explicitly avoid claiming automated Homebrew or Scoop fan-out.
 
 ## Blockers
 
@@ -413,9 +416,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-17T22:52:26.257Z
-**Stopped At:** Completed 17-03-PLAN.md
+**Last Date:** 2026-03-17T23:04:55.993Z
+**Stopped At:** Completed 17-04-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-17 after completing plan 16-03 operator-facing release prepare CLI and confirmation gate*
+*Last updated: 2026-03-17 after completing plan 17-04 canonical-root documentation and regression lock*

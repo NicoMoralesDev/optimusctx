@@ -50,7 +50,7 @@ Plans:
 - [x] 17-01: canonical release metadata and deterministic asset contract
 - [x] 17-02: fresh-versus-existing GitHub Release orchestration semantics
 - [x] 17-03: downstream consumer rewiring to the shared release metadata contract
-- [ ] 17-04: canonical-root documentation and regression lock
+- [x] 17-04: canonical-root documentation and regression lock
 
 **Requirements covered:** `PUB-01`
 
@@ -93,13 +93,13 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.2` with Phase 17 in progress
+Active milestone: `v1.2` with Phase 17 complete and ready for verification
 
 Next step:
 
-- Execute plan 17-04 for canonical-root documentation and regression lock
-- Continue milestone execution from downstream consumer adoption into canonical-root regression lock
+- Verify Phase 17 completion and use the new summary to plan Phase 18 multi-channel publication fan-out
+- Continue milestone execution from canonical-root regression lock into channel automation and rerun controls
 - Keep all new release-channel automation anchored to the existing GitHub Release archive contract
 
 ---
-*Last updated: 2026-03-17 after completing plan 17-03*
+*Last updated: 2026-03-17 after completing plan 17-04*
