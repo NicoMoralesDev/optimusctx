@@ -1,0 +1,98 @@
+{
+  "name": "@niccrow/optimusctx",
+  "version": "0.0.0-development",
+  "description": "Local-first runtime that builds and maintains persistent repository context for coding agents.",
+  "license": "MIT",
+  "homepage": "https://github.com/niccrow/optimusctx",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/niccrow/optimusctx.git"
+  },
+  "bugs": {
+    "url": "https://github.com/niccrow/optimusctx/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "optimusctx": "bin/optimusctx.js"
+  },
+  "scripts": {
+    "postinstall": "node ./lib/install.js"
+  },
+  "files": [
+    "bin",
+    "lib"
+  ],
+  "optimusctx": {
+    "command": "optimusctx",
+    "launcher": "./bin/optimusctx.js",
+    "projectName": "optimusctx",
+    "repository": {
+      "owner": "niccrow",
+      "name": "optimusctx"
+    },
+    "releaseTag": "v0.0.0-development",
+    "version": "0.0.0-development",
+    "checksumManifest": {
+      "file": "optimusctx_0.0.0-development_checksums.txt",
+      "url": "https://github.com/niccrow/optimusctx/releases/download/v0.0.0-development/optimusctx_0.0.0-development_checksums.txt"
+    },
+    "platforms": {
+      "darwin-amd64": {
+        "os": "darwin",
+        "arch": "amd64",
+        "archive": "optimusctx_0.0.0-development_darwin_amd64.tar.gz",
+        "archiveUrl": "https://github.com/niccrow/optimusctx/releases/download/v0.0.0-development/optimusctx_0.0.0-development_darwin_amd64.tar.gz",
+        "archiveFormat": "tar.gz",
+        "binary": "optimusctx",
+        "runtimeDirectory": "darwin-amd64"
+      },
+      "darwin-arm64": {
+        "os": "darwin",
+        "arch": "arm64",
+        "archive": "optimusctx_0.0.0-development_darwin_arm64.tar.gz",
+        "archiveUrl": "https://github.com/niccrow/optimusctx/releases/download/v0.0.0-development/optimusctx_0.0.0-development_darwin_arm64.tar.gz",
+        "archiveFormat": "tar.gz",
+        "binary": "optimusctx",
+        "runtimeDirectory": "darwin-arm64"
+      },
+      "linux-amd64": {
+        "os": "linux",
+        "arch": "amd64",
+        "archive": "optimusctx_0.0.0-development_linux_amd64.tar.gz",
+        "archiveUrl": "https://github.com/niccrow/optimusctx/releases/download/v0.0.0-development/optimusctx_0.0.0-development_linux_amd64.tar.gz",
+        "archiveFormat": "tar.gz",
+        "binary": "optimusctx",
+        "runtimeDirectory": "linux-amd64"
+      },
+      "linux-arm64": {
+        "os": "linux",
+        "arch": "arm64",
+        "archive": "optimusctx_0.0.0-development_linux_arm64.tar.gz",
+        "archiveUrl": "https://github.com/niccrow/optimusctx/releases/download/v0.0.0-development/optimusctx_0.0.0-development_linux_arm64.tar.gz",
+        "archiveFormat": "tar.gz",
+        "binary": "optimusctx",
+        "runtimeDirectory": "linux-arm64"
+      },
+      "windows-amd64": {
+        "os": "windows",
+        "arch": "amd64",
+        "archive": "optimusctx_0.0.0-development_windows_amd64.zip",
+        "archiveUrl": "https://github.com/niccrow/optimusctx/releases/download/v0.0.0-development/optimusctx_0.0.0-development_windows_amd64.zip",
+        "archiveFormat": "zip",
+        "binary": "optimusctx.exe",
+        "runtimeDirectory": "windows-amd64"
+      },
+      "windows-arm64": {
+        "os": "windows",
+        "arch": "arm64",
+        "archive": "optimusctx_0.0.0-development_windows_arm64.zip",
+        "archiveUrl": "https://github.com/niccrow/optimusctx/releases/download/v0.0.0-development/optimusctx_0.0.0-development_windows_arm64.zip",
+        "archiveFormat": "zip",
+        "binary": "optimusctx.exe",
+        "runtimeDirectory": "windows-arm64"
+      }
+    }
+  }
+}
