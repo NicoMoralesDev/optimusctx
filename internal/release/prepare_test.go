@@ -287,6 +287,46 @@ func TestReleasePrerequisiteChecks(t *testing.T) {
 	})
 }
 
+func TestReleaseSelectedChannelsDoNotInheritUnselectedBlockers(t *testing.T) {
+	preparation, err := PrepareRelease(context.Background(), "1.2.0", "v1.2", ReleasePreparationOptions{
+		Git:              fakeGitProbe{},
+		Files:            releaseRepoFiles(),
+		SelectedChannels: []string{ReleaseChannelGitHubArchive, ReleaseChannelNPM},
+	})
+	if err != nil {
+		t.Fatalf("PrepareRelease() error = %v", err)
+	}
+
+	if got, want := preparation.SelectedChannelIDs(), []string{
+		ReleaseChannelGitHubArchive,
+		ReleaseChannelNPM,
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("SelectedChannelIDs() = %v, want %v", got, want)
+	}
+
+	if got := releaseChannel(t, preparation, ReleaseChannelGitHubArchive).Readiness; got != releaseChannelReadinessReady {
+		t.Fatalf("github release readiness = %q, want %q", got, releaseChannelReadinessReady)
+	}
+	if got := releaseChannel(t, preparation, ReleaseChannelNPM).Readiness; got != releaseChannelReadinessReady {
+		t.Fatalf("npm readiness = %q, want %q", got, releaseChannelReadinessReady)
+	}
+	if got := releaseChannel(t, preparation, ReleaseChannelHomebrew).Readiness; got != releaseChannelReadinessBlocked {
+		t.Fatalf("homebrew readiness = %q, want %q", got, releaseChannelReadinessBlocked)
+	}
+	if got := releaseChannel(t, preparation, ReleaseChannelScoop).Readiness; got != releaseChannelReadinessBlocked {
+		t.Fatalf("scoop readiness = %q, want %q", got, releaseChannelReadinessBlocked)
+	}
+	if findBlocker(preparation, channelCheckHomebrew) != nil {
+		t.Fatalf("findBlocker(preparation, channelCheckHomebrew) == nil = false, blockers = %+v", preparation.Blockers)
+	}
+	if findBlocker(preparation, channelCheckScoop) != nil {
+		t.Fatalf("findBlocker(preparation, channelCheckScoop) == nil = false, blockers = %+v", preparation.Blockers)
+	}
+	if len(preparation.Blockers) != 0 {
+		t.Fatalf("Blockers len = %d, want 0", len(preparation.Blockers))
+	}
+}
+
 func TestReleasePlanJSON(t *testing.T) {
 	preparation, err := PrepareRelease(context.Background(), "1.2.0", "v1.2", ReleasePreparationOptions{
 		Git:   fakeGitProbe{},

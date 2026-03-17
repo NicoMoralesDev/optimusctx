@@ -649,10 +649,12 @@ type channelEvaluation struct {
 }
 
 func setChannelReadiness(preparation *ReleasePreparation, channelID string, evaluation channelEvaluation) {
+	selected := false
 	for index := range preparation.Channels {
 		if preparation.Channels[index].ID != channelID {
 			continue
 		}
+		selected = preparation.Channels[index].Selected
 		preparation.Channels[index].Readiness = evaluation.Readiness
 		break
 	}
@@ -669,7 +671,7 @@ func setChannelReadiness(preparation *ReleasePreparation, channelID string, eval
 		Details: evaluation.Details,
 	})
 
-	if evaluation.Readiness == releaseChannelReadinessBlocked {
+	if evaluation.Readiness == releaseChannelReadinessBlocked && selected {
 		preparation.Blockers = append(preparation.Blockers, ReleaseIssue{
 			Code:    evaluation.CheckCode,
 			Message: evaluation.Message,
