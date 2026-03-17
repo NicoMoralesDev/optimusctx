@@ -1,16 +1,16 @@
 # Install and Verify OptimusCtx
 
-This guide is the canonical operator path for installing a shipped `optimusctx` binary and verifying that the real CLI surface works locally.
+This guide explains how to install OptimusCtx, check that it works, and start using it clearly.
 
 If you want the shorter user path from install to daily use, see [`quickstart.md`](./quickstart.md).
 
 Supported install channels for v1.1:
 
-- GitHub release archives for macOS, Linux, and Windows
-- Homebrew for macOS and Linux
-- Scoop for Windows
 - npm global install for the JavaScript ecosystem wrapper path
 - `npx` for ephemeral execution of the same wrapper package
+- Homebrew for macOS and Linux
+- Scoop for Windows
+- GitHub release archives for macOS, Linux, and Windows
 
 The verification path below uses the shipped commands that matter for first-run confidence:
 
@@ -21,9 +21,45 @@ The verification path below uses the shipped commands that matter for first-run 
 
 `go run` is useful for development, but it is not the supported end-user install flow in this guide.
 
-## 1. Choose an install path
+## 1. Choose one install path
 
-### Option A: Install from a release archive
+### Recommended for most users: npm
+
+```bash
+npm install -g @niccrow/optimusctx
+```
+
+Why this is recommended:
+
+- it is the simplest install for most users
+- it still runs the real tagged OptimusCtx binary
+- it does not silently write MCP client config
+
+The npm package is a wrapper over the canonical tagged GitHub Release binary. During installation it downloads the exact release archive for your host platform, verifies the SHA-256 from `optimusctx_<version>_checksums.txt`, and unpacks the binary under the package-local `runtime/` directory.
+
+### Try it first with `npx`
+
+```bash
+npx @niccrow/optimusctx version
+npx @niccrow/optimusctx doctor
+```
+
+Use `npx` if you want to try the tool without keeping a global install on your PATH. If you decide to keep using OptimusCtx, switch to `npm install -g @niccrow/optimusctx`.
+
+### Alternative: Homebrew
+
+```bash
+brew install niccrow/tap/optimusctx
+```
+
+### Alternative: Scoop
+
+```powershell
+scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git
+scoop install niccrow/optimusctx
+```
+
+### Fallback: install from a release archive
 
 Download the archive that matches your OS and CPU from GitHub Releases.
 
@@ -57,38 +93,6 @@ Use the archive name that matches the release asset you downloaded:
 - `optimusctx_<version>_windows_amd64.zip`
 - `optimusctx_<version>_windows_arm64.zip`
 
-### Option B: Install with Homebrew
-
-```bash
-brew install niccrow/tap/optimusctx
-```
-
-### Option C: Install with Scoop
-
-```powershell
-scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git
-scoop install niccrow/optimusctx
-```
-
-### Option D: Install globally with npm
-
-```bash
-npm install -g @niccrow/optimusctx
-```
-
-The npm package is a wrapper over the canonical tagged GitHub Release binary. During installation it downloads the exact release archive for your host platform, verifies the SHA-256 from `optimusctx_<version>_checksums.txt`, and unpacks the binary under the package-local `runtime/` directory.
-
-The npm path does not register MCP clients or write config files. Client configuration remains explicit and opt-in through `optimusctx install --client ...`.
-
-### Option E: Run the release wrapper with npx
-
-```bash
-npx @niccrow/optimusctx version
-npx @niccrow/optimusctx doctor
-```
-
-Use the `npx` path when you want the same package wrapper without keeping a global install on your PATH. If you decide to keep OptimusCtx installed, switch to `npm install -g @niccrow/optimusctx` and then follow the verification flow below with the plain `optimusctx` command.
-
 ## 2. Verify the installed binary reports release metadata
 
 Run:
@@ -105,27 +109,21 @@ optimusctx version=<tag> commit=<git-sha> build_date=<timestamp>
 
 If `version=dev`, you are not verifying a release build. Re-check the archive or package-manager source you installed.
 
-## 3. Verify the runtime in a disposable repository
+## 3. Start in one repository
 
-Use a fresh Git repository instead of your main checkout while verifying the first-run flow.
+Move into the repository you want to use and initialize it:
 
 ```bash
-tmpdir="$(mktemp -d)"
-cd "$tmpdir"
-git init
-cat <<'EOF' > main.go
-package main
-
-func main() {}
-EOF
-
+cd /path/to/your-repo
 optimusctx init
 optimusctx doctor
 ```
 
-`optimusctx init` should create `.optimusctx/` inside the temp repository and report the repository root, state directory, refresh generation, and `fresh` freshness.
+`optimusctx init` creates `.optimusctx/` for that repo and builds the first snapshot.
 
-`optimusctx doctor` should then give you a usable health summary for the initialized repository. A healthy first-run check will typically include:
+After that, `optimusctx doctor` should show a healthy runtime and fresh repository state.
+
+Typical healthy output includes:
 
 - `overall status: healthy`
 - `runtime version: ...`
@@ -134,7 +132,48 @@ optimusctx doctor
 
 If `doctor` reports missing state instead, run `optimusctx init` from the repository root you actually want to index and then rerun `optimusctx doctor`.
 
-## 4. Inspect the MCP snippet without modifying client config
+## 4. Choose how updates should work
+
+After `init`, pick one normal way to keep the repository state fresh.
+
+### Manual mode
+
+Run this when you want to refresh on demand:
+
+```bash
+optimusctx refresh
+```
+
+Use this if you only need occasional updates.
+
+### Watch mode
+
+Run this if you want automatic refreshes while you work:
+
+```bash
+optimusctx watch run
+```
+
+Important:
+
+- it runs in the foreground
+- keep it open in its own terminal
+- stop it with `Ctrl+C`
+
+From another terminal, inspect it with:
+
+```bash
+optimusctx watch status
+optimusctx doctor
+```
+
+Simple rule:
+
+- use `refresh` in manual mode
+- use `watch run` in continuous mode
+- if `watch run` is active, you usually do not need `refresh`
+
+## 5. Inspect the MCP snippet without modifying client config
 
 Run:
 
@@ -146,7 +185,7 @@ This prints the manual-copy MCP configuration for `optimusctx mcp serve`. It doe
 
 Use this command when you want to inspect or paste the JSON yourself.
 
-## 5. Preview or write explicit client registration
+## 6. Preview or write explicit client registration
 
 `install` stays opt-in. It does not silently register MCP clients during package installation or archive extraction.
 
@@ -182,7 +221,7 @@ optimusctx install --client claude-desktop --config /path/to/claude_desktop_conf
 
 This is the same MCP contract that `optimusctx snippet` prints, but `--write` is the explicit consent boundary that persists it.
 
-## 6. Scope and support boundaries
+## 7. Scope and support boundaries
 
 v1.1 intentionally keeps distribution narrow:
 

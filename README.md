@@ -20,24 +20,32 @@ The current command surface covers repository bootstrap, refresh, diagnostics, e
 
 ## Install and verify
 
-For end-user installation and first-run verification, use the canonical guide at [`docs/install-and-verify.md`](./docs/install-and-verify.md).
+For most users, the recommended install path is npm:
 
-For the shortest end-user path from install to daily use, start with [`docs/quickstart.md`](./docs/quickstart.md).
+```bash
+npm install -g @niccrow/optimusctx
+```
+
+If you want the shortest path from install to daily use, start with [`docs/quickstart.md`](./docs/quickstart.md).
+
+If you want the longer install and verification guide, use [`docs/install-and-verify.md`](./docs/install-and-verify.md).
 
 That guide covers:
 
-- GitHub release archives
-- Homebrew on macOS and Linux
-- Scoop on Windows
 - `npm install -g @niccrow/optimusctx`
 - `npx @niccrow/optimusctx version`
+- Homebrew on macOS and Linux
+- Scoop on Windows
+- GitHub release archives
 - local verification with `optimusctx version`, `optimusctx doctor`, and `optimusctx snippet`
+- choosing between manual refresh and `watch run`
 - optional MCP client registration through explicit `optimusctx install --client ...`
 
 The top-level release boundary stays narrow:
 
-- GitHub release archives remain the first retrievable release artifacts
+- npm is the recommended install path for most users
 - Homebrew, Scoop, and the npm wrapper package are the supported package-manager channels for v1.1
+- GitHub release archives remain the fallback path
 - MCP registration is explicit and opt-in; package installation does not silently rewrite client configs
 
 ## Build from source
@@ -82,13 +90,18 @@ Release builds inject truthful build metadata into the shipped binary. After dow
 
 v1.1 supports three package-manager channels on top of the GitHub-hosted archives:
 
+- npm for the JavaScript ecosystem wrapper path, published as `@niccrow/optimusctx`
 - Homebrew for macOS and Linux, published to `niccrow/homebrew-tap`
 - Scoop for Windows, published to `niccrow/scoop-bucket`
-- npm for the JavaScript ecosystem wrapper path, published as `@niccrow/optimusctx`
 
 Those manifests are derived from the same archive names and SHA-256 checksums produced by [`.goreleaser.yml`](./.goreleaser.yml). They do not introduce a second release source or any installer-only runtime behavior.
 
 Install commands stay narrow and channel-specific:
+
+```bash
+npm install -g @niccrow/optimusctx
+npx @niccrow/optimusctx version
+```
 
 ```bash
 brew install niccrow/tap/optimusctx
@@ -97,11 +110,6 @@ brew install niccrow/tap/optimusctx
 ```powershell
 scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git
 scoop install niccrow/optimusctx
-```
-
-```bash
-npm install -g @niccrow/optimusctx
-npx @niccrow/optimusctx version
 ```
 
 For release operators, the publication targets are `niccrow/homebrew-tap`, `niccrow/scoop-bucket`, and the npm registry package `@niccrow/optimusctx`. Publication should authenticate with `HOMEBREW_TAP_GITHUB_TOKEN`, `SCOOP_BUCKET_GITHUB_TOKEN`, and `NPM_TOKEN`.

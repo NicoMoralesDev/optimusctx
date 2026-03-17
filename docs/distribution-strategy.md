@@ -77,9 +77,9 @@ npm is the JavaScript ecosystem wrapper channel for users who prefer `npm instal
 
 The intended channel order is:
 
-1. Homebrew if the user is on macOS or Linux and already uses Homebrew.
-2. Scoop if the user is on Windows and already uses Scoop.
-3. npm if the user prefers the JavaScript ecosystem wrapper and is comfortable with npm or `npx`.
+1. npm if the user wants the simplest install path and is comfortable with npm.
+2. Homebrew if the user is on macOS or Linux and already uses Homebrew.
+3. Scoop if the user is on Windows and already uses Scoop.
 4. GitHub Release archives if the user wants the raw binary, needs a rollback, or does not want to depend on a package manager.
 
 This keeps the product truthful about supported channels while still giving every user one direct binary path that does not depend on an external package-manager state.
@@ -88,7 +88,7 @@ This keeps the product truthful about supported channels while still giving ever
 
 Archive users upgrade by replacing the binary manually and verifying the shipped command surface again.
 
-Package-manager users upgrade through the channel-native command while GitHub Release archives remain the rollback fallback.
+Package-manager users upgrade through the channel-native command while GitHub Release archives remain the rollback fallback, including the npm wrapper package.
 
 In practice that means:
 

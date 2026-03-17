@@ -1,43 +1,45 @@
 # OptimusCtx Quickstart
 
-This guide is the shortest path from installation to day-to-day use.
+This is the simplest path from install to daily use.
 
-If you need full channel details or release validation steps, see [`install-and-verify.md`](./install-and-verify.md).
+If you want the longer reference guide, see [`install-and-verify.md`](./install-and-verify.md).
 
-## 1. Install OptimusCtx
+## 1. Install
 
-Choose one supported install path:
+### Recommended for most users: npm
 
-### macOS or Linux with Homebrew
+```bash
+npm install -g @niccrow/optimusctx
+```
+
+This is the easiest path for most users. The npm package is only a wrapper. It still downloads and runs the real tagged OptimusCtx binary.
+
+### Try it without installing globally: `npx`
+
+```bash
+npx @niccrow/optimusctx version
+```
+
+Use this if you want to try OptimusCtx first. If you plan to use it every day, switch to the global npm install.
+
+### Alternatives
+
+macOS or Linux with Homebrew:
 
 ```bash
 brew install niccrow/tap/optimusctx
 ```
 
-### Windows with Scoop
+Windows with Scoop:
 
 ```powershell
 scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git
 scoop install niccrow/optimusctx
 ```
 
-### npm global install
+## 2. Check that it works
 
-```bash
-npm install -g @niccrow/optimusctx
-```
-
-### `npx` without a global install
-
-```bash
-npx @niccrow/optimusctx version
-```
-
-`npm` and `npx` are wrapper paths over the same tagged GitHub Release binary. They do not silently edit MCP client config files.
-
-## 2. Verify the binary works
-
-Run:
+If you installed it globally, run:
 
 ```bash
 optimusctx version
@@ -45,91 +47,126 @@ optimusctx doctor
 optimusctx snippet
 ```
 
-What to expect:
-
-- `version` prints the release version, commit, and build date
-- `doctor` reports runtime health and repository-state readiness
-- `snippet` prints the MCP config snippet without writing any client config
-
-If you are using `npx` only, start with:
+If you are only trying it with `npx`, run:
 
 ```bash
 npx @niccrow/optimusctx version
 npx @niccrow/optimusctx doctor
 ```
 
-If you want to keep using OptimusCtx every day, switch to a persistent install and continue with the plain `optimusctx` command.
+What these commands do:
 
-## 3. Start using it in a repository
+- `version` shows the installed release version
+- `doctor` shows whether the runtime looks healthy
+- `snippet` prints the MCP config snippet without writing anything
 
-Move into a repository you want to index:
+## 3. Start using it in one repository
+
+Move into the repository you want to use:
 
 ```bash
 cd /path/to/your-repo
 optimusctx init
-```
-
-What `init` does:
-
-- creates the local `.optimusctx/` runtime directory for that repo
-- scans the repository
-- builds the initial persistent context state
-
-After `init`, run:
-
-```bash
 optimusctx doctor
 ```
 
-You should see a healthy runtime with fresh repository state.
+`init` creates the local `.optimusctx/` state for that repo and builds the first snapshot.
 
-## 4. Daily workflow
+## 4. Choose how you want updates to work
 
-Typical day-to-day commands:
+After `init`, you have two normal ways to keep the repo state fresh.
+
+### Option A: Manual mode
+
+Use this if you only want to refresh when you decide to:
 
 ```bash
 optimusctx refresh
+```
+
+Good for:
+
+- occasional use
+- small repos
+- simple workflows
+
+### Option B: Watch mode
+
+Use this if you want OptimusCtx to refresh automatically while you work:
+
+```bash
+cd /path/to/your-repo
+optimusctx watch run
+```
+
+Important:
+
+- this runs in the foreground
+- leave it open in its own terminal
+- stop it with `Ctrl+C`
+
+From another terminal, check its state with:
+
+```bash
+cd /path/to/your-repo
+optimusctx watch status
+optimusctx doctor
+```
+
+Good for:
+
+- active work in one repo for a while
+- frequent file changes
+- not wanting to run `refresh` manually
+
+Simple rule:
+
+- if you use `watch run`, you usually do not need `refresh`
+- if you do not use `watch run`, use `refresh` when the repo changed
+
+## 5. Daily use
+
+Most people only need a small set of commands:
+
+```bash
 optimusctx doctor
 optimusctx snippet
+optimusctx refresh
+optimusctx watch status
 ```
 
 Use them like this:
 
-- `optimusctx refresh` after you change the repository and want the persisted context to catch up
-- `optimusctx doctor` when you want to confirm the runtime and repository state still look healthy
-- `optimusctx snippet` when you need the MCP config again or want to inspect the integration contract
+- `doctor` to check health
+- `snippet` to reprint the MCP config snippet
+- `refresh` if you are in manual mode
+- `watch status` if you are in watch mode
 
-Simple rule of thumb:
+## 6. Connect it to your MCP client
 
-- run `init` once per repo
-- run `refresh` whenever the repo changed materially
-- run `doctor` when something feels off
-
-## 5. Connect it to your MCP client
-
-Preview the Claude Desktop config payload:
+Preview the Claude Desktop config first:
 
 ```bash
 optimusctx install --client claude-desktop
 ```
 
-That prints the config and target path, but does not write anything yet.
+That shows the config and target path, but does not write anything yet.
 
-Only write the config when you want to opt in:
+Only write it when you want to opt in:
 
 ```bash
 optimusctx install --client claude-desktop --write
 ```
 
-You can also keep it fully manual and use:
+If you prefer to copy it manually, use:
 
 ```bash
 optimusctx snippet
 ```
 
-## 6. Common patterns
+## 7. Common flows
 
-### Fresh repo setup
+### First setup in a repo
 
 ```bash
 cd /path/to/repo
@@ -137,48 +174,47 @@ optimusctx init
 optimusctx doctor
 ```
 
-### After a large code change
+### Manual mode
 
 ```bash
 optimusctx refresh
 optimusctx doctor
 ```
 
-### Re-check MCP config without writing
+### Watch mode
+
+In one terminal:
 
 ```bash
-optimusctx snippet
-optimusctx install --client claude-desktop
+cd /path/to/repo
+optimusctx watch run
 ```
 
-## 7. When something goes wrong
+In another terminal:
 
-Start with:
+```bash
+cd /path/to/repo
+optimusctx watch status
+optimusctx doctor
+```
+
+## 8. If something looks wrong
+
+Start here:
 
 ```bash
 optimusctx doctor
 ```
 
-If the repository was never initialized:
+Then:
 
-```bash
-optimusctx init
-```
+- if the repo was never initialized, run `optimusctx init`
+- if you are in manual mode, run `optimusctx refresh`
+- if you are in watch mode, run `optimusctx watch status`
+- if the watch heartbeat is stale, restart `optimusctx watch run`
+- if the MCP integration looks wrong, run `optimusctx snippet`
 
-If the repository changed and the context is stale:
+## 9. More docs
 
-```bash
-optimusctx refresh
-```
-
-If the issue is with the client integration, inspect the config again without writing:
-
-```bash
-optimusctx snippet
-optimusctx install --client claude-desktop
-```
-
-## 8. Next docs
-
-- [`install-and-verify.md`](./install-and-verify.md) for full installation and verification details
-- [`distribution-strategy.md`](./distribution-strategy.md) for supported channels, rollback, and support boundaries
+- [`install-and-verify.md`](./install-and-verify.md) for the full install guide
+- [`distribution-strategy.md`](./distribution-strategy.md) for channel and support policy
