@@ -12,6 +12,12 @@ type CanonicalRelease struct {
 	Assets           []CanonicalReleaseAsset
 }
 
+type CanonicalReleaseTarget struct {
+	GOOS          string
+	GOARCH        string
+	ArchiveFormat string
+}
+
 type CanonicalReleaseAsset struct {
 	GOOS          string
 	GOARCH        string
@@ -25,52 +31,98 @@ type CanonicalChecksumManifest struct {
 	URL      string
 }
 
+var canonicalReleaseTargetInventory = []CanonicalReleaseTarget{
+	{
+		GOOS:          "darwin",
+		GOARCH:        "amd64",
+		ArchiveFormat: "tar.gz",
+	},
+	{
+		GOOS:          "darwin",
+		GOARCH:        "arm64",
+		ArchiveFormat: "tar.gz",
+	},
+	{
+		GOOS:          "linux",
+		GOARCH:        "amd64",
+		ArchiveFormat: "tar.gz",
+	},
+	{
+		GOOS:          "linux",
+		GOARCH:        "arm64",
+		ArchiveFormat: "tar.gz",
+	},
+	{
+		GOOS:          "windows",
+		GOARCH:        "amd64",
+		ArchiveFormat: "zip",
+	},
+	{
+		GOOS:          "windows",
+		GOARCH:        "arm64",
+		ArchiveFormat: "zip",
+	},
+}
+
 func NewCanonicalRelease(version string) (CanonicalRelease, error) {
 	normalizedVersion, err := NormalizeReleaseVersion(version)
 	if err != nil {
 		return CanonicalRelease{}, err
 	}
 
+	return newCanonicalRelease(normalizedVersion), nil
+}
+
+func newCanonicalRelease(version string) CanonicalRelease {
 	release := CanonicalRelease{
-		Version:     normalizedVersion,
-		Tag:         "v" + normalizedVersion,
+		Version:     version,
+		Tag:         canonicalReleaseTag(version),
 		ProjectName: canonicalProjectName,
 		Repository: repositoryRef{
 			Owner: canonicalReleaseOwner,
 			Name:  canonicalReleaseRepo,
 		},
 	}
-	release.ReleaseURL = fmt.Sprintf("%s/releases/tag/%s", release.RepositoryURL(), release.Tag)
-	release.ChecksumManifest = CanonicalChecksumManifest{
-		FileName: checksumManifestName(normalizedVersion),
-		URL:      release.DownloadURL(checksumManifestName(normalizedVersion)),
+
+	release.ReleaseURL = release.releaseTagURL()
+	release.ChecksumManifest = release.checksumManifestContract()
+	release.Assets = release.assetsFromSupportedTargets()
+
+	return release
+}
+
+func (r CanonicalRelease) Targets() []CanonicalReleaseTarget {
+	targets := make([]CanonicalReleaseTarget, len(canonicalReleaseTargetInventory))
+	copy(targets, canonicalReleaseTargetInventory)
+	return targets
+}
+
+func (r CanonicalRelease) AssetKey(goos, goarch string) string {
+	return canonicalReleaseAssetKey(goos, goarch)
+}
+
+func (r CanonicalRelease) ChecksumManifestURL() string {
+	return r.ChecksumManifest.URL
+}
+
+func (r CanonicalRelease) ArchiveFileNames() []string {
+	fileNames := make([]string, 0, len(r.Targets()))
+	for _, target := range r.Targets() {
+		fileNames = append(fileNames, archiveName(r.Version, target.GOOS, target.GOARCH))
 	}
 
-	for _, target := range []struct {
-		goos   string
-		goarch string
-	}{
-		{goos: "darwin", goarch: "amd64"},
-		{goos: "darwin", goarch: "arm64"},
-		{goos: "linux", goarch: "amd64"},
-		{goos: "linux", goarch: "arm64"},
-		{goos: "windows", goarch: "amd64"},
-		{goos: "windows", goarch: "arm64"},
-	} {
-		release.Assets = append(release.Assets, release.archiveAsset(target.goos, target.goarch))
-	}
-
-	return release, nil
+	return fileNames
 }
 
 func (r CanonicalRelease) Asset(goos, goarch string) (CanonicalReleaseAsset, error) {
+	key := r.AssetKey(goos, goarch)
 	for _, asset := range r.Assets {
-		if asset.GOOS == goos && asset.GOARCH == goarch {
+		if r.AssetKey(asset.GOOS, asset.GOARCH) == key {
 			return asset, nil
 		}
 	}
 
-	return CanonicalReleaseAsset{}, fmt.Errorf("canonical release asset %s/%s not found", goos, goarch)
+	return CanonicalReleaseAsset{}, fmt.Errorf("canonical release asset %s not found", key)
 }
 
 func (r CanonicalRelease) RepositoryURL() string {
@@ -81,14 +133,51 @@ func (r CanonicalRelease) DownloadURL(fileName string) string {
 	return fmt.Sprintf("%s/releases/download/%s/%s", r.RepositoryURL(), r.Tag, fileName)
 }
 
-func (r CanonicalRelease) archiveAsset(goos, goarch string) CanonicalReleaseAsset {
-	fileName := archiveName(r.Version, goos, goarch)
+func (r CanonicalRelease) releaseTagURL() string {
+	return fmt.Sprintf("%s/releases/tag/%s", r.RepositoryURL(), r.Tag)
+}
 
-	return CanonicalReleaseAsset{
+func (r CanonicalRelease) checksumManifestContract() CanonicalChecksumManifest {
+	fileName := checksumManifestName(r.Version)
+	return CanonicalChecksumManifest{
+		FileName: fileName,
+		URL:      r.DownloadURL(fileName),
+	}
+}
+
+func (r CanonicalRelease) assetsFromSupportedTargets() []CanonicalReleaseAsset {
+	assets := make([]CanonicalReleaseAsset, 0, len(canonicalReleaseTargetInventory))
+	for _, target := range r.Targets() {
+		assets = append(assets, r.archiveAssetForTarget(target))
+	}
+
+	return assets
+}
+
+func (r CanonicalRelease) archiveAsset(goos, goarch string) CanonicalReleaseAsset {
+	return r.archiveAssetForTarget(CanonicalReleaseTarget{
 		GOOS:          goos,
 		GOARCH:        goarch,
+		ArchiveFormat: archiveFormat(goos),
+	})
+}
+
+func (r CanonicalRelease) archiveAssetForTarget(target CanonicalReleaseTarget) CanonicalReleaseAsset {
+	fileName := archiveName(r.Version, target.GOOS, target.GOARCH)
+
+	return CanonicalReleaseAsset{
+		GOOS:          target.GOOS,
+		GOARCH:        target.GOARCH,
 		FileName:      fileName,
 		DownloadURL:   r.DownloadURL(fileName),
-		ArchiveFormat: archiveFormat(goos),
+		ArchiveFormat: target.ArchiveFormat,
 	}
+}
+
+func canonicalReleaseTag(version string) string {
+	return "v" + version
+}
+
+func canonicalReleaseAssetKey(goos, goarch string) string {
+	return fmt.Sprintf("%s/%s", goos, goarch)
 }

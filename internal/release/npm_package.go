@@ -274,7 +274,36 @@ func npmPlatformAssetFromCanonical(release CanonicalRelease, goos, goarch string
 }
 
 func syntheticCanonicalRelease(version string) CanonicalRelease {
-	return newCanonicalRelease(version)
+	release := CanonicalRelease{
+		Version:     version,
+		Tag:         "v" + version,
+		ProjectName: canonicalProjectName,
+		Repository: repositoryRef{
+			Owner: canonicalReleaseOwner,
+			Name:  canonicalReleaseRepo,
+		},
+	}
+	release.ReleaseURL = fmt.Sprintf("%s/releases/tag/%s", release.RepositoryURL(), release.Tag)
+	release.ChecksumManifest = CanonicalChecksumManifest{
+		FileName: checksumManifestName(version),
+		URL:      release.DownloadURL(checksumManifestName(version)),
+	}
+
+	for _, target := range []struct {
+		goos   string
+		goarch string
+	}{
+		{goos: "darwin", goarch: "amd64"},
+		{goos: "darwin", goarch: "arm64"},
+		{goos: "linux", goarch: "amd64"},
+		{goos: "linux", goarch: "arm64"},
+		{goos: "windows", goarch: "amd64"},
+		{goos: "windows", goarch: "arm64"},
+	} {
+		release.Assets = append(release.Assets, release.archiveAsset(target.goos, target.goarch))
+	}
+
+	return release
 }
 
 func archiveFormat(goos string) string {
