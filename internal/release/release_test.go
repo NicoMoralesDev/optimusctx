@@ -81,6 +81,49 @@ func TestGitHubReleasePublicationConfig(t *testing.T) {
 	}
 }
 
+func TestNPMPublishWorkflow(t *testing.T) {
+	workflow := readRepoFile(t, ".github/workflows/release.yml")
+
+	for _, want := range []string{
+		"name: Publish npm wrapper package",
+		"needs: release",
+		"uses: actions/setup-node@v4",
+		"registry-url: https://registry.npmjs.org",
+		"bash scripts/render-npm-package.sh",
+		"npm publish --access public",
+	} {
+		if !strings.Contains(workflow, want) {
+			t.Fatalf(".github/workflows/release.yml missing %q", want)
+		}
+	}
+}
+
+func TestNPMPublishConfig(t *testing.T) {
+	workflow := readRepoFile(t, ".github/workflows/release.yml")
+	renderScript := readRepoFile(t, "scripts/render-npm-package.sh")
+
+	for _, want := range []string{
+		"NPM_TOKEN",
+		"NODE_AUTH_TOKEN",
+		"steps.release_ref.outputs.tag",
+	} {
+		if !strings.Contains(workflow, want) {
+			t.Fatalf(".github/workflows/release.yml missing %q", want)
+		}
+	}
+
+	for _, want := range []string{
+		"package.json",
+		"optimusctx_${versionNoV}_${goos}_${goarch}",
+		"npm package metadata must stay release-derived",
+		"@niccrow/optimusctx",
+	} {
+		if !strings.Contains(renderScript, want) {
+			t.Fatalf("scripts/render-npm-package.sh missing %q", want)
+		}
+	}
+}
+
 func yamlList(content, key string) []string {
 	lines := strings.Split(content, "\n")
 	needle := key + ":"
