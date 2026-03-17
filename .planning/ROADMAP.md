@@ -10,7 +10,7 @@
 
 ## Current Milestone
 
-- [x] **v1.1** — validation, benchmarking, and distribution
+- [ ] **v1.1** — validation, benchmarking, and distribution
 - Goal: prove the shipped runtime works end to end, measure token and workflow savings with repeatable A/B methodology, and prepare a credible distribution path.
 - Requirements: [REQUIREMENTS.md](/home/nico/projects/optimusctx/.planning/REQUIREMENTS.md)
 
@@ -98,12 +98,12 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.1` benchmark and distribution closeout complete
+Active milestone: `v1.1` extended with Phase 15 npm/npx distribution follow-up
 
 Next step:
 
-- Archive or roll forward the completed `v1.1` milestone based on product priorities
-- Track any future raw-provenance payload reduction work as backlog optimization, not as benchmark-framework repair
+- Run `$gsd-execute-phase 15` to implement the npm package, launcher, publish flow, and docs updates
+- Re-close or archive `v1.1` after the npm/npx distribution follow-up is complete
 
 ### Phase 14: Benchmark boundary redefinition and agent-input validation
 
@@ -121,5 +121,19 @@ Plans:
 **Requirements covered:** `BNCH-01`, `BNCH-02`, `BNCH-04`  
 **Details:** Phase 14 repairs the benchmark framework boundary without redesigning product payloads: internal system work remains provenance, counted tokens come only from declared agent-facing inputs, both arms must satisfy comparable final-artifact contracts, and the committed benchmark corpus plus evidence are refreshed on the corrected methodology.
 
+### Phase 15: Add npm and npx distribution option
+
+**Goal**: Add a truthful npm and `npx` distribution path for the existing single-binary release without changing the runtime contract or making client-configuration writes implicit.  
+**Requirements covered:** `DIST-02`, `DIST-03`, `DIST-04`  
+**Depends on:** Phase 14
+**Plans:** 1/3 plans executed
+
+Plans:
+- [x] 15-01: npm package contract and release-derived metadata foundation
+- [ ] 15-02: launcher/downloader implementation and install/verify guide updates
+- [ ] 15-03: npm publication workflow and supported-channel policy updates
+
+**Details:** Phase 15 extends the narrow distribution story with an npm wrapper package and `npx` execution path that still resolves to tagged GitHub Release binaries, keeps verification on the real CLI surface, and updates docs/tests/policy without reopening broader installer scope.
+
 ---
-*Last updated: 2026-03-16 after completing Phase 14 benchmark closeout*
+*Last updated: 2026-03-17 after executing Phase 15 plan 01 npm package foundation*

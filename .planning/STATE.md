@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-current_phase: 14
-current_phase_name: benchmark boundary redefinition and agent-input validation
-current_plan: 4
-status: complete
-stopped_at: Completed 14-04-PLAN.md
-last_updated: "2026-03-16T20:25:01.415Z"
-last_activity: 2026-03-16
+milestone: v1.1
+milestone_name: validation, benchmarking, and distribution
+current_phase: 15
+current_phase_name: add npm and npx distribution option
+current_plan: 2
+status: executing
+stopped_at: Completed 15-01-PLAN.md
+last_updated: "2026-03-17T13:05:05.445Z"
+last_activity: 2026-03-17
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 6
-  total_plans: 24
-  completed_plans: 24
-  percent: 100
+  total_plans: 27
+  completed_plans: 25
+  percent: 93
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase 14 complete — benchmark milestone closeout verified
-**Current Phase:** 14
-**Current Phase Name:** benchmark boundary redefinition and agent-input validation
-**Total Phases:** 6
-**Current Plan:** 4
-**Total Plans in Phase:** 4
-**Progress:** [██████████] 100%
-**Last Activity:** 2026-03-16
-**Last Activity Description:** Phase 14 is complete with reproducibility verification, refreshed v2 benchmark evidence, and full-suite closeout
+**Status:** Phase 15 in progress — 15-01 complete, ready for Wave 2
+**Current Phase:** 15
+**Current Phase Name:** add npm and npx distribution option
+**Total Phases:** 7
+**Current Plan:** 2
+**Total Plans in Phase:** 3
+**Progress:** [█████████░] 93%
+**Last Activity:** 2026-03-17
+**Last Activity Description:** Plan 15-01 completed with release-derived npm package metadata, committed wrapper package files, and invariant tests
 
 ## Project Memory
 
@@ -43,11 +43,11 @@ progress:
 
 ## Current Planning Context
 
-- Active milestone: v1.1 validation, benchmarking, and distribution closeout complete
-- Active phase: 14-benchmark-boundary-redefinition-and-agent-input-validation
-- Next planning action: no pending phase execution remains; archive the completed milestone or plan follow-up backlog work
+- Active milestone: v1.1 validation, benchmarking, distribution, and npm/npx distribution follow-up
+- Active phase: 15-add-npm-and-npx-distribution-option
+- Next planning action: execute plans `15-02` and `15-03` to add the real binary downloader/launcher, npm publication workflow, and supported-channel doc updates
 - Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
-- Coverage status: v1.0 shipped; v1.1 validation, benchmarking, and distribution closure is complete through Phase 14
+- Coverage status: v1.0 shipped; v1.1 validation, benchmarking, and distribution work is complete through Phase 14, with Phase 15 plan 01 complete and Wave 2 still pending for the npm/npx follow-up
 
 ## Recent Decisions
 
@@ -58,6 +58,8 @@ progress:
 - Benchmark suites stay JSON-backed and fixture-referenced so later timing and reporting plans reuse committed corpus definitions instead of inline test data.
 - Treatment workflows are limited to shipped CLI commands and MCP tools, preventing benchmark-only shortcuts from contaminating later A/B claims.
 - Distribution will stay narrow: cross-platform archives, first package-manager channels, install verification, and a written rollout plan.
+- Phase 15 treats npm and `npx` as a wrapper channel over tagged GitHub Release binaries rather than as a second runtime or JavaScript reimplementation.
+- Phase 15 will use the scoped package name `@niccrow/optimusctx` with the bin command `optimusctx`, keeping npm global install and `npx` on the same operator-facing command.
 - The default eval path now persists runs under the source repository's `.optimusctx/eval/run-<id>` tree instead of leaving evidence in temp workspaces.
 - Eval runner pre-creates file-artifact parent directories so real CLI commands can write deterministic outputs without manual setup.
 - Rerun validation now asserts deterministic repo-local paths and persisted metadata rather than byte-identical pack payloads because exports embed temp workspace roots.
@@ -90,6 +92,8 @@ progress:
 - Phase 14 added: Benchmark boundary redefinition and agent-input validation
 - Phase 14 planned: four plans cover schema repair, runtime enforcement, suite migration, and reproducibility closeout
 - Phase 14 complete: benchmark boundary repair, suite migration, reproducibility sign-off, and milestone reclose verified on the v2 methodology
+- Phase 15 added: Add npm and npx distribution option
+- Phase 15 planned: three plans cover npm package foundation, launcher/install flow, and npm publication plus policy updates
 
 ## Notes
 
@@ -208,6 +212,7 @@ progress:
 | Phase 14-benchmark-boundary-redefinition-and-agent-input-validation P02 | 22min | 3 tasks | 6 files |
 | Phase 14 P03 | 25min | 3 tasks | 9 files |
 | Phase 14-benchmark-boundary-redefinition-and-agent-input-validation P04 | 13min | 3 tasks | 10 files |
+| Phase 15 P01 | 2min | 2 tasks | 6 files |
 
 ## Decisions Made
 
@@ -360,6 +365,8 @@ progress:
 - [Phase 14]: Repeated-run benchmark exports now preserve invalid attempts in verification metadata instead of aborting on missing or drifted final-artifact records.
 - [Phase 14]: Pre-Phase-14 attribution-first benchmark evidence is now explicitly superseded by the repaired v2 counted-input methodology and reruns.
 - [Phase 14]: Full-suite benchmark verification now locks onto the active v2 evidence schema, required attribution labels, and current migration set rather than stale pre-closeout expectations.
+- [Phase 15]: Committed npm package metadata stays release-derived and version-placeholder based until publish time. — This preserves one canonical GitHub Release asset contract while still giving CI a deterministic package shape to publish later.
+- [Phase 15]: npm host support is limited to darwin, linux, and windows on amd64 and arm64. — The wrapper should fail loudly outside the shipped GoReleaser matrix instead of silently widening runtime support.
 
 ## Blockers
 
@@ -367,9 +374,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-16T20:25:01.412Z
-**Stopped At:** Completed 14-04-PLAN.md
+**Last Date:** 2026-03-17T13:04:51.855Z
+**Stopped At:** Completed 15-01-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-16 after completing Phase 13 distribution work*
+*Last updated: 2026-03-17 after planning Phase 15 npm/npx distribution follow-up*
