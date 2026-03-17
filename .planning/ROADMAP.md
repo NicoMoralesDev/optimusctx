@@ -47,7 +47,7 @@ Plans:
 
 Plans:
 
-- [ ] 17-01: canonical release metadata and deterministic asset contract
+- [x] 17-01: canonical release metadata and deterministic asset contract
 - [ ] 17-02: fresh-versus-existing GitHub Release orchestration semantics
 - [ ] 17-03: downstream consumer rewiring to the shared release metadata contract
 - [ ] 17-04: canonical-root documentation and regression lock
@@ -93,13 +93,13 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.2` with Phase 16 verified complete
+Active milestone: `v1.2` with Phase 17 in progress
 
 Next step:
 
-- Plan Phase 17 release orchestration work
-- Continue milestone execution from the canonical GitHub Release contract into shared release metadata
+- Execute plan 17-02 for fresh-versus-existing GitHub Release orchestration semantics
+- Continue milestone execution from the canonical GitHub Release contract into reusable release orchestration
 - Keep all new release-channel automation anchored to the existing GitHub Release archive contract
 
 ---
-*Last updated: 2026-03-17 after verifying and completing Phase 16*
+*Last updated: 2026-03-17 after completing plan 17-01*

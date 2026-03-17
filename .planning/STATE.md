@@ -4,17 +4,17 @@ milestone: v1.2
 milestone_name: release automation and operator workflow
 current_phase: 17
 current_phase_name: canonical release orchestration and metadata
-current_plan: Not started
-status: planning
-stopped_at: Completed 16-04-PLAN.md
-last_updated: "2026-03-17T21:46:35.667Z"
+current_plan: 2
+status: executing
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-03-17T22:38:47.191Z"
 last_activity: 2026-03-17
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 8
+  completed_plans: 5
+  percent: 63
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to plan
+**Status:** Executing
 **Current Phase:** 17
 **Current Phase Name:** canonical release orchestration and metadata
 **Total Phases:** 4
-**Current Plan:** Not started
-**Total Plans in Phase:** 0
-**Progress:** [░░░░░░░░░░] 0%
+**Current Plan:** 2
+**Total Plans in Phase:** 4
+**Progress:** [██████░░░░] 63%
 **Last Activity:** 2026-03-17
-**Last Activity Description:** Phase 16 complete, transitioned to Phase 17
+**Last Activity Description:** Completed plan 17-01 and advanced Phase 17 to plan 2
 
 ## Project Memory
 
@@ -45,9 +45,9 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `17-canonical-release-orchestration-and-metadata`
-- Next execution action: plan Phase 17 release orchestration work
+- Next execution action: execute Plan 17-02 for fresh-versus-existing GitHub Release orchestration
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: Phase 16 is verified complete; Phase 17 has not been planned yet
+- Coverage status: Phase 17 plan 01 is complete; plans 02-04 remain
 
 ## Recent Decisions
 
@@ -234,6 +234,7 @@ progress:
 | Phase 16-release-versioning-and-preflight-guardrails P02 | 10min | 2 tasks | 3 files |
 | Phase 16 P03 | 13min | 2 tasks | 3 files |
 | Phase 16 P04 | 2min | 2 tasks | 3 files |
+| Phase 17-canonical-release-orchestration-and-metadata P01 | 1m | 2 tasks | 3 files |
 
 ## Decisions Made
 
@@ -398,6 +399,8 @@ progress:
 - [Phase 16]: Phase 16 confirmation stays review-only: the operator can acknowledge the plan and get blocker-driven exit codes without creating a tag or starting publication.
 - [Phase 16]: Blocked readiness only becomes a blocker when the matching ReleaseChannelPlan is selected.
 - [Phase 16]: Homebrew and Scoop stay visible as blocked channels even when they are informational for a narrower selected release plan.
+- [Phase 17]: Canonical release metadata reuses existing archiveName, archiveFormat, and checksumManifestName helpers instead of introducing a second filename contract.
+- [Phase 17]: Release contract tests compare CanonicalRelease against .goreleaser.yml and the GitHub release workflow before any downstream consumer rewiring.
 
 ## Blockers
 
@@ -405,8 +408,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-17T21:23:52.364Z
-**Stopped At:** Completed 16-04-PLAN.md
+**Last Date:** 2026-03-17T22:38:47.188Z
+**Stopped At:** Completed 17-01-PLAN.md
 **Resume File:** None
 
 ---
