@@ -8,7 +8,14 @@ import (
 	"strings"
 )
 
-const ()
+const (
+	ReleaseChannelGitHubArchive = "github-release-archive"
+	ReleaseChannelHomebrew      = "homebrew"
+	ReleaseChannelScoop         = "scoop"
+	ReleaseChannelNPM           = "npm"
+
+	releaseChannelReadinessPending = "pending"
+)
 
 var (
 	canonicalReleaseVersionPattern = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$`)
@@ -20,6 +27,28 @@ type releaseVersion struct {
 	Major int
 	Minor int
 	Patch int
+}
+
+type ReleaseIssue struct {
+	Code    string   `json:"code"`
+	Message string   `json:"message"`
+	Details []string `json:"details,omitempty"`
+}
+
+type ReleaseChannelPlan struct {
+	ID                string `json:"id"`
+	Name              string `json:"name"`
+	PublicationTarget string `json:"publicationTarget"`
+	Selected          bool   `json:"selected"`
+	Readiness         string `json:"readiness"`
+}
+
+type ReleasePreparation struct {
+	Version  string               `json:"version"`
+	Tag      string               `json:"tag"`
+	Channels []ReleaseChannelPlan `json:"channels"`
+	Warnings []ReleaseIssue       `json:"warnings"`
+	Blockers []ReleaseIssue       `json:"blockers"`
 }
 
 func NormalizeReleaseVersion(input string) (string, error) {
@@ -120,6 +149,97 @@ func ProposeReleaseVersion(milestone string, existingTags []string) (string, err
 		Minor: series.Minor,
 		Patch: highestPatch + 1,
 	}.String(), nil
+}
+
+func BuildReleasePreparation(versionInput string, milestone string, existingTags []string) (ReleasePreparation, error) {
+	version := versionInput
+	var err error
+	if version == "" {
+		version, err = ProposeReleaseVersion(milestone, existingTags)
+		if err != nil {
+			return ReleasePreparation{}, err
+		}
+	}
+
+	version, err = NormalizeReleaseVersion(version)
+	if err != nil {
+		return ReleasePreparation{}, err
+	}
+
+	tag, err := NormalizeReleaseTag(version)
+	if err != nil {
+		return ReleasePreparation{}, err
+	}
+
+	preparation := ReleasePreparation{
+		Version:  version,
+		Tag:      tag,
+		Channels: defaultReleaseChannels(),
+		Warnings: []ReleaseIssue{},
+		Blockers: []ReleaseIssue{},
+	}
+
+	if exactMatches := exactTagConflicts(tag, existingTags); len(exactMatches) > 0 {
+		preparation.Blockers = append(preparation.Blockers, ReleaseIssue{
+			Code:    "exact-tag-conflict",
+			Message: fmt.Sprintf("release tag %s already exists", tag),
+			Details: exactMatches,
+		})
+	}
+
+	if semanticAliases := semanticTagAliases(tag, existingTags); len(semanticAliases) > 0 {
+		preparation.Blockers = append(preparation.Blockers, ReleaseIssue{
+			Code:    "semantic-tag-conflict",
+			Message: fmt.Sprintf("existing legacy tags %s conflict with requested tag %s", strings.Join(semanticAliases, ", "), tag),
+			Details: semanticAliases,
+		})
+	}
+
+	return preparation, nil
+}
+
+func (p ReleasePreparation) SelectedChannelIDs() []string {
+	ids := make([]string, 0, len(p.Channels))
+	for _, channel := range p.Channels {
+		if channel.Selected {
+			ids = append(ids, channel.ID)
+		}
+	}
+	return ids
+}
+
+func defaultReleaseChannels() []ReleaseChannelPlan {
+	policy := CurrentDistributionPolicy()
+	channels := make([]ReleaseChannelPlan, 0, len(policy.SupportedChannels))
+
+	for _, channel := range policy.SupportedChannels {
+		channels = append(channels, ReleaseChannelPlan{
+			ID:                channel.ID,
+			Name:              channel.Name,
+			PublicationTarget: channel.PublicationTarget,
+			Selected:          true,
+			Readiness:         releaseChannelReadinessPending,
+		})
+	}
+
+	return channels
+}
+
+func exactTagConflicts(targetTag string, existingTags []string) []string {
+	target, err := NormalizeReleaseTag(targetTag)
+	if err != nil {
+		return nil
+	}
+
+	conflicts := make([]string, 0, len(existingTags))
+	for _, tag := range existingTags {
+		if tag == target {
+			conflicts = append(conflicts, tag)
+		}
+	}
+
+	sort.Strings(conflicts)
+	return conflicts
 }
 
 func semanticTagAliases(targetTag string, existingTags []string) []string {

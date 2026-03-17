@@ -1,6 +1,10 @@
 package release
 
-import "testing"
+import (
+	"reflect"
+	"strings"
+	"testing"
+)
 
 func TestReleaseTagNormalization(t *testing.T) {
 	t.Run("normalizes canonical operator input", func(t *testing.T) {
@@ -82,5 +86,56 @@ func TestReleaseVersionProposal(t *testing.T) {
 				t.Fatalf("ProposeReleaseVersion(%q, %v) = %q, want %q", tc.milestone, tc.existingTags, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestReleasePreparation(t *testing.T) {
+	preparation, err := BuildReleasePreparation("", "v1.2", nil)
+	if err != nil {
+		t.Fatalf("BuildReleasePreparation() error = %v", err)
+	}
+
+	if preparation.Version != "1.2.0" {
+		t.Fatalf("Version = %q, want %q", preparation.Version, "1.2.0")
+	}
+	if preparation.Tag != "v1.2.0" {
+		t.Fatalf("Tag = %q, want %q", preparation.Tag, "v1.2.0")
+	}
+	if got, want := preparation.SelectedChannelIDs(), []string{
+		ReleaseChannelGitHubArchive,
+		ReleaseChannelHomebrew,
+		ReleaseChannelScoop,
+		ReleaseChannelNPM,
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("SelectedChannelIDs() = %v, want %v", got, want)
+	}
+
+	for _, channel := range preparation.Channels {
+		if !channel.Selected {
+			t.Fatalf("channel %s should be selected by default", channel.ID)
+		}
+		if channel.Readiness != releaseChannelReadinessPending {
+			t.Fatalf("channel %s readiness = %q, want %q", channel.ID, channel.Readiness, releaseChannelReadinessPending)
+		}
+	}
+}
+
+func TestReleaseSemanticTagConflicts(t *testing.T) {
+	preparation, err := BuildReleasePreparation("1.1.0", "v1.1", []string{"v1.1"})
+	if err != nil {
+		t.Fatalf("BuildReleasePreparation() error = %v", err)
+	}
+
+	if len(preparation.Blockers) != 1 {
+		t.Fatalf("Blockers len = %d, want 1", len(preparation.Blockers))
+	}
+	if preparation.Blockers[0].Code != "semantic-tag-conflict" {
+		t.Fatalf("Blocker code = %q, want %q", preparation.Blockers[0].Code, "semantic-tag-conflict")
+	}
+	if !strings.Contains(preparation.Blockers[0].Message, "v1.1") || !strings.Contains(preparation.Blockers[0].Message, "v1.1.0") {
+		t.Fatalf("Blocker message = %q, want both legacy and canonical tags", preparation.Blockers[0].Message)
+	}
+	if got, want := preparation.Blockers[0].Details, []string{"v1.1"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("Blocker details = %v, want %v", got, want)
 	}
 }
