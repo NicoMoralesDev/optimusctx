@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -53,6 +54,64 @@ func TestChecksumManifest(t *testing.T) {
 		if strings.Contains(config, forbidden) {
 			t.Fatalf(".goreleaser.yml should stay focused on the shipped Go binary, found %q", forbidden)
 		}
+	}
+}
+
+func TestCanonicalReleaseMatchesGoReleaserContract(t *testing.T) {
+	config := readRepoFile(t, ".goreleaser.yml")
+	workflow := readRepoFile(t, ".github/workflows/release.yml")
+
+	release, err := NewCanonicalRelease("1.2.3")
+	if err != nil {
+		t.Fatalf("NewCanonicalRelease() error = %v", err)
+	}
+
+	if got, want := uniqueAssetValues(release.Assets, func(asset CanonicalReleaseAsset) string {
+		return asset.GOOS
+	}), yamlList(config, "goos"); !reflect.DeepEqual(got, want) {
+		t.Fatalf("CanonicalRelease goos = %v, want %v", got, want)
+	}
+	if got, want := uniqueAssetValues(release.Assets, func(asset CanonicalReleaseAsset) string {
+		return asset.GOARCH
+	}), yamlList(config, "goarch"); !reflect.DeepEqual(got, want) {
+		t.Fatalf("CanonicalRelease goarch = %v, want %v", got, want)
+	}
+
+	if got, want := release.ChecksumManifest.FileName, "optimusctx_1.2.3_checksums.txt"; got != want {
+		t.Fatalf("CanonicalRelease checksum file = %q, want %q", got, want)
+	}
+	if !strings.Contains(config, `name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"`) {
+		t.Fatalf(".goreleaser.yml must keep the canonical checksum manifest template")
+	}
+
+	if got, want := release.Repository.Owner, "niccrow"; got != want {
+		t.Fatalf("CanonicalRelease repository owner = %q, want %q", got, want)
+	}
+	if got, want := release.Repository.Name, "optimusctx"; got != want {
+		t.Fatalf("CanonicalRelease repository name = %q, want %q", got, want)
+	}
+	if got, want := release.ReleaseURL, "https://github.com/niccrow/optimusctx/releases/tag/v1.2.3"; got != want {
+		t.Fatalf("CanonicalRelease ReleaseURL = %q, want %q", got, want)
+	}
+
+	for _, asset := range release.Assets {
+		wantURLPrefix := "https://github.com/niccrow/optimusctx/releases/download/v1.2.3/"
+		if !strings.HasPrefix(asset.DownloadURL, wantURLPrefix) {
+			t.Fatalf("CanonicalRelease asset URL %q must use %q", asset.DownloadURL, wantURLPrefix)
+		}
+		if got, want := asset.FileName, archiveName(release.Version, asset.GOOS, asset.GOARCH); got != want {
+			t.Fatalf("CanonicalRelease asset file = %q, want %q", got, want)
+		}
+		if got, want := asset.ArchiveFormat, archiveFormat(asset.GOOS); got != want {
+			t.Fatalf("CanonicalRelease asset format = %q, want %q", got, want)
+		}
+	}
+
+	if !strings.Contains(workflow, `ref=refs/tags/$INPUT_TAG`) {
+		t.Fatalf(".github/workflows/release.yml must keep existing-tag release reuse")
+	}
+	if !strings.Contains(workflow, `uses: goreleaser/goreleaser-action@v6`) {
+		t.Fatalf(".github/workflows/release.yml must keep GitHub Release publication rooted in GoReleaser")
 	}
 }
 
@@ -196,6 +255,21 @@ func yamlList(content, key string) []string {
 
 func leadingSpaces(line string) int {
 	return len(line) - len(strings.TrimLeft(line, " "))
+}
+
+func uniqueAssetValues(assets []CanonicalReleaseAsset, project func(CanonicalReleaseAsset) string) []string {
+	values := make(map[string]struct{}, len(assets))
+	for _, asset := range assets {
+		values[project(asset)] = struct{}{}
+	}
+
+	ordered := make([]string, 0, len(values))
+	for value := range values {
+		ordered = append(ordered, value)
+	}
+	sort.Strings(ordered)
+
+	return ordered
 }
 
 func readRepoFile(t *testing.T, relPath string) string {
