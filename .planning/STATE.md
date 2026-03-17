@@ -4,17 +4,17 @@ milestone: v1.2
 milestone_name: release automation and operator workflow
 current_phase: 16
 current_phase_name: release versioning and preflight guardrails
-current_plan: Phase 16 planned
-status: phase_planned
-stopped_at: Planned Phase 16 on 2026-03-17
-last_updated: "2026-03-17T17:35:00-03:00"
+current_plan: 2
+status: executing
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-03-17T20:08:53.911Z"
 last_activity: 2026-03-17
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 33
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase 16 planned
+**Status:** Ready to execute
 **Current Phase:** 16
 **Current Phase Name:** release versioning and preflight guardrails
 **Total Phases:** 4
-**Current Plan:** Phase 16 planned
+**Current Plan:** 2
 **Total Plans in Phase:** 3
-**Progress:** [░░░░░░░░░░] 0%
+**Progress:** [███░░░░░░░] 33%
 **Last Activity:** 2026-03-17
-**Last Activity Description:** Phase 16 researched, validated, and planned
+**Last Activity Description:** Completed plan 16-01 canonical semver and release preparation contract
 
 ## Project Memory
 
@@ -45,9 +45,9 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `16-release-versioning-and-preflight-guardrails`
-- Next execution action: run `$gsd-execute-phase 16`
+- Next execution action: execute `16-02` or continue `$gsd-execute-phase 16`
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: v1.2 requirements are defined and mapped; Phase 16 now has three executable plans and Phases 17-19 remain unplanned
+- Coverage status: v1.2 requirements are defined and mapped; Plan 16-01 is complete and Plans 16-02 through 16-03 remain pending
 
 ## Recent Decisions
 
@@ -230,6 +230,7 @@ progress:
 | Phase 15 P01 | 2min | 2 tasks | 6 files |
 | Phase 15 P02 | 9min | 2 tasks | 6 files |
 | Phase 15 P03 | 4min | 2 tasks | 9 files |
+| Phase 16 P01 | 2min | 2 tasks | 2 files |
 
 ## Decisions Made
 
@@ -385,6 +386,8 @@ progress:
 - [Phase 15]: Committed npm package metadata stays release-derived and version-placeholder based until publish time. — This preserves one canonical GitHub Release asset contract while still giving CI a deterministic package shape to publish later.
 - [Phase 15]: npm host support is limited to darwin, linux, and windows on amd64 and arm64. — The wrapper should fail loudly outside the shipped GoReleaser matrix instead of silently widening runtime support.
 - [Phase 15]: npm publication now runs after GitHub Release archive publication and uses a render step instead of expanding GoReleaser into a second package definition. — This keeps GitHub Releases as the single release source of truth while making npm a truthful downstream wrapper channel.
+- [Phase 16]: Release preparation accepts only MAJOR.MINOR.PATCH versions and emits only vMAJOR.MINOR.PATCH tags.
+- [Phase 16]: Legacy tags such as v1.1 canonicalize to v1.1.0 and block the same semantic release lane.
 
 ## Blockers
 
@@ -392,8 +395,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-17T13:19:30.629Z
-**Stopped At:** Completed 15-03-PLAN.md
+**Last Date:** 2026-03-17T20:08:53.908Z
+**Stopped At:** Completed 16-01-PLAN.md
 **Resume File:** None
 
 ---
