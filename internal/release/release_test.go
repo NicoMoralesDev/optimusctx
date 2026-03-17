@@ -208,15 +208,24 @@ func TestNPMPublishConfig(t *testing.T) {
 	}
 
 	for _, want := range []string{
-		"package.json",
-		"RELEASE_TAG",
-		"optimusctx_${versionNoV}_${platform.os}_${platform.arch}",
-		"checksumManifest.url",
-		"retagCanonicalURL",
+		"go run ./cmd/render-npm-package",
+		"--release-tag",
+		"--package-json",
 		"@niccrow/optimusctx",
 	} {
 		if !strings.Contains(renderScript, want) {
 			t.Fatalf("scripts/render-npm-package.sh missing %q", want)
+		}
+	}
+
+	for _, forbidden := range []string{
+		"retagCanonicalURL",
+		"expectedArchive",
+		"RELEASE_TAG",
+		"checksumManifest.url",
+	} {
+		if strings.Contains(renderScript, forbidden) {
+			t.Fatalf("scripts/render-npm-package.sh should not contain %q", forbidden)
 		}
 	}
 }
@@ -270,9 +279,9 @@ func TestCanonicalReleaseFeedsDownstreamConsumers(t *testing.T) {
 		t.Fatalf("ReadFile(rendered package.json) error = %v", err)
 	}
 
-	expectedManifest, err := renderNPMPackageManifest(npmRelease)
+	expectedManifest, err := RenderNPMPackageManifestForTag(canonicalRelease.Tag)
 	if err != nil {
-		t.Fatalf("renderNPMPackageManifest() error = %v", err)
+		t.Fatalf("RenderNPMPackageManifestForTag() error = %v", err)
 	}
 	if string(renderedManifest) != expectedManifest {
 		t.Fatalf("rendered npm package manifest drifted from canonical release manifest\nwant:\n%s\ngot:\n%s", expectedManifest, renderedManifest)

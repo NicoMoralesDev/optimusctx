@@ -19,8 +19,6 @@ case "${TAG}" in
     ;;
 esac
 
-VERSION_NO_V="${TAG#v}"
-
 for required in \
   "${SOURCE_DIR}/package.json" \
   "${SOURCE_DIR}/bin/optimusctx.js" \
@@ -39,53 +37,9 @@ chmod +x "${OUTPUT_DIR}/bin/optimusctx.js"
 
 PACKAGE_JSON_PATH="${OUTPUT_DIR}/package.json"
 
-PACKAGE_JSON_PATH="${PACKAGE_JSON_PATH}" RELEASE_TAG="${TAG}" VERSION_NO_V="${VERSION_NO_V}" node <<'EOF'
-const fs = require('node:fs');
+(
+  cd "${ROOT_DIR}"
+  go run ./cmd/render-npm-package --release-tag "${TAG}" --package-json "${PACKAGE_JSON_PATH}"
+)
 
-const packageJsonPath = process.env.PACKAGE_JSON_PATH;
-const releaseTag = process.env.RELEASE_TAG;
-const versionNoV = process.env.VERSION_NO_V;
-
-if (!packageJsonPath || !releaseTag || !versionNoV) {
-  throw new Error('package.json rendering requires PACKAGE_JSON_PATH, RELEASE_TAG, and VERSION_NO_V');
-}
-
-const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-const currentVersion = pkg.optimusctx.version;
-const currentTag = pkg.optimusctx.releaseTag;
-const releasePath = `/releases/download/${currentTag}/`;
-const nextReleasePath = `/releases/download/${releaseTag}/`;
-
-function retagCanonicalURL(url) {
-  if (!url.includes(releasePath)) {
-    throw new Error(`expected canonical release URL containing ${releasePath}: ${url}`);
-  }
-  return url.replace(releasePath, nextReleasePath).replaceAll(currentVersion, versionNoV);
-}
-
-pkg.version = versionNoV;
-pkg.optimusctx.version = versionNoV;
-pkg.optimusctx.releaseTag = releaseTag;
-
-// Preserve the canonical release contract emitted by the Go helper and retag it.
-const checksumManifest = pkg.optimusctx.checksumManifest;
-checksumManifest.file = checksumManifest.file.replace(currentVersion, versionNoV);
-checksumManifest.url = retagCanonicalURL(checksumManifest.url);
-
-for (const platform of Object.values(pkg.optimusctx.platforms)) {
-  // The archive contract stays canonical: optimusctx_${versionNoV}_${platform.os}_${platform.arch}
-  const extension = platform.os === 'windows' ? 'zip' : 'tar.gz';
-  const archive = platform.archive.replace(currentVersion, versionNoV);
-  const expectedArchive = `optimusctx_${versionNoV}_${platform.os}_${platform.arch}.${extension}`;
-  if (archive !== expectedArchive) {
-    throw new Error(`canonical archive contract drifted: expected ${expectedArchive}, got ${archive}`);
-  }
-  platform.archive = archive;
-  platform.archiveFormat = extension;
-  platform.archiveUrl = retagCanonicalURL(platform.archiveUrl);
-}
-
-fs.writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
-EOF
-
-echo "Rendered @niccrow/optimusctx ${VERSION_NO_V} to ${OUTPUT_DIR}"
+echo "Rendered @niccrow/optimusctx ${TAG#v} to ${OUTPUT_DIR}"
