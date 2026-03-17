@@ -4,17 +4,17 @@ milestone: v1.2
 milestone_name: release automation and operator workflow
 current_phase: 17
 current_phase_name: canonical release orchestration and metadata
-current_plan: 4
-status: verifying
-stopped_at: Completed 17-04-PLAN.md
-last_updated: "2026-03-17T23:04:55.996Z"
+current_plan: 7
+status: executing
+stopped_at: Completed 17-07-PLAN.md
+last_updated: "2026-03-17T23:54:59Z"
 last_activity: 2026-03-17
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
+  completed_phases: 1
+  total_plans: 11
+  completed_plans: 10
+  percent: 91
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase complete — ready for verification
+**Status:** Phase 17 gap-closure execution in progress
 **Current Phase:** 17
 **Current Phase Name:** canonical release orchestration and metadata
 **Total Phases:** 4
-**Current Plan:** 4
-**Total Plans in Phase:** 4
-**Progress:** [██████████] 100%
+**Current Plan:** 7
+**Total Plans in Phase:** 7
+**Progress:** [█████████░] 91%
 **Last Activity:** 2026-03-17
-**Last Activity Description:** Completed plan 17-04 and moved Phase 17 to verification
+**Last Activity Description:** Completed plan 17-07; Phase 17 re-verification is still blocked on reconciling missing 17-06 summary metadata
 
 ## Project Memory
 
@@ -45,9 +45,9 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `17-canonical-release-orchestration-and-metadata`
-- Next execution action: verify completed Phase 17 outputs and start planning Phase 18 multi-channel publication fan-out
+- Next execution action: reconcile the missing 17-06 summary metadata, then re-verify completed Phase 17 outputs before planning Phase 18 multi-channel publication fan-out
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: Phase 17 plans 01-04 are complete and ready for verification
+- Coverage status: Phase 17 plans 01-05 and 17-07 are complete; 17-06 implementation exists on the branch but its summary metadata still needs reconciliation before Phase 17 re-verification
 
 ## Recent Decisions
 
@@ -238,6 +238,8 @@ progress:
 | Phase 17 P02 | 7m | 2 tasks | 4 files |
 | Phase 17 P03 | 7m | 2 tasks | 6 files |
 | Phase 17 P04 | 8min | 2 tasks | 4 files |
+| Phase 17 P05 | 2min | 2 tasks | 1 files |
+| Phase 17 P07 | 8min | 2 tasks | 4 files |
 
 ## Decisions Made
 
@@ -409,6 +411,10 @@ progress:
 - [Phase 17]: The npm render script preserves the committed Go-rendered package.json structure and retags its canonical release URLs for the requested version instead of inventing a second release URL rule set.
 - [Phase 17]: GitHub Release remains the canonical tagged root in workflow comments, verification commands, and operator docs rather than being treated as a peer publication channel.
 - [Phase 17]: workflow_dispatch release_tag is documented and tested as reuse of an existing tagged release contract, and Phase 17 docs explicitly avoid claiming automated Homebrew or Scoop fan-out.
+- [Phase 17]: Canonical release regression coverage should assert the exact six-target matrix, repository coordinates, checksum manifest URL, and archive filenames from one shared contract instead of inferring behavior from asset counts.
+- [Phase 17]: Unsupported canonical targets stay keyed as goos/goarch so downstream consumers and tests can rely on deterministic lookup and error text.
+- [Phase 17]: The npm wrapper must render package.json from Go canonical release helpers instead of retagging committed JSON in shell or Node.
+- [Phase 17]: Downstream release-channel regressions should compare rendered artifacts byte-for-byte against the canonical Go renderer rather than reconstructing URLs or archive names locally.
 
 ## Blockers
 
@@ -416,8 +422,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-17T23:04:55.993Z
-**Stopped At:** Completed 17-04-PLAN.md
+**Last Date:** 2026-03-17T23:54:59Z
+**Stopped At:** Completed 17-07-PLAN.md
 **Resume File:** None
 
 ---
