@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -178,6 +179,123 @@ func TestReleasePrepareCommand(t *testing.T) {
 		}
 		if !strings.Contains(err.Error(), `unknown release channel "unknown"`) {
 			t.Fatalf("error = %v, want unknown channel rejection", err)
+		}
+	})
+}
+
+func TestReleasePrepareHelp(t *testing.T) {
+	var stdout bytes.Buffer
+	if err := NewRootCommand().Execute([]string{"release", "prepare", "--help"}, &stdout); err != nil {
+		t.Fatalf("Execute(release prepare --help) error = %v", err)
+	}
+
+	output := stdout.String()
+	for _, want := range []string{
+		"optimusctx release prepare",
+		"--version",
+		"--channel",
+		"--json",
+		"--confirm",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("help output missing %q in %q", want, output)
+		}
+	}
+}
+
+func TestReleasePrepareConfirmGate(t *testing.T) {
+	t.Run("prints a review-only confirmation without mutation", func(t *testing.T) {
+		deps := stubReleasePrepareDeps(t)
+		deps.preparation = release.ReleasePreparation{
+			Version: "1.2.0",
+			Tag:     "v1.2.0",
+			Channels: []release.ReleaseChannelPlan{
+				{
+					ID:                release.ReleaseChannelGitHubArchive,
+					Name:              "GitHub Release archives",
+					PublicationTarget: "github.com/niccrow/optimusctx releases",
+					Selected:          true,
+					Readiness:         "ready",
+				},
+				{
+					ID:                release.ReleaseChannelNPM,
+					Name:              "npm",
+					PublicationTarget: "@niccrow/optimusctx",
+					Selected:          true,
+					Readiness:         "ready",
+				},
+			},
+		}
+
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"release", "prepare", "--confirm"}, &stdout); err != nil {
+			t.Fatalf("Execute(release prepare --confirm) error = %v", err)
+		}
+
+		output := stdout.String()
+		for _, want := range []string{
+			"release plan confirmed",
+			"confirmed tag: v1.2.0",
+			"confirmed channels: github-release-archive, npm",
+			"no tag created",
+			"publication not started",
+		} {
+			if !strings.Contains(output, want) {
+				t.Fatalf("confirm output missing %q in %q", want, output)
+			}
+		}
+	})
+
+	t.Run("emits machine-readable blocker output and returns non-zero", func(t *testing.T) {
+		deps := stubReleasePrepareDeps(t)
+		deps.preparation = release.ReleasePreparation{
+			Version: "1.2.0",
+			Tag:     "v1.2.0",
+			Channels: []release.ReleaseChannelPlan{
+				{
+					ID:                release.ReleaseChannelGitHubArchive,
+					Name:              "GitHub Release archives",
+					PublicationTarget: "github.com/niccrow/optimusctx releases",
+					Selected:          true,
+					Readiness:         "blocked",
+				},
+			},
+			Warnings: []release.ReleaseIssue{
+				{Code: "warning", Message: "watch this"},
+			},
+			Blockers: []release.ReleaseIssue{
+				{Code: "blocked", Message: "stop here"},
+			},
+		}
+
+		var stdout bytes.Buffer
+		err := NewRootCommand().Execute([]string{"release", "prepare", "--json"}, &stdout)
+		if !errors.Is(err, errReleasePlanHasBlockers) {
+			t.Fatalf("Execute(release prepare --json) error = %v, want %v", err, errReleasePlanHasBlockers)
+		}
+
+		var payload map[string]any
+		if unmarshalErr := json.Unmarshal(stdout.Bytes(), &payload); unmarshalErr != nil {
+			t.Fatalf("json.Unmarshal(stdout) error = %v; output=%s", unmarshalErr, stdout.String())
+		}
+
+		if got, want := payload["version"], "1.2.0"; got != want {
+			t.Fatalf("json version = %v, want %v", got, want)
+		}
+		if got, want := payload["tag"], "v1.2.0"; got != want {
+			t.Fatalf("json tag = %v, want %v", got, want)
+		}
+		for _, key := range []string{"channels", "warnings", "blockers", "checks"} {
+			value, ok := payload[key]
+			if !ok {
+				t.Fatalf("json payload missing %q: %s", key, stdout.String())
+			}
+			if _, ok := value.([]any); !ok {
+				t.Fatalf("json %q should be an array, got %T", key, value)
+			}
+		}
+		if got, want := payload["status"], "blocked"; got != want {
+			t.Fatalf("json status = %v, want %v", got, want)
 		}
 	})
 }

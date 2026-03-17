@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,6 +22,7 @@ var (
 	releasePrepareResolveRepoRoot = repository.ResolveRepositoryRoot
 	releasePrepareLoadMilestone   = loadReleaseMilestone
 	releasePrepareCommandService  = defaultReleasePrepareCommandService
+	errReleasePlanHasBlockers     = errors.New("release plan has blockers")
 	errReleaseRequiresSubcommand  = errors.New("release requires a subcommand")
 )
 
@@ -40,13 +42,16 @@ type releasePrepareOptions struct {
 }
 
 type releasePrepareJSONOutput struct {
-	Version  string                       `json:"version"`
-	Tag      string                       `json:"tag"`
-	Channels []release.ReleaseChannelPlan `json:"channels"`
-	Checks   []release.ReleaseCheck       `json:"checks"`
-	Warnings []release.ReleaseIssue       `json:"warnings"`
-	Blockers []release.ReleaseIssue       `json:"blockers"`
-	NextStep string                       `json:"nextStep"`
+	Status        string                       `json:"status"`
+	Version       string                       `json:"version"`
+	Tag           string                       `json:"tag"`
+	Channels      []release.ReleaseChannelPlan `json:"channels"`
+	Checks        []release.ReleaseCheck       `json:"checks"`
+	Warnings      []release.ReleaseIssue       `json:"warnings"`
+	Blockers      []release.ReleaseIssue       `json:"blockers"`
+	Confirmed     bool                         `json:"confirmed"`
+	NextStep      string                       `json:"nextStep"`
+	PhaseBoundary string                       `json:"phaseBoundary"`
 }
 
 func newReleaseCommand() *Command {
@@ -118,6 +123,10 @@ func runReleasePrepareCommand(stdout io.Writer, args []string) error {
 		if _, err := io.WriteString(stdout, formatReleasePreparation(preparation, options)); err != nil {
 			return err
 		}
+	}
+
+	if len(preparation.Blockers) > 0 {
+		return errReleasePlanHasBlockers
 	}
 
 	return nil
@@ -310,6 +319,11 @@ func formatReleasePreparation(preparation release.ReleasePreparation, options re
 	writeReleaseIssues(&b, "Warnings", preparation.Warnings)
 
 	_, _ = fmt.Fprintf(&b, "\nNext Step: %s\n", releasePrepareNextStep(preparation, options.Confirm))
+	if options.Confirm && len(preparation.Blockers) == 0 {
+		_, _ = fmt.Fprintf(&b, "release plan confirmed\nconfirmed tag: %s\nconfirmed channels: %s\nPhase 16 review only: no tag created; publication not started.\n", preparation.Tag, strings.Join(preparation.SelectedChannelIDs(), ", "))
+		return b.String()
+	}
+
 	if !options.NoPrompt && len(preparation.Blockers) == 0 {
 		_, _ = io.WriteString(&b, "Confirmation pending: rerun with --confirm after reviewing the plan.\n")
 	}
@@ -334,13 +348,16 @@ func writeReleaseIssues(b *strings.Builder, title string, issues []release.Relea
 
 func writeReleasePrepareJSON(stdout io.Writer, preparation release.ReleasePreparation, confirm bool) error {
 	payload := releasePrepareJSONOutput{
-		Version:  preparation.Version,
-		Tag:      preparation.Tag,
-		Channels: nonNilReleaseChannels(preparation.Channels),
-		Checks:   nonNilReleaseChecks(preparation.Checks),
-		Warnings: nonNilReleaseIssues(preparation.Warnings),
-		Blockers: nonNilReleaseIssues(preparation.Blockers),
-		NextStep: releasePrepareNextStep(preparation, confirm),
+		Status:        releasePrepareStatus(preparation, confirm),
+		Version:       preparation.Version,
+		Tag:           preparation.Tag,
+		Channels:      nonNilReleaseChannels(preparation.Channels),
+		Checks:        nonNilReleaseChecks(preparation.Checks),
+		Warnings:      nonNilReleaseIssues(preparation.Warnings),
+		Blockers:      nonNilReleaseIssues(preparation.Blockers),
+		Confirmed:     confirm && len(preparation.Blockers) == 0,
+		NextStep:      releasePrepareNextStep(preparation, confirm),
+		PhaseBoundary: "Phase 16 stops before tag creation and publication.",
 	}
 
 	encoder := json.NewEncoder(stdout)
@@ -348,12 +365,23 @@ func writeReleasePrepareJSON(stdout io.Writer, preparation release.ReleasePrepar
 	return encoder.Encode(payload)
 }
 
+func releasePrepareStatus(preparation release.ReleasePreparation, confirm bool) string {
+	switch {
+	case len(preparation.Blockers) > 0:
+		return "blocked"
+	case confirm:
+		return "confirmed"
+	default:
+		return "ready"
+	}
+}
+
 func releasePrepareNextStep(preparation release.ReleasePreparation, confirm bool) string {
 	switch {
 	case len(preparation.Blockers) > 0:
 		return "Resolve the blockers, then rerun optimusctx release prepare."
 	case confirm:
-		return "Review acknowledged. Phase 16 still stops before tag creation and publication."
+		return "Phase 16 review gate is complete; no tag created and publication not started."
 	default:
 		return "Review the plan, then rerun optimusctx release prepare --confirm when ready."
 	}
@@ -391,4 +419,12 @@ func nonEmptyReleaseLines(input string) []string {
 		filtered = append(filtered, line)
 	}
 	return filtered
+}
+
+func readReleaseFile(files fs.FS, path string) (string, error) {
+	data, err := fs.ReadFile(files, path)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
