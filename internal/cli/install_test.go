@@ -118,6 +118,9 @@ func TestArchiveInstallSmoke(t *testing.T) {
 	for _, want := range []string{
 		"brew install niccrow/tap/optimusctx",
 		"scoop install niccrow/optimusctx",
+		"npm install -g @niccrow/optimusctx",
+		"npx @niccrow/optimusctx version",
+		"npx @niccrow/optimusctx doctor",
 		"optimusctx version",
 		"optimusctx doctor",
 		"optimusctx snippet",
@@ -134,6 +137,23 @@ func TestArchiveInstallSmoke(t *testing.T) {
 	} {
 		if strings.Contains(guide, banned) {
 			t.Fatalf("docs/install-and-verify.md should not contain %q", banned)
+		}
+	}
+}
+
+func TestNPMInstallGuide(t *testing.T) {
+	guide := readCLIRepoFile(t, "docs/install-and-verify.md")
+
+	for _, want := range []string{
+		"npm install -g @niccrow/optimusctx",
+		"npx @niccrow/optimusctx version",
+		"npx @niccrow/optimusctx doctor",
+		"canonical tagged GitHub Release binary",
+		"package-local `runtime/` directory",
+		"optimusctx install --client",
+	} {
+		if !strings.Contains(guide, want) {
+			t.Fatalf("docs/install-and-verify.md missing %q", want)
 		}
 	}
 }

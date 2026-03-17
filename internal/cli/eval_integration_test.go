@@ -119,6 +119,9 @@ func TestReleaseVerificationCommands(t *testing.T) {
 		"status: preview only",
 		"brew install niccrow/tap/optimusctx",
 		"scoop install niccrow/optimusctx",
+		"npm install -g @niccrow/optimusctx",
+		"npx @niccrow/optimusctx version",
+		"npx @niccrow/optimusctx doctor",
 	}
 	for _, fragment := range requiredGuideFragments {
 		assertContains(t, guide, fragment)

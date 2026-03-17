@@ -7,6 +7,8 @@ Supported install channels for v1.1:
 - GitHub release archives for macOS, Linux, and Windows
 - Homebrew for macOS and Linux
 - Scoop for Windows
+- npm global install for the JavaScript ecosystem wrapper path
+- `npx` for ephemeral execution of the same wrapper package
 
 The verification path below uses the shipped commands that matter for first-run confidence:
 
@@ -65,6 +67,25 @@ brew install niccrow/tap/optimusctx
 scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git
 scoop install niccrow/optimusctx
 ```
+
+### Option D: Install globally with npm
+
+```bash
+npm install -g @niccrow/optimusctx
+```
+
+The npm package is a wrapper over the canonical tagged GitHub Release binary. During installation it downloads the exact release archive for your host platform, verifies the SHA-256 from `optimusctx_<version>_checksums.txt`, and unpacks the binary under the package-local `runtime/` directory.
+
+The npm path does not register MCP clients or write config files. Client configuration remains explicit and opt-in through `optimusctx install --client ...`.
+
+### Option E: Run the release wrapper with npx
+
+```bash
+npx @niccrow/optimusctx version
+npx @niccrow/optimusctx doctor
+```
+
+Use the `npx` path when you want the same package wrapper without keeping a global install on your PATH. If you decide to keep OptimusCtx installed, switch to `npm install -g @niccrow/optimusctx` and then follow the verification flow below with the plain `optimusctx` command.
 
 ## 2. Verify the installed binary reports release metadata
 
@@ -164,7 +185,7 @@ This is the same MCP contract that `optimusctx snippet` prints, but `--write` is
 v1.1 intentionally keeps distribution narrow:
 
 - supported release retrieval: GitHub release archives
-- supported package managers: Homebrew and Scoop
+- supported package managers: Homebrew, Scoop, and the npm wrapper package
 - supported local verification: `version`, `init`, `doctor`, `snippet`, optional `install --client`
 
 Not claimed in this milestone:
