@@ -1,13 +1,13 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: validation, benchmarking, and distribution
-current_phase: 15
-current_phase_name: add npm and npx distribution option
-current_plan: Not started
-status: completed
-stopped_at: Completed 15-03-PLAN.md
-last_updated: "2026-03-17T13:25:06.785Z"
+milestone: null
+milestone_name: null
+current_phase: null
+current_phase_name: null
+current_plan: null
+status: ready_for_next_milestone
+stopped_at: Archived v1.1 on 2026-03-17
+last_updated: "2026-03-17T15:59:49-03:00"
 last_activity: 2026-03-17
 progress:
   total_phases: 7
@@ -22,16 +22,16 @@ progress:
 **Initialized:** 2026-03-14
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
-**Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Milestone complete
-**Current Phase:** 15
-**Current Phase Name:** add npm and npx distribution option
+**Requirements reference:** `.planning/milestones/v1.1-REQUIREMENTS.md` (latest shipped milestone)
+**Status:** Ready for next milestone planning
+**Current Phase:** None
+**Current Phase Name:** No active phase
 **Total Phases:** 7
-**Current Plan:** Not started
-**Total Plans in Phase:** 3
+**Current Plan:** None
+**Total Plans in Phase:** 0
 **Progress:** [██████████] 100%
 **Last Activity:** 2026-03-17
-**Last Activity Description:** Phase 15 verified and milestone bookkeeping updated for the completed npm/npx distribution follow-up
+**Last Activity Description:** v1.1 milestone archived and planning reset for the next milestone
 
 ## Project Memory
 
@@ -43,11 +43,11 @@ progress:
 
 ## Current Planning Context
 
-- Active milestone: v1.1 validation, benchmarking, distribution, and npm/npx distribution follow-up complete
-- Active phase: 15-add-npm-and-npx-distribution-option
-- Next planning action: archive the completed `v1.1` milestone or start the next milestone cycle
-- Historical v1.0 requirements and roadmap are archived under `.planning/milestones/`
-- Coverage status: v1.0 shipped; v1.1 validation, benchmarking, and distribution work is complete through Phase 15, including the npm/npx distribution follow-up
+- Active milestone: none; `v1.1` is archived
+- Active phase: none
+- Next planning action: run `$gsd-new-milestone` to define fresh requirements and the next phase sequence
+- Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
+- Coverage status: the latest shipped scope is `v1.1`; no new milestone requirements are active yet
 
 ## Recent Decisions
 
@@ -81,7 +81,7 @@ progress:
 ## References
 
 - Source of truth for intent: `.planning/PROJECT.md`
-- Source of truth for scope: `.planning/REQUIREMENTS.md`
+- Source of truth for last shipped scope: `.planning/milestones/v1.1-REQUIREMENTS.md`
 - Source of truth for phase sequence: `.planning/ROADMAP.md`
 - Source of truth for technical direction: `.planning/research/SUMMARY.md`
 
