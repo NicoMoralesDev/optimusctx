@@ -21,7 +21,13 @@
 
 **Goal**: Create a guided release-preparation flow that proposes a version and tag, validates release prerequisites, and stops cleanly before publication when the release state is invalid.
 **Depends on**: Phase 15
-**Plans**: 0 plans yet
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 16-01: canonical semver and release-preparation contract
+- [ ] 16-02: git and prerequisite preflight probes plus JSON review model
+- [ ] 16-03: operator-facing release prepare CLI and confirmation gate
 
 **Requirements covered:** `REL-01`, `REL-02`, `REL-03`
 
@@ -79,12 +85,12 @@
 
 ## Current Status
 
-Active milestone: `v1.2` defined and ready for planning
+Active milestone: `v1.2` with Phase 16 planned
 
 Next step:
 
-- Plan Phase 16 to define the interactive release preparation and preflight behavior
+- Execute Phase 16 to build the interactive release preparation and preflight behavior
 - Keep all new release-channel automation anchored to the existing GitHub Release archive contract
 
 ---
-*Last updated: 2026-03-17 after starting v1.2 milestone*
+*Last updated: 2026-03-17 after planning Phase 16*

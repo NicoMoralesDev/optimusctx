@@ -4,15 +4,15 @@ milestone: v1.2
 milestone_name: release automation and operator workflow
 current_phase: 16
 current_phase_name: release versioning and preflight guardrails
-current_plan: Not started
-status: milestone_defined
-stopped_at: Started v1.2 on 2026-03-17
-last_updated: "2026-03-17T16:40:53-03:00"
+current_plan: Phase 16 planned
+status: phase_planned
+stopped_at: Planned Phase 16 on 2026-03-17
+last_updated: "2026-03-17T17:35:00-03:00"
 last_activity: 2026-03-17
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
+  total_plans: 3
   completed_plans: 0
   percent: 0
 ---
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Milestone v1.2 defined
+**Status:** Phase 16 planned
 **Current Phase:** 16
 **Current Phase Name:** release versioning and preflight guardrails
 **Total Phases:** 4
-**Current Plan:** Not started
-**Total Plans in Phase:** 0
+**Current Plan:** Phase 16 planned
+**Total Plans in Phase:** 3
 **Progress:** [░░░░░░░░░░] 0%
 **Last Activity:** 2026-03-17
-**Last Activity Description:** v1.2 milestone started, requirements defined, and roadmap created
+**Last Activity Description:** Phase 16 researched, validated, and planned
 
 ## Project Memory
 
@@ -45,9 +45,9 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `16-release-versioning-and-preflight-guardrails`
-- Next planning action: run `$gsd-plan-phase 16`
+- Next execution action: run `$gsd-execute-phase 16`
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: v1.2 requirements are defined and mapped; no plans have been created yet
+- Coverage status: v1.2 requirements are defined and mapped; Phase 16 now has three executable plans and Phases 17-19 remain unplanned
 
 ## Recent Decisions
 
@@ -57,6 +57,9 @@ progress:
 - GitHub Release remains the canonical source of truth; npm, Homebrew, and Scoop publish from the same tagged release metadata.
 - Channel publication should support selective reruns for an existing tag so one failed channel does not require rebuilding the whole release.
 - The release operator needs one end-to-end guide for release, verification, republish, and rollback over the real supported channels.
+- Release preparation should standardize on canonical semver tags `vMAJOR.MINOR.PATCH` and treat legacy tags like `v1.1` as semantic conflicts for `v1.1.0`.
+- The Phase 16 front door should expose one shared review contract in text and JSON and remain non-mutating even when the operator confirms the plan.
+- Phase 16 preflight should distinguish git-state blockers, remote-tag blockers, and per-channel readiness blockers instead of failing with one generic release error.
 - v1.1 will stay a proof-and-distribution milestone, not a new runtime-capability milestone.
 - Functional validation will use versioned fixture repositories, rerunnable scenario definitions, and the real shipped CLI and MCP surfaces.
 - Benchmark claims will use a fixed baseline-vs-OptimusCtx methodology with one token estimator and explicit artifact attribution.
@@ -97,6 +100,7 @@ progress:
 ### Roadmap Evolution
 
 - Phase 16 added: Release versioning and preflight guardrails
+- Phase 16 planned: three plans cover semver normalization, preflight probes and review JSON, and an operator-facing `release prepare` CLI
 - Phase 17 added: Canonical release orchestration and metadata
 - Phase 18 added: Multi-channel publication fan-out
 - Phase 19 added: Operator verification, recovery, and end-to-end guide
