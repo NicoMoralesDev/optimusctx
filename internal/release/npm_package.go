@@ -233,6 +233,25 @@ func renderCommittedNPMPackageManifest() (string, error) {
 	return renderNPMPackageManifest(release)
 }
 
+func RenderNPMPackageManifestForTag(releaseTag string) (string, error) {
+	normalizedTag, err := NormalizeReleaseTag(releaseTag)
+	if err != nil {
+		return "", err
+	}
+
+	canonicalRelease, err := NewCanonicalRelease(strings.TrimPrefix(normalizedTag, "v"))
+	if err != nil {
+		return "", err
+	}
+
+	packageRelease, err := newNPMPackageReleaseFromCanonical(canonicalRelease)
+	if err != nil {
+		return "", err
+	}
+
+	return renderNPMPackageManifest(packageRelease)
+}
+
 func checksumManifestName(version string) string {
 	return fmt.Sprintf("%s_%s_checksums.txt", canonicalProjectName, version)
 }
@@ -255,36 +274,7 @@ func npmPlatformAssetFromCanonical(release CanonicalRelease, goos, goarch string
 }
 
 func syntheticCanonicalRelease(version string) CanonicalRelease {
-	release := CanonicalRelease{
-		Version:     version,
-		Tag:         "v" + version,
-		ProjectName: canonicalProjectName,
-		Repository: repositoryRef{
-			Owner: canonicalReleaseOwner,
-			Name:  canonicalReleaseRepo,
-		},
-	}
-	release.ReleaseURL = fmt.Sprintf("%s/releases/tag/%s", release.RepositoryURL(), release.Tag)
-	release.ChecksumManifest = CanonicalChecksumManifest{
-		FileName: checksumManifestName(version),
-		URL:      release.DownloadURL(checksumManifestName(version)),
-	}
-
-	for _, target := range []struct {
-		goos   string
-		goarch string
-	}{
-		{goos: "darwin", goarch: "amd64"},
-		{goos: "darwin", goarch: "arm64"},
-		{goos: "linux", goarch: "amd64"},
-		{goos: "linux", goarch: "arm64"},
-		{goos: "windows", goarch: "amd64"},
-		{goos: "windows", goarch: "arm64"},
-	} {
-		release.Assets = append(release.Assets, release.archiveAsset(target.goos, target.goarch))
-	}
-
-	return release
+	return newCanonicalRelease(version)
 }
 
 func archiveFormat(goos string) string {

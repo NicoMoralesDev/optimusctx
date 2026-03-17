@@ -91,6 +91,25 @@ func TestNPMPackageRendering(t *testing.T) {
 	}
 }
 
+func TestRenderNPMPackageManifestForTag(t *testing.T) {
+	got, err := RenderNPMPackageManifestForTag("v1.2.3")
+	if err != nil {
+		t.Fatalf("RenderNPMPackageManifestForTag() error = %v", err)
+	}
+
+	for _, want := range []string{
+		`"releaseTag": "v1.2.3"`,
+		`"version": "1.2.3"`,
+		`"url": "https://github.com/niccrow/optimusctx/releases/download/v1.2.3/optimusctx_1.2.3_checksums.txt"`,
+		`"archive": "optimusctx_1.2.3_windows_amd64.zip"`,
+		`"archiveUrl": "https://github.com/niccrow/optimusctx/releases/download/v1.2.3/optimusctx_1.2.3_windows_amd64.zip"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("rendered manifest missing %q\n%s", want, got)
+		}
+	}
+}
+
 func TestNPMPackageArchiveSelection(t *testing.T) {
 	release := mustNPMPackageRelease(t, "1.1.0")
 
