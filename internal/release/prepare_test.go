@@ -244,6 +244,7 @@ func TestReleasePrerequisiteChecks(t *testing.T) {
 		for _, path := range []string{
 			goReleaserConfigPath,
 			releaseWorkflowPath,
+			releaseChecklistPath,
 			npmRenderScriptPath,
 			homebrewTemplatePath,
 			scoopTemplatePath,

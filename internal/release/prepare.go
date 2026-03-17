@@ -477,6 +477,7 @@ func applyPrerequisiteChecks(preparation *ReleasePreparation, options ReleasePre
 	requiredFiles := []string{
 		goReleaserConfigPath,
 		releaseWorkflowPath,
+		releaseChecklistPath,
 		npmRenderScriptPath,
 		homebrewTemplatePath,
 		scoopTemplatePath,

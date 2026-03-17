@@ -124,6 +124,38 @@ func TestNPMPublishConfig(t *testing.T) {
 	}
 }
 
+func TestReleasePrerequisiteFiles(t *testing.T) {
+	for _, path := range []string{
+		".goreleaser.yml",
+		".github/workflows/release.yml",
+		"scripts/render-npm-package.sh",
+		"packaging/homebrew/optimusctx.rb.tmpl",
+		"packaging/scoop/optimusctx.json.tmpl",
+		"packaging/npm/package.json",
+	} {
+		if content := readRepoFile(t, path); strings.TrimSpace(content) == "" {
+			t.Fatalf("%s must not be empty", path)
+		}
+	}
+}
+
+func TestReleaseChecklistPublicationCredentials(t *testing.T) {
+	checklist := readRepoFile(t, "docs/release-checklist.md")
+
+	for _, want := range []string{
+		"HOMEBREW_TAP_GITHUB_TOKEN",
+		"SCOOP_BUCKET_GITHUB_TOKEN",
+		"NPM_TOKEN",
+		"niccrow/homebrew-tap",
+		"niccrow/scoop-bucket",
+		"@niccrow/optimusctx",
+	} {
+		if !strings.Contains(checklist, want) {
+			t.Fatalf("docs/release-checklist.md missing %q", want)
+		}
+	}
+}
+
 func yamlList(content, key string) []string {
 	lines := strings.Split(content, "\n")
 	needle := key + ":"
