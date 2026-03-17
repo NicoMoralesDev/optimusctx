@@ -2,6 +2,8 @@
 
 This guide is the canonical operator path for installing a shipped `optimusctx` binary and verifying that the real CLI surface works locally.
 
+If you want the shorter user path from install to daily use, see [`quickstart.md`](./quickstart.md).
+
 Supported install channels for v1.1:
 
 - GitHub release archives for macOS, Linux, and Windows

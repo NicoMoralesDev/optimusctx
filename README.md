@@ -22,6 +22,8 @@ The current command surface covers repository bootstrap, refresh, diagnostics, e
 
 For end-user installation and first-run verification, use the canonical guide at [`docs/install-and-verify.md`](./docs/install-and-verify.md).
 
+For the shortest end-user path from install to daily use, start with [`docs/quickstart.md`](./docs/quickstart.md).
+
 That guide covers:
 
 - GitHub release archives
