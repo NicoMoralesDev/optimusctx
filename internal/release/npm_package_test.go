@@ -1,6 +1,9 @@
 package release
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestNPMPackageMetadata(t *testing.T) {
 	release := mustNPMPackageRelease(t, "1.1.0")
@@ -110,6 +113,59 @@ func TestNPMPackageArchiveSelection(t *testing.T) {
 				t.Fatalf("ArchiveFormat = %q, want %q", got, tc.format)
 			}
 		})
+	}
+}
+
+func TestNPMPackageChecksums(t *testing.T) {
+	release := mustNPMPackageRelease(t, "1.1.0")
+
+	if got, want := release.ChecksumManifest.FileName, "optimusctx_1.1.0_checksums.txt"; got != want {
+		t.Fatalf("ChecksumManifest.FileName = %q, want %q", got, want)
+	}
+	if got, want := release.ChecksumManifest.URL, "https://github.com/niccrow/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_checksums.txt"; got != want {
+		t.Fatalf("ChecksumManifest.URL = %q, want %q", got, want)
+	}
+	for _, asset := range []npmPlatformAsset{
+		release.Platforms.DarwinAMD64,
+		release.Platforms.DarwinARM64,
+		release.Platforms.LinuxAMD64,
+		release.Platforms.LinuxARM64,
+		release.Platforms.WindowsAMD64,
+		release.Platforms.WindowsARM64,
+	} {
+		if !strings.Contains(asset.ArchiveFileName, "optimusctx_1.1.0_") {
+			t.Fatalf("ArchiveFileName = %q, want version-pinned asset name", asset.ArchiveFileName)
+		}
+	}
+}
+
+func TestNPMPackageCommands(t *testing.T) {
+	release := mustNPMPackageRelease(t, "1.1.0")
+
+	if got, want := release.PackageName, "@niccrow/optimusctx"; got != want {
+		t.Fatalf("PackageName = %q, want %q", got, want)
+	}
+	if got, want := release.BinCommand, "optimusctx"; got != want {
+		t.Fatalf("BinCommand = %q, want %q", got, want)
+	}
+	if got, want := release.BinPath, "bin/optimusctx.js"; got != want {
+		t.Fatalf("BinPath = %q, want %q", got, want)
+	}
+
+	manifest := readRepoFile(t, "packaging/npm/package.json")
+	for _, want := range []string{
+		`"name": "@niccrow/optimusctx"`,
+		`"optimusctx": "bin/optimusctx.js"`,
+		`"postinstall": "node ./lib/install.js"`,
+	} {
+		if !strings.Contains(manifest, want) {
+			t.Fatalf("package.json missing %q", want)
+		}
+	}
+
+	launcher := readRepoFile(t, "packaging/npm/bin/optimusctx.js")
+	if !strings.HasPrefix(launcher, "#!/usr/bin/env node\n") {
+		t.Fatalf("launcher must start with a Node shebang")
 	}
 }
 

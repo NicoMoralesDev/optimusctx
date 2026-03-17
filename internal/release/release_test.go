@@ -49,8 +49,10 @@ func TestChecksumManifest(t *testing.T) {
 		}
 	}
 
-	if strings.Contains(config, "npx") {
-		t.Fatalf(".goreleaser.yml should stay focused on the shipped Go binary")
+	for _, forbidden := range []string{"npx", "npm publish", "postinstall"} {
+		if strings.Contains(config, forbidden) {
+			t.Fatalf(".goreleaser.yml should stay focused on the shipped Go binary, found %q", forbidden)
+		}
 	}
 }
 
