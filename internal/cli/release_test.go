@@ -139,9 +139,6 @@ func TestReleasePrepareCommand(t *testing.T) {
 			Warnings: []release.ReleaseIssue{
 				{Code: "warning", Message: "watch this"},
 			},
-			Blockers: []release.ReleaseIssue{
-				{Code: "blocked", Message: "stop here"},
-			},
 		}
 
 		var stdout bytes.Buffer
