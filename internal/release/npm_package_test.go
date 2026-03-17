@@ -169,6 +169,49 @@ func TestNPMPackageCommands(t *testing.T) {
 	}
 }
 
+func TestNPMInstaller(t *testing.T) {
+	installer := readRepoFile(t, "packaging/npm/lib/install.js")
+
+	for _, want := range []string{
+		"runtime/",
+		"optimusctx_${versionNoV}_${goos}_${goarch}",
+		"sha256",
+		"checksumManifest",
+		"runtimeBinaryPath",
+		"parseChecksumManifest",
+		"resolveRuntimeTarget",
+	} {
+		if !strings.Contains(installer, want) {
+			t.Fatalf("install.js missing %q", want)
+		}
+	}
+}
+
+func TestNPMLauncher(t *testing.T) {
+	launcher := readRepoFile(t, "packaging/npm/bin/optimusctx.js")
+
+	for _, want := range []string{
+		"spawnSync",
+		"runtimeBinaryPath",
+		"process.argv.slice(2)",
+		"optimusctx.exe",
+	} {
+		if !strings.Contains(launcher, want) {
+			t.Fatalf("launcher missing %q", want)
+		}
+	}
+}
+
+func TestNPMSupportedPlatforms(t *testing.T) {
+	platformModule := readRepoFile(t, "packaging/npm/lib/platform.js")
+
+	for _, want := range []string{"darwin", "linux", "win32", "windows", "amd64", "arm64"} {
+		if !strings.Contains(platformModule, want) {
+			t.Fatalf("platform.js missing %q", want)
+		}
+	}
+}
+
 func mustNPMPackageRelease(t *testing.T, version string) npmPackageRelease {
 	t.Helper()
 

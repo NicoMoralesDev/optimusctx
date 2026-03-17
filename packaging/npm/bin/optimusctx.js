@@ -1,20 +1,21 @@
 #!/usr/bin/env node
 'use strict';
 
-const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const { resolvePlatform } = require('../lib/platform');
+const { resolveRuntimeTarget, runtimeBinaryPath } = require('../lib/install');
+
+const WINDOWS_BINARY_NAME = 'optimusctx.exe';
 
 function main() {
-  const target = resolvePlatform();
-  const binaryPath = path.join(__dirname, '..', 'runtime', target.runtimeDir, target.binaryName);
+  const target = resolveRuntimeTarget();
+  const binaryPath = runtimeBinaryPath(target);
   const result = spawnSync(binaryPath, process.argv.slice(2), { stdio: 'inherit' });
 
   if (result.error) {
     if (result.error.code === 'ENOENT') {
       console.error(
-        `OptimusCtx binary not found at ${binaryPath}. Reinstall the package after the runtime downloader is available.`
+        `OptimusCtx binary not found at ${binaryPath}. Reinstall the package so node ./lib/install.js can download the tagged runtime into the package-local runtime/ directory, including ${WINDOWS_BINARY_NAME} on Windows.`
       );
     } else {
       console.error(result.error.message);
