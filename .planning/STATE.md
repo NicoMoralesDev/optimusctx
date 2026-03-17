@@ -4,17 +4,17 @@ milestone: v1.2
 milestone_name: release automation and operator workflow
 current_phase: 17
 current_phase_name: canonical release orchestration and metadata
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 17-01-PLAN.md
-last_updated: "2026-03-17T22:38:47.191Z"
+stopped_at: Completed 17-02-PLAN.md
+last_updated: "2026-03-17T22:49:52.403Z"
 last_activity: 2026-03-17
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 8
-  completed_plans: 5
-  percent: 63
+  completed_plans: 6
+  percent: 75
 ---
 
 # Planning State: OptimusCtx
@@ -27,11 +27,11 @@ progress:
 **Current Phase:** 17
 **Current Phase Name:** canonical release orchestration and metadata
 **Total Phases:** 4
-**Current Plan:** 2
+**Current Plan:** 3
 **Total Plans in Phase:** 4
-**Progress:** [██████░░░░] 63%
+**Progress:** [████████░░] 75%
 **Last Activity:** 2026-03-17
-**Last Activity Description:** Completed plan 17-01 and advanced Phase 17 to plan 2
+**Last Activity Description:** Completed plan 17-02 and advanced Phase 17 to plan 3
 
 ## Project Memory
 
@@ -45,9 +45,9 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `17-canonical-release-orchestration-and-metadata`
-- Next execution action: execute Plan 17-02 for fresh-versus-existing GitHub Release orchestration
+- Next execution action: execute Plan 17-03 for downstream consumer rewiring to the shared release metadata contract
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: Phase 17 plan 01 is complete; plans 02-04 remain
+- Coverage status: Phase 17 plans 01-02 are complete; plans 03-04 remain
 
 ## Recent Decisions
 
@@ -235,6 +235,7 @@ progress:
 | Phase 16 P03 | 13min | 2 tasks | 3 files |
 | Phase 16 P04 | 2min | 2 tasks | 3 files |
 | Phase 17-canonical-release-orchestration-and-metadata P01 | 1m | 2 tasks | 3 files |
+| Phase 17 P02 | 7m | 2 tasks | 4 files |
 
 ## Decisions Made
 
@@ -401,6 +402,7 @@ progress:
 - [Phase 16]: Homebrew and Scoop stay visible as blocked channels even when they are informational for a narrower selected release plan.
 - [Phase 17]: Canonical release metadata reuses existing archiveName, archiveFormat, and checksumManifestName helpers instead of introducing a second filename contract.
 - [Phase 17]: Release contract tests compare CanonicalRelease against .goreleaser.yml and the GitHub release workflow before any downstream consumer rewiring.
+- [Phase 17]: Reuse mode requires an explicit release_tag and rejects any mismatch against the prepared canonical tag before downstream publication starts.
 
 ## Blockers
 
@@ -408,8 +410,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-17T22:38:47.188Z
-**Stopped At:** Completed 17-01-PLAN.md
+**Last Date:** 2026-03-17T22:49:52.400Z
+**Stopped At:** Completed 17-02-PLAN.md
 **Resume File:** None
 
 ---
