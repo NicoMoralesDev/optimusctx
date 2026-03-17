@@ -1,6 +1,7 @@
 package release
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -52,13 +53,13 @@ func TestPlanReleaseOrchestrationCreate(t *testing.T) {
 }
 
 func TestPlanReleaseOrchestrationReuse(t *testing.T) {
-	preparation := ReleasePreparation{
-		Version: "1.2.3",
-		Tag:     "v1.2.3",
-		Channels: []ReleaseChannelPlan{
-			{ID: ReleaseChannelGitHubArchive, Selected: true},
-			{ID: ReleaseChannelNPM, Selected: true},
-		},
+	preparation, err := PrepareRelease(context.Background(), "1.2.3", "v1.2", ReleasePreparationOptions{
+		Git:              fakeGitProbe{},
+		Files:            releaseRepoFiles(),
+		SelectedChannels: []string{ReleaseChannelGitHubArchive, ReleaseChannelNPM},
+	})
+	if err != nil {
+		t.Fatalf("PrepareRelease() error = %v", err)
 	}
 
 	createPlan, err := PlanReleaseOrchestration(preparation, ReleaseOrchestrationRequest{
@@ -93,6 +94,9 @@ func TestPlanReleaseOrchestrationReuse(t *testing.T) {
 	}
 	if !reflect.DeepEqual(reusePlan.CanonicalRelease, createPlan.CanonicalRelease) {
 		t.Fatalf("CanonicalRelease = %+v, want %+v", reusePlan.CanonicalRelease, createPlan.CanonicalRelease)
+	}
+	if got := reusePlan.CanonicalRelease.Tag; got != preparation.Tag {
+		t.Fatalf("CanonicalRelease.Tag = %q, want %q", got, preparation.Tag)
 	}
 }
 

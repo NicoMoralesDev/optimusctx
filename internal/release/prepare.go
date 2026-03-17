@@ -300,6 +300,17 @@ func (p ReleasePreparation) SelectedChannelIDs() []string {
 	return ids
 }
 
+func (p ReleasePreparation) CanonicalRelease() (CanonicalRelease, error) {
+	release, err := NewCanonicalRelease(p.Version)
+	if err != nil {
+		return CanonicalRelease{}, err
+	}
+	if p.Tag != release.Tag {
+		return CanonicalRelease{}, fmt.Errorf("prepared tag %q does not match canonical release tag %q", p.Tag, release.Tag)
+	}
+	return release, nil
+}
+
 func defaultReleaseChannels(selected []string) []ReleaseChannelPlan {
 	policy := CurrentDistributionPolicy()
 	channels := make([]ReleaseChannelPlan, 0, len(policy.SupportedChannels))

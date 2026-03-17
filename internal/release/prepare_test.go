@@ -130,6 +130,48 @@ func TestReleasePreparation(t *testing.T) {
 	}
 }
 
+func TestReleasePrepareSelectedChannelsReady(t *testing.T) {
+	preparation, err := PrepareRelease(context.Background(), "1.2.3", "v1.2", ReleasePreparationOptions{
+		Git:              fakeGitProbe{},
+		Files:            releaseRepoFiles(),
+		SelectedChannels: []string{ReleaseChannelGitHubArchive, ReleaseChannelNPM},
+	})
+	if err != nil {
+		t.Fatalf("PrepareRelease() error = %v", err)
+	}
+
+	if got, want := preparation.SelectedChannelIDs(), []string{
+		ReleaseChannelGitHubArchive,
+		ReleaseChannelNPM,
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("SelectedChannelIDs() = %v, want %v", got, want)
+	}
+
+	release, err := preparation.CanonicalRelease()
+	if err != nil {
+		t.Fatalf("CanonicalRelease() error = %v", err)
+	}
+	if got, want := release.Tag, preparation.Tag; got != want {
+		t.Fatalf("CanonicalRelease.Tag = %q, want %q", got, want)
+	}
+
+	plan, err := PlanReleaseOrchestration(preparation, ReleaseOrchestrationRequest{
+		Mode: ReleaseOrchestrationModeCreate,
+	})
+	if err != nil {
+		t.Fatalf("PlanReleaseOrchestration() error = %v", err)
+	}
+	if got, want := plan.SelectedChannelIDs, preparation.SelectedChannelIDs(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("plan.SelectedChannelIDs = %v, want %v", got, want)
+	}
+	if got, want := plan.Tag, preparation.Tag; got != want {
+		t.Fatalf("plan.Tag = %q, want %q", got, want)
+	}
+	if got, want := plan.CanonicalRelease.Tag, preparation.Tag; got != want {
+		t.Fatalf("plan.CanonicalRelease.Tag = %q, want %q", got, want)
+	}
+}
+
 func TestReleaseSemanticTagConflicts(t *testing.T) {
 	preparation, err := BuildReleasePreparation("1.1.0", "v1.1", []string{"v1.1"})
 	if err != nil {

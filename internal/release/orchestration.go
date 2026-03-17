@@ -29,12 +29,9 @@ func PlanReleaseOrchestration(preparation ReleasePreparation, request ReleaseOrc
 		return ReleaseOrchestrationPlan{}, fmt.Errorf("release orchestration mode %q is invalid", request.Mode)
 	}
 
-	release, err := NewCanonicalRelease(preparation.Version)
+	release, err := preparation.CanonicalRelease()
 	if err != nil {
 		return ReleaseOrchestrationPlan{}, fmt.Errorf("build canonical release: %w", err)
-	}
-	if preparation.Tag != release.Tag {
-		return ReleaseOrchestrationPlan{}, fmt.Errorf("prepared tag %q does not match canonical release tag %q", preparation.Tag, release.Tag)
 	}
 
 	plan := ReleaseOrchestrationPlan{
