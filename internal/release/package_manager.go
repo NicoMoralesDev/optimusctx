@@ -39,14 +39,16 @@ type releaseAsset struct {
 }
 
 type packageManagerRelease struct {
-	Version     string
-	Tag         string
-	ProjectName string
-	Homepage    string
-	Description string
-	License     string
-	Repository  repositoryRef
-	Assets      packageManagerAssets
+	Version          string
+	Tag              string
+	ProjectName      string
+	Homepage         string
+	Description      string
+	License          string
+	Repository       repositoryRef
+	ReleaseURL       string
+	ChecksumManifest CanonicalChecksumManifest
+	Assets           packageManagerAssets
 }
 
 type packageManagerAssets struct {
@@ -85,23 +87,31 @@ func newPackageManagerRelease(version string, checksumManifest string) (packageM
 		return packageManagerRelease{}, fmt.Errorf("version is required")
 	}
 
+	canonicalRelease, err := NewCanonicalRelease(version)
+	if err != nil {
+		return packageManagerRelease{}, err
+	}
+
 	checksums, err := parseChecksumManifest(checksumManifest)
 	if err != nil {
 		return packageManagerRelease{}, err
 	}
 
-	release := packageManagerRelease{
-		Version:     version,
-		Tag:         "v" + version,
-		ProjectName: canonicalProjectName,
-		Homepage:    canonicalHomepage,
-		Description: canonicalDescription,
-		License:     canonicalLicense,
-		Repository: repositoryRef{
-			Owner: canonicalReleaseOwner,
-			Name:  canonicalReleaseRepo,
-		},
-		Assets: packageManagerAssets{},
+	return newPackageManagerReleaseFromCanonical(canonicalRelease, checksums)
+}
+
+func newPackageManagerReleaseFromCanonical(release CanonicalRelease, checksums map[string]string) (packageManagerRelease, error) {
+	packageRelease := packageManagerRelease{
+		Version:          release.Version,
+		Tag:              release.Tag,
+		ProjectName:      release.ProjectName,
+		Homepage:         canonicalHomepage,
+		Description:      canonicalDescription,
+		License:          canonicalLicense,
+		Repository:       release.Repository,
+		ReleaseURL:       release.ReleaseURL,
+		ChecksumManifest: release.ChecksumManifest,
+		Assets:           packageManagerAssets{},
 	}
 
 	for _, target := range []struct {
@@ -109,21 +119,21 @@ func newPackageManagerRelease(version string, checksumManifest string) (packageM
 		goos   string
 		goarch string
 	}{
-		{assign: &release.Assets.DarwinAMD64, goos: "darwin", goarch: "amd64"},
-		{assign: &release.Assets.DarwinARM64, goos: "darwin", goarch: "arm64"},
-		{assign: &release.Assets.LinuxAMD64, goos: "linux", goarch: "amd64"},
-		{assign: &release.Assets.LinuxARM64, goos: "linux", goarch: "arm64"},
-		{assign: &release.Assets.WindowsAMD64, goos: "windows", goarch: "amd64"},
-		{assign: &release.Assets.WindowsARM64, goos: "windows", goarch: "arm64"},
+		{assign: &packageRelease.Assets.DarwinAMD64, goos: "darwin", goarch: "amd64"},
+		{assign: &packageRelease.Assets.DarwinARM64, goos: "darwin", goarch: "arm64"},
+		{assign: &packageRelease.Assets.LinuxAMD64, goos: "linux", goarch: "amd64"},
+		{assign: &packageRelease.Assets.LinuxARM64, goos: "linux", goarch: "arm64"},
+		{assign: &packageRelease.Assets.WindowsAMD64, goos: "windows", goarch: "amd64"},
+		{assign: &packageRelease.Assets.WindowsARM64, goos: "windows", goarch: "arm64"},
 	} {
-		asset, err := release.archiveFor(target.goos, target.goarch, checksums)
+		asset, err := packageManagerAssetFromCanonical(release, target.goos, target.goarch, checksums)
 		if err != nil {
 			return packageManagerRelease{}, err
 		}
 		*target.assign = asset
 	}
 
-	return release, nil
+	return packageRelease, nil
 }
 
 func defaultHomebrewTapTarget() homebrewTapTarget {
@@ -201,22 +211,22 @@ func renderScoopManifest(templateText string, release packageManagerRelease, tar
 	return output.String(), nil
 }
 
-func (r packageManagerRelease) archiveFor(goos, goarch string, checksums map[string]string) (releaseAsset, error) {
-	fileName := archiveName(r.Version, goos, goarch)
-	sha256, ok := checksums[fileName]
+func packageManagerAssetFromCanonical(release CanonicalRelease, goos, goarch string, checksums map[string]string) (releaseAsset, error) {
+	asset, err := release.Asset(goos, goarch)
+	if err != nil {
+		return releaseAsset{}, err
+	}
+
+	sha256, ok := checksums[asset.FileName]
 	if !ok {
-		return releaseAsset{}, fmt.Errorf("checksum missing for %s", fileName)
+		return releaseAsset{}, fmt.Errorf("checksum missing for %s", asset.FileName)
 	}
 
 	return releaseAsset{
-		FileName: fileName,
-		URL:      fmt.Sprintf("%s/releases/download/%s/%s", r.githubRepositoryURL(), r.Tag, fileName),
+		FileName: asset.FileName,
+		URL:      asset.DownloadURL,
 		SHA256:   sha256,
 	}, nil
-}
-
-func (r packageManagerRelease) githubRepositoryURL() string {
-	return fmt.Sprintf("https://github.com/%s/%s", r.Repository.Owner, r.Repository.Name)
 }
 
 func archiveName(version, goos, goarch string) string {

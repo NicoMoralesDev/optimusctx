@@ -5,11 +5,19 @@ import (
 	"testing"
 )
 
-func TestNPMPackageMetadata(t *testing.T) {
-	release := mustNPMPackageRelease(t, "1.1.0")
+func TestNPMPackageReleaseContract(t *testing.T) {
+	canonicalRelease, err := NewCanonicalRelease("1.1.0")
+	if err != nil {
+		t.Fatalf("NewCanonicalRelease() error = %v", err)
+	}
+
+	release := mustNPMPackageRelease(t, canonicalRelease.Version)
 
 	if got, want := release.PackageName, "@niccrow/optimusctx"; got != want {
 		t.Fatalf("PackageName = %q, want %q", got, want)
+	}
+	if got, want := release.ProjectName, canonicalRelease.ProjectName; got != want {
+		t.Fatalf("ProjectName = %q, want %q", got, want)
 	}
 	if got, want := release.BinCommand, "optimusctx"; got != want {
 		t.Fatalf("BinCommand = %q, want %q", got, want)
@@ -23,14 +31,51 @@ func TestNPMPackageMetadata(t *testing.T) {
 	if got, want := release.MinimumNode, ">=18"; got != want {
 		t.Fatalf("MinimumNode = %q, want %q", got, want)
 	}
-	if got, want := release.ReleaseTag, "v1.1.0"; got != want {
+	if got, want := release.ReleaseTag, canonicalRelease.Tag; got != want {
 		t.Fatalf("ReleaseTag = %q, want %q", got, want)
 	}
-	if got, want := release.ChecksumManifest.FileName, "optimusctx_1.1.0_checksums.txt"; got != want {
+	if got, want := release.ChecksumManifest.FileName, canonicalRelease.ChecksumManifest.FileName; got != want {
 		t.Fatalf("ChecksumManifest.FileName = %q, want %q", got, want)
 	}
-	if got, want := release.ChecksumManifest.URL, "https://github.com/niccrow/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_checksums.txt"; got != want {
+	if got, want := release.ChecksumManifest.URL, canonicalRelease.ChecksumManifest.URL; got != want {
 		t.Fatalf("ChecksumManifest.URL = %q, want %q", got, want)
+	}
+
+	for _, tc := range []struct {
+		name   string
+		asset  npmPlatformAsset
+		goos   string
+		goarch string
+	}{
+		{name: "darwin amd64", asset: release.Platforms.DarwinAMD64, goos: "darwin", goarch: "amd64"},
+		{name: "darwin arm64", asset: release.Platforms.DarwinARM64, goos: "darwin", goarch: "arm64"},
+		{name: "linux amd64", asset: release.Platforms.LinuxAMD64, goos: "linux", goarch: "amd64"},
+		{name: "linux arm64", asset: release.Platforms.LinuxARM64, goos: "linux", goarch: "arm64"},
+		{name: "windows amd64", asset: release.Platforms.WindowsAMD64, goos: "windows", goarch: "amd64"},
+		{name: "windows arm64", asset: release.Platforms.WindowsARM64, goos: "windows", goarch: "arm64"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			canonicalAsset, err := canonicalRelease.Asset(tc.goos, tc.goarch)
+			if err != nil {
+				t.Fatalf("Asset(%q, %q) error = %v", tc.goos, tc.goarch, err)
+			}
+
+			if got, want := tc.asset.OS, canonicalAsset.GOOS; got != want {
+				t.Fatalf("OS = %q, want %q", got, want)
+			}
+			if got, want := tc.asset.Arch, canonicalAsset.GOARCH; got != want {
+				t.Fatalf("Arch = %q, want %q", got, want)
+			}
+			if got, want := tc.asset.ArchiveFileName, canonicalAsset.FileName; got != want {
+				t.Fatalf("ArchiveFileName = %q, want %q", got, want)
+			}
+			if got, want := tc.asset.ArchiveURL, canonicalAsset.DownloadURL; got != want {
+				t.Fatalf("ArchiveURL = %q, want %q", got, want)
+			}
+			if got, want := tc.asset.ArchiveFormat, canonicalAsset.ArchiveFormat; got != want {
+				t.Fatalf("ArchiveFormat = %q, want %q", got, want)
+			}
+		})
 	}
 }
 

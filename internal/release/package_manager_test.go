@@ -7,7 +7,64 @@ import (
 	"testing"
 )
 
-func TestHomebrewFormulaRendering(t *testing.T) {
+func TestPackageManagerReleaseContract(t *testing.T) {
+	canonicalRelease, err := NewCanonicalRelease("1.1.0")
+	if err != nil {
+		t.Fatalf("NewCanonicalRelease() error = %v", err)
+	}
+
+	release := mustPackageManagerRelease(t, canonicalRelease.Version)
+
+	if got, want := release.Tag, canonicalRelease.Tag; got != want {
+		t.Fatalf("Tag = %q, want %q", got, want)
+	}
+	if got, want := release.ProjectName, canonicalRelease.ProjectName; got != want {
+		t.Fatalf("ProjectName = %q, want %q", got, want)
+	}
+	if got, want := release.ReleaseURL, canonicalRelease.ReleaseURL; got != want {
+		t.Fatalf("ReleaseURL = %q, want %q", got, want)
+	}
+	if got, want := release.ChecksumManifest.FileName, canonicalRelease.ChecksumManifest.FileName; got != want {
+		t.Fatalf("ChecksumManifest.FileName = %q, want %q", got, want)
+	}
+	if got, want := release.ChecksumManifest.URL, canonicalRelease.ChecksumManifest.URL; got != want {
+		t.Fatalf("ChecksumManifest.URL = %q, want %q", got, want)
+	}
+
+	for _, tc := range []struct {
+		name     string
+		asset    releaseAsset
+		goos     string
+		goarch   string
+		checksum string
+	}{
+		{name: "darwin amd64", asset: release.Assets.DarwinAMD64, goos: "darwin", goarch: "amd64", checksum: "1111111111111111111111111111111111111111111111111111111111111111"},
+		{name: "darwin arm64", asset: release.Assets.DarwinARM64, goos: "darwin", goarch: "arm64", checksum: "2222222222222222222222222222222222222222222222222222222222222222"},
+		{name: "linux amd64", asset: release.Assets.LinuxAMD64, goos: "linux", goarch: "amd64", checksum: "3333333333333333333333333333333333333333333333333333333333333333"},
+		{name: "linux arm64", asset: release.Assets.LinuxARM64, goos: "linux", goarch: "arm64", checksum: "4444444444444444444444444444444444444444444444444444444444444444"},
+		{name: "windows amd64", asset: release.Assets.WindowsAMD64, goos: "windows", goarch: "amd64", checksum: "5555555555555555555555555555555555555555555555555555555555555555"},
+		{name: "windows arm64", asset: release.Assets.WindowsARM64, goos: "windows", goarch: "arm64", checksum: "6666666666666666666666666666666666666666666666666666666666666666"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			canonicalAsset, err := canonicalRelease.Asset(tc.goos, tc.goarch)
+			if err != nil {
+				t.Fatalf("Asset(%q, %q) error = %v", tc.goos, tc.goarch, err)
+			}
+
+			if got, want := tc.asset.FileName, canonicalAsset.FileName; got != want {
+				t.Fatalf("FileName = %q, want %q", got, want)
+			}
+			if got, want := tc.asset.URL, canonicalAsset.DownloadURL; got != want {
+				t.Fatalf("URL = %q, want %q", got, want)
+			}
+			if got, want := tc.asset.SHA256, tc.checksum; got != want {
+				t.Fatalf("SHA256 = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
+func TestRenderHomebrewFormula(t *testing.T) {
 	release := mustPackageManagerRelease(t, "1.1.0")
 	templateText := readRepoFile(t, filepath.Join("packaging", "homebrew", "optimusctx.rb.tmpl"))
 	target := defaultHomebrewTapTarget()
@@ -48,7 +105,7 @@ func TestHomebrewFormulaRendering(t *testing.T) {
 	}
 }
 
-func TestScoopManifestRendering(t *testing.T) {
+func TestRenderScoopManifest(t *testing.T) {
 	release := mustPackageManagerRelease(t, "1.1.0")
 	templateText := readRepoFile(t, filepath.Join("packaging", "scoop", "optimusctx.json.tmpl"))
 	target := defaultScoopBucketTarget()

@@ -22,6 +22,7 @@ const (
 type npmPackageRelease struct {
 	PackageName      string
 	Version          string
+	ProjectName      string
 	Description      string
 	License          string
 	Homepage         string
@@ -115,45 +116,59 @@ func newNPMPackageRelease(version string) (npmPackageRelease, error) {
 		return npmPackageRelease{}, fmt.Errorf("version is required")
 	}
 
-	release := npmPackageRelease{
-		PackageName: canonicalNPMPackageName,
-		Version:     version,
-		Description: canonicalDescription,
-		License:     canonicalLicense,
-		Homepage:    canonicalHomepage,
-		BinCommand:  canonicalNPMBinCommand,
-		BinPath:     canonicalNPMBinPath,
-		PostInstall: canonicalNPMPostInstallScript,
-		MinimumNode: canonicalNPMMinimumNodeVersion,
-		Repository: repositoryRef{
-			Owner: canonicalReleaseOwner,
-			Name:  canonicalReleaseRepo,
-		},
-		ReleaseTag:    "v" + version,
+	canonicalRelease, err := NewCanonicalRelease(version)
+	if err != nil {
+		if version != canonicalNPMDevelopmentVersion {
+			return npmPackageRelease{}, err
+		}
+		canonicalRelease = syntheticCanonicalRelease(version)
+	}
+
+	return newNPMPackageReleaseFromCanonical(canonicalRelease)
+}
+
+func newNPMPackageReleaseFromCanonical(release CanonicalRelease) (npmPackageRelease, error) {
+	packageRelease := npmPackageRelease{
+		PackageName:   canonicalNPMPackageName,
+		Version:       release.Version,
+		ProjectName:   release.ProjectName,
+		Description:   canonicalDescription,
+		License:       canonicalLicense,
+		Homepage:      canonicalHomepage,
+		BinCommand:    canonicalNPMBinCommand,
+		BinPath:       canonicalNPMBinPath,
+		PostInstall:   canonicalNPMPostInstallScript,
+		MinimumNode:   canonicalNPMMinimumNodeVersion,
+		Repository:    release.Repository,
+		ReleaseTag:    release.Tag,
 		RepositoryURL: canonicalNPMRepositoryURL,
 		IssuesURL:     canonicalNPMIssuesURL,
 		ChecksumManifest: npmChecksumManifest{
-			FileName: checksumManifestName(version),
+			FileName: release.ChecksumManifest.FileName,
+			URL:      release.ChecksumManifest.URL,
 		},
 	}
-	release.ChecksumManifest.URL = release.releaseDownloadURL(release.ChecksumManifest.FileName)
 
 	for _, target := range []struct {
 		assign *npmPlatformAsset
 		goos   string
 		goarch string
 	}{
-		{assign: &release.Platforms.DarwinAMD64, goos: "darwin", goarch: "amd64"},
-		{assign: &release.Platforms.DarwinARM64, goos: "darwin", goarch: "arm64"},
-		{assign: &release.Platforms.LinuxAMD64, goos: "linux", goarch: "amd64"},
-		{assign: &release.Platforms.LinuxARM64, goos: "linux", goarch: "arm64"},
-		{assign: &release.Platforms.WindowsAMD64, goos: "windows", goarch: "amd64"},
-		{assign: &release.Platforms.WindowsARM64, goos: "windows", goarch: "arm64"},
+		{assign: &packageRelease.Platforms.DarwinAMD64, goos: "darwin", goarch: "amd64"},
+		{assign: &packageRelease.Platforms.DarwinARM64, goos: "darwin", goarch: "arm64"},
+		{assign: &packageRelease.Platforms.LinuxAMD64, goos: "linux", goarch: "amd64"},
+		{assign: &packageRelease.Platforms.LinuxARM64, goos: "linux", goarch: "arm64"},
+		{assign: &packageRelease.Platforms.WindowsAMD64, goos: "windows", goarch: "amd64"},
+		{assign: &packageRelease.Platforms.WindowsARM64, goos: "windows", goarch: "arm64"},
 	} {
-		*target.assign = release.platformAsset(target.goos, target.goarch)
+		asset, err := npmPlatformAssetFromCanonical(release, target.goos, target.goarch)
+		if err != nil {
+			return npmPackageRelease{}, err
+		}
+		*target.assign = asset
 	}
 
-	return release, nil
+	return packageRelease, nil
 }
 
 func renderNPMPackageManifest(release npmPackageRelease) (string, error) {
@@ -186,7 +201,7 @@ func renderNPMPackageManifest(release npmPackageRelease) (string, error) {
 		OptimusCtx: npmPackageRuntimeMetadata{
 			Command:     release.BinCommand,
 			Launcher:    canonicalNPMLauncherModule,
-			ProjectName: canonicalProjectName,
+			ProjectName: release.ProjectName,
 			Repository: npmRepositoryTarget{
 				Owner: release.Repository.Owner,
 				Name:  release.Repository.Name,
@@ -222,22 +237,54 @@ func checksumManifestName(version string) string {
 	return fmt.Sprintf("%s_%s_checksums.txt", canonicalProjectName, version)
 }
 
-func (r npmPackageRelease) releaseDownloadURL(fileName string) string {
-	return fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/%s", r.Repository.Owner, r.Repository.Name, r.ReleaseTag, fileName)
-}
-
-func (r npmPackageRelease) platformAsset(goos, goarch string) npmPlatformAsset {
-	fileName := archiveName(r.Version, goos, goarch)
+func npmPlatformAssetFromCanonical(release CanonicalRelease, goos, goarch string) (npmPlatformAsset, error) {
+	asset, err := release.Asset(goos, goarch)
+	if err != nil {
+		return npmPlatformAsset{}, err
+	}
 
 	return npmPlatformAsset{
-		OS:               goos,
-		Arch:             goarch,
-		ArchiveFileName:  fileName,
-		ArchiveURL:       r.releaseDownloadURL(fileName),
-		ArchiveFormat:    archiveFormat(goos),
-		RuntimeBinary:    runtimeBinaryName(goos),
-		RuntimeDirectory: runtimeDirectoryName(goos, goarch),
+		OS:               asset.GOOS,
+		Arch:             asset.GOARCH,
+		ArchiveFileName:  asset.FileName,
+		ArchiveURL:       asset.DownloadURL,
+		ArchiveFormat:    asset.ArchiveFormat,
+		RuntimeBinary:    runtimeBinaryName(asset.GOOS),
+		RuntimeDirectory: runtimeDirectoryName(asset.GOOS, asset.GOARCH),
+	}, nil
+}
+
+func syntheticCanonicalRelease(version string) CanonicalRelease {
+	release := CanonicalRelease{
+		Version:     version,
+		Tag:         "v" + version,
+		ProjectName: canonicalProjectName,
+		Repository: repositoryRef{
+			Owner: canonicalReleaseOwner,
+			Name:  canonicalReleaseRepo,
+		},
 	}
+	release.ReleaseURL = fmt.Sprintf("%s/releases/tag/%s", release.RepositoryURL(), release.Tag)
+	release.ChecksumManifest = CanonicalChecksumManifest{
+		FileName: checksumManifestName(version),
+		URL:      release.DownloadURL(checksumManifestName(version)),
+	}
+
+	for _, target := range []struct {
+		goos   string
+		goarch string
+	}{
+		{goos: "darwin", goarch: "amd64"},
+		{goos: "darwin", goarch: "arm64"},
+		{goos: "linux", goarch: "amd64"},
+		{goos: "linux", goarch: "arm64"},
+		{goos: "windows", goarch: "amd64"},
+		{goos: "windows", goarch: "arm64"},
+	} {
+		release.Assets = append(release.Assets, release.archiveAsset(target.goos, target.goarch))
+	}
+
+	return release
 }
 
 func archiveFormat(goos string) string {
