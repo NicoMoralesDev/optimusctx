@@ -27,7 +27,7 @@ Plans:
 
 - [x] 16-01: canonical semver and release-preparation contract
 - [x] 16-02: git and prerequisite preflight probes plus JSON review model
-- [ ] 16-03: operator-facing release prepare CLI and confirmation gate
+- [x] 16-03: operator-facing release prepare CLI and confirmation gate
 
 **Requirements covered:** `REL-01`, `REL-02`, `REL-03`
 
@@ -85,12 +85,12 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.2` with Phase 16 in progress
+Active milestone: `v1.2` with Phase 16 complete
 
 Next step:
 
-- Execute plan `16-03` to add the operator-facing release prepare CLI and confirmation gate
+- Plan Phase 17 release orchestration work on top of the shipped `release prepare` front door
 - Keep all new release-channel automation anchored to the existing GitHub Release archive contract
 
 ---
-*Last updated: 2026-03-17 after completing plan 16-02*
+*Last updated: 2026-03-17 after completing plan 16-03*

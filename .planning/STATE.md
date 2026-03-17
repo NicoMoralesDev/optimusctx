@@ -5,16 +5,16 @@ milestone_name: release automation and operator workflow
 current_phase: 16
 current_phase_name: release versioning and preflight guardrails
 current_plan: 3
-status: executing
-stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-03-17T20:21:55.590Z"
+status: verifying
+stopped_at: Completed 16-03-PLAN.md
+last_updated: "2026-03-17T20:40:06.840Z"
 last_activity: 2026-03-17
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 **Current Phase:** 16
 **Current Phase Name:** release versioning and preflight guardrails
 **Total Phases:** 4
 **Current Plan:** 3
 **Total Plans in Phase:** 3
-**Progress:** [███████░░░] 67%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-17
-**Last Activity Description:** Completed plan 16-02 git and prerequisite preflight probes plus JSON review model
+**Last Activity Description:** Completed plan 16-03 operator-facing release prepare CLI and confirmation gate
 
 ## Project Memory
 
@@ -45,9 +45,9 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `16-release-versioning-and-preflight-guardrails`
-- Next execution action: execute `16-03` or continue `$gsd-execute-phase 16`
+- Next execution action: plan Phase 17 or continue milestone verification
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: v1.2 requirements are defined and mapped; Plans 16-01 through 16-02 are complete and Plan 16-03 remains pending
+- Coverage status: v1.2 requirements are defined and mapped; Plans 16-01 through 16-03 are complete
 
 ## Recent Decisions
 
@@ -232,6 +232,7 @@ progress:
 | Phase 15 P03 | 4min | 2 tasks | 9 files |
 | Phase 16 P01 | 2min | 2 tasks | 2 files |
 | Phase 16-release-versioning-and-preflight-guardrails P02 | 10min | 2 tasks | 3 files |
+| Phase 16 P03 | 13min | 2 tasks | 3 files |
 
 ## Decisions Made
 
@@ -391,6 +392,9 @@ progress:
 - [Phase 16]: Legacy tags such as v1.1 canonicalize to v1.1.0 and block the same semantic release lane.
 - [Phase 16]: Remote tag verification failures stay explicit blockers instead of silently downgrading to warnings.
 - [Phase 16]: GitHub Release and npm reflect the current workflow as ready, while Homebrew and Scoop stay blocked until publication wiring exists.
+- [Phase 16]: The CLI resolves repository root and active milestone before calling internal/release.PrepareRelease so default release proposals stay in the current release lane.
+- [Phase 16]: Text and JSON release output both render the shared ReleasePreparation model instead of rebuilding version, tag, or channel logic in the CLI.
+- [Phase 16]: Phase 16 confirmation stays review-only: the operator can acknowledge the plan and get blocker-driven exit codes without creating a tag or starting publication.
 
 ## Blockers
 
@@ -398,9 +402,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-17T20:21:55.586Z
-**Stopped At:** Completed 16-02-PLAN.md
+**Last Date:** 2026-03-17T20:40:06.837Z
+**Stopped At:** Completed 16-03-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-17 after completing plan 16-02 git and prerequisite preflight probes plus JSON review model*
+*Last updated: 2026-03-17 after completing plan 16-03 operator-facing release prepare CLI and confirmation gate*
