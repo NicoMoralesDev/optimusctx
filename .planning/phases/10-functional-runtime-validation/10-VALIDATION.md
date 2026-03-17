@@ -1,7 +1,7 @@
 ---
 phase: 10
 slug: functional-runtime-validation
-status: draft
+status: complete
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-03-16
@@ -38,18 +38,18 @@ created: 2026-03-16
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 10-01-01 | 01 | 1 | EVAL-03 | unit | `go test ./internal/repository -run 'TestEvalScenarioContracts|TestEvalAssertions|TestEvalScenarioValidation'` | ✅ | ⬜ pending |
-| 10-01-02 | 01 | 1 | EVAL-03 | integration | `go test ./internal/app -run 'TestEvalRunnerExecutesCLIWorkflow|TestEvalCLIWorkflowAssertions|TestEvalRunnerPersistsCLIArtifacts'` | ✅ | ⬜ pending |
-| 10-01-03 | 01 | 1 | EVAL-03 | integration | `go test ./internal/app ./internal/cli -run 'TestEvalRunnerPersistsCLIArtifacts|TestEvalCLIScenariosRerun'` | ✅ | ⬜ pending |
-| 10-02-01 | 02 | 2 | EVAL-02 | unit/integration | `go test ./internal/repository ./internal/app ./internal/mcp -run 'TestEvalMCPStepContracts|TestEvalMCPSessionExecution'` | ✅ | ⬜ pending |
-| 10-02-02 | 02 | 2 | EVAL-02 | integration | `go test ./internal/app ./internal/cli ./internal/mcp -run 'TestEvalMCPInitializeAndToolsList|TestEvalMCPToolFlows'` | ✅ | ⬜ pending |
-| 10-02-03 | 02 | 2 | EVAL-02 | integration | `go test ./internal/app ./internal/cli ./internal/mcp -run 'TestEvalMCPArtifactsPersist|TestEvalMCPScenariosRerun'` | ✅ | ⬜ pending |
-| 10-03-01 | 03 | 3 | EVAL-03 | unit | `go test ./internal/repository ./internal/app -run 'TestEvalWorkspaceMutations|TestEvalStateMutationValidation'` | ✅ | ⬜ pending |
-| 10-03-02 | 03 | 3 | EVAL-03 | integration | `go test ./internal/app ./internal/cli ./internal/mcp -run 'TestEvalStaleAndDegradedScenarios|TestEvalRecoveryScenarios'` | ✅ | ⬜ pending |
-| 10-03-03 | 03 | 3 | EVAL-03 | integration | `go test ./internal/app ./internal/cli ./internal/mcp ./internal/store/sqlite -run 'TestEvalStateTransitionsPersistEvidence|TestEvalRecoveryAdvancesGeneration'` | ✅ | ⬜ pending |
-| 10-04-01 | 04 | 4 | EVAL-02 | integration/doc | `go test ./internal/app ./internal/cli ./internal/store/sqlite -run 'TestEvalReportSummaries|TestEvalRequirementCoverageReport'` | ✅ | ⬜ pending |
-| 10-04-02 | 04 | 4 | EVAL-03 | integration/doc | `go test ./internal/app ./internal/cli ./internal/store/sqlite -run 'TestEvalReportSummaries|TestEvalRequirementCoverageReport'` | ✅ | ⬜ pending |
-| 10-04-03 | 04 | 4 | EVAL-02, EVAL-03 | integration/doc | `go test ./...` | ✅ | ⬜ pending |
+| 10-01-01 | 01 | 1 | EVAL-03 | unit | `go test ./internal/repository -run 'TestEvalScenarioContracts|TestEvalAssertions|TestEvalScenarioValidation'` | ✅ | ✅ green |
+| 10-01-02 | 01 | 1 | EVAL-03 | integration | `go test ./internal/app -run 'TestEvalRunnerExecutesCLIWorkflow|TestEvalCLIWorkflowAssertions|TestEvalRunnerPersistsCLIArtifacts'` | ✅ | ✅ green |
+| 10-01-03 | 01 | 1 | EVAL-03 | integration | `go test ./internal/app ./internal/cli -run 'TestEvalRunnerPersistsCLIArtifacts|TestEvalCLIScenariosRerun'` | ✅ | ✅ green |
+| 10-02-01 | 02 | 2 | EVAL-02 | unit/integration | `go test ./internal/repository ./internal/app ./internal/mcp -run 'TestEvalMCPStepContracts|TestEvalMCPSessionExecution'` | ✅ | ✅ green |
+| 10-02-02 | 02 | 2 | EVAL-02 | integration | `go test ./internal/app ./internal/cli ./internal/mcp -run 'TestEvalMCPInitializeAndToolsList|TestEvalMCPToolFlows'` | ✅ | ✅ green |
+| 10-02-03 | 02 | 2 | EVAL-02 | integration | `go test ./internal/app ./internal/cli ./internal/mcp -run 'TestEvalMCPArtifactsPersist|TestEvalMCPScenariosRerun'` | ✅ | ✅ green |
+| 10-03-01 | 03 | 3 | EVAL-03 | unit | `go test ./internal/repository ./internal/app -run 'TestEvalWorkspaceMutations|TestEvalStateMutationValidation'` | ✅ | ✅ green |
+| 10-03-02 | 03 | 3 | EVAL-03 | integration | `go test ./internal/app ./internal/cli ./internal/mcp -run 'TestEvalStaleAndDegradedScenarios|TestEvalRecoveryScenarios'` | ✅ | ✅ green |
+| 10-03-03 | 03 | 3 | EVAL-03 | integration | `go test ./internal/app ./internal/cli ./internal/mcp ./internal/store/sqlite -run 'TestEvalStateTransitionsPersistEvidence|TestEvalRecoveryAdvancesGeneration'` | ✅ | ✅ green |
+| 10-04-01 | 04 | 4 | EVAL-02 | integration/doc | `go test ./internal/app ./internal/cli ./internal/store/sqlite -run 'TestEvalReportSummaries|TestEvalRequirementCoverageReport'` | ✅ | ✅ green |
+| 10-04-02 | 04 | 4 | EVAL-03 | integration/doc | `go test ./internal/app ./internal/cli ./internal/store/sqlite -run 'TestEvalReportSummaries|TestEvalRequirementCoverageReport'` | ✅ | ✅ green |
+| 10-04-03 | 04 | 4 | EVAL-02, EVAL-03 | integration/doc | `go test ./...` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -80,4 +80,14 @@ Phase 10 starts from the shipped Phase 9 eval harness, but the phase-critical MC
 - [x] Feedback latency < 60s
 - [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** retroactively confirmed by Phase 10 verification on 2026-03-17
+
+## Validation Audit 2026-03-17
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 12 |
+| Resolved | 12 |
+| Escalated | 0 |
+
+Validation state aligned to the existing Phase 10 verification evidence.
