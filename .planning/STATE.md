@@ -4,17 +4,17 @@ milestone: v1.2
 milestone_name: release automation and operator workflow
 current_phase: 17
 current_phase_name: canonical release orchestration and metadata
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 17-02-PLAN.md
-last_updated: "2026-03-17T22:49:52.403Z"
+stopped_at: Completed 17-03-PLAN.md
+last_updated: "2026-03-17T22:52:26.260Z"
 last_activity: 2026-03-17
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 8
-  completed_plans: 6
-  percent: 75
+  completed_plans: 7
+  percent: 88
 ---
 
 # Planning State: OptimusCtx
@@ -27,11 +27,11 @@ progress:
 **Current Phase:** 17
 **Current Phase Name:** canonical release orchestration and metadata
 **Total Phases:** 4
-**Current Plan:** 3
+**Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [████████░░] 75%
+**Progress:** [█████████░] 88%
 **Last Activity:** 2026-03-17
-**Last Activity Description:** Completed plan 17-02 and advanced Phase 17 to plan 3
+**Last Activity Description:** Completed plan 17-03 and advanced Phase 17 to plan 4
 
 ## Project Memory
 
@@ -45,9 +45,9 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `17-canonical-release-orchestration-and-metadata`
-- Next execution action: execute Plan 17-03 for downstream consumer rewiring to the shared release metadata contract
+- Next execution action: execute Plan 17-04 for canonical-root documentation and regression lock
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: Phase 17 plans 01-02 are complete; plans 03-04 remain
+- Coverage status: Phase 17 plans 01-03 are complete; plan 04 remains
 
 ## Recent Decisions
 
@@ -236,6 +236,7 @@ progress:
 | Phase 16 P04 | 2min | 2 tasks | 3 files |
 | Phase 17-canonical-release-orchestration-and-metadata P01 | 1m | 2 tasks | 3 files |
 | Phase 17 P02 | 7m | 2 tasks | 4 files |
+| Phase 17 P03 | 7m | 2 tasks | 6 files |
 
 ## Decisions Made
 
@@ -403,6 +404,8 @@ progress:
 - [Phase 17]: Canonical release metadata reuses existing archiveName, archiveFormat, and checksumManifestName helpers instead of introducing a second filename contract.
 - [Phase 17]: Release contract tests compare CanonicalRelease against .goreleaser.yml and the GitHub release workflow before any downstream consumer rewiring.
 - [Phase 17]: Reuse mode requires an explicit release_tag and rejects any mismatch against the prepared canonical tag before downstream publication starts.
+- [Phase 17]: Homebrew, Scoop, and npm now consume canonical release asset URLs and checksum metadata instead of reconstructing tagged GitHub Release paths locally.
+- [Phase 17]: The npm render script preserves the committed Go-rendered package.json structure and retags its canonical release URLs for the requested version instead of inventing a second release URL rule set.
 
 ## Blockers
 
@@ -410,8 +413,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-17T22:49:52.400Z
-**Stopped At:** Completed 17-02-PLAN.md
+**Last Date:** 2026-03-17T22:52:26.257Z
+**Stopped At:** Completed 17-03-PLAN.md
 **Resume File:** None
 
 ---
