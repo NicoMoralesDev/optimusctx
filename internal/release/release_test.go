@@ -2,6 +2,7 @@ package release
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -173,13 +174,73 @@ func TestNPMPublishConfig(t *testing.T) {
 
 	for _, want := range []string{
 		"package.json",
-		"optimusctx_${versionNoV}_${goos}_${goarch}",
-		"npm package metadata must stay release-derived",
+		"RELEASE_TAG",
+		"optimusctx_${versionNoV}_${platform.os}_${platform.arch}",
+		"checksumManifest.url",
+		"retagCanonicalURL",
 		"@niccrow/optimusctx",
 	} {
 		if !strings.Contains(renderScript, want) {
 			t.Fatalf("scripts/render-npm-package.sh missing %q", want)
 		}
+	}
+}
+
+func TestCanonicalReleaseFeedsDownstreamConsumers(t *testing.T) {
+	canonicalRelease, err := NewCanonicalRelease("1.2.3")
+	if err != nil {
+		t.Fatalf("NewCanonicalRelease() error = %v", err)
+	}
+
+	npmRelease, err := newNPMPackageRelease(canonicalRelease.Version)
+	if err != nil {
+		t.Fatalf("newNPMPackageRelease() error = %v", err)
+	}
+	packageManagerRelease, err := newPackageManagerRelease(canonicalRelease.Version, sampleChecksumManifest(canonicalRelease.Version))
+	if err != nil {
+		t.Fatalf("newPackageManagerRelease() error = %v", err)
+	}
+
+	if got, want := npmRelease.ReleaseTag, canonicalRelease.Tag; got != want {
+		t.Fatalf("npm ReleaseTag = %q, want %q", got, want)
+	}
+	if got, want := npmRelease.ChecksumManifest.URL, canonicalRelease.ChecksumManifest.URL; got != want {
+		t.Fatalf("npm ChecksumManifest.URL = %q, want %q", got, want)
+	}
+	if got, want := packageManagerRelease.ChecksumManifest.URL, canonicalRelease.ChecksumManifest.URL; got != want {
+		t.Fatalf("package-manager ChecksumManifest.URL = %q, want %q", got, want)
+	}
+
+	windowsAMD64Asset, err := canonicalRelease.Asset("windows", "amd64")
+	if err != nil {
+		t.Fatalf("Asset(windows, amd64) error = %v", err)
+	}
+	if got, want := npmRelease.Platforms.WindowsAMD64.ArchiveURL, windowsAMD64Asset.DownloadURL; got != want {
+		t.Fatalf("npm windows archive URL = %q, want %q", got, want)
+	}
+	if got, want := packageManagerRelease.Assets.WindowsAMD64.URL, windowsAMD64Asset.DownloadURL; got != want {
+		t.Fatalf("package-manager windows archive URL = %q, want %q", got, want)
+	}
+
+	outputDir := t.TempDir()
+	scriptPath := filepath.Join("scripts", "render-npm-package.sh")
+	cmd := exec.Command("bash", scriptPath, canonicalRelease.Tag, outputDir)
+	cmd.Dir = filepath.Join("..", "..")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("render-npm-package.sh error = %v\n%s", err, output)
+	}
+
+	renderedManifest, err := os.ReadFile(filepath.Join(outputDir, "package.json"))
+	if err != nil {
+		t.Fatalf("ReadFile(rendered package.json) error = %v", err)
+	}
+
+	expectedManifest, err := renderNPMPackageManifest(npmRelease)
+	if err != nil {
+		t.Fatalf("renderNPMPackageManifest() error = %v", err)
+	}
+	if string(renderedManifest) != expectedManifest {
+		t.Fatalf("rendered npm package manifest drifted from canonical release manifest\nwant:\n%s\ngot:\n%s", expectedManifest, renderedManifest)
 	}
 }
 

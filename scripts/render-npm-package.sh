@@ -20,7 +20,6 @@ case "${TAG}" in
 esac
 
 VERSION_NO_V="${TAG#v}"
-ARCHIVE_NAME_TEMPLATE='optimusctx_${versionNoV}_${goos}_${goarch}'
 
 for required in \
   "${SOURCE_DIR}/package.json" \
@@ -40,37 +39,50 @@ chmod +x "${OUTPUT_DIR}/bin/optimusctx.js"
 
 PACKAGE_JSON_PATH="${OUTPUT_DIR}/package.json"
 
-PACKAGE_JSON_PATH="${PACKAGE_JSON_PATH}" RELEASE_TAG="${TAG}" VERSION_NO_V="${VERSION_NO_V}" ARCHIVE_NAME_TEMPLATE="${ARCHIVE_NAME_TEMPLATE}" node <<'EOF'
+PACKAGE_JSON_PATH="${PACKAGE_JSON_PATH}" RELEASE_TAG="${TAG}" VERSION_NO_V="${VERSION_NO_V}" node <<'EOF'
 const fs = require('node:fs');
 
 const packageJsonPath = process.env.PACKAGE_JSON_PATH;
 const releaseTag = process.env.RELEASE_TAG;
 const versionNoV = process.env.VERSION_NO_V;
-const archiveNameTemplate = process.env.ARCHIVE_NAME_TEMPLATE;
 
 if (!packageJsonPath || !releaseTag || !versionNoV) {
   throw new Error('package.json rendering requires PACKAGE_JSON_PATH, RELEASE_TAG, and VERSION_NO_V');
 }
 
 const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+const currentVersion = pkg.optimusctx.version;
+const currentTag = pkg.optimusctx.releaseTag;
+const releasePath = `/releases/download/${currentTag}/`;
+const nextReleasePath = `/releases/download/${releaseTag}/`;
 
-// npm package metadata must stay release-derived and use the same
-// optimusctx_${versionNoV}_${goos}_${goarch} naming contract as GoReleaser.
-const repositoryURL = `https://github.com/${pkg.optimusctx.repository.owner}/${pkg.optimusctx.repository.name}`;
-const checksumFile = `optimusctx_${versionNoV}_checksums.txt`;
+function retagCanonicalURL(url) {
+  if (!url.includes(releasePath)) {
+    throw new Error(`expected canonical release URL containing ${releasePath}: ${url}`);
+  }
+  return url.replace(releasePath, nextReleasePath).replaceAll(currentVersion, versionNoV);
+}
 
 pkg.version = versionNoV;
 pkg.optimusctx.version = versionNoV;
 pkg.optimusctx.releaseTag = releaseTag;
-pkg.optimusctx.checksumManifest.file = checksumFile;
-pkg.optimusctx.checksumManifest.url = `${repositoryURL}/releases/download/${releaseTag}/${checksumFile}`;
+
+// Preserve the canonical release contract emitted by the Go helper and retag it.
+const checksumManifest = pkg.optimusctx.checksumManifest;
+checksumManifest.file = checksumManifest.file.replace(currentVersion, versionNoV);
+checksumManifest.url = retagCanonicalURL(checksumManifest.url);
 
 for (const platform of Object.values(pkg.optimusctx.platforms)) {
+  // The archive contract stays canonical: optimusctx_${versionNoV}_${platform.os}_${platform.arch}
   const extension = platform.os === 'windows' ? 'zip' : 'tar.gz';
-  const archive = `optimusctx_${versionNoV}_${platform.os}_${platform.arch}.${extension}`;
+  const archive = platform.archive.replace(currentVersion, versionNoV);
+  const expectedArchive = `optimusctx_${versionNoV}_${platform.os}_${platform.arch}.${extension}`;
+  if (archive !== expectedArchive) {
+    throw new Error(`canonical archive contract drifted: expected ${expectedArchive}, got ${archive}`);
+  }
   platform.archive = archive;
   platform.archiveFormat = extension;
-  platform.archiveUrl = `${repositoryURL}/releases/download/${releaseTag}/${archive}`;
+  platform.archiveUrl = retagCanonicalURL(platform.archiveUrl);
 }
 
 fs.writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
