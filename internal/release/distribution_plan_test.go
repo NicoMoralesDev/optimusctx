@@ -19,7 +19,7 @@ func TestDistributionChannelPolicy(t *testing.T) {
 		t.Fatalf("distribution policy must keep install config edits opt-in")
 	}
 
-	if got, want := policyChannelIDs(policy), []string{"github-release-archive", "homebrew", "scoop"}; !reflect.DeepEqual(got, want) {
+	if got, want := policyChannelIDs(policy), []string{"github-release-archive", "homebrew", "scoop", "npm"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("channel IDs = %v, want %v", got, want)
 	}
 
@@ -50,6 +50,11 @@ func TestDistributionChannelPolicy(t *testing.T) {
 		ID:                "scoop",
 		Name:              "Scoop",
 		PublicationTarget: "niccrow/scoop-bucket",
+	})
+	assertChannelPolicy(t, policy.SupportedChannels[3], DistributionChannel{
+		ID:                "npm",
+		Name:              "npm",
+		PublicationTarget: "@niccrow/optimusctx",
 	})
 
 	if got, want := deferredScopeNames(policy), []string{
@@ -108,9 +113,13 @@ func TestRolloutPlanExamples(t *testing.T) {
 		policy.SupportedChannels[1].PublicationTarget,
 		policy.SupportedChannels[2].Name,
 		policy.SupportedChannels[2].PublicationTarget,
+		policy.SupportedChannels[3].Name,
+		policy.SupportedChannels[3].PublicationTarget,
 		"brew install niccrow/tap/optimusctx",
 		"scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git",
 		"scoop install niccrow/optimusctx",
+		"npm install -g @niccrow/optimusctx",
+		"npx @niccrow/optimusctx version",
 		"optimusctx version",
 		"optimusctx doctor",
 		"optimusctx snippet",
@@ -124,8 +133,10 @@ func TestRolloutPlanExamples(t *testing.T) {
 		"GitHub Release archives",
 		"Homebrew",
 		"Scoop",
+		"npm",
 		"HOMEBREW_TAP_GITHUB_TOKEN",
 		"SCOOP_BUCKET_GITHUB_TOKEN",
+		"NPM_TOKEN",
 		"best-effort and issue-driven",
 	} {
 		if !strings.Contains(checklist, want) {
@@ -145,6 +156,7 @@ func TestUpgradePolicy(t *testing.T) {
 		"prior tagged GitHub Release archive",
 		"brew upgrade niccrow/tap/optimusctx",
 		"scoop update optimusctx",
+		"npm install -g @niccrow/optimusctx@latest",
 		"`optimusctx install` is preview-first",
 		"operator opts into `--write`",
 		"native Linux packages such as `.deb` and `.rpm`",
@@ -181,6 +193,8 @@ func TestDistributionDocsStayWithinSupportedScope(t *testing.T) {
 		"GitHub Release archive",
 		"brew upgrade niccrow/tap/optimusctx",
 		"scoop update optimusctx",
+		"npm install -g @niccrow/optimusctx",
+		"npx @niccrow/optimusctx version",
 	} {
 		if !strings.Contains(documents["docs/distribution-strategy.md"], want) && !strings.Contains(documents["docs/release-checklist.md"], want) {
 			t.Fatalf("distribution docs must keep %q visible", want)
@@ -193,8 +207,6 @@ func TestDistributionDocsStayWithinSupportedScope(t *testing.T) {
 		"apt install",
 		"dnf install",
 		"yum install",
-		"npm install",
-		"npx ",
 		"managed rollout service",
 	} {
 		for path, content := range documents {

@@ -27,13 +27,15 @@ That guide covers:
 - GitHub release archives
 - Homebrew on macOS and Linux
 - Scoop on Windows
+- `npm install -g @niccrow/optimusctx`
+- `npx @niccrow/optimusctx version`
 - local verification with `optimusctx version`, `optimusctx doctor`, and `optimusctx snippet`
 - optional MCP client registration through explicit `optimusctx install --client ...`
 
 The top-level release boundary stays narrow:
 
 - GitHub release archives remain the first retrievable release artifacts
-- Homebrew and Scoop are the only package-manager channels claimed for v1.1
+- Homebrew, Scoop, and the npm wrapper package are the supported package-manager channels for v1.1
 - MCP registration is explicit and opt-in; package installation does not silently rewrite client configs
 
 ## Build from source
@@ -51,7 +53,7 @@ go run ./cmd/optimusctx --help
 go run ./cmd/optimusctx version
 ```
 
-This source-build path is for local development and repository work. The release-oriented operator flow lives in [`docs/install-and-verify.md`](./docs/install-and-verify.md). npm or `npx` packaging is not part of the current product scope.
+This source-build path is for local development and repository work. The release-oriented operator flow lives in [`docs/install-and-verify.md`](./docs/install-and-verify.md). npm and `npx` are supported only as wrapper paths over the same tagged GitHub Release binary.
 
 ## Release archives
 
@@ -76,10 +78,11 @@ Release builds inject truthful build metadata into the shipped binary. After dow
 
 ## Package-manager channels for v1.1
 
-Phase 13 adds exactly two package-manager channels on top of the GitHub-hosted archives:
+v1.1 supports three package-manager channels on top of the GitHub-hosted archives:
 
 - Homebrew for macOS and Linux, published to `niccrow/homebrew-tap`
 - Scoop for Windows, published to `niccrow/scoop-bucket`
+- npm for the JavaScript ecosystem wrapper path, published as `@niccrow/optimusctx`
 
 Those manifests are derived from the same archive names and SHA-256 checksums produced by [`.goreleaser.yml`](./.goreleaser.yml). They do not introduce a second release source or any installer-only runtime behavior.
 
@@ -94,9 +97,14 @@ scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git
 scoop install niccrow/optimusctx
 ```
 
-For release operators, the publication targets are `niccrow/homebrew-tap` and `niccrow/scoop-bucket`. Any workflow that writes those repositories should authenticate with `HOMEBREW_TAP_GITHUB_TOKEN` and `SCOOP_BUCKET_GITHUB_TOKEN`.
+```bash
+npm install -g @niccrow/optimusctx
+npx @niccrow/optimusctx version
+```
 
-Homebrew and Scoop are the only package-manager channels claimed for v1.1. This repository does not yet claim `.deb`, `.rpm`, WinGet, Chocolatey, signed artifacts, or SBOM support.
+For release operators, the publication targets are `niccrow/homebrew-tap`, `niccrow/scoop-bucket`, and the npm registry package `@niccrow/optimusctx`. Publication should authenticate with `HOMEBREW_TAP_GITHUB_TOKEN`, `SCOOP_BUCKET_GITHUB_TOKEN`, and `NPM_TOKEN`.
+
+Homebrew, Scoop, and the npm wrapper are the only package-manager channels claimed for v1.1. This repository does not yet claim `.deb`, `.rpm`, WinGet, Chocolatey, signed artifacts, or SBOM support.
 
 For the supported operator workflow after installation, follow [`docs/install-and-verify.md`](./docs/install-and-verify.md) instead of using `go run` examples from this repository.
 

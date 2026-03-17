@@ -60,13 +60,27 @@ Scoop is the primary package-manager channel for Windows users.
 - Upgrade command: `scoop update optimusctx`
 - Verification after install or upgrade: rerun `optimusctx version`, `optimusctx doctor`, and `optimusctx snippet`
 
+### 4. npm and npx
+
+npm is the JavaScript ecosystem wrapper channel for users who prefer `npm install -g` or `npx`, while still running the real tagged OptimusCtx binary.
+
+- Publication target: npm registry package `@niccrow/optimusctx`
+- Audience: users who expect package installation through npm but still want the real Go release binary underneath the wrapper
+- Install commands:
+  - `npm install -g @niccrow/optimusctx`
+  - `npx @niccrow/optimusctx version`
+- Upgrade command: `npm install -g @niccrow/optimusctx@latest`
+- Verification after install or upgrade: rerun `optimusctx version`, `optimusctx doctor`, `optimusctx snippet`, and only then the explicit `optimusctx install --client claude-desktop --write` path if desired
+- Support boundary: the npm package is a wrapper over the GitHub Release archives, not a JavaScript reimplementation or a silent client-config installer
+
 ## How Users Choose A Channel
 
 The intended channel order is:
 
 1. Homebrew if the user is on macOS or Linux and already uses Homebrew.
 2. Scoop if the user is on Windows and already uses Scoop.
-3. GitHub Release archives if the user wants the raw binary, needs a rollback, or does not want to depend on a package manager.
+3. npm if the user prefers the JavaScript ecosystem wrapper and is comfortable with npm or `npx`.
+4. GitHub Release archives if the user wants the raw binary, needs a rollback, or does not want to depend on a package manager.
 
 This keeps the product truthful about supported channels while still giving every user one direct binary path that does not depend on an external package-manager state.
 
@@ -81,6 +95,7 @@ In practice that means:
 - GitHub Release archive users download a newer tagged archive, replace the binary manually on their PATH, and rerun the verification commands.
 - Homebrew users run `brew upgrade niccrow/tap/optimusctx`, then rerun `optimusctx version` and `optimusctx doctor`.
 - Scoop users run `scoop update optimusctx`, then rerun `optimusctx version` and `optimusctx doctor`.
+- npm users rerun `npm install -g @niccrow/optimusctx`, or use `npx @niccrow/optimusctx version` for ephemeral execution, then verify with `optimusctx version`, `optimusctx doctor`, and `optimusctx snippet`.
 
 OptimusCtx does not ship an in-product auto-updater. Users are expected to choose when to upgrade and to verify the installed binary explicitly after doing so.
 
@@ -90,6 +105,7 @@ Rollback stays simple and explicit:
 
 - The primary rollback source is a prior tagged GitHub Release archive.
 - If a Homebrew or Scoop upgrade causes a local problem, the documented recovery path is to reinstall a prior tagged archive from GitHub Releases.
+- If npm or `npx` wrapper execution causes a local problem, the documented recovery path is to reinstall or rerun the wrapper against a prior tagged GitHub Release version, or fall back directly to the archive channel.
 - Rollback is a binary replacement operation, not a managed state migration system.
 
 Because the tool is single-binary and local-first, rollback does not require uninstalling an agent service or coordinating with a hosted control plane.
@@ -112,7 +128,7 @@ Support for v1.1 is best-effort and issue-driven through repository documentatio
 Supported help covers:
 
 - obtaining the binary from one of the named channels
-- running the documented install commands for Homebrew or Scoop
+- running the documented install commands for Homebrew, Scoop, or npm
 - verifying the binary with `version`, `doctor`, and `snippet`
 - understanding the explicit `install --client` preview and write flow
 
@@ -140,7 +156,7 @@ These items can matter later, but they are not required for a truthful v1.1 rele
 When communicating v1.1 externally or to early adopters, describe the release as:
 
 - a local-first single binary
-- available through GitHub Release archives, Homebrew, and Scoop
+- available through GitHub Release archives, Homebrew, Scoop, and the npm wrapper package
 - upgraded explicitly by the operator
 - verified with `optimusctx version`, `optimusctx doctor`, and `optimusctx snippet`
 - supported on a best-effort, issue-driven basis
@@ -155,4 +171,4 @@ Avoid language that implies:
 
 ## Summary
 
-The v1.1 distribution strategy is intentionally small: one direct archive channel, one package-manager channel for macOS and Linux, one package-manager channel for Windows, one explicit verification path, and one clear support boundary. That is enough to support adoption without over-promising beyond the current product shape.
+The v1.1 distribution strategy is intentionally small: one direct archive channel, Homebrew for macOS and Linux, Scoop for Windows, one npm wrapper channel for the JavaScript ecosystem, one explicit verification path, and one clear support boundary. That is enough to support adoption without over-promising beyond the current product shape.

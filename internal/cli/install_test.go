@@ -279,12 +279,16 @@ func TestPackageManagerInstallDocs(t *testing.T) {
 	for _, want := range []string{
 		"Homebrew for macOS and Linux, published to `niccrow/homebrew-tap`",
 		"Scoop for Windows, published to `niccrow/scoop-bucket`",
+		"npm for the JavaScript ecosystem wrapper path, published as `@niccrow/optimusctx`",
 		"brew install niccrow/tap/optimusctx",
 		"scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git",
 		"scoop install niccrow/optimusctx",
+		"npm install -g @niccrow/optimusctx",
+		"npx @niccrow/optimusctx version",
 		"HOMEBREW_TAP_GITHUB_TOKEN",
 		"SCOOP_BUCKET_GITHUB_TOKEN",
-		"Homebrew and Scoop are the only package-manager channels claimed for v1.1.",
+		"NPM_TOKEN",
+		"Homebrew, Scoop, and the npm wrapper are the only package-manager channels claimed for v1.1.",
 		"This repository does not yet claim `.deb`, `.rpm`, WinGet, Chocolatey, signed artifacts, or SBOM support.",
 	} {
 		if !strings.Contains(readme, want) {

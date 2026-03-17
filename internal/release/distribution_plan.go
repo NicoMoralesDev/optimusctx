@@ -90,6 +90,16 @@ func CurrentDistributionPolicy() DistributionPolicy {
 				RollbackPath:      "If Scoop metadata is insufficient for a rollback, reinstall a prior tagged GitHub Release archive.",
 				SupportBoundary:   "Support covers the named bucket, install command, and verification path, not broader Windows package-manager alternatives.",
 			},
+			{
+				ID:                "npm",
+				Name:              "npm",
+				UserFacingInstall: "Run `npm install -g @niccrow/optimusctx` or `npx @niccrow/optimusctx version` to use the wrapper package over the tagged release binary.",
+				PublicationTarget: "@niccrow/optimusctx",
+				Audience:          "Users who already manage CLI tooling through npm or want an `npx` wrapper without changing the single-binary runtime contract.",
+				UpgradePath:       "Use `npm install -g @niccrow/optimusctx@latest` or rerun `npx @niccrow/optimusctx version`, then rerun `optimusctx version`, `optimusctx doctor`, and `optimusctx snippet` if the binary stays installed locally.",
+				RollbackPath:      "If the npm wrapper path regresses, reinstall a prior tagged archive directly from GitHub Releases or rerun the wrapper against the desired tagged version.",
+				SupportBoundary:   "Support covers the published npm package and wrapper verification flow, not arbitrary Node environment repair or a JavaScript reimplementation path.",
+			},
 		},
 		Upgrade: UpgradePolicy{
 			VerificationCommands: []string{
@@ -98,7 +108,7 @@ func CurrentDistributionPolicy() DistributionPolicy {
 				"optimusctx snippet",
 			},
 			ArchiveExpectation: "Archive users upgrade by replacing the binary manually and verifying the shipped command surface again.",
-			PackageManagerRule: "Package-manager users upgrade through the channel-native command while GitHub Release archives remain the rollback fallback.",
+			PackageManagerRule: "Package-manager users upgrade through the channel-native command while GitHub Release archives remain the rollback fallback, including the npm wrapper package.",
 		},
 		Support: SupportPolicy{
 			SupportedCommands: []string{
@@ -114,7 +124,7 @@ func CurrentDistributionPolicy() DistributionPolicy {
 		DeferredScope: []DeferredScopeItem{
 			{Name: "native Linux packages", Reason: "`.deb` and `.rpm` packaging is deferred until v2 expansion work."},
 			{Name: "WinGet", Reason: "Windows distribution stays on Scoop plus GitHub Release archives for v1.1."},
-			{Name: "Chocolatey", Reason: "Only one Windows package-manager channel is supported in v1.1."},
+			{Name: "Chocolatey", Reason: "Only one native Windows package-manager channel is supported in v1.1."},
 			{Name: "artifact signing", Reason: "Signed artifacts are deferred to later distribution-hardening work."},
 			{Name: "SBOM publication", Reason: "SBOM generation and publication remain out of scope for v1.1."},
 		},
