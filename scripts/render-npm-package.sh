@@ -21,6 +21,7 @@ esac
 
 for required in \
   "${SOURCE_DIR}/package.json" \
+  "${SOURCE_DIR}/README.md" \
   "${SOURCE_DIR}/bin/optimusctx.js" \
   "${SOURCE_DIR}/lib/install.js" \
   "${SOURCE_DIR}/lib/platform.js"; do
