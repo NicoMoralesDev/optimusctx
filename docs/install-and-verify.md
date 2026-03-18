@@ -13,6 +13,8 @@ Supported install channels for v1.2:
 - GitHub release archives for macOS, Linux, and Windows
 
 GitHub Release is the canonical root for release archives, checksum manifests, and downstream channel facts.
+After GitHub Release assets are available, npm, Homebrew, and Scoop are published from the same canonical tagged release contract.
+GitHub Release is the canonical root and rollback source even when downstream automation republishes one package-manager channel.
 
 The verification path below uses the shipped commands that matter for first-run confidence:
 
@@ -54,12 +56,16 @@ Use `npx` if you want to try the tool without keeping a global install on your P
 brew install niccrow/tap/optimusctx
 ```
 
+Homebrew installs the formula rendered from the same canonical tagged GitHub Release checksum and archive contract.
+
 ### Alternative: Scoop
 
 ```powershell
 scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git
 scoop install niccrow/optimusctx
 ```
+
+Scoop installs the manifest rendered from the same canonical tagged GitHub Release checksum and archive contract.
 
 ### Fallback: install from a release archive
 
@@ -231,7 +237,10 @@ v1.2 intentionally keeps distribution narrow:
 - supported package managers: Homebrew, Scoop, and the npm wrapper package
 - supported local verification: `version`, `init`, `doctor`, `snippet`, optional `install --client`
 - GitHub Release stays the canonical root even when a package-manager install path is used
-- this phase does not yet claim automated Homebrew or Scoop publication fan-out
+- npm, Homebrew, and Scoop now publish from the same canonical tagged release contract after GitHub Release assets are available
+
+If one downstream package-manager publication needs recovery, rerun the release workflow with `workflow_dispatch`, `release_tag=<tag>`, and `publication_channel=npm`, `publication_channel=homebrew`, or `publication_channel=scoop` for the existing tagged release without rebuilding unrelated channels.
+GitHub Release remains the canonical root and rollback source for those reruns.
 
 Not claimed in this milestone:
 

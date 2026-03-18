@@ -5,6 +5,7 @@
 Use this checklist when publishing a v1.2 release so the rollout stays aligned with the supported channel contract in `docs/distribution-strategy.md`.
 
 GitHub Release is the canonical root for archives, checksums, and downstream release facts.
+After GitHub Release assets are available, npm, Homebrew, and Scoop are published from the same canonical tagged release contract.
 
 ## Pre-Tag Checks
 
@@ -13,17 +14,18 @@ GitHub Release is the canonical root for archives, checksums, and downstream rel
 - Confirm GitHub Release remains the canonical tagged root that downstream channels consume rather than a peer channel.
 - Confirm the deferred items are still deferred: `.deb`, `.rpm`, WinGet, Chocolatey, artifact signing, and SBOM publication.
 - Run the release verification tests before tagging:
-  - `go test ./internal/release -run 'TestGitHubReleaseDocsStayCanonical|TestGitHubReleaseWorkflowReuseContract|TestCanonicalReleaseMatchesGoReleaserContract'`
+  - `go test ./internal/release -run 'TestMultiChannelPublicationDocsStayCanonical|TestChannelPublicationWorkflowSelectiveRerun|TestCanonicalReleaseMatchesGoReleaserContract'`
   - `go test ./internal/release ./internal/cli -run 'TestRolloutPlanExamples|TestUpgradePolicy'`
   - `go test ./...`
 
 ## Tag And Publish
 
 - Create the release tag that should drive the canonical GitHub Release and downstream publication flow.
-- Use `workflow_dispatch` with `release_tag` when you need to reuse an existing tagged release contract for reruns or downstream publication recovery.
+- Use `workflow_dispatch` with `release_tag` and `publication_channel` to rerun `npm`, `homebrew`, or `scoop` for an existing tagged release without rebuilding unrelated channels.
 - Verify the GitHub Release contains the canonical versioned archives and checksum manifest for the tag.
 - Verify the release metadata lines up with `optimusctx version`.
 - Verify the npm package was rendered from `scripts/render-npm-package.sh` and published with `npm publish` against the same tagged release facts.
+- Verify Homebrew and Scoop were rendered and published from the same tagged GitHub Release checksum and archive facts.
 - Treat GitHub Release archives as the baseline distribution channel, canonical metadata root, and rollback source.
 
 ## GitHub Release Archive Checks
@@ -42,7 +44,8 @@ GitHub Release is the canonical root for archives, checksums, and downstream rel
 - Confirm the user-facing upgrade command is `brew upgrade niccrow/tap/optimusctx`.
 - Confirm the release operator credentials for publication are still `HOMEBREW_TAP_GITHUB_TOKEN`.
 - Confirm Homebrew messaging stays scoped to macOS and Linux users who already use Homebrew.
-- Do not claim Homebrew publication is automated in Phase 17.
+- Confirm Homebrew publication is automated from the same canonical tagged release after GitHub Release assets are available.
+- If Homebrew needs recovery, rerun `workflow_dispatch` with `release_tag=<tag>` and `publication_channel=homebrew`.
 
 ## Scoop Checks
 
@@ -52,7 +55,8 @@ GitHub Release is the canonical root for archives, checksums, and downstream rel
 - Confirm the user-facing upgrade command is `scoop update optimusctx`.
 - Confirm the release operator credentials for publication are still `SCOOP_BUCKET_GITHUB_TOKEN`.
 - Confirm Scoop messaging stays scoped to Windows users who already use Scoop.
-- Do not claim Scoop publication is automated in Phase 17.
+- Confirm Scoop publication is automated from the same canonical tagged release after GitHub Release assets are available.
+- If Scoop needs recovery, rerun `workflow_dispatch` with `release_tag=<tag>` and `publication_channel=scoop`.
 
 ## npm Checks
 
@@ -61,6 +65,7 @@ GitHub Release is the canonical root for archives, checksums, and downstream rel
 - Confirm the user-facing ephemeral command is `npx @niccrow/optimusctx version`.
 - Confirm the release operator credentials for publication are still `NPM_TOKEN`.
 - Confirm the npm package remains a wrapper over the canonical tagged GitHub Release binary rather than a separate runtime implementation.
+- If npm needs recovery, rerun `workflow_dispatch` with `release_tag=<tag>` and `publication_channel=npm`.
 
 ## Verification Commands
 
@@ -87,7 +92,7 @@ GitHub Release is the canonical root for archives, checksums, and downstream rel
 ## Release Complete
 
 - The tagged GitHub Release artifacts are published and retrievable as the canonical root.
-- The Homebrew and Scoop paths match the structured policy contract without claiming automated Phase 17 fan-out.
+- The npm, Homebrew, and Scoop publication paths match the same automated downstream contract rooted in the canonical tagged GitHub Release.
 - The npm publication and install path match the structured policy contract.
 - The docs still describe the real verification and support flow.
 - The release remains narrow, truthful, and aligned with the v1.2 operator plan.

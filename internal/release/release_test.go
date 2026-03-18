@@ -222,6 +222,7 @@ func TestChannelPublicationWorkflowSelectiveRerun(t *testing.T) {
 
 	for _, want := range []string{
 		`publication_channel:`,
+		`release_tag:`,
 		`default: all`,
 		`type: choice`,
 		`- all`,
@@ -230,6 +231,12 @@ func TestChannelPublicationWorkflowSelectiveRerun(t *testing.T) {
 		`- scoop`,
 		`gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null`,
 		`skipping goreleaser release --clean`,
+		`inputs.publication_channel == 'npm'`,
+		`inputs.publication_channel == 'homebrew'`,
+		`inputs.publication_channel == 'scoop'`,
+		`publication_channel=npm`,
+		`publication_channel=homebrew`,
+		`publication_channel=scoop`,
 		`ref: ${{ needs.release.outputs.ref }}`,
 		`${{ needs.release.outputs.tag }}`,
 	} {
@@ -402,16 +409,18 @@ func TestReleaseChecklistPublicationCredentials(t *testing.T) {
 	}
 }
 
-func TestGitHubReleaseDocsStayCanonical(t *testing.T) {
+func TestMultiChannelPublicationDocsStayCanonical(t *testing.T) {
 	checklist := readRepoFile(t, "docs/release-checklist.md")
 	installGuide := readRepoFile(t, "docs/install-and-verify.md")
 
 	for _, want := range []string{
 		`GitHub Release is the canonical root for archives, checksums, and downstream release facts.`,
-		`Use ` + "`workflow_dispatch`" + ` with ` + "`release_tag`" + ` when you need to reuse an existing tagged release contract for reruns or downstream publication recovery.`,
-		`Do not claim Homebrew publication is automated in Phase 17.`,
-		`Do not claim Scoop publication is automated in Phase 17.`,
+		`After GitHub Release assets are available, npm, Homebrew, and Scoop are published from the same canonical tagged release contract.`,
+		`Use ` + "`workflow_dispatch`" + ` with ` + "`release_tag`" + ` and ` + "`publication_channel`" + ` to rerun ` + "`npm`" + `, ` + "`homebrew`" + `, or ` + "`scoop`" + ` for an existing tagged release without rebuilding unrelated channels.`,
+		`Confirm Homebrew publication is automated from the same canonical tagged release after GitHub Release assets are available.`,
+		`Confirm Scoop publication is automated from the same canonical tagged release after GitHub Release assets are available.`,
 		`canonical tagged GitHub Release binary`,
+		`rollback source`,
 	} {
 		if !strings.Contains(checklist, want) {
 			t.Fatalf("docs/release-checklist.md missing %q", want)
@@ -420,9 +429,13 @@ func TestGitHubReleaseDocsStayCanonical(t *testing.T) {
 
 	for _, want := range []string{
 		`GitHub Release is the canonical root for release archives, checksum manifests, and downstream channel facts.`,
+		`After GitHub Release assets are available, npm, Homebrew, and Scoop are published from the same canonical tagged release contract.`,
 		`The npm package is a wrapper over the canonical tagged GitHub Release binary.`,
+		`Homebrew installs the formula rendered from the same canonical tagged GitHub Release checksum and archive contract.`,
+		`Scoop installs the manifest rendered from the same canonical tagged GitHub Release checksum and archive contract.`,
 		`Download the archive that matches your OS and CPU from the canonical tagged GitHub Release.`,
-		`this phase does not yet claim automated Homebrew or Scoop publication fan-out`,
+		`GitHub Release is the canonical root and rollback source even when downstream automation republishes one package-manager channel.`,
+		`without rebuilding unrelated channels`,
 	} {
 		if !strings.Contains(installGuide, want) {
 			t.Fatalf("docs/install-and-verify.md missing %q", want)
