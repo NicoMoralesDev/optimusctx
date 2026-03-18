@@ -246,6 +246,53 @@ func TestChannelPublicationWorkflowSelectiveRerun(t *testing.T) {
 	}
 }
 
+func TestReleaseWorkflowSummaryShowsChannelStatus(t *testing.T) {
+	workflow := readRepoFile(t, ".github/workflows/release.yml")
+
+	for _, want := range []string{
+		`### GitHub Release publication`,
+		`### npm publication`,
+		`### Homebrew publication`,
+		`### Scoop publication`,
+		`- channel:`,
+		`- tag:`,
+		`- outcome:`,
+		`- failure_reason:`,
+		`- next_step:`,
+	} {
+		if !strings.Contains(workflow, want) {
+			t.Fatalf(".github/workflows/release.yml missing %q", want)
+		}
+	}
+}
+
+func TestReleaseWorkflowSummaryShowsFailureGuidance(t *testing.T) {
+	workflow := readRepoFile(t, ".github/workflows/release.yml")
+
+	for _, want := range []string{
+		`GitHub Release archive publication failed`,
+		`fix the canonical GitHub Release/archive state before any downstream rerun`,
+		`npm publish failed`,
+		`Homebrew tap update failed`,
+		`Scoop bucket update failed`,
+		`confirm GitHub Release remains the canonical root`,
+		`workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=npm`,
+		`workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=homebrew`,
+		`workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=scoop`,
+		`publication_channel=npm`,
+		`publication_channel=homebrew`,
+		`publication_channel=scoop`,
+	} {
+		if !strings.Contains(workflow, want) {
+			t.Fatalf(".github/workflows/release.yml missing %q", want)
+		}
+	}
+
+	if strings.Contains(workflow, `publication_channel=github-release`) {
+		t.Fatalf(".github/workflows/release.yml must not invent publication_channel=github-release")
+	}
+}
+
 func TestHomebrewPublishWorkflow(t *testing.T) {
 	workflow := readRepoFile(t, ".github/workflows/release.yml")
 
