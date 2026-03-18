@@ -1,17 +1,15 @@
-//go:build cgo
-// +build cgo
-
 package goextract
 
 import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/scanner"
+	"go/token"
+	"strconv"
 	"strings"
-
-	sitter "github.com/tree-sitter/go-tree-sitter"
-	tree_sitter_go "github.com/tree-sitter/tree-sitter-go/bindings/go"
 
 	"github.com/niccrow/optimusctx/internal/extract"
 	"github.com/niccrow/optimusctx/internal/repository"
@@ -21,8 +19,6 @@ const (
 	adapterName    = "tree-sitter-go"
 	grammarVersion = "v0.25.0"
 )
-
-var language = sitter.NewLanguage(tree_sitter_go.Language())
 
 type Adapter struct{}
 
@@ -43,46 +39,36 @@ func (a *Adapter) GrammarVersion() string {
 }
 
 func (a *Adapter) Extract(ctx context.Context, req extract.Request) (extract.Result, error) {
-	parser := sitter.NewParser()
-	defer parser.Close()
-
-	if err := parser.SetLanguage(language); err != nil {
-		return extract.Result{}, fmt.Errorf("set language: %w", err)
+	select {
+	case <-ctx.Done():
+		return extract.Result{}, ctx.Err()
+	default:
 	}
 
-	tree := parser.ParseCtx(ctx, req.Content, nil)
-	if tree == nil {
-		return extract.Result{
-			CoverageState:  repository.ExtractionCoverageStateFailed,
-			CoverageReason: repository.ExtractionCoverageReasonAdapterError,
-		}, nil
-	}
-	defer tree.Close()
-
-	root := tree.RootNode()
-	state := walkState{
-		source:               req.Content,
-		cursor:               root.Walk(),
-		typeStableKeysByName: make(map[string]string),
-	}
-	defer state.cursor.Close()
-
-	state.collect(root, "")
-
-	parserErrorCount := int64(countErrorNodes(root))
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, req.Candidate.Path, req.Content, parser.AllErrors)
+	parserErrorCount := int64(countParseErrors(err))
 	result := extract.Result{
 		ParserErrorCount: parserErrorCount,
-		HasErrorNodes:    root.HasError(),
-		Symbols:          state.symbols,
+		HasErrorNodes:    parserErrorCount > 0,
 	}
+	if file == nil {
+		result.CoverageState = repository.ExtractionCoverageStateFailed
+		result.CoverageReason = repository.ExtractionCoverageReasonParseError
+		return result, nil
+	}
+
+	state := newWalkState(fset, file, req.Content)
+	state.collectFile(file)
+	result.Symbols = state.symbols
 	meaningfulSymbols := countMeaningfulSymbols(state.symbols)
 
 	switch {
-	case root.HasError() && meaningfulSymbols == 0:
+	case result.HasErrorNodes && meaningfulSymbols == 0:
 		result.Symbols = nil
 		result.CoverageState = repository.ExtractionCoverageStateFailed
 		result.CoverageReason = repository.ExtractionCoverageReasonParseError
-	case root.HasError():
+	case result.HasErrorNodes:
 		result.CoverageState = repository.ExtractionCoverageStatePartial
 		result.CoverageReason = repository.ExtractionCoverageReasonParseError
 	default:
@@ -94,203 +80,269 @@ func (a *Adapter) Extract(ctx context.Context, req extract.Request) (extract.Res
 
 type walkState struct {
 	source               []byte
-	cursor               *sitter.TreeCursor
+	locator              locator
 	symbols              []repository.SymbolRecord
 	typeStableKeysByName map[string]string
 }
 
-func (s *walkState) collect(node *sitter.Node, lexicalParent string) {
-	if node == nil {
-		return
+func newWalkState(fset *token.FileSet, file *ast.File, source []byte) walkState {
+	state := walkState{
+		source:               source,
+		locator:              newLocator(fset, file, source),
+		typeStableKeysByName: make(map[string]string),
 	}
+	state.collectTypeStableKeys(file)
+	return state
+}
 
-	switch node.Kind() {
-	case "package_clause":
-		if symbol, ok := s.packageSymbol(node); ok {
-			s.symbols = append(s.symbols, symbol)
-		}
-	case "const_spec":
-		s.symbols = append(s.symbols, s.valueSymbols(node, "const", lexicalParent)...)
-	case "var_spec":
-		s.symbols = append(s.symbols, s.valueSymbols(node, "var", lexicalParent)...)
-	case "type_spec":
-		symbol, nestedParent, ok := s.typeSymbols(node, lexicalParent)
-		if ok {
-			s.symbols = append(s.symbols, symbol...)
-			lexicalParent = nestedParent
-		}
-	case "field_declaration":
-		s.symbols = append(s.symbols, s.fieldSymbols(node, lexicalParent)...)
-	case "method_elem":
-		if symbol, ok := s.interfaceMethodSymbol(node, lexicalParent); ok {
-			s.symbols = append(s.symbols, symbol)
-		}
-	case "function_declaration":
-		if symbol, ok := s.functionSymbol(node); ok {
-			s.symbols = append(s.symbols, symbol)
-		}
-	case "method_declaration":
-		if symbol, ok := s.methodSymbol(node); ok {
-			s.symbols = append(s.symbols, symbol)
-		}
-	}
-
-	for _, child := range node.NamedChildren(s.cursor) {
-		if !s.shouldTraverse(node.Kind(), child.Kind()) {
+func (s *walkState) collectTypeStableKeys(file *ast.File) {
+	for _, decl := range file.Decls {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok || gen.Tok != token.TYPE {
 			continue
 		}
+		for _, spec := range gen.Specs {
+			typeSpec, ok := spec.(*ast.TypeSpec)
+			if !ok || typeSpec.Name == nil {
+				continue
+			}
+			name := typeSpec.Name.Name
+			if name == "" {
+				continue
+			}
+			specSpan := s.locator.span(typeSpec.Pos(), typeSpec.End())
+			s.typeStableKeysByName[name] = stableKey("type", name, specSpan.StartByte, specSpan.EndByte)
+		}
+	}
+}
 
-		childParent := lexicalParent
-		if node.Kind() == "type_spec" {
-			switch child.Kind() {
-			case "struct_type", "interface_type":
-				if container := s.lastSymbolStableKey(); container != "" {
-					childParent = container
+func (s *walkState) collectFile(file *ast.File) {
+	if symbol, ok := s.packageSymbol(file); ok {
+		s.symbols = append(s.symbols, symbol)
+	}
+
+	for _, decl := range file.Decls {
+		switch node := decl.(type) {
+		case *ast.GenDecl:
+			s.collectGenDecl(node)
+		case *ast.FuncDecl:
+			if node.Recv == nil {
+				if symbol, ok := s.functionSymbol(node); ok {
+					s.symbols = append(s.symbols, symbol)
 				}
+				continue
+			}
+			if symbol, ok := s.methodSymbol(node); ok {
+				s.symbols = append(s.symbols, symbol)
 			}
 		}
-		s.collect(&child, childParent)
 	}
 }
 
-func (s *walkState) shouldTraverse(parentKind string, childKind string) bool {
-	switch parentKind {
-	case "const_spec", "var_spec", "package_clause", "function_declaration", "method_declaration", "field_declaration", "method_elem":
-		return false
-	case "type_spec":
-		return childKind == "struct_type" || childKind == "interface_type"
-	default:
-		return true
+func (s *walkState) collectGenDecl(node *ast.GenDecl) {
+	switch node.Tok {
+	case token.CONST:
+		for _, spec := range node.Specs {
+			valueSpec, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+			s.symbols = append(s.symbols, s.valueSymbols(valueSpec, "const", "")...)
+		}
+	case token.VAR:
+		for _, spec := range node.Specs {
+			valueSpec, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+			s.symbols = append(s.symbols, s.valueSymbols(valueSpec, "var", "")...)
+		}
+	case token.TYPE:
+		for _, spec := range node.Specs {
+			typeSpec, ok := spec.(*ast.TypeSpec)
+			if !ok {
+				continue
+			}
+			symbols, nestedParent, ok := s.typeSymbols(typeSpec, "")
+			if !ok {
+				continue
+			}
+			s.symbols = append(s.symbols, symbols...)
+			switch typed := typeSpec.Type.(type) {
+			case *ast.StructType:
+				s.symbols = append(s.symbols, s.fieldSymbols(typed.Fields, nestedParent)...)
+			case *ast.InterfaceType:
+				s.symbols = append(s.symbols, s.interfaceMethodSymbols(typed.Methods, nestedParent)...)
+			}
+		}
 	}
 }
 
-func (s *walkState) packageSymbol(node *sitter.Node) (repository.SymbolRecord, bool) {
-	nameNode := node.ChildByFieldName("name")
-	if nameNode == nil {
-		nameNode = firstNamedChildOfKind(node, s.cursor, "package_identifier")
-	}
-	if nameNode == nil || node.HasError() {
+func (s *walkState) packageSymbol(node *ast.File) (repository.SymbolRecord, bool) {
+	if node == nil || node.Name == nil || node.Name.Name == "" {
 		return repository.SymbolRecord{}, false
 	}
-	return s.newSymbol("package", nameNode.Utf8Text(s.source), node, nameNode, "", ""), true
+	return s.newSymbol(
+		"package",
+		node.Name.Name,
+		s.locator.span(node.Package, node.Name.End()),
+		s.locator.span(node.Name.Pos(), node.Name.End()),
+		"",
+		"",
+		token.NoPos,
+	), true
 }
 
-func (s *walkState) valueSymbols(node *sitter.Node, kind string, parentStableKey string) []repository.SymbolRecord {
-	if node.HasError() {
+func (s *walkState) valueSymbols(node *ast.ValueSpec, kind string, parentStableKey string) []repository.SymbolRecord {
+	if node == nil {
 		return nil
 	}
 
-	nameNodes := node.ChildrenByFieldName("name", s.cursor)
-	symbols := make([]repository.SymbolRecord, 0, len(nameNodes))
-	for _, nameNode := range nameNodes {
-		name := nameNode.Utf8Text(s.source)
-		if name == "" {
+	symbols := make([]repository.SymbolRecord, 0, len(node.Names))
+	for _, nameNode := range node.Names {
+		if nameNode == nil || nameNode.Name == "" {
 			continue
 		}
-		symbols = append(symbols, s.newSymbol(kind, name, &nameNode, &nameNode, parentStableKey, name))
+		nameSpan := s.locator.span(nameNode.Pos(), nameNode.End())
+		symbols = append(symbols, s.newSymbol(kind, nameNode.Name, nameSpan, nameSpan, parentStableKey, nameNode.Name, token.NoPos))
 	}
 	return symbols
 }
 
-func (s *walkState) typeSymbols(node *sitter.Node, parentStableKey string) ([]repository.SymbolRecord, string, bool) {
-	if node.HasError() {
+func (s *walkState) typeSymbols(node *ast.TypeSpec, parentStableKey string) ([]repository.SymbolRecord, string, bool) {
+	if node == nil || node.Name == nil || node.Name.Name == "" {
 		return nil, "", false
 	}
 
-	nameNode := node.ChildByFieldName("name")
-	if nameNode == nil {
-		return nil, "", false
-	}
-	name := nameNode.Utf8Text(s.source)
-	typeSymbol := s.newSymbol("type", name, node, nameNode, parentStableKey, name)
-	s.typeStableKeysByName[name] = typeSymbol.StableKey
+	name := node.Name.Name
+	typeSymbol := s.newSymbol(
+		"type",
+		name,
+		s.locator.span(node.Pos(), node.End()),
+		s.locator.span(node.Name.Pos(), node.Name.End()),
+		parentStableKey,
+		name,
+		token.NoPos,
+	)
 
-	typeNode := node.ChildByFieldName("type")
-	switch {
-	case typeNode == nil:
-		return []repository.SymbolRecord{typeSymbol}, "", true
-	case typeNode.Kind() == "struct_type":
-		structSymbol := s.newSymbol("struct", name, typeNode, nameNode, typeSymbol.StableKey, name)
+	switch typeNode := node.Type.(type) {
+	case *ast.StructType:
+		structSymbol := s.newSymbol(
+			"struct",
+			name,
+			s.locator.span(typeNode.Pos(), typeNode.End()),
+			s.locator.span(node.Name.Pos(), node.Name.End()),
+			typeSymbol.StableKey,
+			name,
+			token.NoPos,
+		)
 		return []repository.SymbolRecord{typeSymbol, structSymbol}, structSymbol.StableKey, true
-	case typeNode.Kind() == "interface_type":
-		interfaceSymbol := s.newSymbol("interface", name, typeNode, nameNode, typeSymbol.StableKey, name)
+	case *ast.InterfaceType:
+		interfaceSymbol := s.newSymbol(
+			"interface",
+			name,
+			s.locator.span(typeNode.Pos(), typeNode.End()),
+			s.locator.span(node.Name.Pos(), node.Name.End()),
+			typeSymbol.StableKey,
+			name,
+			token.NoPos,
+		)
 		return []repository.SymbolRecord{typeSymbol, interfaceSymbol}, interfaceSymbol.StableKey, true
 	default:
 		return []repository.SymbolRecord{typeSymbol}, "", true
 	}
 }
 
-func (s *walkState) fieldSymbols(node *sitter.Node, parentStableKey string) []repository.SymbolRecord {
-	if node.HasError() || parentStableKey == "" {
+func (s *walkState) fieldSymbols(fields *ast.FieldList, parentStableKey string) []repository.SymbolRecord {
+	if fields == nil || parentStableKey == "" {
 		return nil
 	}
 
-	nameNodes := node.ChildrenByFieldName("name", s.cursor)
-	if len(nameNodes) == 0 {
-		typeNode := node.ChildByFieldName("type")
-		if typeNode == nil || typeNode.HasError() {
-			return nil
-		}
-		name := normalizeTypeName(typeNode.Utf8Text(s.source))
-		if name == "" {
-			return nil
-		}
-		return []repository.SymbolRecord{s.newSymbol("field", name, node, typeNode, parentStableKey, name)}
-	}
-
-	symbols := make([]repository.SymbolRecord, 0, len(nameNodes))
-	for _, nameNode := range nameNodes {
-		name := nameNode.Utf8Text(s.source)
-		if name == "" {
+	symbols := make([]repository.SymbolRecord, 0, len(fields.List))
+	for _, field := range fields.List {
+		if field == nil {
 			continue
 		}
-		symbols = append(symbols, s.newSymbol("field", name, node, &nameNode, parentStableKey, name))
+		fieldSpan := s.locator.span(field.Pos(), field.End())
+		if len(field.Names) == 0 {
+			name := normalizeTypeName(s.locator.sourceText(field.Type.Pos(), field.Type.End()))
+			if name == "" {
+				continue
+			}
+			nameSpan := s.locator.span(field.Type.Pos(), field.Type.End())
+			symbols = append(symbols, s.newSymbol("field", name, fieldSpan, nameSpan, parentStableKey, name, token.NoPos))
+			continue
+		}
+
+		for _, nameNode := range field.Names {
+			if nameNode == nil || nameNode.Name == "" {
+				continue
+			}
+			symbols = append(symbols, s.newSymbol(
+				"field",
+				nameNode.Name,
+				fieldSpan,
+				s.locator.span(nameNode.Pos(), nameNode.End()),
+				parentStableKey,
+				nameNode.Name,
+				token.NoPos,
+			))
+		}
 	}
 	return symbols
 }
 
-func (s *walkState) interfaceMethodSymbol(node *sitter.Node, parentStableKey string) (repository.SymbolRecord, bool) {
-	if node.HasError() || parentStableKey == "" {
-		return repository.SymbolRecord{}, false
+func (s *walkState) interfaceMethodSymbols(methods *ast.FieldList, parentStableKey string) []repository.SymbolRecord {
+	if methods == nil || parentStableKey == "" {
+		return nil
 	}
 
-	nameNode := node.ChildByFieldName("name")
-	if nameNode == nil {
-		return repository.SymbolRecord{}, false
+	symbols := make([]repository.SymbolRecord, 0, len(methods.List))
+	for _, method := range methods.List {
+		if method == nil || len(method.Names) == 0 {
+			continue
+		}
+		methodSpan := s.locator.span(method.Pos(), method.End())
+		for _, nameNode := range method.Names {
+			if nameNode == nil || nameNode.Name == "" {
+				continue
+			}
+			symbols = append(symbols, s.newSymbol(
+				"method",
+				nameNode.Name,
+				methodSpan,
+				s.locator.span(nameNode.Pos(), nameNode.End()),
+				parentStableKey,
+				nameNode.Name,
+				token.NoPos,
+			))
+		}
 	}
-	name := nameNode.Utf8Text(s.source)
-	if name == "" {
-		return repository.SymbolRecord{}, false
-	}
-	return s.newSymbol("method", name, node, nameNode, parentStableKey, name), true
+	return symbols
 }
 
-func (s *walkState) functionSymbol(node *sitter.Node) (repository.SymbolRecord, bool) {
-	if node.HasError() {
+func (s *walkState) functionSymbol(node *ast.FuncDecl) (repository.SymbolRecord, bool) {
+	if node == nil || node.Name == nil || node.Name.Name == "" || node.Body == nil {
 		return repository.SymbolRecord{}, false
 	}
-
-	nameNode := node.ChildByFieldName("name")
-	if nameNode == nil {
-		return repository.SymbolRecord{}, false
-	}
-	name := nameNode.Utf8Text(s.source)
-	return s.newSymbol("function", name, node, nameNode, "", name), true
+	return s.newSymbol(
+		"function",
+		node.Name.Name,
+		s.locator.span(node.Pos(), node.End()),
+		s.locator.span(node.Name.Pos(), node.Name.End()),
+		"",
+		node.Name.Name,
+		bodyPos(node.Body),
+	), true
 }
 
-func (s *walkState) methodSymbol(node *sitter.Node) (repository.SymbolRecord, bool) {
-	if node.HasError() {
+func (s *walkState) methodSymbol(node *ast.FuncDecl) (repository.SymbolRecord, bool) {
+	if node == nil || node.Name == nil || node.Name.Name == "" || node.Recv == nil || node.Body == nil {
 		return repository.SymbolRecord{}, false
 	}
 
-	nameNode := node.ChildByFieldName("name")
-	receiverNode := node.ChildByFieldName("receiver")
-	if nameNode == nil || receiverNode == nil {
-		return repository.SymbolRecord{}, false
-	}
-
-	name := nameNode.Utf8Text(s.source)
-	receiverType := receiverTypeName(receiverNode, s.source)
+	name := node.Name.Name
+	receiverType := receiverTypeName(node.Recv, s.locator)
 	qualifiedName := name
 	parentStableKey := ""
 	if receiverType != "" {
@@ -298,12 +350,20 @@ func (s *walkState) methodSymbol(node *sitter.Node) (repository.SymbolRecord, bo
 		parentStableKey = s.typeStableKeysByName[receiverType]
 	}
 
-	return s.newSymbol("method", name, node, nameNode, parentStableKey, qualifiedName), true
+	return s.newSymbol(
+		"method",
+		name,
+		s.locator.span(node.Pos(), node.End()),
+		s.locator.span(node.Name.Pos(), node.Name.End()),
+		parentStableKey,
+		qualifiedName,
+		bodyPos(node.Body),
+	), true
 }
 
-func (s *walkState) newSymbol(kind string, name string, spanNode *sitter.Node, nameNode *sitter.Node, parentStableKey string, qualifiedName string) repository.SymbolRecord {
+func (s *walkState) newSymbol(kind string, name string, span sourceSpan, nameSpan sourceSpan, parentStableKey string, qualifiedName string, bodyStart token.Pos) repository.SymbolRecord {
 	symbol := repository.SymbolRecord{
-		StableKey:       stableKey(kind, qualifiedName, spanNode),
+		StableKey:       stableKey(kind, qualifiedName, span.StartByte, span.EndByte),
 		ParentStableKey: parentStableKey,
 		Kind:            kind,
 		Name:            name,
@@ -311,18 +371,14 @@ func (s *walkState) newSymbol(kind string, name string, spanNode *sitter.Node, n
 		IsExported:      isExported(name),
 	}
 
-	if spanNode != nil {
-		symbol.StartByte = int64(spanNode.StartByte())
-		symbol.EndByte = int64(spanNode.EndByte())
-		symbol.StartRow = int64(spanNode.StartPosition().Row)
-		symbol.StartColumn = int64(spanNode.StartPosition().Column)
-		symbol.EndRow = int64(spanNode.EndPosition().Row)
-		symbol.EndColumn = int64(spanNode.EndPosition().Column)
-	}
-	if nameNode != nil {
-		symbol.NameStartByte = int64(nameNode.StartByte())
-		symbol.NameEndByte = int64(nameNode.EndByte())
-	}
+	symbol.StartByte = span.StartByte
+	symbol.EndByte = span.EndByte
+	symbol.StartRow = span.StartRow
+	symbol.StartColumn = span.StartColumn
+	symbol.EndRow = span.EndRow
+	symbol.EndColumn = span.EndColumn
+	symbol.NameStartByte = nameSpan.StartByte
+	symbol.NameEndByte = nameSpan.EndByte
 
 	if parentStableKey == "" {
 		symbol.Depth = 0
@@ -330,73 +386,45 @@ func (s *walkState) newSymbol(kind string, name string, spanNode *sitter.Node, n
 		symbol.Depth = 1
 	}
 
-	if bodyNode := spanNode.ChildByFieldName("body"); bodyNode != nil {
+	if bodyStart.IsValid() {
 		symbol.SignatureStartByte = symbol.StartByte
-		symbol.SignatureEndByte = int64(bodyNode.StartByte())
+		symbol.SignatureEndByte = s.locator.offset(bodyStart)
 	}
 
 	return symbol
 }
 
-func (s *walkState) lastSymbolStableKey() string {
-	if len(s.symbols) == 0 {
-		return ""
-	}
-	return s.symbols[len(s.symbols)-1].StableKey
-}
-
-func stableKey(kind string, qualifiedName string, node *sitter.Node) string {
-	payload := fmt.Sprintf("%s:%s:%d:%d", kind, qualifiedName, node.StartByte(), node.EndByte())
+func stableKey(kind string, qualifiedName string, startByte int64, endByte int64) string {
+	payload := kind + ":" + qualifiedName + ":" + formatInt(startByte) + ":" + formatInt(endByte)
 	sum := sha256.Sum256([]byte(payload))
 	return hex.EncodeToString(sum[:])
 }
 
-func countErrorNodes(node *sitter.Node) int {
-	if node == nil {
+func countParseErrors(err error) int {
+	if err == nil {
 		return 0
 	}
 
-	count := 0
-	if node.IsError() || node.IsMissing() {
-		count++
+	switch typed := err.(type) {
+	case scanner.ErrorList:
+		return len(typed)
+	case *scanner.ErrorList:
+		return len(*typed)
+	default:
+		return 1
 	}
-	cursor := node.Walk()
-	defer cursor.Close()
-	for _, child := range node.Children(cursor) {
-		count += countErrorNodes(&child)
-	}
-	return count
 }
 
-func firstNamedChildOfKind(node *sitter.Node, cursor *sitter.TreeCursor, kind string) *sitter.Node {
-	for _, child := range node.NamedChildren(cursor) {
-		if child.Kind() == kind {
-			return &child
-		}
-	}
-	return nil
-}
-
-func receiverTypeName(node *sitter.Node, source []byte) string {
-	if node == nil {
+func receiverTypeName(receivers *ast.FieldList, locator locator) string {
+	if receivers == nil || len(receivers.List) == 0 {
 		return ""
 	}
 
-	switch node.Kind() {
-	case "type_identifier", "qualified_type", "generic_type":
-		return normalizeTypeName(node.Utf8Text(source))
-	case "identifier":
+	field := receivers.List[0]
+	if field == nil || field.Type == nil {
 		return ""
 	}
-
-	cursor := node.Walk()
-	defer cursor.Close()
-	for _, child := range node.NamedChildren(cursor) {
-		if name := receiverTypeName(&child, source); name != "" {
-			return name
-		}
-	}
-	return ""
+	return normalizeTypeName(locator.sourceText(field.Type.Pos(), field.Type.End()))
 }
 
 func countMeaningfulSymbols(symbols []repository.SymbolRecord) int {
@@ -431,4 +459,83 @@ func isExported(name string) bool {
 	}
 	first := rune(name[0])
 	return strings.ToUpper(string(first)) == string(first) && strings.ToLower(string(first)) != string(first)
+}
+
+type locator struct {
+	file   *token.File
+	source []byte
+}
+
+type sourceSpan struct {
+	StartByte   int64
+	EndByte     int64
+	StartRow    int64
+	StartColumn int64
+	EndRow      int64
+	EndColumn   int64
+}
+
+func newLocator(fset *token.FileSet, file *ast.File, source []byte) locator {
+	if file == nil {
+		return locator{source: source}
+	}
+
+	tokenFile := fset.File(file.Package)
+	if tokenFile == nil {
+		tokenFile = fset.File(file.Pos())
+	}
+	return locator{file: tokenFile, source: source}
+}
+
+func (l locator) span(start token.Pos, end token.Pos) sourceSpan {
+	if l.file == nil || !start.IsValid() || !end.IsValid() {
+		return sourceSpan{}
+	}
+
+	startPos := l.file.Position(start)
+	endPos := l.file.Position(end)
+	return sourceSpan{
+		StartByte:   l.offset(start),
+		EndByte:     l.offset(end),
+		StartRow:    int64(startPos.Line - 1),
+		StartColumn: int64(startPos.Column - 1),
+		EndRow:      int64(endPos.Line - 1),
+		EndColumn:   int64(endPos.Column - 1),
+	}
+}
+
+func (l locator) offset(pos token.Pos) int64 {
+	if l.file == nil || !pos.IsValid() {
+		return 0
+	}
+
+	offset := l.file.Offset(pos)
+	switch {
+	case offset < 0:
+		return 0
+	case offset > len(l.source):
+		return int64(len(l.source))
+	default:
+		return int64(offset)
+	}
+}
+
+func (l locator) sourceText(start token.Pos, end token.Pos) string {
+	startOffset := l.offset(start)
+	endOffset := l.offset(end)
+	if endOffset < startOffset {
+		return ""
+	}
+	return string(l.source[startOffset:endOffset])
+}
+
+func bodyPos(block *ast.BlockStmt) token.Pos {
+	if block == nil {
+		return token.NoPos
+	}
+	return block.Pos()
+}
+
+func formatInt(value int64) string {
+	return strconv.FormatInt(value, 10)
 }
