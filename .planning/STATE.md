@@ -5,16 +5,16 @@ milestone_name: release automation and operator workflow
 current_phase: 18
 current_phase_name: multi-channel publication fan-out
 current_plan: 4
-status: ready
-stopped_at: Completed 18-03-PLAN.md
-last_updated: "2026-03-18T11:44:45.446Z"
+status: verifying
+stopped_at: Completed 18-04-PLAN.md
+last_updated: "2026-03-18T11:55:41.347Z"
 last_activity: 2026-03-18
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 15
-  completed_plans: 14
-  percent: 93
+  completed_plans: 15
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 **Current Phase:** 18
 **Current Phase Name:** multi-channel publication fan-out
 **Total Phases:** 4
 **Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [█████████░] 93%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-18
-**Last Activity Description:** Completed Phase 18 plan 03 with canonical release workflow fan-out, selective downstream reruns, and package-manager publication regression coverage
+**Last Activity Description:** Completed Phase 18 plan 04 with truthful prepare readiness, canonical multi-channel release docs, and regression coverage for selective reruns
 
 ## Project Memory
 
@@ -45,9 +45,9 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `18-multi-channel-publication-fan-out`
-- Next execution action: execute Phase 18 plan 04 on top of the workflow fan-out and per-channel rerun controls from plan 03
+- Next execution action: plan Phase 19 operator verification, recovery, and end-to-end guide on top of the completed Phase 18 release workflow, prepare, and documentation contracts
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: Phase 18 plans 01-03 are complete; plan 04 remains pending
+- Coverage status: Phase 18 plans 01-04 are complete; phase is ready for verification and handoff into Phase 19 planning
 
 ## Recent Decisions
 
@@ -247,6 +247,7 @@ progress:
 | Phase 18-multi-channel-publication-fan-out P01 | 2min | 2 tasks | 4 files |
 | Phase 18 P02 | 5 min | 2 tasks | 6 files |
 | Phase 18-multi-channel-publication-fan-out P03 | 9m | 2 tasks | 5 files |
+| Phase 18-multi-channel-publication-fan-out P04 | 6m | 2 tasks | 6 files |
 
 ## Decisions Made
 
@@ -430,6 +431,9 @@ progress:
 - [Phase 18]: Template loading resolves from the release package source path so go test and wrapper execution share one repo-root contract.
 - [Phase 18]: Release workflow downstream jobs reuse one canonical ref/tag/checksum output from the release job.
 - [Phase 18]: Homebrew and Scoop publication stay as thin shell wrappers plus workflow transport while Go owns rendered payload content.
+- [Phase 18]: Prepare readiness now treats Homebrew and Scoop as ready only when the workflow contains their publication job names, token wiring, render commands, and required templates.
+- [Phase 18]: Release fixtures and operator docs now reflect the real automated multi-channel fan-out instead of the old blocked-placeholder story.
+- [Phase 18]: Operator rerun guidance is locked to workflow_dispatch with release_tag and publication_channel so recovery stays single-channel and rooted in the canonical GitHub Release.
 
 ## Blockers
 
@@ -437,8 +441,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-18T11:44:30.025Z
-**Stopped At:** Completed 18-03-PLAN.md
+**Last Date:** 2026-03-18T11:55:41.344Z
+**Stopped At:** Completed 18-04-PLAN.md
 **Resume File:** None
 
 ---

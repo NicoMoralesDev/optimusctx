@@ -75,7 +75,7 @@ Plans:
 - [x] 18-01: shared downstream publication plan and rerun contract
 - [x] 18-02: package-manager publication payloads and transport helpers
 - [x] 18-03: workflow fan-out and per-channel rerun controls
-- [ ] 18-04: readiness, status, and documentation closeout
+- [x] 18-04: readiness, status, and documentation closeout
 
 **Requirements covered:** `PUB-02`, `PUB-03`
 
@@ -84,7 +84,7 @@ Plans:
 - Operator can rerun one specific channel for an existing tag without rebuilding unrelated channels.
 - Publication failures surface enough context to know which channel failed and what can be retried safely.
 
-**Details:** Phase 18 closes the automation gap between the current GitHub Release plus npm flow and the still-manual Homebrew and Scoop publication paths.
+**Details:** Phase 18 now closes the automation gap with one canonical GitHub Release workflow, truthful prepare readiness, and operator docs for exact single-channel reruns.
 
 ### Phase 19: Operator Verification, Recovery, and End-to-End Guide
 
@@ -103,14 +103,14 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.2` with Phase 18 in progress and plans 01-03 complete
+Active milestone: `v1.2` with Phase 18 complete and ready to roll into Phase 19
 
 Next step:
 
-- Execute Phase 18 plan 04 against the verified workflow fan-out and per-channel rerun controls from plan 03
-- Keep per-channel status, retry guidance, and documentation anchored to the canonical GitHub Release root
-- Continue milestone execution from workflow fan-out into readiness, status, and documentation closeout
-- Keep all new release-channel automation anchored to the existing GitHub Release archive contract
+- Plan Phase 19 operator verification, recovery, and end-to-end guide against the completed canonical GitHub Release fan-out and rerun contract
+- Keep verification, retry guidance, and rollback instructions anchored to the canonical GitHub Release root
+- Reuse the completed prepare readiness and operator documentation contract instead of introducing channel-specific side paths
+- Preserve exact `workflow_dispatch` rerun semantics with `release_tag` and `publication_channel`
 
 ---
-*Last updated: 2026-03-18 after completing Phase 18 plan 03 workflow fan-out and rerun controls*
+*Last updated: 2026-03-18 after completing Phase 18 plan 04 readiness, status, and documentation closeout*
