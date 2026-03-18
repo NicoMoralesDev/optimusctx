@@ -4,7 +4,7 @@
 
 OptimusCtx v1.1 needs a narrow distribution story that helps real users adopt the shipped binary without implying a broader installer platform than the repository actually supports today.
 
-This document defines the concrete v1.1 release channels, the users those channels are for, how upgrades and rollbacks work, and what support assumptions apply after installation.
+This document defines the concrete v1.1 release channels, the users those channels are for, how upgrades and rollbacks work, and what support assumptions apply after installation. For the v1.2 release-operator procedure, use `docs/operator-release-guide.md` as the canonical release, rerun, verification, and rollback flow.
 
 The guiding constraint is unchanged from the product itself: OptimusCtx is a local-first, single-binary tool. Distribution should make that binary easier to obtain, verify, and upgrade, not turn it into a managed service or an invasive installer.
 
@@ -101,9 +101,12 @@ OptimusCtx does not ship an in-product auto-updater. Users are expected to choos
 
 ## Rollback Expectations
 
-Rollback stays simple and explicit:
+Recovery and rollback stay simple and explicit:
 
+- If the canonical GitHub Release archives or checksums are wrong, stop and fix GitHub Release first before you rerun any downstream publication channel.
+- If exactly one downstream channel failed after the canonical release is correct, rerun only that channel with `gh workflow run release.yml -f release_tag=vX.Y.Z -f publication_channel=npm`, `gh workflow run release.yml -f release_tag=vX.Y.Z -f publication_channel=homebrew`, or `gh workflow run release.yml -f release_tag=vX.Y.Z -f publication_channel=scoop`.
 - The primary rollback source is a prior tagged GitHub Release archive.
+- If a published release should be abandoned, reinstall a prior tagged GitHub Release archive, verify the fallback binary again, and publish a new fixed version instead of reusing the same version.
 - If a Homebrew or Scoop upgrade causes a local problem, the documented recovery path is to reinstall a prior tagged archive from GitHub Releases.
 - If npm or `npx` wrapper execution causes a local problem, the documented recovery path is to reinstall or rerun the wrapper against a prior tagged GitHub Release version, or fall back directly to the archive channel.
 - Rollback is a binary replacement operation, not a managed state migration system.
