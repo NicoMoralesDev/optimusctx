@@ -188,8 +188,11 @@ func TestNPMPublishWorkflow(t *testing.T) {
 	for _, want := range []string{
 		"name: Publish npm wrapper package",
 		"needs: release",
+		"permissions:",
+		"id-token: write",
 		"inputs.publication_channel == 'npm'",
 		"uses: actions/setup-node@v4",
+		"node-version: 24",
 		"registry-url: https://registry.npmjs.org",
 		"bash scripts/render-npm-package.sh",
 		"npm publish --access public",
@@ -336,6 +339,7 @@ func TestNPMPublishConfig(t *testing.T) {
 	for _, want := range []string{
 		"NPM_TOKEN",
 		"NODE_AUTH_TOKEN",
+		"id-token: write",
 		"needs.release.outputs.tag",
 	} {
 		if !strings.Contains(workflow, want) {

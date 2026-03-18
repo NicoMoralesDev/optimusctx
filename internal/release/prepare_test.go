@@ -578,10 +578,18 @@ jobs:
   publish_npm:
     name: Publish npm wrapper package
     needs: release
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - run: bash scripts/render-npm-package.sh "${{ inputs.release_tag }}" out
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
       - run: npm publish --access public
         env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
   publish_homebrew:
     name: Publish Homebrew formula
@@ -605,7 +613,7 @@ jobs:
 			Data: []byte(`
 - Confirm the release operator credentials for publication are still HOMEBREW_TAP_GITHUB_TOKEN.
 - Confirm the release operator credentials for publication are still SCOOP_BUCKET_GITHUB_TOKEN.
-- Confirm the release operator credentials for publication are still NPM_TOKEN.
+- Confirm npm trusted publishing is configured for this workflow, or keep NPM_TOKEN available as a fallback.
 `),
 		},
 		npmRenderScriptPath: {
@@ -642,10 +650,18 @@ jobs:
   publish_npm:
     name: Publish npm wrapper package
     needs: release
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - run: bash scripts/render-npm-package.sh "${{ inputs.release_tag }}" out
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
       - run: npm publish --access public
         env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 `),
 	}

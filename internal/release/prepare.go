@@ -639,9 +639,9 @@ func evaluateNPMChannel(workflow string, missingFiles map[string]bool) channelEv
 	requiredMarkers := []string{
 		"name: Publish npm wrapper package",
 		"needs: release",
+		"id-token: write",
 		"bash scripts/render-npm-package.sh",
 		"npm publish --access public",
-		"NPM_TOKEN",
 	}
 	if missing := missingMarkers(workflow, requiredMarkers...); len(missing) > 0 {
 		return channelEvaluation{
