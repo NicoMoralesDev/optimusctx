@@ -52,7 +52,7 @@ Plans:
 - [x] 17-03: downstream consumer rewiring to the shared release metadata contract
 - [x] 17-04: canonical-root documentation and regression lock
 - [x] 17-05: canonical release contract depth closure
-- [ ] 17-06: orchestration and prepare handoff depth closure
+- [x] 17-06: orchestration and prepare handoff depth closure
 - [x] 17-07: npm render canonical-source closure
 
 **Requirements covered:** `PUB-01`
@@ -96,14 +96,14 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.2` with Phase 17 re-verification blocked on reconciling missing 17-06 summary metadata
+Active milestone: `v1.2` with Phase 17 ready for re-verification after reconciling the 17-06 summary metadata
 
 Next step:
 
-- Reconcile the missing 17-06 summary metadata, then re-verify Phase 17 against the canonical metadata, orchestration, and npm render truths
+- Re-verify Phase 17 against the canonical metadata, orchestration, and npm render truths
 - Use the verified Phase 17 summary set to plan Phase 18 multi-channel publication fan-out
 - Continue milestone execution from canonical-root regression lock into channel automation and rerun controls
 - Keep all new release-channel automation anchored to the existing GitHub Release archive contract
 
 ---
-*Last updated: 2026-03-17 after completing Phase 17 plan 07*
+*Last updated: 2026-03-18 after reconciling Phase 17 plan 06 summary metadata*

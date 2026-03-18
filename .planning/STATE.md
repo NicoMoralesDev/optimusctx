@@ -5,16 +5,16 @@ milestone_name: release automation and operator workflow
 current_phase: 17
 current_phase_name: canonical release orchestration and metadata
 current_plan: 7
-status: executing
-stopped_at: Completed 17-07-PLAN.md
-last_updated: "2026-03-17T23:54:59Z"
-last_activity: 2026-03-17
+status: verifying
+stopped_at: Completed 17-06-PLAN.md
+last_updated: "2026-03-18T00:02:59.533Z"
+last_activity: 2026-03-18
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 11
-  completed_plans: 10
-  percent: 91
+  completed_plans: 11
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase 17 gap-closure execution in progress
+**Status:** Phase 17 complete — ready for verification
 **Current Phase:** 17
 **Current Phase Name:** canonical release orchestration and metadata
 **Total Phases:** 4
 **Current Plan:** 7
 **Total Plans in Phase:** 7
-**Progress:** [█████████░] 91%
-**Last Activity:** 2026-03-17
-**Last Activity Description:** Completed plan 17-07; Phase 17 re-verification is still blocked on reconciling missing 17-06 summary metadata
+**Progress:** [██████████] 100%
+**Last Activity:** 2026-03-18
+**Last Activity Description:** Completed plan 17-06 and reconciled the missing Phase 17 summary metadata so the phase is ready for re-verification
 
 ## Project Memory
 
@@ -45,9 +45,9 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `17-canonical-release-orchestration-and-metadata`
-- Next execution action: reconcile the missing 17-06 summary metadata, then re-verify completed Phase 17 outputs before planning Phase 18 multi-channel publication fan-out
+- Next execution action: re-verify completed Phase 17 outputs, then plan Phase 18 multi-channel publication fan-out
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: Phase 17 plans 01-05 and 17-07 are complete; 17-06 implementation exists on the branch but its summary metadata still needs reconciliation before Phase 17 re-verification
+- Coverage status: Phase 17 plans 01-07 are complete and ready for verification
 
 ## Recent Decisions
 
@@ -240,6 +240,7 @@ progress:
 | Phase 17 P04 | 8min | 2 tasks | 4 files |
 | Phase 17 P05 | 2min | 2 tasks | 1 files |
 | Phase 17 P07 | 8min | 2 tasks | 4 files |
+| Phase 17-canonical-release-orchestration-and-metadata P06 | 16min | 2 tasks | 4 files |
 
 ## Decisions Made
 
@@ -415,6 +416,8 @@ progress:
 - [Phase 17]: Unsupported canonical targets stay keyed as goos/goarch so downstream consumers and tests can rely on deterministic lookup and error text.
 - [Phase 17]: The npm wrapper must render package.json from Go canonical release helpers instead of retagging committed JSON in shell or Node.
 - [Phase 17]: Downstream release-channel regressions should compare rendered artifacts byte-for-byte against the canonical Go renderer rather than reconstructing URLs or archive names locally.
+- [Phase 17-canonical-release-orchestration-and-metadata]: ReleasePreparation owns an OrchestrationHandoff object so orchestration consumes already-validated version, tag, canonical release, and selected channel plans instead of rebuilding them piecemeal.
+- [Phase 17-canonical-release-orchestration-and-metadata]: ReleaseOrchestrationPlan now carries explicit GitHub Release action metadata, while the old booleans remain derived compatibility fields rather than the primary contract.
 
 ## Blockers
 
@@ -422,8 +425,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-17T23:54:59Z
-**Stopped At:** Completed 17-07-PLAN.md
+**Last Date:** 2026-03-18T00:02:59.530Z
+**Stopped At:** Completed 17-06-PLAN.md
 **Resume File:** None
 
 ---
