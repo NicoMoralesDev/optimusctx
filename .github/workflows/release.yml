@@ -157,11 +157,25 @@ jobs:
           GOMODCACHE: /tmp/optimusctx-gomodcache
         run: go test ./internal/release -run 'TestArchiveMatrix|TestChecksumManifest|TestGitHubReleasePublicationConfig|TestNPMPublishWorkflow|TestNPMPublishConfig'
 
+      - name: Check npm publication credentials
+        id: npm_credentials
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${NPM_TOKEN:-}" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Render npm package
+        if: ${{ steps.npm_credentials.outputs.enabled == 'true' }}
         run: bash scripts/render-npm-package.sh "${{ needs.release.outputs.tag }}" "$RUNNER_TEMP/npm-package"
 
       - name: Publish npm package
         id: publish_npm_step
+        if: ${{ steps.npm_credentials.outputs.enabled == 'true' }}
         working-directory: ${{ runner.temp }}/npm-package
         run: npm publish --access public
         env:
@@ -173,11 +187,14 @@ jobs:
         env:
           RELEASE_TAG: ${{ needs.release.outputs.tag }}
           PUBLICATION_OUTCOME: ${{ steps.publish_npm_step.outcome }}
+          CREDENTIALS_ENABLED: ${{ steps.npm_credentials.outputs.enabled }}
         run: |
           set -euo pipefail
           failure_reason="none"
           if [ "${PUBLICATION_OUTCOME:-skipped}" = "failure" ]; then
             failure_reason="npm publish failed"
+          elif [ "${CREDENTIALS_ENABLED:-false}" != "true" ]; then
+            failure_reason="missing NPM_TOKEN"
           fi
           {
             echo "### npm publication"
@@ -201,13 +218,36 @@ jobs:
           ref: ${{ needs.release.outputs.ref }}
           fetch-depth: 0
 
+      - name: Check Homebrew publication credentials
+        id: homebrew_credentials
+        env:
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${HOMEBREW_TAP_GITHUB_TOKEN:-}" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Download canonical checksum manifest
-        run: curl -fsSL "${{ needs.release.outputs.checksum_manifest_url }}" -o "$RUNNER_TEMP/optimusctx_checksums.txt"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "optimusctx_${RELEASE_VERSION}_checksums.txt" \
+            --dir "$RUNNER_TEMP"
+          mv "$RUNNER_TEMP/optimusctx_${RELEASE_VERSION}_checksums.txt" "$RUNNER_TEMP/optimusctx_checksums.txt"
 
       - name: Render Homebrew formula
         run: bash scripts/render-homebrew-formula.sh "${{ needs.release.outputs.tag }}" "$RUNNER_TEMP/optimusctx_checksums.txt" "$RUNNER_TEMP/Formula/optimusctx.rb"
 
       - name: Check out Homebrew tap repository
+        if: ${{ steps.homebrew_credentials.outputs.enabled == 'true' }}
         uses: actions/checkout@v4
         with:
           repository: niccrow/homebrew-tap
@@ -218,6 +258,7 @@ jobs:
 
       - name: Update Homebrew formula
         id: update_homebrew
+        if: ${{ steps.homebrew_credentials.outputs.enabled == 'true' }}
         env:
           RELEASE_TAG: ${{ needs.release.outputs.tag }}
         run: |
@@ -240,11 +281,14 @@ jobs:
         env:
           RELEASE_TAG: ${{ needs.release.outputs.tag }}
           UPDATE_OUTCOME: ${{ steps.update_homebrew.outcome }}
+          CREDENTIALS_ENABLED: ${{ steps.homebrew_credentials.outputs.enabled }}
         run: |
           set -euo pipefail
           failure_reason="none"
           if [ "${UPDATE_OUTCOME:-skipped}" = "failure" ]; then
             failure_reason="Homebrew tap update failed"
+          elif [ "${CREDENTIALS_ENABLED:-false}" != "true" ]; then
+            failure_reason="missing HOMEBREW_TAP_GITHUB_TOKEN"
           fi
           {
             echo "### Homebrew publication"
@@ -268,13 +312,36 @@ jobs:
           ref: ${{ needs.release.outputs.ref }}
           fetch-depth: 0
 
+      - name: Check Scoop publication credentials
+        id: scoop_credentials
+        env:
+          SCOOP_BUCKET_GITHUB_TOKEN: ${{ secrets.SCOOP_BUCKET_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${SCOOP_BUCKET_GITHUB_TOKEN:-}" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Download canonical checksum manifest
-        run: curl -fsSL "${{ needs.release.outputs.checksum_manifest_url }}" -o "$RUNNER_TEMP/optimusctx_checksums.txt"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "optimusctx_${RELEASE_VERSION}_checksums.txt" \
+            --dir "$RUNNER_TEMP"
+          mv "$RUNNER_TEMP/optimusctx_${RELEASE_VERSION}_checksums.txt" "$RUNNER_TEMP/optimusctx_checksums.txt"
 
       - name: Render Scoop manifest
         run: bash scripts/render-scoop-manifest.sh "${{ needs.release.outputs.tag }}" "$RUNNER_TEMP/optimusctx_checksums.txt" "$RUNNER_TEMP/bucket/optimusctx.json"
 
       - name: Check out Scoop bucket repository
+        if: ${{ steps.scoop_credentials.outputs.enabled == 'true' }}
         uses: actions/checkout@v4
         with:
           repository: niccrow/scoop-bucket
@@ -285,6 +352,7 @@ jobs:
 
       - name: Update Scoop manifest
         id: update_scoop
+        if: ${{ steps.scoop_credentials.outputs.enabled == 'true' }}
         env:
           RELEASE_TAG: ${{ needs.release.outputs.tag }}
         run: |
@@ -307,11 +375,14 @@ jobs:
         env:
           RELEASE_TAG: ${{ needs.release.outputs.tag }}
           UPDATE_OUTCOME: ${{ steps.update_scoop.outcome }}
+          CREDENTIALS_ENABLED: ${{ steps.scoop_credentials.outputs.enabled }}
         run: |
           set -euo pipefail
           failure_reason="none"
           if [ "${UPDATE_OUTCOME:-skipped}" = "failure" ]; then
             failure_reason="Scoop bucket update failed"
+          elif [ "${CREDENTIALS_ENABLED:-false}" != "true" ]; then
+            failure_reason="missing SCOOP_BUCKET_GITHUB_TOKEN"
           fi
           {
             echo "### Scoop publication"
