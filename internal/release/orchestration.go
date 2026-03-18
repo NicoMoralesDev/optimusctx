@@ -42,25 +42,29 @@ type ReleaseOrchestrationPlan struct {
 }
 
 func PlanReleaseOrchestration(preparation ReleasePreparation, request ReleaseOrchestrationRequest) (ReleaseOrchestrationPlan, error) {
+	handoff, err := preparation.OrchestrationHandoff()
+	if err != nil {
+		return ReleaseOrchestrationPlan{}, fmt.Errorf("build release orchestration handoff: %w", err)
+	}
+
+	return planReleaseOrchestrationFromHandoff(handoff, request)
+}
+
+func planReleaseOrchestrationFromHandoff(handoff ReleaseOrchestrationHandoff, request ReleaseOrchestrationRequest) (ReleaseOrchestrationPlan, error) {
 	if err := validateReleaseOrchestrationMode(request.Mode); err != nil {
 		return ReleaseOrchestrationPlan{}, err
 	}
-
-	release, err := preparation.CanonicalRelease()
-	if err != nil {
-		return ReleaseOrchestrationPlan{}, fmt.Errorf("build canonical release: %w", err)
-	}
-	if err := validateReleaseTagAgreement(preparation.Tag, release.Tag, "prepared tag", "canonical release tag"); err != nil {
+	if err := handoff.Validate(); err != nil {
 		return ReleaseOrchestrationPlan{}, err
 	}
 
 	plan := ReleaseOrchestrationPlan{
 		Mode:               request.Mode,
-		Version:            preparation.Version,
-		Tag:                preparation.Tag,
-		CanonicalRelease:   release,
-		SelectedChannelIDs: append([]string(nil), preparation.SelectedChannelIDs()...),
-		SelectedChannels:   selectedReleaseChannels(preparation.Channels),
+		Version:            handoff.Version,
+		Tag:                handoff.Tag,
+		CanonicalRelease:   handoff.CanonicalRelease,
+		SelectedChannelIDs: append([]string(nil), handoff.SelectedChannelIDs...),
+		SelectedChannels:   cloneReleaseChannelPlans(handoff.SelectedChannels),
 	}
 
 	action, err := planGitHubReleaseAction(plan.CanonicalRelease, plan.Tag, request)
@@ -92,6 +96,42 @@ func selectedReleaseChannels(channels []ReleaseChannelPlan) []ReleaseChannelPlan
 	}
 
 	return selected
+}
+
+func selectedChannelIDsFromPlans(channels []ReleaseChannelPlan) []string {
+	ids := make([]string, 0, len(channels))
+	for _, channel := range channels {
+		ids = append(ids, channel.ID)
+	}
+
+	return ids
+}
+
+func cloneReleaseChannelPlans(channels []ReleaseChannelPlan) []ReleaseChannelPlan {
+	if len(channels) == 0 {
+		return nil
+	}
+
+	cloned := make([]ReleaseChannelPlan, 0, len(channels))
+	for _, channel := range channels {
+		cloned = append(cloned, channel)
+	}
+
+	return cloned
+}
+
+func equalStringSlices(left []string, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 func planGitHubReleaseAction(canonicalRelease CanonicalRelease, preparedTag string, request ReleaseOrchestrationRequest) (GitHubReleaseAction, error) {

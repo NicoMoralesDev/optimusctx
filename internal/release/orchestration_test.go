@@ -8,16 +8,7 @@ import (
 )
 
 func TestPlanReleaseOrchestrationCreate(t *testing.T) {
-	preparation := ReleasePreparation{
-		Version: "1.2.3",
-		Tag:     "v1.2.3",
-		Channels: []ReleaseChannelPlan{
-			{ID: ReleaseChannelGitHubArchive, Selected: true},
-			{ID: ReleaseChannelHomebrew, Selected: false},
-			{ID: ReleaseChannelScoop, Selected: false},
-			{ID: ReleaseChannelNPM, Selected: true},
-		},
-	}
+	preparation := mustPrepareOrchestrationRelease(t)
 
 	plan, err := PlanReleaseOrchestration(preparation, ReleaseOrchestrationRequest{
 		Mode: ReleaseOrchestrationModeCreate,
@@ -38,6 +29,9 @@ func TestPlanReleaseOrchestrationCreate(t *testing.T) {
 	if got, want := plan.SelectedChannelIDs, []string{ReleaseChannelGitHubArchive, ReleaseChannelNPM}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("SelectedChannelIDs = %v, want %v", got, want)
 	}
+	if got, want := selectedChannelPlanIDs(plan.SelectedChannels), []string{ReleaseChannelGitHubArchive, ReleaseChannelNPM}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("SelectedChannels IDs = %v, want %v", got, want)
+	}
 	if !plan.CreateGitHubRelease {
 		t.Fatalf("CreateGitHubRelease = false, want true")
 	}
@@ -50,17 +44,25 @@ func TestPlanReleaseOrchestrationCreate(t *testing.T) {
 	if got, want := plan.CanonicalRelease.ReleaseURL, "https://github.com/niccrow/optimusctx/releases/tag/v1.2.3"; got != want {
 		t.Fatalf("CanonicalRelease.ReleaseURL = %q, want %q", got, want)
 	}
+	if got, want := plan.GitHubRelease.ReleaseTag, preparation.Tag; got != want {
+		t.Fatalf("GitHubRelease.ReleaseTag = %q, want %q", got, want)
+	}
+	if got, want := plan.GitHubRelease.CanonicalReleaseURL, plan.CanonicalRelease.ReleaseURL; got != want {
+		t.Fatalf("GitHubRelease.CanonicalReleaseURL = %q, want %q", got, want)
+	}
+	if got, want := plan.GitHubRelease.Source, ReleaseAssetSourcePreparedTag; got != want {
+		t.Fatalf("GitHubRelease.Source = %q, want %q", got, want)
+	}
+	if !plan.GitHubRelease.Create {
+		t.Fatalf("GitHubRelease.Create = false, want true")
+	}
+	if plan.GitHubRelease.RequestedReleaseTag != "" {
+		t.Fatalf("GitHubRelease.RequestedReleaseTag = %q, want empty", plan.GitHubRelease.RequestedReleaseTag)
+	}
 }
 
 func TestPlanReleaseOrchestrationReuse(t *testing.T) {
-	preparation, err := PrepareRelease(context.Background(), "1.2.3", "v1.2", ReleasePreparationOptions{
-		Git:              fakeGitProbe{},
-		Files:            releaseRepoFiles(),
-		SelectedChannels: []string{ReleaseChannelGitHubArchive, ReleaseChannelNPM},
-	})
-	if err != nil {
-		t.Fatalf("PrepareRelease() error = %v", err)
-	}
+	preparation := mustPrepareOrchestrationRelease(t)
 
 	createPlan, err := PlanReleaseOrchestration(preparation, ReleaseOrchestrationRequest{
 		Mode: ReleaseOrchestrationModeCreate,
@@ -98,6 +100,21 @@ func TestPlanReleaseOrchestrationReuse(t *testing.T) {
 	if got := reusePlan.CanonicalRelease.Tag; got != preparation.Tag {
 		t.Fatalf("CanonicalRelease.Tag = %q, want %q", got, preparation.Tag)
 	}
+	if got, want := reusePlan.GitHubRelease.Source, ReleaseAssetSourceExistingTag; got != want {
+		t.Fatalf("GitHubRelease.Source = %q, want %q", got, want)
+	}
+	if reusePlan.GitHubRelease.Create {
+		t.Fatalf("GitHubRelease.Create = true, want false")
+	}
+	if got, want := reusePlan.GitHubRelease.ReleaseTag, preparation.Tag; got != want {
+		t.Fatalf("GitHubRelease.ReleaseTag = %q, want %q", got, want)
+	}
+	if got, want := reusePlan.GitHubRelease.RequestedReleaseTag, preparation.Tag; got != want {
+		t.Fatalf("GitHubRelease.RequestedReleaseTag = %q, want %q", got, want)
+	}
+	if got, want := reusePlan.GitHubRelease.CanonicalReleaseURL, createPlan.GitHubRelease.CanonicalReleaseURL; got != want {
+		t.Fatalf("GitHubRelease.CanonicalReleaseURL = %q, want %q", got, want)
+	}
 }
 
 func TestPlanReleaseOrchestrationRejectsInvalidMode(t *testing.T) {
@@ -118,15 +135,116 @@ func TestPlanReleaseOrchestrationRejectsInvalidMode(t *testing.T) {
 func TestPlanReleaseOrchestrationRejectsTagMismatch(t *testing.T) {
 	_, err := PlanReleaseOrchestration(ReleasePreparation{
 		Version: "1.2.3",
-		Tag:     "v1.2.3",
+		Tag:     "v1.2.4",
+		Channels: []ReleaseChannelPlan{
+			{ID: ReleaseChannelGitHubArchive, Selected: true},
+			{ID: ReleaseChannelNPM, Selected: true},
+		},
 	}, ReleaseOrchestrationRequest{
-		Mode:       ReleaseOrchestrationModeReuse,
-		ReleaseTag: "v1.2.4",
+		Mode: ReleaseOrchestrationModeCreate,
 	})
 	if err == nil {
 		t.Fatal("PlanReleaseOrchestration() error = nil, want tag mismatch rejection")
 	}
-	if !strings.Contains(err.Error(), `reuse release_tag "v1.2.4" does not match prepared tag "v1.2.3"`) {
+	if !strings.Contains(err.Error(), `prepared tag "v1.2.4" does not match canonical release tag "v1.2.3"`) {
 		t.Fatalf("error = %q, want mismatch message", err.Error())
 	}
+}
+
+func TestPlanReleaseOrchestrationCarriesSelectedChannelPlans(t *testing.T) {
+	preparation := mustPrepareOrchestrationRelease(t)
+
+	plan, err := PlanReleaseOrchestration(preparation, ReleaseOrchestrationRequest{
+		Mode: ReleaseOrchestrationModeCreate,
+	})
+	if err != nil {
+		t.Fatalf("PlanReleaseOrchestration() error = %v", err)
+	}
+
+	if got, want := len(plan.SelectedChannels), 2; got != want {
+		t.Fatalf("SelectedChannels len = %d, want %d", got, want)
+	}
+
+	for _, channel := range plan.SelectedChannels {
+		if !channel.Selected {
+			t.Fatalf("SelectedChannels included unselected channel: %+v", channel)
+		}
+		if channel.Readiness != releaseChannelReadinessReady {
+			t.Fatalf("SelectedChannels readiness = %q for %s, want %q", channel.Readiness, channel.ID, releaseChannelReadinessReady)
+		}
+	}
+
+	if got, want := selectedChannelPlanIDs(plan.SelectedChannels), []string{ReleaseChannelGitHubArchive, ReleaseChannelNPM}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("SelectedChannels IDs = %v, want %v", got, want)
+	}
+	if got, want := selectedChannelPlanNames(plan.SelectedChannels), []string{"GitHub Release archives", "npm"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("SelectedChannels names = %v, want %v", got, want)
+	}
+	if got, want := selectedChannelPlanTargets(plan.SelectedChannels), []string{"github.com/niccrow/optimusctx releases", "@niccrow/optimusctx"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("SelectedChannels publication targets = %v, want %v", got, want)
+	}
+}
+
+func TestPlanReleaseOrchestrationNormalizesReuseTag(t *testing.T) {
+	preparation := mustPrepareOrchestrationRelease(t)
+
+	plan, err := PlanReleaseOrchestration(preparation, ReleaseOrchestrationRequest{
+		Mode:       ReleaseOrchestrationModeReuse,
+		ReleaseTag: "1.2.3",
+	})
+	if err != nil {
+		t.Fatalf("PlanReleaseOrchestration() error = %v", err)
+	}
+
+	if got, want := plan.GitHubRelease.RequestedReleaseTag, "v1.2.3"; got != want {
+		t.Fatalf("GitHubRelease.RequestedReleaseTag = %q, want %q", got, want)
+	}
+	if got, want := plan.GitHubRelease.ReleaseTag, "v1.2.3"; got != want {
+		t.Fatalf("GitHubRelease.ReleaseTag = %q, want %q", got, want)
+	}
+	if got, want := plan.Tag, "v1.2.3"; got != want {
+		t.Fatalf("Tag = %q, want %q", got, want)
+	}
+}
+
+func mustPrepareOrchestrationRelease(t *testing.T) ReleasePreparation {
+	t.Helper()
+
+	preparation, err := PrepareRelease(context.Background(), "1.2.3", "v1.2", ReleasePreparationOptions{
+		Git:              fakeGitProbe{},
+		Files:            releaseRepoFiles(),
+		SelectedChannels: []string{ReleaseChannelGitHubArchive, ReleaseChannelNPM},
+	})
+	if err != nil {
+		t.Fatalf("PrepareRelease() error = %v", err)
+	}
+
+	return preparation
+}
+
+func selectedChannelPlanIDs(channels []ReleaseChannelPlan) []string {
+	ids := make([]string, 0, len(channels))
+	for _, channel := range channels {
+		ids = append(ids, channel.ID)
+	}
+
+	return ids
+}
+
+func selectedChannelPlanNames(channels []ReleaseChannelPlan) []string {
+	names := make([]string, 0, len(channels))
+	for _, channel := range channels {
+		names = append(names, channel.Name)
+	}
+
+	return names
+}
+
+func selectedChannelPlanTargets(channels []ReleaseChannelPlan) []string {
+	targets := make([]string, 0, len(channels))
+	for _, channel := range channels {
+		targets = append(targets, channel.PublicationTarget)
+	}
+
+	return targets
 }

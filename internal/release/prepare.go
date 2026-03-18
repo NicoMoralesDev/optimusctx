@@ -85,6 +85,14 @@ type ReleasePreparation struct {
 	Blockers []ReleaseIssue       `json:"blockers"`
 }
 
+type ReleaseOrchestrationHandoff struct {
+	Version            string               `json:"version"`
+	Tag                string               `json:"tag"`
+	CanonicalRelease   CanonicalRelease     `json:"canonicalRelease"`
+	SelectedChannelIDs []string             `json:"selectedChannelIDs"`
+	SelectedChannels   []ReleaseChannelPlan `json:"selectedChannels"`
+}
+
 type GitProbe interface {
 	WorktreeStatus(ctx context.Context) (string, error)
 	LocalTags(ctx context.Context) ([]string, error)
@@ -309,6 +317,47 @@ func (p ReleasePreparation) CanonicalRelease() (CanonicalRelease, error) {
 		return CanonicalRelease{}, fmt.Errorf("prepared tag %q does not match canonical release tag %q", p.Tag, release.Tag)
 	}
 	return release, nil
+}
+
+func (p ReleasePreparation) OrchestrationHandoff() (ReleaseOrchestrationHandoff, error) {
+	release, err := p.CanonicalRelease()
+	if err != nil {
+		return ReleaseOrchestrationHandoff{}, err
+	}
+
+	handoff := ReleaseOrchestrationHandoff{
+		Version:            p.Version,
+		Tag:                p.Tag,
+		CanonicalRelease:   release,
+		SelectedChannelIDs: append([]string(nil), p.SelectedChannelIDs()...),
+		SelectedChannels:   cloneReleaseChannelPlans(selectedReleaseChannels(p.Channels)),
+	}
+
+	if err := handoff.Validate(); err != nil {
+		return ReleaseOrchestrationHandoff{}, err
+	}
+
+	return handoff, nil
+}
+
+func (h ReleaseOrchestrationHandoff) Validate() error {
+	if h.Version == "" {
+		return fmt.Errorf("release orchestration handoff version is required")
+	}
+	if h.Tag == "" {
+		return fmt.Errorf("release orchestration handoff tag is required")
+	}
+	if h.CanonicalRelease.Tag == "" {
+		return fmt.Errorf("release orchestration handoff canonical release tag is required")
+	}
+	if err := validateReleaseTagAgreement(h.Tag, h.CanonicalRelease.Tag, "prepared tag", "canonical release tag"); err != nil {
+		return err
+	}
+	if ids := selectedChannelIDsFromPlans(h.SelectedChannels); !equalStringSlices(ids, h.SelectedChannelIDs) {
+		return fmt.Errorf("release orchestration handoff selected channels %v do not match selected channel ids %v", ids, h.SelectedChannelIDs)
+	}
+
+	return nil
 }
 
 func defaultReleaseChannels(selected []string) []ReleaseChannelPlan {
