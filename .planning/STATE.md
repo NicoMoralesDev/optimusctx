@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: release automation and operator workflow
-current_phase: 18
-current_phase_name: multi-channel publication fan-out
-current_plan: 4
-status: verifying
-stopped_at: Completed 18-04-PLAN.md
-last_updated: "2026-03-18T11:55:41.347Z"
+current_phase: 19
+current_phase_name: operator verification, recovery, and end-to-end guide
+current_plan: 2
+status: executing
+stopped_at: Completed 19-02-PLAN.md
+last_updated: "2026-03-18T18:14:34Z"
 last_activity: 2026-03-18
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_plans: 18
+  completed_plans: 17
+  percent: 94
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase complete — ready for verification
-**Current Phase:** 18
-**Current Phase Name:** multi-channel publication fan-out
+**Status:** Phase execution in progress
+**Current Phase:** 19
+**Current Phase Name:** operator verification, recovery, and end-to-end guide
 **Total Phases:** 4
-**Current Plan:** 4
-**Total Plans in Phase:** 4
-**Progress:** [██████████] 100%
+**Current Plan:** 2
+**Total Plans in Phase:** 3
+**Progress:** [█████████░] 94%
 **Last Activity:** 2026-03-18
-**Last Activity Description:** Completed Phase 18 plan 04 with truthful prepare readiness, canonical multi-channel release docs, and regression coverage for selective reruns
+**Last Activity Description:** Completed Phase 19 plan 02 with the canonical operator release guide plus checklist and install doc routing to that single release flow
 
 ## Project Memory
 
@@ -44,10 +44,10 @@ progress:
 ## Current Planning Context
 
 - Active milestone: `v1.2` release automation and operator workflow
-- Active phase: `18-multi-channel-publication-fan-out`
-- Next execution action: plan Phase 19 operator verification, recovery, and end-to-end guide on top of the completed Phase 18 release workflow, prepare, and documentation contracts
+- Active phase: `19-operator-verification-recovery-and-end-to-end-guide`
+- Next execution action: execute Phase 19 plan 03 to lock recovery and rollback policy wording to the canonical operator guide and supported release channels
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: Phase 18 plans 01-04 are complete; phase is ready for verification and handoff into Phase 19 planning
+- Coverage status: Phase 19 plans 01-02 are complete with workflow summary guidance and canonical operator docs; plan 03 remains to lock recovery policy
 
 ## Recent Decisions
 
@@ -248,6 +248,7 @@ progress:
 | Phase 18 P02 | 5 min | 2 tasks | 6 files |
 | Phase 18-multi-channel-publication-fan-out P03 | 9m | 2 tasks | 5 files |
 | Phase 18-multi-channel-publication-fan-out P04 | 6m | 2 tasks | 6 files |
+| Phase 19 P01 | 2m | 2 tasks | 2 files |
 
 ## Decisions Made
 
@@ -434,6 +435,8 @@ progress:
 - [Phase 18]: Prepare readiness now treats Homebrew and Scoop as ready only when the workflow contains their publication job names, token wiring, render commands, and required templates.
 - [Phase 18]: Release fixtures and operator docs now reflect the real automated multi-channel fan-out instead of the old blocked-placeholder story.
 - [Phase 18]: Operator rerun guidance is locked to workflow_dispatch with release_tag and publication_channel so recovery stays single-channel and rooted in the canonical GitHub Release.
+- [Phase 19]: GitHub Release workflow summaries now expose channel, tag, outcome, failure_reason, and next_step for the canonical release and every downstream channel.
+- [Phase 19]: Release contract tests now prevent summary wording drift and explicitly forbid inventing publication_channel=github-release for reruns.
 
 ## Blockers
 
@@ -441,8 +444,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-18T11:55:41.344Z
-**Stopped At:** Completed 18-04-PLAN.md
+**Last Date:** 2026-03-18T18:06:17.520Z
+**Stopped At:** Completed 19-01-PLAN.md
 **Resume File:** None
 
 ---
