@@ -23,7 +23,7 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Awaiting human verification
+**Status:** Awaiting hosted workflow verification
 **Current Phase:** 19
 **Current Phase Name:** operator verification, recovery, and end-to-end guide
 **Total Phases:** 4
@@ -45,14 +45,15 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `19-operator-verification-recovery-and-end-to-end-guide`
-- Next execution action: run the live GitHub Actions summary sanity check and the human operator guide read-through documented in `19-VERIFICATION.md`, then approve or report gaps
+- Next execution action: expose a real GitHub Actions `release` workflow run for this branch or a safe tag, then inspect the hosted summary UI documented in `19-VERIFICATION.md`
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
 - Coverage status: Phase 19 plans 01-03 are complete with workflow summary guidance, canonical operator docs, and recovery policy locked to the GitHub Release root
 
 ## Verification Status
 
 - Automated verification passed for the workflow summary contract, operator-guide linkage, recovery-policy contract, and the full `go test ./...` suite.
-- Human verification is still required for one live GitHub Actions summary render check and one end-to-end operator guide read-through before the phase can be fully closed.
+- Manual operator-guide walkthrough passed: the guide is linear, rooted in the canonical GitHub Release, and the rerun-versus-rollback branch is unambiguous.
+- Hosted GitHub Actions summary verification is still required because the remote repo currently exposes no `release` workflow or runs to inspect.
 
 ## Recent Decisions
 
