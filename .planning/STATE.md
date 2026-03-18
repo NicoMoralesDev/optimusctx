@@ -5,9 +5,9 @@ milestone_name: release automation and operator workflow
 current_phase: 19
 current_phase_name: operator verification, recovery, and end-to-end guide
 current_plan: 3
-status: ready_for_verification
+status: human_verification_needed
 stopped_at: Completed 19-03-PLAN.md
-last_updated: "2026-03-18T18:22:46.047Z"
+last_updated: "2026-03-18T18:25:57Z"
 last_activity: 2026-03-18
 progress:
   total_phases: 4
@@ -23,7 +23,7 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase complete — ready for verification
+**Status:** Awaiting human verification
 **Current Phase:** 19
 **Current Phase Name:** operator verification, recovery, and end-to-end guide
 **Total Phases:** 4
@@ -45,9 +45,14 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `19-operator-verification-recovery-and-end-to-end-guide`
-- Next execution action: verify Phase 19 against OPS-06, OPS-07, and OPS-08, then close the milestone roadmap updates if the verifier passes
+- Next execution action: run the live GitHub Actions summary sanity check and the human operator guide read-through documented in `19-VERIFICATION.md`, then approve or report gaps
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
 - Coverage status: Phase 19 plans 01-03 are complete with workflow summary guidance, canonical operator docs, and recovery policy locked to the GitHub Release root
+
+## Verification Status
+
+- Automated verification passed for the workflow summary contract, operator-guide linkage, recovery-policy contract, and the full `go test ./...` suite.
+- Human verification is still required for one live GitHub Actions summary render check and one end-to-end operator guide read-through before the phase can be fully closed.
 
 ## Recent Decisions
 
