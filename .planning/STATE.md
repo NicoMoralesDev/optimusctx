@@ -5,9 +5,9 @@ milestone_name: release automation and operator workflow
 current_phase: 17
 current_phase_name: canonical release orchestration and metadata
 current_plan: 7
-status: verifying
-stopped_at: Completed 17-06-PLAN.md
-last_updated: "2026-03-18T00:02:59.533Z"
+status: verified
+stopped_at: Verified Phase 17 after closing 17-07 artifact-depth gap
+last_updated: "2026-03-18T00:18:30Z"
 last_activity: 2026-03-18
 progress:
   total_phases: 4
@@ -23,7 +23,7 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase 17 complete — ready for verification
+**Status:** Phase 17 verified — ready to plan Phase 18
 **Current Phase:** 17
 **Current Phase Name:** canonical release orchestration and metadata
 **Total Phases:** 4
@@ -31,7 +31,7 @@ progress:
 **Total Plans in Phase:** 7
 **Progress:** [██████████] 100%
 **Last Activity:** 2026-03-18
-**Last Activity Description:** Completed plan 17-06 and reconciled the missing Phase 17 summary metadata so the phase is ready for re-verification
+**Last Activity Description:** Re-verified Phase 17 after closing the 17-07 artifact-depth gap; the milestone is now ready to plan Phase 18
 
 ## Project Memory
 
@@ -45,9 +45,9 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `17-canonical-release-orchestration-and-metadata`
-- Next execution action: re-verify completed Phase 17 outputs, then plan Phase 18 multi-channel publication fan-out
+- Next execution action: plan Phase 18 multi-channel publication fan-out on top of the verified Phase 17 release contract
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: Phase 17 plans 01-07 are complete and ready for verification
+- Coverage status: Phase 17 plans 01-07 are complete and verified
 
 ## Recent Decisions
 

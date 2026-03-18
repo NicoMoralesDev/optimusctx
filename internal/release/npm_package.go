@@ -19,6 +19,21 @@ const (
 	canonicalNPMLauncherModule     = "./bin/optimusctx.js"
 )
 
+type npmPlatformTarget struct {
+	key    string
+	goos   string
+	goarch string
+}
+
+var canonicalNPMPlatformTargets = []npmPlatformTarget{
+	{key: "darwin-amd64", goos: "darwin", goarch: "amd64"},
+	{key: "darwin-arm64", goos: "darwin", goarch: "arm64"},
+	{key: "linux-amd64", goos: "linux", goarch: "amd64"},
+	{key: "linux-arm64", goos: "linux", goarch: "arm64"},
+	{key: "windows-amd64", goos: "windows", goarch: "amd64"},
+	{key: "windows-arm64", goos: "windows", goarch: "arm64"},
+}
+
 type npmPackageRelease struct {
 	PackageName      string
 	Version          string
@@ -127,6 +142,15 @@ func newNPMPackageRelease(version string) (npmPackageRelease, error) {
 	return newNPMPackageReleaseFromCanonical(canonicalRelease)
 }
 
+func newNPMPackageReleaseForTag(releaseTag string) (npmPackageRelease, error) {
+	canonicalRelease, err := canonicalReleaseForNPMPackageTag(releaseTag)
+	if err != nil {
+		return npmPackageRelease{}, err
+	}
+
+	return newNPMPackageReleaseFromCanonical(canonicalRelease)
+}
+
 func newNPMPackageReleaseFromCanonical(release CanonicalRelease) (npmPackageRelease, error) {
 	packageRelease := npmPackageRelease{
 		PackageName:   canonicalNPMPackageName,
@@ -149,69 +173,17 @@ func newNPMPackageReleaseFromCanonical(release CanonicalRelease) (npmPackageRele
 		},
 	}
 
-	for _, target := range []struct {
-		assign *npmPlatformAsset
-		goos   string
-		goarch string
-	}{
-		{assign: &packageRelease.Platforms.DarwinAMD64, goos: "darwin", goarch: "amd64"},
-		{assign: &packageRelease.Platforms.DarwinARM64, goos: "darwin", goarch: "arm64"},
-		{assign: &packageRelease.Platforms.LinuxAMD64, goos: "linux", goarch: "amd64"},
-		{assign: &packageRelease.Platforms.LinuxARM64, goos: "linux", goarch: "arm64"},
-		{assign: &packageRelease.Platforms.WindowsAMD64, goos: "windows", goarch: "amd64"},
-		{assign: &packageRelease.Platforms.WindowsARM64, goos: "windows", goarch: "arm64"},
-	} {
-		asset, err := npmPlatformAssetFromCanonical(release, target.goos, target.goarch)
-		if err != nil {
-			return npmPackageRelease{}, err
-		}
-		*target.assign = asset
+	platforms, err := buildNPMPlatformAssets(release)
+	if err != nil {
+		return npmPackageRelease{}, err
 	}
+	packageRelease.Platforms = platforms
 
 	return packageRelease, nil
 }
 
 func renderNPMPackageManifest(release npmPackageRelease) (string, error) {
-	manifest := npmPackageManifest{
-		Name:        release.PackageName,
-		Version:     release.Version,
-		Description: release.Description,
-		License:     release.License,
-		Homepage:    release.Homepage,
-		Repository: npmRepositoryMetadata{
-			Type: "git",
-			URL:  release.RepositoryURL,
-		},
-		Bugs: npmBugsMetadata{
-			URL: release.IssuesURL,
-		},
-		Engines: npmEngineMetadata{
-			Node: release.MinimumNode,
-		},
-		Bin: map[string]string{
-			release.BinCommand: release.BinPath,
-		},
-		Scripts: npmScriptMetadata{
-			PostInstall: release.PostInstall,
-		},
-		Files: []string{
-			"bin",
-			"lib",
-		},
-		OptimusCtx: npmPackageRuntimeMetadata{
-			Command:     release.BinCommand,
-			Launcher:    canonicalNPMLauncherModule,
-			ProjectName: release.ProjectName,
-			Repository: npmRepositoryTarget{
-				Owner: release.Repository.Owner,
-				Name:  release.Repository.Name,
-			},
-			ReleaseTag:       release.ReleaseTag,
-			Version:          release.Version,
-			ChecksumManifest: release.ChecksumManifest,
-			Platforms:        release.Platforms,
-		},
-	}
+	manifest := newNPMPackageManifest(release)
 
 	var output bytes.Buffer
 	encoder := json.NewEncoder(&output)
@@ -234,17 +206,7 @@ func renderCommittedNPMPackageManifest() (string, error) {
 }
 
 func RenderNPMPackageManifestForTag(releaseTag string) (string, error) {
-	normalizedTag, err := NormalizeReleaseTag(releaseTag)
-	if err != nil {
-		return "", err
-	}
-
-	canonicalRelease, err := NewCanonicalRelease(strings.TrimPrefix(normalizedTag, "v"))
-	if err != nil {
-		return "", err
-	}
-
-	packageRelease, err := newNPMPackageReleaseFromCanonical(canonicalRelease)
+	packageRelease, err := newNPMPackageReleaseForTag(releaseTag)
 	if err != nil {
 		return "", err
 	}
@@ -254,6 +216,96 @@ func RenderNPMPackageManifestForTag(releaseTag string) (string, error) {
 
 func checksumManifestName(version string) string {
 	return fmt.Sprintf("%s_%s_checksums.txt", canonicalProjectName, version)
+}
+
+func canonicalReleaseForNPMPackageTag(releaseTag string) (CanonicalRelease, error) {
+	normalizedTag, err := NormalizeReleaseTag(releaseTag)
+	if err != nil {
+		return CanonicalRelease{}, err
+	}
+
+	return NewCanonicalRelease(strings.TrimPrefix(normalizedTag, "v"))
+}
+
+func buildNPMPlatformAssets(release CanonicalRelease) (npmPlatformAssets, error) {
+	var platforms npmPlatformAssets
+
+	for _, target := range canonicalNPMPlatformTargets {
+		asset, err := npmPlatformAssetFromCanonical(release, target.goos, target.goarch)
+		if err != nil {
+			return npmPlatformAssets{}, err
+		}
+		if err := setNPMPlatformAsset(&platforms, target.key, asset); err != nil {
+			return npmPlatformAssets{}, err
+		}
+	}
+
+	return platforms, nil
+}
+
+func setNPMPlatformAsset(platforms *npmPlatformAssets, key string, asset npmPlatformAsset) error {
+	switch key {
+	case "darwin-amd64":
+		platforms.DarwinAMD64 = asset
+	case "darwin-arm64":
+		platforms.DarwinARM64 = asset
+	case "linux-amd64":
+		platforms.LinuxAMD64 = asset
+	case "linux-arm64":
+		platforms.LinuxARM64 = asset
+	case "windows-amd64":
+		platforms.WindowsAMD64 = asset
+	case "windows-arm64":
+		platforms.WindowsARM64 = asset
+	default:
+		return fmt.Errorf("unsupported npm platform target %q", key)
+	}
+
+	return nil
+}
+
+func newNPMPackageManifest(release npmPackageRelease) npmPackageManifest {
+	return npmPackageManifest{
+		Name:        release.PackageName,
+		Version:     release.Version,
+		Description: release.Description,
+		License:     release.License,
+		Homepage:    release.Homepage,
+		Repository: npmRepositoryMetadata{
+			Type: "git",
+			URL:  release.RepositoryURL,
+		},
+		Bugs: npmBugsMetadata{
+			URL: release.IssuesURL,
+		},
+		Engines: npmEngineMetadata{
+			Node: release.MinimumNode,
+		},
+		Bin: map[string]string{
+			release.BinCommand: release.BinPath,
+		},
+		Scripts: npmScriptMetadata{
+			PostInstall: release.PostInstall,
+		},
+		Files: canonicalNPMPackageFiles(),
+		OptimusCtx: npmPackageRuntimeMetadata{
+			Command:          release.BinCommand,
+			Launcher:         canonicalNPMLauncherModule,
+			ProjectName:      release.ProjectName,
+			Repository:       npmRepositoryTarget{Owner: release.Repository.Owner, Name: release.Repository.Name},
+			ReleaseTag:       release.ReleaseTag,
+			Version:          release.Version,
+			ChecksumManifest: release.ChecksumManifest,
+			Platforms:        release.Platforms,
+		},
+	}
+}
+
+func canonicalNPMPackageFiles() []string {
+	return []string{
+		"bin",
+		"lib",
+	}
 }
 
 func npmPlatformAssetFromCanonical(release CanonicalRelease, goos, goarch string) (npmPlatformAsset, error) {

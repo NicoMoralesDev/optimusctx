@@ -96,14 +96,14 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.2` with Phase 17 ready for re-verification after reconciling the 17-06 summary metadata
+Active milestone: `v1.2` with Phase 17 verified and ready to roll into Phase 18 planning
 
 Next step:
 
-- Re-verify Phase 17 against the canonical metadata, orchestration, and npm render truths
-- Use the verified Phase 17 summary set to plan Phase 18 multi-channel publication fan-out
+- Plan Phase 18 multi-channel publication fan-out against the verified Phase 17 release contract
+- Keep selective rerun semantics per channel anchored to the verified canonical GitHub Release root
 - Continue milestone execution from canonical-root regression lock into channel automation and rerun controls
 - Keep all new release-channel automation anchored to the existing GitHub Release archive contract
 
 ---
-*Last updated: 2026-03-18 after reconciling Phase 17 plan 06 summary metadata*
+*Last updated: 2026-03-18 after fully verifying Phase 17 and closing the 17-07 artifact-depth gap*

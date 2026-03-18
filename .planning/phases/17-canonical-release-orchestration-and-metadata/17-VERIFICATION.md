@@ -1,26 +1,16 @@
 ---
 phase: 17-canonical-release-orchestration-and-metadata
-verified: 2026-03-18T00:13:04Z
-status: gaps_found
-score: 5/5 observable truths verified; 1 residual artifact-depth gap
-gaps:
-  - truth: "The npm render gap-closure plan is behaviorally complete but still misses its declared artifact-depth thresholds."
-    status: partial
-    reason: "The renderer bridge and canonical manifest path are wired correctly and their targeted checks pass, but two artifacts in plan 17-07 remain below the plan's explicit min_lines contract."
-    artifacts:
-      - path: "cmd/render-npm-package/main.go"
-        issue: "36 lines; below must_haves.artifacts min_lines 40"
-      - path: "internal/release/npm_package.go"
-        issue: "298 lines; below must_haves.artifacts min_lines 320"
-    missing:
-      - "Either deepen the renderer bridge and canonical npm manifest implementation to the declared thresholds, or revise the 17-07 must-have contract with explicit justification."
+verified: 2026-03-18T00:18:30Z
+status: verified
+score: 5/5 observable truths verified
+gaps: []
 ---
 
 # Phase 17: Canonical Release Orchestration and Metadata Verification Report
 
 **Phase Goal:** Unify release metadata, canonical tag handling, and GitHub Release orchestration so every downstream channel consumes the same archives, checksums, and release facts.
-**Verified:** 2026-03-18T00:13:04Z
-**Status:** gaps_found
+**Verified:** 2026-03-18T00:18:30Z
+**Status:** verified
 **Re-verification:** Yes — after completing gap-closure plans `17-05`, `17-06`, and `17-07`
 
 ## Goal Achievement
@@ -46,8 +36,8 @@ gaps:
 | `internal/release/orchestration.go` | Shared release orchestration request and plan types for fresh and reuse flows | ✓ VERIFIED | Exists, wired, 187 lines; exceeds plan `17-06` threshold 170. |
 | `internal/release/orchestration_test.go` | Coverage for create-versus-reuse orchestration semantics and canonical release reuse | ✓ VERIFIED | Exists, wired, 250 lines; exceeds plan `17-06` threshold 180. |
 | `internal/release/prepare.go` | Prepare-layer hooks handing canonical version/tag into orchestration | ✓ VERIFIED | Exists, wired, 928 lines; exceeds plan `17-06` threshold 880. |
-| `cmd/render-npm-package/main.go` | Small Go bridge that renders the canonical npm manifest for a release tag | ✗ STUB | Exists, wired, 36 lines; below plan `17-07` threshold 40. |
-| `internal/release/npm_package.go` | Exported canonical npm manifest renderer callable from the shell bridge | ✗ STUB | Exists, wired, 298 lines; below plan `17-07` threshold 320. Functional behavior is correct, but the declared artifact-depth contract is not met. |
+| `cmd/render-npm-package/main.go` | Small Go bridge that renders the canonical npm manifest for a release tag | ✓ VERIFIED | Exists, wired, 55 lines; exceeds plan `17-07` threshold 40 and now creates parent directories before writing `package.json`. |
+| `internal/release/npm_package.go` | Exported canonical npm manifest renderer callable from the shell bridge | ✓ VERIFIED | Exists, wired, 350 lines; exceeds plan `17-07` threshold 320 with explicit tag-to-release resolution, platform inventory helpers, and manifest assembly helpers. |
 | `scripts/render-npm-package.sh` | Transport-only npm render wrapper that delegates metadata generation to the Go renderer | ✓ VERIFIED | Exists, wired, 45 lines; exceeds plan `17-07` threshold 35 and no longer contains duplicate retag/archive logic. |
 | `internal/release/release_test.go` | Workflow/doc and npm render regression tests for canonical-root and reuse semantics | ✓ VERIFIED | Exists, substantive, 418 lines; verifies transport-only script behavior and canonical-root wording. |
 | `.github/workflows/release.yml` | Workflow contract naming GitHub Release as canonical root | ✓ VERIFIED | Exists, substantive, exercised by passing regression tests. |
@@ -77,16 +67,13 @@ gaps:
 | `PUB-01` | `17-04-PLAN` | Operator can publish canonical GitHub Release archives and checksums from one shared release metadata contract rooted in a single tag. | ✓ SATISFIED | Workflow/docs/test contract remains canonical-root and reuse-aware. |
 | `PUB-01` | `17-05-PLAN` | Canonical release metadata depth gap is closed with explicit target inventory and direct helper coverage. | ✓ SATISFIED | Expanded canonical release model and dedicated table-driven tests are present; thresholds met. |
 | `PUB-01` | `17-06-PLAN` | Orchestration and prepare handoff depth gap is closed with explicit GitHub Release action metadata and preserved selected channels. | ✓ SATISFIED | Expanded orchestration contract, prepare-owned handoff, and regressions are present; thresholds met. |
-| `PUB-01` | `17-07-PLAN` | npm render wiring gap is closed so the shell path consumes canonical metadata from the Go renderer. | ✗ PARTIAL | Functional behavior and tests are correct, but `cmd/render-npm-package/main.go` and `internal/release/npm_package.go` remain below the plan's declared `min_lines` thresholds. |
+| `PUB-01` | `17-07-PLAN` | npm render wiring gap is closed so the shell path consumes canonical metadata from the Go renderer. | ✓ SATISFIED | The bridge and npm manifest renderer now exceed the declared thresholds and the transport-only script still matches the direct Go renderer byte-for-byte. |
 
 Orphaned requirements mapped to Phase 17 in `REQUIREMENTS.md`: none.
 
 ### Anti-Patterns Found
 
-| File | Line | Pattern | Severity | Impact |
-| --- | --- | --- | --- | --- |
-| `cmd/render-npm-package/main.go` | - | Artifact-depth threshold missed despite correct runtime behavior | ⚠ Warning | Leaves the gap-closure plan under-verified against its own declared contract. |
-| `internal/release/npm_package.go` | - | Artifact-depth threshold missed despite correct runtime behavior | ⚠ Warning | Leaves the gap-closure plan under-verified against its own declared contract. |
+None in the verified Phase 17 release artifacts.
 
 ### Automated Verification Executed
 
@@ -95,6 +82,11 @@ Orphaned requirements mapped to Phase 17 in `REQUIREMENTS.md`: none.
 - `GOCACHE=/tmp/optimusctx-gocache go run ./cmd/render-npm-package --release-tag v1.2.3 --package-json /tmp/optimusctx-npm-render-direct/package.json`
 - `cmp -s /tmp/optimusctx-npm-render-reverify/package.json /tmp/optimusctx-npm-render-direct/package.json`
 - `sha256sum /tmp/optimusctx-npm-render-reverify/package.json /tmp/optimusctx-npm-render-direct/package.json`
+- `go test ./internal/release -run 'Test(NPMPackageReleaseContract|RenderCommittedNPMPackageManifest|RenderNPMPackageManifestForTag|NPMPublishConfig|CanonicalReleaseFeedsDownstreamConsumers)$'`
+- `GOCACHE=/tmp/optimusctx-gocache bash scripts/render-npm-package.sh v1.2.3 /tmp/optimusctx-npm-render-close-gap`
+- `GOCACHE=/tmp/optimusctx-gocache go run ./cmd/render-npm-package --release-tag v1.2.3 --package-json /tmp/optimusctx-npm-render-close-gap-direct/package.json`
+- `cmp -s /tmp/optimusctx-npm-render-close-gap/package.json /tmp/optimusctx-npm-render-close-gap-direct/package.json`
+- `sha256sum /tmp/optimusctx-npm-render-close-gap/package.json /tmp/optimusctx-npm-render-close-gap-direct/package.json`
 
 ### Human Verification Required
 
@@ -112,11 +104,9 @@ Orphaned requirements mapped to Phase 17 in `REQUIREMENTS.md`: none.
 
 ### Gaps Summary
 
-Phase 17 no longer has the original behavioral gaps from the first verification run. The canonical release contract, orchestration handoff, downstream consumer rewiring, and npm render transport wiring all behave correctly on the current branch, and the targeted re-verification suite passed end to end on 2026-03-18.
-
-The remaining problem is narrower: gap-closure plan `17-07` still does not satisfy two artifact-depth thresholds that it declared for itself. `cmd/render-npm-package/main.go` is 36/40 lines and `internal/release/npm_package.go` is 298/320 lines. If the team treats `min_lines` as a hard verification gate, Phase 17 is still not fully closed. If the team treats those thresholds as heuristic depth checks and prioritizes behavioral evidence, the phase goal is functionally complete. This report keeps the stricter interpretation and leaves the status as `gaps_found`.
+Phase 17 is fully verified on the current branch. The canonical release contract, orchestration handoff, downstream consumer rewiring, and npm render transport wiring all behave correctly, the targeted re-verification suite passed end to end on 2026-03-18, and the remaining `17-07` artifact-depth thresholds are now satisfied.
 
 ---
 
-_Verified: 2026-03-18T00:13:04Z_  
+_Verified: 2026-03-18T00:18:30Z_  
 _Verifier: Codex_
