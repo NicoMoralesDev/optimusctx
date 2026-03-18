@@ -86,6 +86,28 @@ func validateReleaseOrchestrationMode(mode ReleaseOrchestrationMode) error {
 	return nil
 }
 
+func (p ReleaseOrchestrationPlan) SelectedChannel(channelID string) (ReleaseChannelPlan, bool) {
+	for _, channel := range p.SelectedChannels {
+		if channel.ID == channelID {
+			return channel, true
+		}
+	}
+
+	return ReleaseChannelPlan{}, false
+}
+
+func (p ReleaseOrchestrationPlan) DownstreamSelectedChannels() []ReleaseChannelPlan {
+	downstream := make([]ReleaseChannelPlan, 0, len(p.SelectedChannels))
+	for _, channel := range p.SelectedChannels {
+		if !isDownstreamPublicationChannel(channel.ID) {
+			continue
+		}
+		downstream = append(downstream, channel)
+	}
+
+	return downstream
+}
+
 func selectedReleaseChannels(channels []ReleaseChannelPlan) []ReleaseChannelPlan {
 	selected := make([]ReleaseChannelPlan, 0, len(channels))
 	for _, channel := range channels {
