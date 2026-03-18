@@ -102,6 +102,7 @@ jobs:
       # Publish versioned archives and checksums to the canonical GitHub
       # Release root using the shared .goreleaser.yml contract.
       - name: Publish canonical GitHub Release assets
+        id: publish_github_release_step
         if: ${{ github.event_name != 'workflow_dispatch' }}
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -110,6 +111,26 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summarize GitHub Release publication
+        if: ${{ always() }}
+        env:
+          RELEASE_TAG: ${{ steps.release_ref.outputs.tag }}
+          PUBLICATION_OUTCOME: ${{ steps.publish_github_release_step.outcome }}
+        run: |
+          set -euo pipefail
+          failure_reason="none"
+          if [ "${PUBLICATION_OUTCOME:-skipped}" = "failure" ]; then
+            failure_reason="GitHub Release archive publication failed"
+          fi
+          {
+            echo "### GitHub Release publication"
+            echo "- channel: github-release"
+            echo "- tag: ${RELEASE_TAG}"
+            echo "- outcome: ${PUBLICATION_OUTCOME:-skipped}"
+            echo "- failure_reason: ${failure_reason}"
+            echo "- next_step: Inspect the release job logs and fix the canonical GitHub Release/archive state before any downstream rerun."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   publish_npm:
     name: Publish npm wrapper package
@@ -154,13 +175,17 @@ jobs:
           PUBLICATION_OUTCOME: ${{ steps.publish_npm_step.outcome }}
         run: |
           set -euo pipefail
+          failure_reason="none"
+          if [ "${PUBLICATION_OUTCOME:-skipped}" = "failure" ]; then
+            failure_reason="npm publish failed"
+          fi
           {
             echo "### npm publication"
             echo "- channel: npm"
-            echo "- target: @niccrow/optimusctx"
             echo "- tag: ${RELEASE_TAG}"
             echo "- outcome: ${PUBLICATION_OUTCOME:-skipped}"
-            echo "- retry: Safe to rerun via workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=npm"
+            echo "- failure_reason: ${failure_reason}"
+            echo "- next_step: Inspect the failing job logs, confirm GitHub Release remains the canonical root, and use workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=npm."
           } >> "$GITHUB_STEP_SUMMARY"
 
   publish_homebrew:
@@ -215,21 +240,19 @@ jobs:
         env:
           RELEASE_TAG: ${{ needs.release.outputs.tag }}
           UPDATE_OUTCOME: ${{ steps.update_homebrew.outcome }}
-          CONTENT_CHANGED: ${{ steps.update_homebrew.outputs.changed }}
         run: |
           set -euo pipefail
-          result="Formula/optimusctx.rb already matched niccrow/homebrew-tap"
-          if [ "${CONTENT_CHANGED:-unknown}" = "true" ]; then
-            result="Updated Formula/optimusctx.rb in niccrow/homebrew-tap"
+          failure_reason="none"
+          if [ "${UPDATE_OUTCOME:-skipped}" = "failure" ]; then
+            failure_reason="Homebrew tap update failed"
           fi
           {
             echo "### Homebrew publication"
             echo "- channel: homebrew"
-            echo "- target: niccrow/homebrew-tap"
             echo "- tag: ${RELEASE_TAG}"
             echo "- outcome: ${UPDATE_OUTCOME:-skipped}"
-            echo "- result: ${result}"
-            echo "- retry: Safe to rerun via workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=homebrew"
+            echo "- failure_reason: ${failure_reason}"
+            echo "- next_step: Inspect the failing job logs, confirm GitHub Release remains the canonical root, and use workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=homebrew."
           } >> "$GITHUB_STEP_SUMMARY"
 
   publish_scoop:
@@ -284,19 +307,17 @@ jobs:
         env:
           RELEASE_TAG: ${{ needs.release.outputs.tag }}
           UPDATE_OUTCOME: ${{ steps.update_scoop.outcome }}
-          CONTENT_CHANGED: ${{ steps.update_scoop.outputs.changed }}
         run: |
           set -euo pipefail
-          result="bucket/optimusctx.json already matched niccrow/scoop-bucket"
-          if [ "${CONTENT_CHANGED:-unknown}" = "true" ]; then
-            result="Updated bucket/optimusctx.json in niccrow/scoop-bucket"
+          failure_reason="none"
+          if [ "${UPDATE_OUTCOME:-skipped}" = "failure" ]; then
+            failure_reason="Scoop bucket update failed"
           fi
           {
             echo "### Scoop publication"
             echo "- channel: scoop"
-            echo "- target: niccrow/scoop-bucket"
             echo "- tag: ${RELEASE_TAG}"
             echo "- outcome: ${UPDATE_OUTCOME:-skipped}"
-            echo "- result: ${result}"
-            echo "- retry: Safe to rerun via workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=scoop"
+            echo "- failure_reason: ${failure_reason}"
+            echo "- next_step: Inspect the failing job logs, confirm GitHub Release remains the canonical root, and use workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=scoop."
           } >> "$GITHUB_STEP_SUMMARY"
