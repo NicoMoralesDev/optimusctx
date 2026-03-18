@@ -4,17 +4,17 @@ milestone: v1.2
 milestone_name: release automation and operator workflow
 current_phase: 18
 current_phase_name: multi-channel publication fan-out
-current_plan: 3
+current_plan: 4
 status: ready
-stopped_at: Completed 18-02-PLAN.md
-last_updated: "2026-03-18T11:40:20.320Z"
+stopped_at: Completed 18-03-PLAN.md
+last_updated: "2026-03-18T11:44:45.446Z"
 last_activity: 2026-03-18
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 15
-  completed_plans: 13
-  percent: 87
+  completed_plans: 14
+  percent: 93
 ---
 
 # Planning State: OptimusCtx
@@ -27,11 +27,11 @@ progress:
 **Current Phase:** 18
 **Current Phase Name:** multi-channel publication fan-out
 **Total Phases:** 4
-**Current Plan:** 3
+**Current Plan:** 4
 **Total Plans in Phase:** 4
-**Progress:** [█████████░] 87%
+**Progress:** [█████████░] 93%
 **Last Activity:** 2026-03-18
-**Last Activity Description:** Completed Phase 18 plan 02 with canonical Homebrew and Scoop render helpers, transport wrappers, and deterministic publication tests
+**Last Activity Description:** Completed Phase 18 plan 03 with canonical release workflow fan-out, selective downstream reruns, and package-manager publication regression coverage
 
 ## Project Memory
 
@@ -45,9 +45,9 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `18-multi-channel-publication-fan-out`
-- Next execution action: execute Phase 18 plan 03 on top of the new Homebrew and Scoop render entrypoints from plan 02
+- Next execution action: execute Phase 18 plan 04 on top of the workflow fan-out and per-channel rerun controls from plan 03
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: Phase 18 plans 01-02 are complete; plans 03-04 remain pending
+- Coverage status: Phase 18 plans 01-03 are complete; plan 04 remains pending
 
 ## Recent Decisions
 
@@ -57,6 +57,9 @@ progress:
 - GitHub Release remains the canonical source of truth; npm, Homebrew, and Scoop publish from the same tagged release metadata.
 - Channel publication should support selective reruns for an existing tag so one failed channel does not require rebuilding the whole release.
 - The release operator needs one end-to-end guide for release, verification, republish, and rollback over the real supported channels.
+- Release workflow downstream jobs now reuse one canonical ref, tag, and checksum-manifest output from the release job.
+- `workflow_dispatch` reruns now validate the existing GitHub Release with `gh` and skip goreleaser asset publication.
+- Homebrew and Scoop publication remain thin shell wrappers plus workflow transport while Go owns rendered payload content.
 - Release preparation should standardize on canonical semver tags `vMAJOR.MINOR.PATCH` and treat legacy tags like `v1.1` as semantic conflicts for `v1.1.0`.
 - The Phase 16 front door should expose one shared review contract in text and JSON and remain non-mutating even when the operator confirms the plan.
 - Phase 16 preflight should distinguish git-state blockers, remote-tag blockers, and per-channel readiness blockers instead of failing with one generic release error.
@@ -243,6 +246,7 @@ progress:
 | Phase 17-canonical-release-orchestration-and-metadata P06 | 16min | 2 tasks | 4 files |
 | Phase 18-multi-channel-publication-fan-out P01 | 2min | 2 tasks | 4 files |
 | Phase 18 P02 | 5 min | 2 tasks | 6 files |
+| Phase 18-multi-channel-publication-fan-out P03 | 9m | 2 tasks | 5 files |
 
 ## Decisions Made
 
@@ -424,6 +428,8 @@ progress:
 - [Phase 18]: GitHub Release archives remain the canonical root and are rejected as a downstream publication target for reruns.
 - [Phase 18]: Shell wrappers stay transport-only and delegate checksum parsing, template loading, and output rendering to Go entrypoints.
 - [Phase 18]: Template loading resolves from the release package source path so go test and wrapper execution share one repo-root contract.
+- [Phase 18]: Release workflow downstream jobs reuse one canonical ref/tag/checksum output from the release job.
+- [Phase 18]: Homebrew and Scoop publication stay as thin shell wrappers plus workflow transport while Go owns rendered payload content.
 
 ## Blockers
 
@@ -431,8 +437,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-18T11:40:20.317Z
-**Stopped At:** Completed 18-02-PLAN.md
+**Last Date:** 2026-03-18T11:44:30.025Z
+**Stopped At:** Completed 18-03-PLAN.md
 **Resume File:** None
 
 ---

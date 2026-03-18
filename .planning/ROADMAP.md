@@ -74,7 +74,7 @@ Plans:
 
 - [x] 18-01: shared downstream publication plan and rerun contract
 - [x] 18-02: package-manager publication payloads and transport helpers
-- [ ] 18-03: workflow fan-out and per-channel rerun controls
+- [x] 18-03: workflow fan-out and per-channel rerun controls
 - [ ] 18-04: readiness, status, and documentation closeout
 
 **Requirements covered:** `PUB-02`, `PUB-03`
@@ -103,14 +103,14 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.2` with Phase 18 in progress and plans 01-02 complete
+Active milestone: `v1.2` with Phase 18 in progress and plans 01-03 complete
 
 Next step:
 
-- Execute Phase 18 plan 03 against the verified Homebrew and Scoop render entrypoints from plan 02
-- Keep selective rerun semantics per channel anchored to the canonical GitHub Release root
-- Continue milestone execution from package-manager rendering into workflow fan-out and rerun controls
+- Execute Phase 18 plan 04 against the verified workflow fan-out and per-channel rerun controls from plan 03
+- Keep per-channel status, retry guidance, and documentation anchored to the canonical GitHub Release root
+- Continue milestone execution from workflow fan-out into readiness, status, and documentation closeout
 - Keep all new release-channel automation anchored to the existing GitHub Release archive contract
 
 ---
-*Last updated: 2026-03-18 after completing Phase 18 plan 02 package-manager publication payload rendering*
+*Last updated: 2026-03-18 after completing Phase 18 plan 03 workflow fan-out and rerun controls*
