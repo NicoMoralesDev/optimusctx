@@ -4,17 +4,17 @@ milestone: v1.2
 milestone_name: release automation and operator workflow
 current_phase: 18
 current_phase_name: multi-channel publication fan-out
-current_plan: 2
+current_plan: 3
 status: ready
-stopped_at: Completed 18-01-PLAN.md
-last_updated: "2026-03-18T11:30:02.412Z"
+stopped_at: Completed 18-02-PLAN.md
+last_updated: "2026-03-18T11:40:20.320Z"
 last_activity: 2026-03-18
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 15
-  completed_plans: 12
-  percent: 80
+  completed_plans: 13
+  percent: 87
 ---
 
 # Planning State: OptimusCtx
@@ -27,11 +27,11 @@ progress:
 **Current Phase:** 18
 **Current Phase Name:** multi-channel publication fan-out
 **Total Phases:** 4
-**Current Plan:** 2
+**Current Plan:** 3
 **Total Plans in Phase:** 4
-**Progress:** [████████░░] 80%
+**Progress:** [█████████░] 87%
 **Last Activity:** 2026-03-18
-**Last Activity Description:** Completed Phase 18 plan 01 with a shared downstream publication contract and deterministic fanout/rerun tests
+**Last Activity Description:** Completed Phase 18 plan 02 with canonical Homebrew and Scoop render helpers, transport wrappers, and deterministic publication tests
 
 ## Project Memory
 
@@ -45,9 +45,9 @@ progress:
 
 - Active milestone: `v1.2` release automation and operator workflow
 - Active phase: `18-multi-channel-publication-fan-out`
-- Next execution action: execute Phase 18 plan 02 on top of the shared downstream publication contract from plan 01
+- Next execution action: execute Phase 18 plan 03 on top of the new Homebrew and Scoop render entrypoints from plan 02
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: Phase 18 plan 01 is complete; plans 02-04 remain pending
+- Coverage status: Phase 18 plans 01-02 are complete; plans 03-04 remain pending
 
 ## Recent Decisions
 
@@ -242,6 +242,7 @@ progress:
 | Phase 17 P07 | 8min | 2 tasks | 4 files |
 | Phase 17-canonical-release-orchestration-and-metadata P06 | 16min | 2 tasks | 4 files |
 | Phase 18-multi-channel-publication-fan-out P01 | 2min | 2 tasks | 4 files |
+| Phase 18 P02 | 5 min | 2 tasks | 6 files |
 
 ## Decisions Made
 
@@ -421,6 +422,8 @@ progress:
 - [Phase 17-canonical-release-orchestration-and-metadata]: ReleaseOrchestrationPlan now carries explicit GitHub Release action metadata, while the old booleans remain derived compatibility fields rather than the primary contract.
 - [Phase 18]: Downstream publication planning derives only from ReleaseOrchestrationPlan so npm, Homebrew, and Scoop inherit one canonical tag, release URL, and checksum manifest URL.
 - [Phase 18]: GitHub Release archives remain the canonical root and are rejected as a downstream publication target for reruns.
+- [Phase 18]: Shell wrappers stay transport-only and delegate checksum parsing, template loading, and output rendering to Go entrypoints.
+- [Phase 18]: Template loading resolves from the release package source path so go test and wrapper execution share one repo-root contract.
 
 ## Blockers
 
@@ -428,8 +431,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-18T11:30:02.409Z
-**Stopped At:** Completed 18-01-PLAN.md
+**Last Date:** 2026-03-18T11:40:20.317Z
+**Stopped At:** Completed 18-02-PLAN.md
 **Resume File:** None
 
 ---
