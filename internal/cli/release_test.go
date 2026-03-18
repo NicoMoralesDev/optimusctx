@@ -298,6 +298,69 @@ func TestReleasePrepareConfirmGate(t *testing.T) {
 }
 
 func TestReleasePrepareSelectedChannelsReady(t *testing.T) {
+	t.Run("all channels ready keep the shared prepare output ready", func(t *testing.T) {
+		deps := stubReleasePrepareDeps(t)
+		deps.preparation = release.ReleasePreparation{
+			Version: "1.2.0",
+			Tag:     "v1.2.0",
+			Channels: []release.ReleaseChannelPlan{
+				{
+					ID:                release.ReleaseChannelGitHubArchive,
+					Name:              "GitHub Release archives",
+					PublicationTarget: "github.com/niccrow/optimusctx releases",
+					Selected:          true,
+					Readiness:         "ready",
+				},
+				{
+					ID:                release.ReleaseChannelHomebrew,
+					Name:              "Homebrew",
+					PublicationTarget: "niccrow/homebrew-tap",
+					Selected:          true,
+					Readiness:         "ready",
+				},
+				{
+					ID:                release.ReleaseChannelScoop,
+					Name:              "Scoop",
+					PublicationTarget: "niccrow/scoop-bucket",
+					Selected:          true,
+					Readiness:         "ready",
+				},
+				{
+					ID:                release.ReleaseChannelNPM,
+					Name:              "npm",
+					PublicationTarget: "@niccrow/optimusctx",
+					Selected:          true,
+					Readiness:         "ready",
+				},
+			},
+		}
+
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"release", "prepare", "--json"}, &stdout); err != nil {
+			t.Fatalf("Execute(release prepare --json) error = %v", err)
+		}
+
+		var payload releasePrepareJSONOutput
+		if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+			t.Fatalf("json.Unmarshal(stdout) error = %v; output=%s", err, stdout.String())
+		}
+
+		if got, want := payload.Status, "ready"; got != want {
+			t.Fatalf("\"status\" = %q, want %q", got, want)
+		}
+		if got := len(payload.Channels); got != 4 {
+			t.Fatalf("channels len = %d, want 4", got)
+		}
+		for _, channel := range payload.Channels {
+			if !channel.Selected {
+				t.Fatalf("%s selected = false, want true", channel.ID)
+			}
+			if got := channel.Readiness; got != "ready" {
+				t.Fatalf("%s readiness = %q, want %q", channel.ID, got, "ready")
+			}
+		}
+	})
+
 	t.Run("json output stays ready when only selected channels are ready", func(t *testing.T) {
 		deps := stubReleasePrepareDeps(t)
 		deps.preparation = release.ReleasePreparation{

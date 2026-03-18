@@ -122,12 +122,98 @@ func TestReleasePreparation(t *testing.T) {
 	if got := releaseChannel(t, preparation, ReleaseChannelNPM).Readiness; got != releaseChannelReadinessReady {
 		t.Fatalf("npm readiness = %q, want %q", got, releaseChannelReadinessReady)
 	}
-	if got := releaseChannel(t, preparation, ReleaseChannelHomebrew).Readiness; got != releaseChannelReadinessBlocked {
-		t.Fatalf("homebrew readiness = %q, want %q", got, releaseChannelReadinessBlocked)
+	if got := releaseChannel(t, preparation, ReleaseChannelHomebrew).Readiness; got != releaseChannelReadinessReady {
+		t.Fatalf("homebrew readiness = %q, want %q", got, releaseChannelReadinessReady)
 	}
-	if got := releaseChannel(t, preparation, ReleaseChannelScoop).Readiness; got != releaseChannelReadinessBlocked {
-		t.Fatalf("scoop readiness = %q, want %q", got, releaseChannelReadinessBlocked)
+	if got := releaseChannel(t, preparation, ReleaseChannelScoop).Readiness; got != releaseChannelReadinessReady {
+		t.Fatalf("scoop readiness = %q, want %q", got, releaseChannelReadinessReady)
 	}
+}
+
+func TestReleasePrepareAllChannelsReady(t *testing.T) {
+	preparation, err := PrepareRelease(context.Background(), "1.2.3", "v1.2", ReleasePreparationOptions{
+		Git:   fakeGitProbe{},
+		Files: releaseRepoFiles(),
+	})
+	if err != nil {
+		t.Fatalf("PrepareRelease() error = %v", err)
+	}
+
+	for _, channelID := range []string{
+		ReleaseChannelGitHubArchive,
+		ReleaseChannelHomebrew,
+		ReleaseChannelScoop,
+		ReleaseChannelNPM,
+	} {
+		channel := releaseChannel(t, preparation, channelID)
+		if !channel.Selected {
+			t.Fatalf("%s selected = false, want true", channelID)
+		}
+		if got := channel.Readiness; got != releaseChannelReadinessReady {
+			t.Fatalf("%s readiness = %q, want %q", channelID, got, releaseChannelReadinessReady)
+		}
+	}
+}
+
+func TestReleasePrepareHomebrewAndScoopAutomationMarkers(t *testing.T) {
+	t.Run("blocks when automation markers are missing", func(t *testing.T) {
+		files := releaseRepoFilesWithoutManagedChannelAutomation()
+
+		preparation, err := PrepareRelease(context.Background(), "1.2.3", "v1.2", ReleasePreparationOptions{
+			Git:   fakeGitProbe{},
+			Files: files,
+		})
+		if err != nil {
+			t.Fatalf("PrepareRelease() error = %v", err)
+		}
+
+		homebrew := releaseChannel(t, preparation, ReleaseChannelHomebrew)
+		if got := homebrew.Readiness; got != releaseChannelReadinessBlocked {
+			t.Fatalf("homebrew readiness = %q, want %q", got, releaseChannelReadinessBlocked)
+		}
+		if blocker := findBlocker(preparation, channelCheckHomebrew); blocker == nil {
+			t.Fatalf("expected %s blocker in %+v", channelCheckHomebrew, preparation.Blockers)
+		}
+		if check := findCheck(t, preparation, channelCheckHomebrew); !reflect.DeepEqual(check.Details, []string{
+			"name: Publish Homebrew formula",
+			homebrewTapTokenEnv,
+			"bash scripts/render-homebrew-formula.sh",
+		}) {
+			t.Fatalf("homebrew check details = %v, want exact marker list", check.Details)
+		}
+
+		scoop := releaseChannel(t, preparation, ReleaseChannelScoop)
+		if got := scoop.Readiness; got != releaseChannelReadinessBlocked {
+			t.Fatalf("scoop readiness = %q, want %q", got, releaseChannelReadinessBlocked)
+		}
+		if blocker := findBlocker(preparation, channelCheckScoop); blocker == nil {
+			t.Fatalf("expected %s blocker in %+v", channelCheckScoop, preparation.Blockers)
+		}
+		if check := findCheck(t, preparation, channelCheckScoop); !reflect.DeepEqual(check.Details, []string{
+			"name: Publish Scoop manifest",
+			scoopBucketTokenEnv,
+			"bash scripts/render-scoop-manifest.sh",
+		}) {
+			t.Fatalf("scoop check details = %v, want exact marker list", check.Details)
+		}
+	})
+
+	t.Run("stays ready when automation markers are present", func(t *testing.T) {
+		preparation, err := PrepareRelease(context.Background(), "1.2.3", "v1.2", ReleasePreparationOptions{
+			Git:   fakeGitProbe{},
+			Files: releaseRepoFiles(),
+		})
+		if err != nil {
+			t.Fatalf("PrepareRelease() error = %v", err)
+		}
+
+		if got := releaseChannel(t, preparation, ReleaseChannelHomebrew).Readiness; got != releaseChannelReadinessReady {
+			t.Fatalf("homebrew readiness = %q, want %q", got, releaseChannelReadinessReady)
+		}
+		if got := releaseChannel(t, preparation, ReleaseChannelScoop).Readiness; got != releaseChannelReadinessReady {
+			t.Fatalf("scoop readiness = %q, want %q", got, releaseChannelReadinessReady)
+		}
+	})
 }
 
 func TestReleasePrepareSelectedChannelsReady(t *testing.T) {
@@ -347,11 +433,11 @@ func TestReleasePrerequisiteChecks(t *testing.T) {
 		if got := releaseChannel(t, preparation, ReleaseChannelNPM).Readiness; got != releaseChannelReadinessReady {
 			t.Fatalf("npm readiness = %q, want %q", got, releaseChannelReadinessReady)
 		}
-		if got := releaseChannel(t, preparation, ReleaseChannelHomebrew).Readiness; got != releaseChannelReadinessBlocked {
-			t.Fatalf("homebrew readiness = %q, want %q", got, releaseChannelReadinessBlocked)
+		if got := releaseChannel(t, preparation, ReleaseChannelHomebrew).Readiness; got != releaseChannelReadinessReady {
+			t.Fatalf("homebrew readiness = %q, want %q", got, releaseChannelReadinessReady)
 		}
-		if got := releaseChannel(t, preparation, ReleaseChannelScoop).Readiness; got != releaseChannelReadinessBlocked {
-			t.Fatalf("scoop readiness = %q, want %q", got, releaseChannelReadinessBlocked)
+		if got := releaseChannel(t, preparation, ReleaseChannelScoop).Readiness; got != releaseChannelReadinessReady {
+			t.Fatalf("scoop readiness = %q, want %q", got, releaseChannelReadinessReady)
 		}
 	})
 
@@ -376,7 +462,7 @@ func TestReleasePrerequisiteChecks(t *testing.T) {
 func TestReleaseSelectedChannelsDoNotInheritUnselectedBlockers(t *testing.T) {
 	preparation, err := PrepareRelease(context.Background(), "1.2.0", "v1.2", ReleasePreparationOptions{
 		Git:              fakeGitProbe{},
-		Files:            releaseRepoFiles(),
+		Files:            releaseRepoFilesWithoutManagedChannelAutomation(),
 		SelectedChannels: []string{ReleaseChannelGitHubArchive, ReleaseChannelNPM},
 	})
 	if err != nil {
@@ -497,6 +583,22 @@ jobs:
       - run: npm publish --access public
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  publish_homebrew:
+    name: Publish Homebrew formula
+    needs: release
+    steps:
+      - run: bash scripts/render-homebrew-formula.sh "${{ inputs.release_tag }}" checksums out
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+  publish_scoop:
+    name: Publish Scoop manifest
+    needs: release
+    steps:
+      - run: bash scripts/render-scoop-manifest.sh "${{ inputs.release_tag }}" checksums out
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.SCOOP_BUCKET_GITHUB_TOKEN }}
 `),
 		},
 		releaseChecklistPath: {
@@ -519,6 +621,35 @@ jobs:
 			Data: []byte("{\"name\":\"@niccrow/optimusctx\"}\n"),
 		},
 	}
+}
+
+func releaseRepoFilesWithoutManagedChannelAutomation() fstest.MapFS {
+	files := releaseRepoFiles()
+	files[releaseWorkflowPath] = &fstest.MapFile{
+		Data: []byte(`
+name: release
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        required: true
+jobs:
+  release:
+    steps:
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          args: release --clean
+  publish_npm:
+    name: Publish npm wrapper package
+    needs: release
+    steps:
+      - run: bash scripts/render-npm-package.sh "${{ inputs.release_tag }}" out
+      - run: npm publish --access public
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+`),
+	}
+	return files
 }
 
 func releaseChannel(t *testing.T, preparation ReleasePreparation, id string) ReleaseChannelPlan {
@@ -551,4 +682,17 @@ func hasCheck(preparation ReleasePreparation, code string, status string) bool {
 		}
 	}
 	return false
+}
+
+func findCheck(t *testing.T, preparation ReleasePreparation, code string) ReleaseCheck {
+	t.Helper()
+
+	for _, check := range preparation.Checks {
+		if check.Code == code {
+			return check
+		}
+	}
+
+	t.Fatalf("check %s missing from %+v", code, preparation.Checks)
+	return ReleaseCheck{}
 }

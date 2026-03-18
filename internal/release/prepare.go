@@ -577,13 +577,12 @@ func applyPrerequisiteChecks(preparation *ReleasePreparation, options ReleasePre
 		})
 	}
 
-	checklist := fileContents[releaseChecklistPath]
 	workflow := fileContents[releaseWorkflowPath]
 
 	setChannelReadiness(preparation, ReleaseChannelGitHubArchive, evaluateGitHubChannel(workflow, missingFiles))
 	setChannelReadiness(preparation, ReleaseChannelNPM, evaluateNPMChannel(workflow, missingFiles))
-	setChannelReadiness(preparation, ReleaseChannelHomebrew, evaluateHomebrewChannel(workflow, checklist, missingFiles))
-	setChannelReadiness(preparation, ReleaseChannelScoop, evaluateScoopChannel(workflow, checklist, missingFiles))
+	setChannelReadiness(preparation, ReleaseChannelHomebrew, evaluateHomebrewChannel(workflow, missingFiles))
+	setChannelReadiness(preparation, ReleaseChannelScoop, evaluateScoopChannel(workflow, missingFiles))
 
 	return nil
 }
@@ -663,39 +662,75 @@ func evaluateNPMChannel(workflow string, missingFiles map[string]bool) channelEv
 	}
 }
 
-func evaluateHomebrewChannel(workflow string, checklist string, missingFiles map[string]bool) channelEvaluation {
-	details := missingDetailList(missingFiles, homebrewTemplatePath)
-	if !strings.Contains(checklist, homebrewTapTokenEnv) {
-		details = append(details, homebrewTapTokenEnv)
+func evaluateHomebrewChannel(workflow string, missingFiles map[string]bool) channelEvaluation {
+	if missingFiles[homebrewTemplatePath] {
+		return channelEvaluation{
+			ID:        ReleaseChannelHomebrew,
+			CheckCode: channelCheckHomebrew,
+			Readiness: releaseChannelReadinessBlocked,
+			Message:   "Homebrew publication is blocked because required Homebrew release files are missing",
+			Details:   missingDetailList(missingFiles, homebrewTemplatePath),
+			Blocker:   true,
+		}
 	}
-	if !strings.Contains(workflow, homebrewTapTokenEnv) {
-		details = append(details, "release workflow does not yet wire "+homebrewTapTokenEnv)
+
+	requiredMarkers := []string{
+		"name: Publish Homebrew formula",
+		homebrewTapTokenEnv,
+		"bash scripts/render-homebrew-formula.sh",
+	}
+	if missing := missingMarkers(workflow, requiredMarkers...); len(missing) > 0 {
+		return channelEvaluation{
+			ID:        ReleaseChannelHomebrew,
+			CheckCode: channelCheckHomebrew,
+			Readiness: releaseChannelReadinessBlocked,
+			Message:   "Homebrew publication workflow is missing required release contract markers",
+			Details:   missing,
+			Blocker:   true,
+		}
 	}
 
 	return channelEvaluation{
 		ID:        ReleaseChannelHomebrew,
 		CheckCode: channelCheckHomebrew,
-		Readiness: releaseChannelReadinessBlocked,
-		Message:   "Homebrew publication remains blocked until release automation wires the tap publication path",
-		Details:   details,
+		Readiness: releaseChannelReadinessReady,
+		Message:   "Homebrew publication contract is wired",
 	}
 }
 
-func evaluateScoopChannel(workflow string, checklist string, missingFiles map[string]bool) channelEvaluation {
-	details := missingDetailList(missingFiles, scoopTemplatePath)
-	if !strings.Contains(checklist, scoopBucketTokenEnv) {
-		details = append(details, scoopBucketTokenEnv)
+func evaluateScoopChannel(workflow string, missingFiles map[string]bool) channelEvaluation {
+	if missingFiles[scoopTemplatePath] {
+		return channelEvaluation{
+			ID:        ReleaseChannelScoop,
+			CheckCode: channelCheckScoop,
+			Readiness: releaseChannelReadinessBlocked,
+			Message:   "Scoop publication is blocked because required Scoop release files are missing",
+			Details:   missingDetailList(missingFiles, scoopTemplatePath),
+			Blocker:   true,
+		}
 	}
-	if !strings.Contains(workflow, scoopBucketTokenEnv) {
-		details = append(details, "release workflow does not yet wire "+scoopBucketTokenEnv)
+
+	requiredMarkers := []string{
+		"name: Publish Scoop manifest",
+		scoopBucketTokenEnv,
+		"bash scripts/render-scoop-manifest.sh",
+	}
+	if missing := missingMarkers(workflow, requiredMarkers...); len(missing) > 0 {
+		return channelEvaluation{
+			ID:        ReleaseChannelScoop,
+			CheckCode: channelCheckScoop,
+			Readiness: releaseChannelReadinessBlocked,
+			Message:   "Scoop publication workflow is missing required release contract markers",
+			Details:   missing,
+			Blocker:   true,
+		}
 	}
 
 	return channelEvaluation{
 		ID:        ReleaseChannelScoop,
 		CheckCode: channelCheckScoop,
-		Readiness: releaseChannelReadinessBlocked,
-		Message:   "Scoop publication remains blocked until release automation wires the bucket publication path",
-		Details:   details,
+		Readiness: releaseChannelReadinessReady,
+		Message:   "Scoop publication contract is wired",
 	}
 }
 
