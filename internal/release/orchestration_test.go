@@ -41,7 +41,7 @@ func TestPlanReleaseOrchestrationCreate(t *testing.T) {
 	if got, want := plan.CanonicalRelease.Tag, preparation.Tag; got != want {
 		t.Fatalf("CanonicalRelease.Tag = %q, want %q", got, want)
 	}
-	if got, want := plan.CanonicalRelease.ReleaseURL, "https://github.com/niccrow/optimusctx/releases/tag/v1.2.3"; got != want {
+	if got, want := plan.CanonicalRelease.ReleaseURL, "https://github.com/NicoMoralesDev/optimusctx/releases/tag/v1.2.3"; got != want {
 		t.Fatalf("CanonicalRelease.ReleaseURL = %q, want %q", got, want)
 	}
 	if got, want := plan.GitHubRelease.ReleaseTag, preparation.Tag; got != want {
@@ -180,7 +180,7 @@ func TestPlanReleaseOrchestrationCarriesSelectedChannelPlans(t *testing.T) {
 	if got, want := selectedChannelPlanNames(plan.SelectedChannels), []string{"GitHub Release archives", "npm"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("SelectedChannels names = %v, want %v", got, want)
 	}
-	if got, want := selectedChannelPlanTargets(plan.SelectedChannels), []string{"github.com/niccrow/optimusctx releases", "@niccrow/optimusctx"}; !reflect.DeepEqual(got, want) {
+	if got, want := selectedChannelPlanTargets(plan.SelectedChannels), []string{"github.com/NicoMoralesDev/optimusctx releases", "@niccrow/optimusctx"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("SelectedChannels publication targets = %v, want %v", got, want)
 	}
 }

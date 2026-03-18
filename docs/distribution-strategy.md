@@ -33,7 +33,7 @@ This is also the target audience for early team adoption. The expected rollout p
 
 GitHub Release archives are the fallback and baseline channel for v1.1.
 
-- Publication target: `github.com/niccrow/optimusctx releases`
+- Publication target: `github.com/NicoMoralesDev/optimusctx releases`
 - Audience: users who want the raw binary, need a fallback when package-manager metadata lags, or prefer explicit archive installs
 - Install path: download the tagged archive from GitHub Releases, unpack it, place `optimusctx` on your PATH, then verify with `optimusctx version` and `optimusctx doctor`
 - Strength: this is the least opinionated path and the rollback source for every other channel

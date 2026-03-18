@@ -14,8 +14,8 @@ const (
 	canonicalNPMPostInstallScript  = "node ./lib/install.js"
 	canonicalNPMMinimumNodeVersion = ">=18"
 	canonicalNPMDevelopmentVersion = "0.0.0-development"
-	canonicalNPMRepositoryURL      = "git+https://github.com/niccrow/optimusctx.git"
-	canonicalNPMIssuesURL          = "https://github.com/niccrow/optimusctx/issues"
+	canonicalNPMRepositoryURL      = "git+https://github.com/NicoMoralesDev/optimusctx.git"
+	canonicalNPMIssuesURL          = "https://github.com/NicoMoralesDev/optimusctx/issues"
 	canonicalNPMLauncherModule     = "./bin/optimusctx.js"
 )
 

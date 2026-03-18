@@ -8,10 +8,11 @@ import (
 )
 
 const (
-	canonicalReleaseOwner      = "niccrow"
+	canonicalReleaseRepoOwner  = "NicoMoralesDev"
 	canonicalReleaseRepo       = "optimusctx"
+	canonicalPublisherOwner    = "niccrow"
 	canonicalProjectName       = "optimusctx"
-	canonicalHomepage          = "https://github.com/niccrow/optimusctx"
+	canonicalHomepage          = "https://github.com/NicoMoralesDev/optimusctx"
 	canonicalDescription       = "Local-first runtime that builds and maintains persistent repository context for coding agents."
 	canonicalLicense           = "MIT"
 	homebrewTapRepo            = "homebrew-tap"
@@ -139,15 +140,15 @@ func newPackageManagerReleaseFromCanonical(release CanonicalRelease, checksums m
 func defaultHomebrewTapTarget() homebrewTapTarget {
 	return homebrewTapTarget{
 		Repository: repositoryRef{
-			Owner: canonicalReleaseOwner,
+			Owner: canonicalPublisherOwner,
 			Name:  homebrewTapRepo,
 		},
 		Branch:       homebrewTapBranch,
 		Directory:    homebrewTapDirectory,
 		FormulaName:  canonicalBinaryName,
 		TokenEnvVar:  homebrewTapTokenEnv,
-		InstallTap:   fmt.Sprintf("%s/tap", canonicalReleaseOwner),
-		InstallValue: fmt.Sprintf("%s/tap/%s", canonicalReleaseOwner, canonicalBinaryName),
+		InstallTap:   fmt.Sprintf("%s/tap", canonicalPublisherOwner),
+		InstallValue: fmt.Sprintf("%s/tap/%s", canonicalPublisherOwner, canonicalBinaryName),
 	}
 }
 
@@ -176,16 +177,16 @@ func renderHomebrewFormula(templateText string, release packageManagerRelease, t
 func defaultScoopBucketTarget() scoopBucketTarget {
 	return scoopBucketTarget{
 		Repository: repositoryRef{
-			Owner: canonicalReleaseOwner,
+			Owner: canonicalPublisherOwner,
 			Name:  scoopBucketRepo,
 		},
 		Branch:       scoopBucketBranch,
 		Directory:    scoopBucketDirectory,
 		ManifestName: canonicalBinaryName + ".json",
 		TokenEnvVar:  scoopBucketTokenEnv,
-		BucketName:   canonicalReleaseOwner,
-		BucketAddURL: fmt.Sprintf("https://github.com/%s/%s.git", canonicalReleaseOwner, scoopBucketRepo),
-		InstallValue: fmt.Sprintf("%s/%s", canonicalReleaseOwner, canonicalBinaryName),
+		BucketName:   canonicalPublisherOwner,
+		BucketAddURL: fmt.Sprintf("https://github.com/%s/%s.git", canonicalPublisherOwner, scoopBucketRepo),
+		InstallValue: fmt.Sprintf("%s/%s", canonicalPublisherOwner, canonicalBinaryName),
 	}
 }
 

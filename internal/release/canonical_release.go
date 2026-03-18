@@ -79,7 +79,7 @@ func newCanonicalRelease(version string) CanonicalRelease {
 		Tag:         canonicalReleaseTag(version),
 		ProjectName: canonicalProjectName,
 		Repository: repositoryRef{
-			Owner: canonicalReleaseOwner,
+			Owner: canonicalReleaseRepoOwner,
 			Name:  canonicalReleaseRepo,
 		},
 	}

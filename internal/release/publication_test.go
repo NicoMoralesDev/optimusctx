@@ -22,7 +22,7 @@ func TestPlanReleasePublicationFanout(t *testing.T) {
 	if got, want := plan.ReleaseTag, "v1.2.3"; got != want {
 		t.Fatalf("ReleaseTag = %q, want %q", got, want)
 	}
-	if got, want := plan.CanonicalRelease.ReleaseURL, "https://github.com/niccrow/optimusctx/releases/tag/v1.2.3"; got != want {
+	if got, want := plan.CanonicalRelease.ReleaseURL, "https://github.com/NicoMoralesDev/optimusctx/releases/tag/v1.2.3"; got != want {
 		t.Fatalf("CanonicalRelease.ReleaseURL = %q, want %q", got, want)
 	}
 	if got, want := sortedStrings(publicationChannelIDs(plan.Channels)), sortedStrings([]string{ReleaseChannelNPM, ReleaseChannelHomebrew, ReleaseChannelScoop}); !reflect.DeepEqual(got, want) {
@@ -78,10 +78,10 @@ func TestPlanReleasePublicationFanout(t *testing.T) {
 		if got, want := channel.ReleaseTag, "v1.2.3"; got != want {
 			t.Fatalf("%s ReleaseTag = %q, want %q", channel.ID, got, want)
 		}
-		if got, want := channel.CanonicalReleaseURL, "https://github.com/niccrow/optimusctx/releases/tag/v1.2.3"; got != want {
+		if got, want := channel.CanonicalReleaseURL, "https://github.com/NicoMoralesDev/optimusctx/releases/tag/v1.2.3"; got != want {
 			t.Fatalf("%s CanonicalReleaseURL = %q, want %q", channel.ID, got, want)
 		}
-		if got, want := channel.ChecksumManifestURL, "https://github.com/niccrow/optimusctx/releases/download/v1.2.3/optimusctx_1.2.3_checksums.txt"; got != want {
+		if got, want := channel.ChecksumManifestURL, "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.2.3/optimusctx_1.2.3_checksums.txt"; got != want {
 			t.Fatalf("%s ChecksumManifestURL = %q, want %q", channel.ID, got, want)
 		}
 		if !channel.RetrySafeWithExistingTag {
@@ -114,7 +114,7 @@ func TestPlanReleasePublicationRerun(t *testing.T) {
 	if got, want := channel.ReleaseTag, "v1.2.3"; got != want {
 		t.Fatalf("ReleaseTag = %q, want %q", got, want)
 	}
-	if got, want := channel.CanonicalReleaseURL, "https://github.com/niccrow/optimusctx/releases/tag/v1.2.3"; got != want {
+	if got, want := channel.CanonicalReleaseURL, "https://github.com/NicoMoralesDev/optimusctx/releases/tag/v1.2.3"; got != want {
 		t.Fatalf("CanonicalReleaseURL = %q, want %q", got, want)
 	}
 	if !channel.RetrySafeWithExistingTag {

@@ -16,9 +16,9 @@ func TestCanonicalReleaseMetadata(t *testing.T) {
 		{name: "version", got: release.Version, want: "1.2.3"},
 		{name: "tag", got: release.Tag, want: "v1.2.3"},
 		{name: "project name", got: release.ProjectName, want: "optimusctx"},
-		{name: "release url", got: release.ReleaseURL, want: "https://github.com/niccrow/optimusctx/releases/tag/v1.2.3"},
+		{name: "release url", got: release.ReleaseURL, want: "https://github.com/NicoMoralesDev/optimusctx/releases/tag/v1.2.3"},
 		{name: "checksum manifest file", got: release.ChecksumManifest.FileName, want: "optimusctx_1.2.3_checksums.txt"},
-		{name: "checksum manifest url", got: release.ChecksumManifestURL(), want: "https://github.com/niccrow/optimusctx/releases/download/v1.2.3/optimusctx_1.2.3_checksums.txt"},
+		{name: "checksum manifest url", got: release.ChecksumManifestURL(), want: "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.2.3/optimusctx_1.2.3_checksums.txt"},
 	}
 
 	for _, tc := range tests {
@@ -109,7 +109,7 @@ func TestCanonicalReleaseAssets(t *testing.T) {
 			if got, want := asset.ArchiveFormat, tc.archiveFormat; got != want {
 				t.Fatalf("Asset(%q, %q).ArchiveFormat = %q, want %q", tc.goos, tc.goarch, got, want)
 			}
-			if got, want := asset.DownloadURL, "https://github.com/niccrow/optimusctx/releases/download/v1.2.3/"+tc.fileName; got != want {
+			if got, want := asset.DownloadURL, "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.2.3/"+tc.fileName; got != want {
 				t.Fatalf("Asset(%q, %q).DownloadURL = %q, want %q", tc.goos, tc.goarch, got, want)
 			}
 			if got, want := release.AssetKey(tc.goos, tc.goarch), tc.goos+"/"+tc.goarch; got != want {
@@ -182,25 +182,25 @@ func TestCanonicalReleaseArchiveFileNames(t *testing.T) {
 func TestCanonicalReleaseRepositoryCoordinates(t *testing.T) {
 	release := mustCanonicalRelease(t, "1.2.3")
 
-	if got, want := release.Repository.Owner, "niccrow"; got != want {
+	if got, want := release.Repository.Owner, "NicoMoralesDev"; got != want {
 		t.Fatalf("Repository.Owner = %q, want %q", got, want)
 	}
 	if got, want := release.Repository.Name, "optimusctx"; got != want {
 		t.Fatalf("Repository.Name = %q, want %q", got, want)
 	}
-	if got, want := release.RepositoryURL(), "https://github.com/niccrow/optimusctx"; got != want {
+	if got, want := release.RepositoryURL(), "https://github.com/NicoMoralesDev/optimusctx"; got != want {
 		t.Fatalf("RepositoryURL() = %q, want %q", got, want)
 	}
-	if got, want := release.ReleaseURL, "https://github.com/niccrow/optimusctx/releases/tag/v1.2.3"; got != want {
+	if got, want := release.ReleaseURL, "https://github.com/NicoMoralesDev/optimusctx/releases/tag/v1.2.3"; got != want {
 		t.Fatalf("ReleaseURL = %q, want %q", got, want)
 	}
 	if got, want := release.ChecksumManifest.FileName, "optimusctx_1.2.3_checksums.txt"; got != want {
 		t.Fatalf("ChecksumManifest.FileName = %q, want %q", got, want)
 	}
-	if got, want := release.ChecksumManifestURL(), "https://github.com/niccrow/optimusctx/releases/download/v1.2.3/optimusctx_1.2.3_checksums.txt"; got != want {
+	if got, want := release.ChecksumManifestURL(), "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.2.3/optimusctx_1.2.3_checksums.txt"; got != want {
 		t.Fatalf("ChecksumManifestURL() = %q, want %q", got, want)
 	}
-	if got, want := release.DownloadURL("optimusctx_1.2.3_linux_amd64.tar.gz"), "https://github.com/niccrow/optimusctx/releases/download/v1.2.3/optimusctx_1.2.3_linux_amd64.tar.gz"; got != want {
+	if got, want := release.DownloadURL("optimusctx_1.2.3_linux_amd64.tar.gz"), "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.2.3/optimusctx_1.2.3_linux_amd64.tar.gz"; got != want {
 		t.Fatalf("DownloadURL() = %q, want %q", got, want)
 	}
 }

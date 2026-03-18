@@ -16,9 +16,9 @@ func TestRenderHomebrewFormulaForTag(t *testing.T) {
 
 	for _, want := range []string{
 		`version "1.1.0"`,
-		`url "https://github.com/niccrow/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_darwin_amd64.tar.gz"`,
+		`url "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_darwin_amd64.tar.gz"`,
 		`sha256 "1111111111111111111111111111111111111111111111111111111111111111"`,
-		`url "https://github.com/niccrow/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_linux_arm64.tar.gz"`,
+		`url "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_linux_arm64.tar.gz"`,
 		`sha256 "4444444444444444444444444444444444444444444444444444444444444444"`,
 	} {
 		if !strings.Contains(got, want) {
@@ -35,9 +35,9 @@ func TestRenderScoopManifestForTag(t *testing.T) {
 
 	for _, want := range []string{
 		`"version": "1.1.0"`,
-		`"url": "https://github.com/niccrow/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_windows_amd64.zip"`,
+		`"url": "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_windows_amd64.zip"`,
 		`"hash": "5555555555555555555555555555555555555555555555555555555555555555"`,
-		`"url": "https://github.com/niccrow/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_windows_arm64.zip"`,
+		`"url": "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_windows_arm64.zip"`,
 		`"hash": "6666666666666666666666666666666666666666666666666666666666666666"`,
 	} {
 		if !strings.Contains(got, want) {

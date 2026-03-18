@@ -66,7 +66,7 @@ jobs:
           version="${tag#v}"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "checksum_manifest_url=https://github.com/niccrow/optimusctx/releases/download/${tag}/optimusctx_${version}_checksums.txt" >> "$GITHUB_OUTPUT"
+          echo "checksum_manifest_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${tag}/optimusctx_${version}_checksums.txt" >> "$GITHUB_OUTPUT"
 
       # Fetch the full tag history so GoReleaser can publish the tagged build.
       - name: Check out tagged source

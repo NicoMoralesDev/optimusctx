@@ -76,12 +76,12 @@ func TestRenderHomebrewFormula(t *testing.T) {
 
 	for _, want := range []string{
 		"class Optimusctx < Formula",
-		`homepage "https://github.com/niccrow/optimusctx"`,
+		`homepage "https://github.com/NicoMoralesDev/optimusctx"`,
 		`version "1.1.0"`,
 		`license "MIT"`,
-		`url "https://github.com/niccrow/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_darwin_amd64.tar.gz"`,
+		`url "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_darwin_amd64.tar.gz"`,
 		`sha256 "1111111111111111111111111111111111111111111111111111111111111111"`,
-		`url "https://github.com/niccrow/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_linux_arm64.tar.gz"`,
+		`url "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_linux_arm64.tar.gz"`,
 		`sha256 "4444444444444444444444444444444444444444444444444444444444444444"`,
 		`bin.install "optimusctx"`,
 		`assert_match version.to_s, shell_output("#{bin}/optimusctx version")`,
@@ -121,12 +121,12 @@ func TestRenderScoopManifest(t *testing.T) {
 
 	for _, want := range []string{
 		`"version": "1.1.0"`,
-		`"homepage": "https://github.com/niccrow/optimusctx"`,
+		`"homepage": "https://github.com/NicoMoralesDev/optimusctx"`,
 		`"license": "MIT"`,
 		`"description": "Local-first runtime that builds and maintains persistent repository context for coding agents."`,
-		`"url": "https://github.com/niccrow/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_windows_amd64.zip"`,
+		`"url": "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_windows_amd64.zip"`,
 		`"hash": "5555555555555555555555555555555555555555555555555555555555555555"`,
-		`"url": "https://github.com/niccrow/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_windows_arm64.zip"`,
+		`"url": "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_windows_arm64.zip"`,
 		`"hash": "6666666666666666666666666666666666666666666666666666666666666666"`,
 		`"bin": "optimusctx.exe"`,
 		`Bucket add: scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git`,

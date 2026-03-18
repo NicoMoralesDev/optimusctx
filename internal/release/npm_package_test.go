@@ -100,9 +100,9 @@ func TestRenderNPMPackageManifestForTag(t *testing.T) {
 	for _, want := range []string{
 		`"releaseTag": "v1.2.3"`,
 		`"version": "1.2.3"`,
-		`"url": "https://github.com/niccrow/optimusctx/releases/download/v1.2.3/optimusctx_1.2.3_checksums.txt"`,
+		`"url": "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.2.3/optimusctx_1.2.3_checksums.txt"`,
 		`"archive": "optimusctx_1.2.3_windows_amd64.zip"`,
-		`"archiveUrl": "https://github.com/niccrow/optimusctx/releases/download/v1.2.3/optimusctx_1.2.3_windows_amd64.zip"`,
+		`"archiveUrl": "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.2.3/optimusctx_1.2.3_windows_amd64.zip"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("rendered manifest missing %q\n%s", want, got)
@@ -164,7 +164,7 @@ func TestNPMPackageArchiveSelection(t *testing.T) {
 			if got := tc.asset.ArchiveFileName; got != tc.archive {
 				t.Fatalf("ArchiveFileName = %q, want %q", got, tc.archive)
 			}
-			if got := tc.asset.ArchiveURL; got != "https://github.com/niccrow/optimusctx/releases/download/v1.1.0/"+tc.archive {
+			if got := tc.asset.ArchiveURL; got != "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.1.0/"+tc.archive {
 				t.Fatalf("ArchiveURL = %q", got)
 			}
 			if got := tc.asset.RuntimeBinary; got != tc.binary {
@@ -186,7 +186,7 @@ func TestNPMPackageChecksums(t *testing.T) {
 	if got, want := release.ChecksumManifest.FileName, "optimusctx_1.1.0_checksums.txt"; got != want {
 		t.Fatalf("ChecksumManifest.FileName = %q, want %q", got, want)
 	}
-	if got, want := release.ChecksumManifest.URL, "https://github.com/niccrow/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_checksums.txt"; got != want {
+	if got, want := release.ChecksumManifest.URL, "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.1.0/optimusctx_1.1.0_checksums.txt"; got != want {
 		t.Fatalf("ChecksumManifest.URL = %q, want %q", got, want)
 	}
 	for _, asset := range []npmPlatformAsset{

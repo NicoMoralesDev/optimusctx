@@ -64,7 +64,7 @@ func CurrentDistributionPolicy() DistributionPolicy {
 				ID:                "github-release-archive",
 				Name:              "GitHub Release archives",
 				UserFacingInstall: "Download the tagged archive from GitHub Releases, unpack it, place `optimusctx` on your PATH, then verify with `optimusctx version` and `optimusctx doctor`.",
-				PublicationTarget: "github.com/niccrow/optimusctx releases",
+				PublicationTarget: "github.com/NicoMoralesDev/optimusctx releases",
 				Audience:          "Users who want the raw binary, need a fallback when package-manager metadata lags, or prefer explicit archive installs.",
 				UpgradePath:       "Download a newer tagged archive, replace the binary on your PATH, and rerun the verification commands.",
 				RollbackPath:      "Reinstall a prior tagged archive from GitHub Releases if an upgrade needs to be reversed.",

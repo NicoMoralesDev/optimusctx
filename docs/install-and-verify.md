@@ -78,7 +78,7 @@ macOS or Linux example:
 VERSION="<version>"
 OS="linux"
 ARCH="amd64"
-curl -fsSL -o /tmp/optimusctx.tar.gz "https://github.com/niccrow/optimusctx/releases/download/${VERSION}/optimusctx_${VERSION#v}_${OS}_${ARCH}.tar.gz"
+curl -fsSL -o /tmp/optimusctx.tar.gz "https://github.com/NicoMoralesDev/optimusctx/releases/download/${VERSION}/optimusctx_${VERSION#v}_${OS}_${ARCH}.tar.gz"
 tar -xzf /tmp/optimusctx.tar.gz -C /tmp
 install /tmp/optimusctx /usr/local/bin/optimusctx
 ```
@@ -88,7 +88,7 @@ Windows PowerShell example:
 ```powershell
 $Version = "<version>"
 $Archive = "$env:TEMP\optimusctx.zip"
-Invoke-WebRequest -Uri "https://github.com/niccrow/optimusctx/releases/download/$Version/optimusctx_$($Version.TrimStart('v'))_windows_amd64.zip" -OutFile $Archive
+Invoke-WebRequest -Uri "https://github.com/NicoMoralesDev/optimusctx/releases/download/$Version/optimusctx_$($Version.TrimStart('v'))_windows_amd64.zip" -OutFile $Archive
 Expand-Archive -Path $Archive -DestinationPath "$env:TEMP\optimusctx"
 Copy-Item "$env:TEMP\optimusctx\optimusctx.exe" "$env:USERPROFILE\bin\optimusctx.exe"
 ```

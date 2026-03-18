@@ -40,7 +40,7 @@ func TestReleasePrepareCommand(t *testing.T) {
 				{
 					ID:                release.ReleaseChannelGitHubArchive,
 					Name:              "GitHub Release archives",
-					PublicationTarget: "github.com/niccrow/optimusctx releases",
+					PublicationTarget: "github.com/NicoMoralesDev/optimusctx releases",
 					Selected:          true,
 					Readiness:         "ready",
 				},
@@ -131,7 +131,7 @@ func TestReleasePrepareCommand(t *testing.T) {
 				{
 					ID:                release.ReleaseChannelGitHubArchive,
 					Name:              "GitHub Release archives",
-					PublicationTarget: "github.com/niccrow/optimusctx releases",
+					PublicationTarget: "github.com/NicoMoralesDev/optimusctx releases",
 					Selected:          true,
 					Readiness:         "ready",
 				},
@@ -210,7 +210,7 @@ func TestReleasePrepareConfirmGate(t *testing.T) {
 				{
 					ID:                release.ReleaseChannelGitHubArchive,
 					Name:              "GitHub Release archives",
-					PublicationTarget: "github.com/niccrow/optimusctx releases",
+					PublicationTarget: "github.com/NicoMoralesDev/optimusctx releases",
 					Selected:          true,
 					Readiness:         "ready",
 				},
@@ -252,7 +252,7 @@ func TestReleasePrepareConfirmGate(t *testing.T) {
 				{
 					ID:                release.ReleaseChannelGitHubArchive,
 					Name:              "GitHub Release archives",
-					PublicationTarget: "github.com/niccrow/optimusctx releases",
+					PublicationTarget: "github.com/NicoMoralesDev/optimusctx releases",
 					Selected:          true,
 					Readiness:         "blocked",
 				},
@@ -307,7 +307,7 @@ func TestReleasePrepareSelectedChannelsReady(t *testing.T) {
 				{
 					ID:                release.ReleaseChannelGitHubArchive,
 					Name:              "GitHub Release archives",
-					PublicationTarget: "github.com/niccrow/optimusctx releases",
+					PublicationTarget: "github.com/NicoMoralesDev/optimusctx releases",
 					Selected:          true,
 					Readiness:         "ready",
 				},
@@ -370,7 +370,7 @@ func TestReleasePrepareSelectedChannelsReady(t *testing.T) {
 				{
 					ID:                release.ReleaseChannelGitHubArchive,
 					Name:              "GitHub Release archives",
-					PublicationTarget: "github.com/niccrow/optimusctx releases",
+					PublicationTarget: "github.com/NicoMoralesDev/optimusctx releases",
 					Selected:          true,
 					Readiness:         "ready",
 				},
@@ -463,7 +463,7 @@ func TestReleasePrepareSelectedChannelsReady(t *testing.T) {
 				{
 					ID:                release.ReleaseChannelGitHubArchive,
 					Name:              "GitHub Release archives",
-					PublicationTarget: "github.com/niccrow/optimusctx releases",
+					PublicationTarget: "github.com/NicoMoralesDev/optimusctx releases",
 					Selected:          true,
 					Readiness:         "ready",
 				},

@@ -39,7 +39,7 @@ func TestDistributionChannelPolicy(t *testing.T) {
 	assertChannelPolicy(t, policy.SupportedChannels[0], DistributionChannel{
 		ID:                "github-release-archive",
 		Name:              "GitHub Release archives",
-		PublicationTarget: "github.com/niccrow/optimusctx releases",
+		PublicationTarget: "github.com/NicoMoralesDev/optimusctx releases",
 	})
 	assertChannelPolicy(t, policy.SupportedChannels[1], DistributionChannel{
 		ID:                "homebrew",

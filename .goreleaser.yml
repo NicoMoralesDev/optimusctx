@@ -47,7 +47,7 @@ checksum:
 # GitHub Releases is the first user-retrievable archive channel.
 release:
   github:
-    owner: niccrow
+    owner: NicoMoralesDev
     name: optimusctx
   draft: false
   prerelease: auto

@@ -43,7 +43,7 @@ func TestChecksumManifest(t *testing.T) {
 	for _, want := range []string{
 		`algorithm: sha256`,
 		`name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"`,
-		`owner: niccrow`,
+		`owner: NicoMoralesDev`,
 		`name: optimusctx`,
 	} {
 		if !strings.Contains(config, want) {
@@ -85,18 +85,18 @@ func TestCanonicalReleaseMatchesGoReleaserContract(t *testing.T) {
 		t.Fatalf(".goreleaser.yml must keep the canonical checksum manifest template")
 	}
 
-	if got, want := release.Repository.Owner, "niccrow"; got != want {
+	if got, want := release.Repository.Owner, "NicoMoralesDev"; got != want {
 		t.Fatalf("CanonicalRelease repository owner = %q, want %q", got, want)
 	}
 	if got, want := release.Repository.Name, "optimusctx"; got != want {
 		t.Fatalf("CanonicalRelease repository name = %q, want %q", got, want)
 	}
-	if got, want := release.ReleaseURL, "https://github.com/niccrow/optimusctx/releases/tag/v1.2.3"; got != want {
+	if got, want := release.ReleaseURL, "https://github.com/NicoMoralesDev/optimusctx/releases/tag/v1.2.3"; got != want {
 		t.Fatalf("CanonicalRelease ReleaseURL = %q, want %q", got, want)
 	}
 
 	for _, asset := range release.Assets {
-		wantURLPrefix := "https://github.com/niccrow/optimusctx/releases/download/v1.2.3/"
+		wantURLPrefix := "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.2.3/"
 		if !strings.HasPrefix(asset.DownloadURL, wantURLPrefix) {
 			t.Fatalf("CanonicalRelease asset URL %q must use %q", asset.DownloadURL, wantURLPrefix)
 		}
