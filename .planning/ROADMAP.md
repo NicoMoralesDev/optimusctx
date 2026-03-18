@@ -90,7 +90,13 @@ Plans:
 
 **Goal**: Document and verify the complete operator workflow for release, republish, verification, and rollback across all supported channels.
 **Depends on**: Phase 18
-**Plans**: 0 plans yet
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 19-01: workflow summary status and next-step guidance
+- [ ] 19-02: canonical operator release and verification guide
+- [ ] 19-03: recovery and rollback policy lock
 
 **Requirements covered:** `OPS-06`, `OPS-07`, `OPS-08`
 
@@ -113,4 +119,4 @@ Next step:
 - Preserve exact `workflow_dispatch` rerun semantics with `release_tag` and `publication_channel`
 
 ---
-*Last updated: 2026-03-18 after completing Phase 18 plan 04 readiness, status, and documentation closeout*
+*Last updated: 2026-03-18 after planning Phase 19 operator verification, recovery, and end-to-end guide*
