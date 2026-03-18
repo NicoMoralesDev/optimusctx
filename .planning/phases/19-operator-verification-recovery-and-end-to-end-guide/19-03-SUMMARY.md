@@ -2,17 +2,17 @@
 phase: 19-operator-verification-recovery-and-end-to-end-guide
 plan: "03"
 subsystem: docs
-tags: [release, docs, recovery, testing]
+tags: [release, docs, operator-recovery, testing]
 requires:
   - phase: 19-02
-    provides: canonical operator release guide with explicit rerun and rollback flow
+    provides: canonical operator guide for release, verification, rerun, and rollback from the GitHub Release root
 provides:
-  - distribution strategy wording aligned to the canonical operator recovery split
-  - regression tests that lock rerun-versus-rollback semantics and reject unsupported recovery guidance
-affects: [phase-19, distribution-policy, release-operations]
+  - distribution policy wording that distinguishes fixing the canonical GitHub Release from rerunning one downstream channel
+  - regression tests that lock archive-root rollback and supported recovery scope across release docs
+affects: [phase-19, operator-docs, release-operations]
 tech-stack:
   added: []
-  patterns: [fix canonical GitHub Release first, rerun one downstream channel with exact workflow inputs, rollback via prior tagged archive]
+  patterns: [distribution policy defers to the canonical operator guide, recovery docs reject package-manager-first rollback claims]
 key-files:
   created:
     - .planning/phases/19-operator-verification-recovery-and-end-to-end-guide/19-03-SUMMARY.md
@@ -20,33 +20,33 @@ key-files:
     - docs/distribution-strategy.md
     - internal/release/distribution_plan_test.go
 key-decisions:
-  - "Recovery guidance stays rooted in the canonical GitHub Release state before any downstream rerun is attempted."
-  - "Rollback documentation prefers a prior tagged GitHub Release archive and a new fixed release over package-manager-native rollback or npm unpublish."
+  - "Distribution strategy now points operators to the canonical operator guide and states that GitHub Release must be fixed before any downstream rerun."
+  - "Recovery tests lock npm unpublish and unsupported recovery-channel claims out of the supported operator path."
 patterns-established:
-  - "Recovery docs and tests share the same exact rerun markers: gh workflow run release.yml with release_tag and publication_channel."
-  - "Unsupported rollback guidance is rejected by release policy tests before docs can drift."
+  - "Recovery guidance separates canonical GitHub Release repair, single-channel rerun, and archive-root rollback into explicit branches."
+  - "Policy docs and release tests share exact rerun and rollback markers so supported recovery scope cannot drift silently."
 requirements-completed: [OPS-08]
-duration: 2m
+duration: 6m
 completed: 2026-03-18
 ---
 
-# Phase 19 Plan 03: Operator Verification Recovery And End-To-End Guide Summary
+# Phase 19 Plan 03: Recovery And Rollback Policy Lock Summary
 
-**Distribution policy now cleanly separates fix-the-canonical-release, rerun-one-channel, and rollback-to-a-prior-archive decisions, with tests that enforce the same recovery contract across release docs**
+**Distribution policy now encodes the canonical fix-first, rerun-one-channel, and archive-root rollback split, with release tests locking supported recovery wording to the GitHub Release root**
 
 ## Performance
 
-- **Duration:** 2m
-- **Started:** 2026-03-18T18:18:38Z
-- **Completed:** 2026-03-18T18:20:28Z
+- **Duration:** 6m
+- **Started:** 2026-03-18T18:15:00Z
+- **Completed:** 2026-03-18T18:20:48Z
 - **Tasks:** 2
 - **Files modified:** 2
 
 ## Accomplishments
 
-- Updated `docs/distribution-strategy.md` to point at `docs/operator-release-guide.md` and encode the Phase 19 recovery split: fix GitHub Release first, rerun one downstream channel with exact workflow inputs, or roll back with a prior tagged archive.
-- Added release-policy tests that lock the required rerun markers, archive-root rollback wording, and rejection of unsupported recovery guidance such as `npm unpublish`.
-- Closed the final execution plan for Phase 19 so verification can evaluate the completed operator status, guide, and recovery policy as one package.
+- Updated `docs/distribution-strategy.md` so recovery points operators to `docs/operator-release-guide.md`, stops on canonical GitHub Release defects first, and shows exact single-channel rerun inputs for npm, Homebrew, and Scoop.
+- Added explicit archive-root rollback wording that tells operators to reinstall a prior tagged GitHub Release archive and publish a new fixed version instead of reusing the broken version.
+- Added release-policy contract tests that lock the canonical rerun markers, reject `npm unpublish` as supported recovery guidance, and keep unsupported recovery-channel claims out of scope.
 
 ## Task Commits
 
@@ -57,14 +57,14 @@ Each task was committed atomically:
 
 ## Files Created/Modified
 
-- `docs/distribution-strategy.md` - Aligned recovery wording to the operator guide and documented the exact safe rerun-versus-rollback split.
-- `internal/release/distribution_plan_test.go` - Added policy coverage for canonical rerun markers, archive-root rollback wording, and unsupported recovery advice.
+- `docs/distribution-strategy.md` - Added the operator-guide pointer plus explicit fix-first, selective-rerun, and archive-root rollback wording.
+- `internal/release/distribution_plan_test.go` - Added recovery-policy regression coverage and expanded supported-scope guards for unsupported rollback guidance.
 - `.planning/phases/19-operator-verification-recovery-and-end-to-end-guide/19-03-SUMMARY.md` - Recorded execution details and verification evidence for this plan.
 
 ## Decisions Made
 
-- Distribution strategy remains the policy layer, but it now explicitly defers release-operator procedure details to `docs/operator-release-guide.md`.
-- Downstream publication recovery is documented as selective rerun only after GitHub Release is known-good; abandoning a release requires reinstalling a prior archive and publishing a new fixed version.
+- The distribution strategy should not restate a parallel operator flow; it should point to the canonical guide and reinforce the same recovery branches.
+- Supported rollback remains rooted in prior GitHub Release archives even when a package-manager channel was the observed failure surface.
 
 ## Deviations from Plan
 
@@ -72,7 +72,7 @@ None - plan executed exactly as written.
 
 ## Issues Encountered
 
-None.
+- `docs/operator-release-guide.md` already carried the canonical rerun workflow, so the new test locks exact per-channel rerun flags in `docs/distribution-strategy.md` while verifying the guide preserves the shared GitHub Release rerun contract.
 
 ## User Setup Required
 
@@ -80,11 +80,12 @@ None - no new external service configuration required.
 
 ## Next Phase Readiness
 
-- Phase 19 now has aligned workflow summaries, a canonical operator guide, and a repository-wide recovery policy rooted in GitHub Release archives.
-- Verification can now score OPS-06, OPS-07, and OPS-08 against shipped workflow, docs, and tests without further execution work.
+- Phase 19 now has workflow summary guidance, one canonical operator guide, and recovery policy wording locked to the GitHub Release root.
+- The milestone is ready for verification against OPS-06 through OPS-08 and any final closeout steps after verifier sign-off.
 
 ## Self-Check: PASSED
 
+- Found `.planning/phases/19-operator-verification-recovery-and-end-to-end-guide/19-03-SUMMARY.md`
 - Found task commit `5548aa3`
 - Found task commit `a73ae51`
 - Verified `go test ./internal/release -run 'Test(OperatorRecoveryGuideStaysCanonical|DistributionDocsStayWithinSupportedScope|ChannelPublicationWorkflowSelectiveRerun)$'`

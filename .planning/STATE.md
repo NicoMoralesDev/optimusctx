@@ -5,13 +5,13 @@ milestone_name: release automation and operator workflow
 current_phase: 19
 current_phase_name: operator verification, recovery, and end-to-end guide
 current_plan: 3
-status: verifying
+status: ready_for_verification
 stopped_at: Completed 19-03-PLAN.md
-last_updated: "2026-03-18T18:20:21Z"
+last_updated: "2026-03-18T18:22:46.047Z"
 last_activity: 2026-03-18
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 18
   completed_plans: 18
   percent: 100
@@ -249,6 +249,7 @@ progress:
 | Phase 18-multi-channel-publication-fan-out P03 | 9m | 2 tasks | 5 files |
 | Phase 18-multi-channel-publication-fan-out P04 | 6m | 2 tasks | 6 files |
 | Phase 19 P01 | 2m | 2 tasks | 2 files |
+| Phase 19 P03 | 6m | 2 tasks | 2 files |
 
 ## Decisions Made
 
@@ -437,6 +438,8 @@ progress:
 - [Phase 18]: Operator rerun guidance is locked to workflow_dispatch with release_tag and publication_channel so recovery stays single-channel and rooted in the canonical GitHub Release.
 - [Phase 19]: GitHub Release workflow summaries now expose channel, tag, outcome, failure_reason, and next_step for the canonical release and every downstream channel.
 - [Phase 19]: Release contract tests now prevent summary wording drift and explicitly forbid inventing publication_channel=github-release for reruns.
+- [Phase 19]: Distribution strategy now points operators to the canonical operator guide and states that GitHub Release must be fixed before any downstream rerun.
+- [Phase 19]: Recovery tests lock npm unpublish and unsupported recovery-channel claims out of the supported operator path.
 
 ## Blockers
 
@@ -444,8 +447,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-18T18:06:17.520Z
-**Stopped At:** Completed 19-01-PLAN.md
+**Last Date:** 2026-03-18T18:22:46.043Z
+**Stopped At:** Completed 19-03-PLAN.md
 **Resume File:** None
 
 ---

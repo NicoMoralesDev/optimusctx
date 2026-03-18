@@ -19,9 +19,9 @@
 
 ### Operator Workflow
 
-- [ ] **OPS-06**: Operator can see per-channel release status, failure reason, and next-step guidance from one release workflow.
+- [x] **OPS-06**: Operator can see per-channel release status, failure reason, and next-step guidance from one release workflow.
 - [ ] **OPS-07**: Operator can follow one documented verification flow that checks the published archive, npm, Homebrew, and Scoop outputs after release.
-- [ ] **OPS-08**: Operator can follow one documented recovery or rollback path when a channel publish or post-release verification step fails.
+- [x] **OPS-08**: Operator can follow one documented recovery or rollback path when a channel publish or post-release verification step fails.
 
 ## v2 Requirements
 
@@ -54,9 +54,9 @@
 | PUB-01 | Phase 17 | Complete |
 | PUB-02 | Phase 18 | Complete |
 | PUB-03 | Phase 18 | Complete |
-| OPS-06 | Phase 19 | Pending |
+| OPS-06 | Phase 19 | Complete |
 | OPS-07 | Phase 19 | Pending |
-| OPS-08 | Phase 19 | Pending |
+| OPS-08 | Phase 19 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 9 total

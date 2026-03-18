@@ -94,9 +94,9 @@ Plans:
 
 Plans:
 
-- [ ] 19-01: workflow summary status and next-step guidance
-- [ ] 19-02: canonical operator release and verification guide
-- [ ] 19-03: recovery and rollback policy lock
+- [x] 19-01: workflow summary status and next-step guidance
+- [x] 19-02: canonical operator release and verification guide
+- [x] 19-03: recovery and rollback policy lock
 
 **Requirements covered:** `OPS-06`, `OPS-07`, `OPS-08`
 
@@ -109,14 +109,13 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.2` with Phase 18 complete and ready to roll into Phase 19
+Active milestone: `v1.2` with Phase 19 complete and ready for verification and milestone closeout
 
 Next step:
 
-- Plan Phase 19 operator verification, recovery, and end-to-end guide against the completed canonical GitHub Release fan-out and rerun contract
-- Keep verification, retry guidance, and rollback instructions anchored to the canonical GitHub Release root
-- Reuse the completed prepare readiness and operator documentation contract instead of introducing channel-specific side paths
-- Preserve exact `workflow_dispatch` rerun semantics with `release_tag` and `publication_channel`
+- Verify the completed Phase 19 operator workflow against OPS-06, OPS-07, and OPS-08.
+- Close out the v1.2 milestone roadmap and requirement state after verification passes.
+- Preserve exact `workflow_dispatch` rerun semantics with `release_tag` and `publication_channel` in any follow-on release-workflow changes.
 
 ---
-*Last updated: 2026-03-18 after planning Phase 19 operator verification, recovery, and end-to-end guide*
+*Last updated: 2026-03-18 after completing Phase 19 operator verification, recovery, and end-to-end guide*
