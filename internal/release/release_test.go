@@ -130,6 +130,8 @@ func TestGitHubReleasePublicationConfig(t *testing.T) {
 		`- "v*"`,
 		`workflow_dispatch:`,
 		`release_tag:`,
+		`publication_channel:`,
+		`default: all`,
 		`uses: actions/checkout@v4`,
 		`uses: actions/setup-go@v5`,
 		`uses: goreleaser/goreleaser-action@v6`,
@@ -155,12 +157,16 @@ func TestGitHubReleaseWorkflowReuseContract(t *testing.T) {
 		`workflow_dispatch:`,
 		`release_tag:`,
 		`description: Existing v* tag whose canonical GitHub Release contract should be reused`,
+		`publication_channel:`,
+		`default: all`,
 		`Manual workflow_dispatch release_tag reruns must point at an existing`,
 		`tag so downstream publication reuses the same canonical GitHub Release`,
 		`archives, checksums, and release metadata contract.`,
 		`name: Resolve canonical release ref`,
 		`name: Verify canonical release contract`,
+		`name: Verify workflow_dispatch reuses existing canonical release tag`,
 		`name: Publish canonical GitHub Release assets`,
+		`github.event_name != 'workflow_dispatch'`,
 		`TestGitHubReleaseWorkflowReuseContract`,
 		`TestCanonicalReleaseMatchesGoReleaserContract`,
 		`TestPlanReleaseOrchestrationCreate`,
@@ -182,10 +188,50 @@ func TestNPMPublishWorkflow(t *testing.T) {
 	for _, want := range []string{
 		"name: Publish npm wrapper package",
 		"needs: release",
+		"inputs.publication_channel == 'npm'",
 		"uses: actions/setup-node@v4",
 		"registry-url: https://registry.npmjs.org",
 		"bash scripts/render-npm-package.sh",
 		"npm publish --access public",
+	} {
+		if !strings.Contains(workflow, want) {
+			t.Fatalf(".github/workflows/release.yml missing %q", want)
+		}
+	}
+}
+
+func TestChannelPublicationWorkflowFanout(t *testing.T) {
+	workflow := readRepoFile(t, ".github/workflows/release.yml")
+
+	for _, want := range []string{
+		"name: Publish npm wrapper package",
+		"name: Publish Homebrew formula",
+		"name: Publish Scoop manifest",
+		"github.event_name != 'workflow_dispatch' || inputs.publication_channel == 'all' || inputs.publication_channel == 'npm'",
+		"github.event_name != 'workflow_dispatch' || inputs.publication_channel == 'all' || inputs.publication_channel == 'homebrew'",
+		"github.event_name != 'workflow_dispatch' || inputs.publication_channel == 'all' || inputs.publication_channel == 'scoop'",
+	} {
+		if !strings.Contains(workflow, want) {
+			t.Fatalf(".github/workflows/release.yml missing %q", want)
+		}
+	}
+}
+
+func TestChannelPublicationWorkflowSelectiveRerun(t *testing.T) {
+	workflow := readRepoFile(t, ".github/workflows/release.yml")
+
+	for _, want := range []string{
+		`publication_channel:`,
+		`default: all`,
+		`type: choice`,
+		`- all`,
+		`- npm`,
+		`- homebrew`,
+		`- scoop`,
+		`gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null`,
+		`skipping goreleaser release --clean`,
+		`ref: ${{ needs.release.outputs.ref }}`,
+		`${{ needs.release.outputs.tag }}`,
 	} {
 		if !strings.Contains(workflow, want) {
 			t.Fatalf(".github/workflows/release.yml missing %q", want)
@@ -200,7 +246,7 @@ func TestNPMPublishConfig(t *testing.T) {
 	for _, want := range []string{
 		"NPM_TOKEN",
 		"NODE_AUTH_TOKEN",
-		"steps.release_ref.outputs.tag",
+		"needs.release.outputs.tag",
 	} {
 		if !strings.Contains(workflow, want) {
 			t.Fatalf(".github/workflows/release.yml missing %q", want)

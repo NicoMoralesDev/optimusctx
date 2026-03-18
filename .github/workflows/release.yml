@@ -10,6 +10,16 @@ on:
         description: Existing v* tag whose canonical GitHub Release contract should be reused
         required: true
         type: string
+      publication_channel:
+        description: Downstream publication channel to run for an existing canonical release tag
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - npm
+          - homebrew
+          - scoop
 
 permissions:
   contents: write
@@ -18,6 +28,11 @@ jobs:
   release:
     name: Build and publish canonical GitHub Release assets
     runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.release_ref.outputs.ref }}
+      tag: ${{ steps.release_ref.outputs.tag }}
+      version: ${{ steps.release_ref.outputs.version }}
+      checksum_manifest_url: ${{ steps.release_ref.outputs.checksum_manifest_url }}
 
     steps:
       # Manual workflow_dispatch release_tag reruns must point at an existing
@@ -35,6 +50,7 @@ jobs:
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             case "$INPUT_TAG" in
               v*)
+                tag="$INPUT_TAG"
                 echo "ref=refs/tags/$INPUT_TAG" >> "$GITHUB_OUTPUT"
                 ;;
               *)
@@ -42,10 +58,15 @@ jobs:
                 exit 1
                 ;;
             esac
-            exit 0
+          else
+            tag="${GITHUB_REF_VALUE#refs/tags/}"
+            echo "ref=$GITHUB_REF_VALUE" >> "$GITHUB_OUTPUT"
           fi
 
-          echo "ref=$GITHUB_REF_VALUE" >> "$GITHUB_OUTPUT"
+          version="${tag#v}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "checksum_manifest_url=https://github.com/niccrow/optimusctx/releases/download/${tag}/optimusctx_${version}_checksums.txt" >> "$GITHUB_OUTPUT"
 
       # Fetch the full tag history so GoReleaser can publish the tagged build.
       - name: Check out tagged source
@@ -68,9 +89,20 @@ jobs:
           GOMODCACHE: /tmp/optimusctx-gomodcache
         run: go test ./internal/release ./internal/cli -run 'TestArchiveMatrix|TestChecksumManifest|TestGitHubReleasePublicationConfig|TestGitHubReleaseWorkflowReuseContract|TestCanonicalReleaseMatchesGoReleaserContract|TestPlanReleaseOrchestrationCreate|TestPlanReleaseOrchestrationReuse|TestReleaseMetadataInjection'
 
+      - name: Verify workflow_dispatch reuses existing canonical release tag
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.release_ref.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
+          echo "Reusing existing canonical release tag ${RELEASE_TAG}; skipping goreleaser release --clean."
+
       # Publish versioned archives and checksums to the canonical GitHub
       # Release root using the shared .goreleaser.yml contract.
       - name: Publish canonical GitHub Release assets
+        if: ${{ github.event_name != 'workflow_dispatch' }}
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
@@ -81,40 +113,15 @@ jobs:
 
   publish_npm:
     name: Publish npm wrapper package
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.publication_channel == 'all' || inputs.publication_channel == 'npm' }}
     runs-on: ubuntu-latest
     needs: release
 
     steps:
-      - name: Resolve canonical release ref
-        id: release_ref
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          INPUT_TAG: ${{ inputs.release_tag }}
-          GITHUB_REF_VALUE: ${{ github.ref }}
-        run: |
-          set -euo pipefail
-
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            case "$INPUT_TAG" in
-              v*)
-                echo "ref=refs/tags/$INPUT_TAG" >> "$GITHUB_OUTPUT"
-                echo "tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
-                ;;
-              *)
-                echo "workflow_dispatch release_tag must start with v" >&2
-                exit 1
-                ;;
-            esac
-            exit 0
-          fi
-
-          echo "ref=$GITHUB_REF_VALUE" >> "$GITHUB_OUTPUT"
-          echo "tag=${GITHUB_REF_VALUE#refs/tags/}" >> "$GITHUB_OUTPUT"
-
       - name: Check out tagged source
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.release_ref.outputs.ref }}
+          ref: ${{ needs.release.outputs.ref }}
           fetch-depth: 0
 
       - name: Set up Node
@@ -130,11 +137,166 @@ jobs:
         run: go test ./internal/release -run 'TestArchiveMatrix|TestChecksumManifest|TestGitHubReleasePublicationConfig|TestNPMPublishWorkflow|TestNPMPublishConfig'
 
       - name: Render npm package
-        run: bash scripts/render-npm-package.sh "${{ steps.release_ref.outputs.tag }}" "$RUNNER_TEMP/npm-package"
+        run: bash scripts/render-npm-package.sh "${{ needs.release.outputs.tag }}" "$RUNNER_TEMP/npm-package"
 
       - name: Publish npm package
+        id: publish_npm_step
         working-directory: ${{ runner.temp }}/npm-package
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Summarize npm publication
+        if: ${{ always() }}
+        env:
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
+          PUBLICATION_OUTCOME: ${{ steps.publish_npm_step.outcome }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### npm publication"
+            echo "- channel: npm"
+            echo "- target: @niccrow/optimusctx"
+            echo "- tag: ${RELEASE_TAG}"
+            echo "- outcome: ${PUBLICATION_OUTCOME:-skipped}"
+            echo "- retry: Safe to rerun via workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=npm"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish_homebrew:
+    name: Publish Homebrew formula
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.publication_channel == 'all' || inputs.publication_channel == 'homebrew' }}
+    runs-on: ubuntu-latest
+    needs: release
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.ref }}
+          fetch-depth: 0
+
+      - name: Download canonical checksum manifest
+        run: curl -fsSL "${{ needs.release.outputs.checksum_manifest_url }}" -o "$RUNNER_TEMP/optimusctx_checksums.txt"
+
+      - name: Render Homebrew formula
+        run: bash scripts/render-homebrew-formula.sh "${{ needs.release.outputs.tag }}" "$RUNNER_TEMP/optimusctx_checksums.txt" "$RUNNER_TEMP/Formula/optimusctx.rb"
+
+      - name: Check out Homebrew tap repository
+        uses: actions/checkout@v4
+        with:
+          repository: niccrow/homebrew-tap
+          ref: main
+          token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          path: homebrew-tap
+          fetch-depth: 0
+
+      - name: Update Homebrew formula
+        id: update_homebrew
+        env:
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          install -D "$RUNNER_TEMP/Formula/optimusctx.rb" "homebrew-tap/Formula/optimusctx.rb"
+          cd homebrew-tap
+          if git diff --quiet -- Formula/optimusctx.rb; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/optimusctx.rb
+          git commit -m "Update optimusctx ${RELEASE_TAG}"
+          git push origin HEAD:main
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Summarize Homebrew publication
+        if: ${{ always() }}
+        env:
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
+          UPDATE_OUTCOME: ${{ steps.update_homebrew.outcome }}
+          CONTENT_CHANGED: ${{ steps.update_homebrew.outputs.changed }}
+        run: |
+          set -euo pipefail
+          result="Formula/optimusctx.rb already matched niccrow/homebrew-tap"
+          if [ "${CONTENT_CHANGED:-unknown}" = "true" ]; then
+            result="Updated Formula/optimusctx.rb in niccrow/homebrew-tap"
+          fi
+          {
+            echo "### Homebrew publication"
+            echo "- channel: homebrew"
+            echo "- target: niccrow/homebrew-tap"
+            echo "- tag: ${RELEASE_TAG}"
+            echo "- outcome: ${UPDATE_OUTCOME:-skipped}"
+            echo "- result: ${result}"
+            echo "- retry: Safe to rerun via workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=homebrew"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish_scoop:
+    name: Publish Scoop manifest
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.publication_channel == 'all' || inputs.publication_channel == 'scoop' }}
+    runs-on: ubuntu-latest
+    needs: release
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.ref }}
+          fetch-depth: 0
+
+      - name: Download canonical checksum manifest
+        run: curl -fsSL "${{ needs.release.outputs.checksum_manifest_url }}" -o "$RUNNER_TEMP/optimusctx_checksums.txt"
+
+      - name: Render Scoop manifest
+        run: bash scripts/render-scoop-manifest.sh "${{ needs.release.outputs.tag }}" "$RUNNER_TEMP/optimusctx_checksums.txt" "$RUNNER_TEMP/bucket/optimusctx.json"
+
+      - name: Check out Scoop bucket repository
+        uses: actions/checkout@v4
+        with:
+          repository: niccrow/scoop-bucket
+          ref: main
+          token: ${{ secrets.SCOOP_BUCKET_GITHUB_TOKEN }}
+          path: scoop-bucket
+          fetch-depth: 0
+
+      - name: Update Scoop manifest
+        id: update_scoop
+        env:
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          install -D "$RUNNER_TEMP/bucket/optimusctx.json" "scoop-bucket/bucket/optimusctx.json"
+          cd scoop-bucket
+          if git diff --quiet -- bucket/optimusctx.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bucket/optimusctx.json
+          git commit -m "Update optimusctx ${RELEASE_TAG}"
+          git push origin HEAD:main
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Summarize Scoop publication
+        if: ${{ always() }}
+        env:
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
+          UPDATE_OUTCOME: ${{ steps.update_scoop.outcome }}
+          CONTENT_CHANGED: ${{ steps.update_scoop.outputs.changed }}
+        run: |
+          set -euo pipefail
+          result="bucket/optimusctx.json already matched niccrow/scoop-bucket"
+          if [ "${CONTENT_CHANGED:-unknown}" = "true" ]; then
+            result="Updated bucket/optimusctx.json in niccrow/scoop-bucket"
+          fi
+          {
+            echo "### Scoop publication"
+            echo "- channel: scoop"
+            echo "- target: niccrow/scoop-bucket"
+            echo "- tag: ${RELEASE_TAG}"
+            echo "- outcome: ${UPDATE_OUTCOME:-skipped}"
+            echo "- result: ${result}"
+            echo "- retry: Safe to rerun via workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=scoop"
+          } >> "$GITHUB_STEP_SUMMARY"
