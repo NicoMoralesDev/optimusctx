@@ -239,6 +239,42 @@ func TestChannelPublicationWorkflowSelectiveRerun(t *testing.T) {
 	}
 }
 
+func TestHomebrewPublishWorkflow(t *testing.T) {
+	workflow := readRepoFile(t, ".github/workflows/release.yml")
+
+	for _, want := range []string{
+		"name: Publish Homebrew formula",
+		"repository: niccrow/homebrew-tap",
+		"HOMEBREW_TAP_GITHUB_TOKEN",
+		"bash scripts/render-homebrew-formula.sh",
+		"Formula/optimusctx.rb",
+		"GITHUB_STEP_SUMMARY",
+		"publication_channel=homebrew",
+	} {
+		if !strings.Contains(workflow, want) {
+			t.Fatalf(".github/workflows/release.yml missing %q", want)
+		}
+	}
+}
+
+func TestScoopPublishWorkflow(t *testing.T) {
+	workflow := readRepoFile(t, ".github/workflows/release.yml")
+
+	for _, want := range []string{
+		"name: Publish Scoop manifest",
+		"repository: niccrow/scoop-bucket",
+		"SCOOP_BUCKET_GITHUB_TOKEN",
+		"bash scripts/render-scoop-manifest.sh",
+		"bucket/optimusctx.json",
+		"GITHUB_STEP_SUMMARY",
+		"publication_channel=scoop",
+	} {
+		if !strings.Contains(workflow, want) {
+			t.Fatalf(".github/workflows/release.yml missing %q", want)
+		}
+	}
+}
+
 func TestNPMPublishConfig(t *testing.T) {
 	workflow := readRepoFile(t, ".github/workflows/release.yml")
 	renderScript := readRepoFile(t, "scripts/render-npm-package.sh")
