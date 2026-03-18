@@ -171,11 +171,61 @@ func TestUpgradePolicy(t *testing.T) {
 	}
 }
 
+func TestOperatorRecoveryGuideStaysCanonical(t *testing.T) {
+	guide := readRepoFile(t, "docs/operator-release-guide.md")
+	strategy := readRepoFile(t, "docs/distribution-strategy.md")
+
+	for _, want := range []string{
+		`GitHub Release remains the canonical root and rollback source.`,
+		`gh workflow run release.yml`,
+		`-f release_tag=`,
+		`-f publication_channel=npm`,
+		`Allowed ` + "`publication_channel`" + ` values are ` + "`all`" + `, ` + "`npm`" + `, ` + "`homebrew`" + `, and ` + "`scoop`" + `.`,
+	} {
+		if !strings.Contains(guide, want) {
+			t.Fatalf("docs/operator-release-guide.md missing %q", want)
+		}
+	}
+
+	for _, want := range []string{
+		`docs/operator-release-guide.md`,
+		`gh workflow run release.yml`,
+		`-f release_tag=`,
+		`-f publication_channel=npm`,
+		`-f publication_channel=homebrew`,
+		`-f publication_channel=scoop`,
+		`prior tagged GitHub Release archive`,
+		`publish a new fixed version`,
+	} {
+		if !strings.Contains(strategy, want) {
+			t.Fatalf("docs/distribution-strategy.md missing %q", want)
+		}
+	}
+
+	for path, content := range map[string]string{
+		"docs/operator-release-guide.md": guide,
+		"docs/distribution-strategy.md":  strategy,
+	} {
+		for _, forbidden := range []string{
+			`npm unpublish`,
+			`publication_channel=github-release`,
+		} {
+			if strings.Contains(content, forbidden) {
+				t.Fatalf("%s must not recommend unsupported recovery marker %q", path, forbidden)
+			}
+		}
+	}
+}
+
 func TestDistributionDocsStayWithinSupportedScope(t *testing.T) {
 	policy := CurrentDistributionPolicy()
 	documents := map[string]string{
 		"docs/distribution-strategy.md": readRepoFile(t, "docs/distribution-strategy.md"),
 		"docs/release-checklist.md":     readRepoFile(t, "docs/release-checklist.md"),
+	}
+	recoveryDocuments := map[string]string{
+		"docs/operator-release-guide.md": readRepoFile(t, "docs/operator-release-guide.md"),
+		"docs/distribution-strategy.md":  documents["docs/distribution-strategy.md"],
 	}
 
 	for path, content := range documents {
@@ -202,16 +252,23 @@ func TestDistributionDocsStayWithinSupportedScope(t *testing.T) {
 	}
 
 	for _, forbidden := range []string{
+		"npm unpublish",
 		"winget install",
 		"choco install",
 		"apt install",
 		"dnf install",
 		"yum install",
 		"managed rollout service",
+		"publication_channel=github-release",
 	} {
 		for path, content := range documents {
 			if strings.Contains(strings.ToLower(content), forbidden) {
 				t.Fatalf("%s should not claim unsupported behavior %q", path, forbidden)
+			}
+		}
+		for path, content := range recoveryDocuments {
+			if strings.Contains(strings.ToLower(content), forbidden) {
+				t.Fatalf("%s should not recommend unsupported recovery behavior %q", path, forbidden)
 			}
 		}
 	}
