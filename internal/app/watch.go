@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/niccrow/optimusctx/internal/buildinfo"
@@ -578,14 +577,4 @@ func (s WatchService) defaultDebounce() time.Duration {
 		return s.DefaultDebounce
 	}
 	return defaultWatchDebounceWindow
-}
-
-func processRunning(pid int) bool {
-	if pid <= 0 {
-		return false
-	}
-	if err := syscall.Kill(pid, 0); err != nil {
-		return !errors.Is(err, syscall.ESRCH)
-	}
-	return true
 }
