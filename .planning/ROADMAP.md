@@ -68,7 +68,14 @@ Plans:
 
 **Goal**: Automate publication of npm, Homebrew, and Scoop from the canonical release tag, with selective rerun support per channel.
 **Depends on**: Phase 17
-**Plans**: 0 plans yet
+**Plans**: 4 plans
+
+Plans:
+
+- [x] 18-01: shared downstream publication plan and rerun contract
+- [ ] 18-02: package-manager publication payloads and transport helpers
+- [ ] 18-03: workflow fan-out and per-channel rerun controls
+- [ ] 18-04: readiness, status, and documentation closeout
 
 **Requirements covered:** `PUB-02`, `PUB-03`
 
@@ -96,14 +103,14 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.2` with Phase 17 verified and ready to roll into Phase 18 planning
+Active milestone: `v1.2` with Phase 18 in progress and plan 01 complete
 
 Next step:
 
-- Plan Phase 18 multi-channel publication fan-out against the verified Phase 17 release contract
-- Keep selective rerun semantics per channel anchored to the verified canonical GitHub Release root
-- Continue milestone execution from canonical-root regression lock into channel automation and rerun controls
+- Execute Phase 18 plan 02 against the verified shared downstream publication contract
+- Keep selective rerun semantics per channel anchored to the canonical GitHub Release root
+- Continue milestone execution from publication planning into channel transport and workflow fan-out
 - Keep all new release-channel automation anchored to the existing GitHub Release archive contract
 
 ---
-*Last updated: 2026-03-18 after fully verifying Phase 17 and closing the 17-07 artifact-depth gap*
+*Last updated: 2026-03-18 after completing Phase 18 plan 01 downstream publication planning*

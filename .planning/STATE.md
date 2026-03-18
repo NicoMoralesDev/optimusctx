@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: release automation and operator workflow
-current_phase: 17
-current_phase_name: canonical release orchestration and metadata
-current_plan: 7
-status: verified
-stopped_at: Verified Phase 17 after closing 17-07 artifact-depth gap
-last_updated: "2026-03-18T00:18:30Z"
+current_phase: 18
+current_phase_name: multi-channel publication fan-out
+current_plan: 2
+status: ready
+stopped_at: Completed 18-01-PLAN.md
+last_updated: "2026-03-18T11:30:02.412Z"
 last_activity: 2026-03-18
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 11
-  completed_plans: 11
-  percent: 100
+  total_plans: 15
+  completed_plans: 12
+  percent: 80
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase 17 verified — ready to plan Phase 18
-**Current Phase:** 17
-**Current Phase Name:** canonical release orchestration and metadata
+**Status:** Ready to execute
+**Current Phase:** 18
+**Current Phase Name:** multi-channel publication fan-out
 **Total Phases:** 4
-**Current Plan:** 7
-**Total Plans in Phase:** 7
-**Progress:** [██████████] 100%
+**Current Plan:** 2
+**Total Plans in Phase:** 4
+**Progress:** [████████░░] 80%
 **Last Activity:** 2026-03-18
-**Last Activity Description:** Re-verified Phase 17 after closing the 17-07 artifact-depth gap; the milestone is now ready to plan Phase 18
+**Last Activity Description:** Completed Phase 18 plan 01 with a shared downstream publication contract and deterministic fanout/rerun tests
 
 ## Project Memory
 
@@ -44,10 +44,10 @@ progress:
 ## Current Planning Context
 
 - Active milestone: `v1.2` release automation and operator workflow
-- Active phase: `17-canonical-release-orchestration-and-metadata`
-- Next execution action: plan Phase 18 multi-channel publication fan-out on top of the verified Phase 17 release contract
+- Active phase: `18-multi-channel-publication-fan-out`
+- Next execution action: execute Phase 18 plan 02 on top of the shared downstream publication contract from plan 01
 - Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: Phase 17 plans 01-07 are complete and verified
+- Coverage status: Phase 18 plan 01 is complete; plans 02-04 remain pending
 
 ## Recent Decisions
 
@@ -241,6 +241,7 @@ progress:
 | Phase 17 P05 | 2min | 2 tasks | 1 files |
 | Phase 17 P07 | 8min | 2 tasks | 4 files |
 | Phase 17-canonical-release-orchestration-and-metadata P06 | 16min | 2 tasks | 4 files |
+| Phase 18-multi-channel-publication-fan-out P01 | 2min | 2 tasks | 4 files |
 
 ## Decisions Made
 
@@ -418,6 +419,8 @@ progress:
 - [Phase 17]: Downstream release-channel regressions should compare rendered artifacts byte-for-byte against the canonical Go renderer rather than reconstructing URLs or archive names locally.
 - [Phase 17-canonical-release-orchestration-and-metadata]: ReleasePreparation owns an OrchestrationHandoff object so orchestration consumes already-validated version, tag, canonical release, and selected channel plans instead of rebuilding them piecemeal.
 - [Phase 17-canonical-release-orchestration-and-metadata]: ReleaseOrchestrationPlan now carries explicit GitHub Release action metadata, while the old booleans remain derived compatibility fields rather than the primary contract.
+- [Phase 18]: Downstream publication planning derives only from ReleaseOrchestrationPlan so npm, Homebrew, and Scoop inherit one canonical tag, release URL, and checksum manifest URL.
+- [Phase 18]: GitHub Release archives remain the canonical root and are rejected as a downstream publication target for reruns.
 
 ## Blockers
 
@@ -425,8 +428,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-18T00:02:59.530Z
-**Stopped At:** Completed 17-06-PLAN.md
+**Last Date:** 2026-03-18T11:30:02.409Z
+**Stopped At:** Completed 18-01-PLAN.md
 **Resume File:** None
 
 ---

@@ -14,8 +14,8 @@
 ### Publication
 
 - [x] **PUB-01**: Operator can publish canonical GitHub Release archives and checksums from one shared release metadata contract rooted in a single tag.
-- [ ] **PUB-02**: Operator can publish npm, Homebrew, and Scoop from the same canonical release tag after GitHub Release assets are available.
-- [ ] **PUB-03**: Operator can rerun publication for one specific channel against an existing release tag without rebuilding or republishing unrelated channels.
+- [x] **PUB-02**: Operator can publish npm, Homebrew, and Scoop from the same canonical release tag after GitHub Release assets are available.
+- [x] **PUB-03**: Operator can rerun publication for one specific channel against an existing release tag without rebuilding or republishing unrelated channels.
 
 ### Operator Workflow
 
@@ -52,8 +52,8 @@
 | REL-02 | Phase 16 | Complete |
 | REL-03 | Phase 16 | Complete |
 | PUB-01 | Phase 17 | Complete |
-| PUB-02 | Phase 18 | Pending |
-| PUB-03 | Phase 18 | Pending |
+| PUB-02 | Phase 18 | Complete |
+| PUB-03 | Phase 18 | Complete |
 | OPS-06 | Phase 19 | Pending |
 | OPS-07 | Phase 19 | Pending |
 | OPS-08 | Phase 19 | Pending |
@@ -65,4 +65,4 @@
 
 ---
 *Requirements defined: 2026-03-17*
-*Last updated: 2026-03-17 after completing Phase 17 plan 01*
+*Last updated: 2026-03-18 after completing Phase 18 plan 01*
