@@ -490,6 +490,30 @@ func TestMultiChannelPublicationDocsStayCanonical(t *testing.T) {
 	}
 }
 
+func TestOperatorReleaseGuideStaysCanonical(t *testing.T) {
+	guide := readRepoFile(t, "docs/operator-release-guide.md")
+
+	for _, want := range []string{
+		`GitHub Release remains the canonical root and rollback source.`,
+		`Downstream reruns reuse the existing tag via ` + "`workflow_dispatch`" + ` with ` + "`release_tag`" + ` and ` + "`publication_channel`" + `.`,
+		`GitHub Release remains the canonical root and rollback source even when npm, Homebrew, or Scoop were the failing channels.`,
+		`optimusctx release prepare`,
+		`optimusctx release prepare --confirm`,
+		`gh release view "$TAG"`,
+		`gh release download "$TAG" --dir /tmp/optimusctx-release-check`,
+		`@niccrow/optimusctx`,
+		`niccrow/homebrew-tap`,
+		`niccrow/scoop-bucket`,
+		`optimusctx version`,
+		`optimusctx doctor`,
+		`optimusctx snippet`,
+	} {
+		if !strings.Contains(guide, want) {
+			t.Fatalf("docs/operator-release-guide.md missing %q", want)
+		}
+	}
+}
+
 func yamlList(content, key string) []string {
 	lines := strings.Split(content, "\n")
 	needle := key + ":"

@@ -4,6 +4,8 @@
 
 Use this checklist when publishing a v1.2 release so the rollout stays aligned with the supported channel contract in `docs/distribution-strategy.md`.
 
+For the full operator path from `optimusctx release prepare` through verification, targeted rerun, and rollback, use [`operator-release-guide.md`](./operator-release-guide.md) as the canonical workflow.
+
 GitHub Release is the canonical root for archives, checksums, and downstream release facts.
 After GitHub Release assets are available, npm, Homebrew, and Scoop are published from the same canonical tagged release contract.
 
@@ -20,6 +22,7 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 
 ## Tag And Publish
 
+- Follow [`operator-release-guide.md`](./operator-release-guide.md) for the canonical end-to-end operator flow before and after the tag push.
 - Create the release tag that should drive the canonical GitHub Release and downstream publication flow.
 - Use `workflow_dispatch` with `release_tag` and `publication_channel` to rerun `npm`, `homebrew`, or `scoop` for an existing tagged release without rebuilding unrelated channels.
 - Verify the GitHub Release contains the canonical versioned archives and checksum manifest for the tag.

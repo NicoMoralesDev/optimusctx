@@ -3,6 +3,7 @@
 This guide explains how to install OptimusCtx, check that it works, and start using it clearly.
 
 If you want the shorter user path from install to daily use, see [`quickstart.md`](./quickstart.md).
+If you are operating a release, use [`operator-release-guide.md`](./operator-release-guide.md) for the end-to-end flow from `optimusctx release prepare` through GitHub Release verification, `workflow_dispatch` reruns with `release_tag` and `publication_channel`, and rollback.
 
 Supported install channels for v1.2:
 

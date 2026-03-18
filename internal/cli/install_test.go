@@ -158,6 +158,25 @@ func TestNPMInstallGuide(t *testing.T) {
 	}
 }
 
+func TestInstallAndVerifyGuideLinksOperatorFlow(t *testing.T) {
+	guide := readCLIRepoFile(t, "docs/install-and-verify.md")
+
+	for _, want := range []string{
+		"./operator-release-guide.md",
+		"workflow_dispatch",
+		"release_tag",
+		"publication_channel",
+		"GitHub Release is the canonical root and rollback source even when downstream automation republishes one package-manager channel.",
+		"optimusctx version",
+		"optimusctx doctor",
+		"optimusctx snippet",
+	} {
+		if !strings.Contains(guide, want) {
+			t.Fatalf("docs/install-and-verify.md missing %q", want)
+		}
+	}
+}
+
 func TestInstallRegistrationConsent(t *testing.T) {
 	configPath := filepath.Join(t.TempDir(), "Claude", "claude_desktop_config.json")
 	existing := []byte("{\n  \"mcpServers\": {\n    \"existing\": {\n      \"command\": \"/bin/existing\",\n      \"args\": [\"serve\"]\n    }\n  }\n}\n")
