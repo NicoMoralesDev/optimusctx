@@ -210,10 +210,30 @@ func TestPlanReleaseOrchestrationNormalizesReuseTag(t *testing.T) {
 func mustPrepareOrchestrationRelease(t *testing.T) ReleasePreparation {
 	t.Helper()
 
+	return mustPrepareOrchestrationReleaseWithSelectedChannels(t, []string{
+		ReleaseChannelGitHubArchive,
+		ReleaseChannelNPM,
+	})
+}
+
+func mustPrepareOrchestrationReleaseWithAllPublicationChannels(t *testing.T) ReleasePreparation {
+	t.Helper()
+
+	return mustPrepareOrchestrationReleaseWithSelectedChannels(t, []string{
+		ReleaseChannelGitHubArchive,
+		ReleaseChannelNPM,
+		ReleaseChannelHomebrew,
+		ReleaseChannelScoop,
+	})
+}
+
+func mustPrepareOrchestrationReleaseWithSelectedChannels(t *testing.T, selectedChannels []string) ReleasePreparation {
+	t.Helper()
+
 	preparation, err := PrepareRelease(context.Background(), "1.2.3", "v1.2", ReleasePreparationOptions{
 		Git:              fakeGitProbe{},
 		Files:            releaseRepoFiles(),
-		SelectedChannels: []string{ReleaseChannelGitHubArchive, ReleaseChannelNPM},
+		SelectedChannels: selectedChannels,
 	})
 	if err != nil {
 		t.Fatalf("PrepareRelease() error = %v", err)
