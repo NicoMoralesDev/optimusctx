@@ -1,7 +1,7 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
+milestone: v1.3.1
+milestone_name: MCP client compatibility
 current_phase: 21
 current_phase_name: real write paths and operator surface integration
 current_plan: Not started
