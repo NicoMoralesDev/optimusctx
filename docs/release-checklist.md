@@ -66,7 +66,7 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 - Confirm the npm publication target is `@niccrow/optimusctx`.
 - Confirm the user-facing install command is `npm install -g @niccrow/optimusctx`.
 - Confirm the user-facing ephemeral command is `npx @niccrow/optimusctx version`.
-- Confirm the release operator credentials for publication are still `NPM_TOKEN`.
+- Confirm npm Trusted Publishing is configured for `release.yml`, or keep `NPM_TOKEN` available only as a bootstrap or recovery fallback.
 - Confirm the npm package remains a wrapper over the canonical tagged GitHub Release binary rather than a separate runtime implementation.
 - If npm needs recovery, rerun `workflow_dispatch` with `release_tag=<tag>` and `publication_channel=npm`.
 

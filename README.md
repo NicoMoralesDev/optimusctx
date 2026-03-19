@@ -112,7 +112,7 @@ scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git
 scoop install niccrow/optimusctx
 ```
 
-For release operators, the publication targets are `niccrow/homebrew-tap`, `niccrow/scoop-bucket`, and the npm registry package `@niccrow/optimusctx`. Publication should authenticate with `HOMEBREW_TAP_GITHUB_TOKEN`, `SCOOP_BUCKET_GITHUB_TOKEN`, and `NPM_TOKEN`.
+For release operators, the publication targets are `niccrow/homebrew-tap`, `niccrow/scoop-bucket`, and the npm registry package `@niccrow/optimusctx`. Homebrew and Scoop publication should authenticate with `HOMEBREW_TAP_GITHUB_TOKEN` and `SCOOP_BUCKET_GITHUB_TOKEN`. npm publication should use Trusted Publishing for `release.yml`, with `NPM_TOKEN` kept only as a bootstrap or recovery fallback when needed.
 
 Homebrew, Scoop, and the npm wrapper are the only package-manager channels claimed for v1.1. This repository does not yet claim `.deb`, `.rpm`, WinGet, Chocolatey, signed artifacts, or SBOM support.
 

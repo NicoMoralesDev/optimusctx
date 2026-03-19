@@ -1,31 +1,24 @@
 # @niccrow/optimusctx
 
-`@niccrow/optimusctx` is the npm wrapper for the shipped `optimusctx` binary.
-
-## What this package does
-
-- downloads the platform-specific `optimusctx` release archive from GitHub Releases
-- verifies the archive against the published checksum manifest
-- unpacks the real binary into the package-local runtime directory
-- exposes the `optimusctx` command on your PATH
-
-This package is not a JavaScript reimplementation of OptimusCtx. GitHub Releases remain the canonical source of the runtime binary.
-
-## Install
+Install OptimusCtx from npm:
 
 ```bash
 npm install -g @niccrow/optimusctx
 ```
 
-Or run it without a global install:
+Or try it first without keeping a global install:
 
 ```bash
 npx @niccrow/optimusctx version
 ```
 
-## Verify
+## What You Get
 
-After installation, verify the runtime with:
+This package installs the real `optimusctx` CLI for your platform. During install, it downloads the matching release archive from GitHub Releases, verifies it, and makes the `optimusctx` command available to use.
+
+## First Checks
+
+After install, run:
 
 ```bash
 optimusctx version
@@ -33,10 +26,30 @@ optimusctx doctor
 optimusctx snippet
 ```
 
-## Canonical Release Root
+Those commands confirm that:
 
-The wrapper downloads release assets from:
+- the installed binary is available on your PATH
+- the runtime reports its version correctly
+- the local environment is healthy enough to start
 
-`https://github.com/NicoMoralesDev/optimusctx/releases`
+## Typical Next Step
 
-If you need the raw archive path, install directly from the tagged GitHub Release instead of the npm wrapper.
+Inside a repository you want to use with OptimusCtx:
+
+```bash
+cd /path/to/your-repo
+optimusctx init
+optimusctx doctor
+```
+
+## Troubleshooting
+
+- If install fails, retry once to rule out a temporary network issue.
+- If `optimusctx` is not found after install, open a new shell or check that your npm global bin directory is on your PATH.
+- If you want the raw binary instead of the npm install path, use the release archives at `https://github.com/NicoMoralesDev/optimusctx/releases`.
+
+## Docs
+
+- Quickstart: `https://github.com/NicoMoralesDev/optimusctx/blob/main/docs/quickstart.md`
+- Install and verify: `https://github.com/NicoMoralesDev/optimusctx/blob/main/docs/install-and-verify.md`
+- Releases: `https://github.com/NicoMoralesDev/optimusctx/releases`
