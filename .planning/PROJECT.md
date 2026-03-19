@@ -15,11 +15,21 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 - Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `doctor`, `eval`, `install`, `version`, `release prepare`
 - Product state: `v1.0`, `v1.1`, `v1.2`, and `v1.3.0` are shipped; release preparation, canonical release orchestration, downstream publication fan-out, and operator recovery guidance are part of the shipped surface
 
+## Current Milestone: v1.3.1 MCP Client Compatibility
+
+**Goal:** Close first-class MCP client compatibility so OptimusCtx can register and run cleanly in the real supported hosts instead of relying on generic manual fallback paths.
+
+**Target features:**
+- First-class client registration targets for `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli`
+- Correct generated configuration or registration payloads for each supported client, all pointing at `optimusctx run`
+- Real `--write` support for those named clients where the host stores writable local config
+- End-to-end docs and regression tests for preview, write, and runtime handoff across the supported clients
+
 ## Next Milestone Goals: v1.3.1
 
-- Expand distribution trust with signed artifacts, SBOM verification, and clearer release authenticity checks
-- Evaluate broader package-manager reach, starting with native Linux formats such as `.deb` and `.rpm`
-- Deepen benchmark evidence with secondary tokenizer metrics and a watch-assisted workflow lane once the current baseline remains stable
+- Finish the remaining MCP client compatibility work for Claude and Codex surfaces
+- Replace preview-only/manual guidance with concrete writable client integrations where the host supports it
+- Make `optimusctx run` the explicit ready-to-use runtime handoff for the supported named clients
 
 ## Requirements
 
@@ -37,10 +47,10 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 ### Active
 
-- [ ] Native Linux package distribution for the shipped binary, starting with `.deb` and `.rpm`
-- [ ] Signed artifacts and SBOM verification for release consumers
-- [ ] Secondary tokenizer metrics in benchmark evidence exports
-- [ ] Watch-assisted benchmark lanes once the non-watch baseline remains stable
+- [ ] Claude Desktop, Claude CLI, Codex App, and Codex CLI can be selected as first-class MCP clients instead of falling back to generic manual guidance
+- [ ] `optimusctx status --client <client>` renders the correct host-specific registration payload for each supported client and always points at `optimusctx run`
+- [ ] `optimusctx status --client <client> --write` performs real config writes for the supported named clients
+- [ ] Documentation and tests cover preview, write, and runtime handoff for the supported MCP clients
 
 ### Out of Scope
 
@@ -53,7 +63,7 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 v1.0 proved the core runtime wedge. v1.1 then proved the shipped product works end to end on fixture-backed CLI and MCP workflows, tightened benchmark claims around declared agent-facing inputs and comparable final artifacts, and expanded distribution through a narrow set of verifiable release channels.
 
-v1.2 closed the operator loop around that shipped surface. v1.3.0 is already published as the current shipped release. The next planning target is therefore v1.3.1, which should be treated as the next patch release rather than reopening v1.3 planning.
+v1.2 closed the operator loop around the release surface, and v1.3.0 is already published as the current shipped release. The next patch milestone, v1.3.1, focuses on the remaining MCP host integration gap: today only Claude Desktop has true write support, while Claude CLI and Codex surfaces still fall back to preview/manual instructions.
 
 <details>
 <summary>Archived v1.1 planning context</summary>
@@ -116,4 +126,4 @@ This repository is greenfield. The development process is expected to be heavily
 | Every downstream channel should derive from the same tag and release metadata contract | Multi-channel automation is only trustworthy if there is one source of truth for archives, checksums, and package metadata | ✓ Shipped in v1.2 |
 
 ---
-*Last updated: 2026-03-19 after confirming v1.3.0 is shipped and setting v1.3.1 as next milestone*
+*Last updated: 2026-03-19 after starting v1.3.1 MCP client compatibility milestone*
