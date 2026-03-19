@@ -52,6 +52,13 @@ type commandPreviewClientAdapter struct {
 	notes  []string
 }
 
+type codexConfigClientAdapter struct {
+	client      repository.SupportedClient
+	resolvePath func(string) (string, error)
+	readFile    func(string) ([]byte, error)
+	notes       []string
+}
+
 type genericClientAdapter struct {
 	client repository.SupportedClient
 	notes  []string
@@ -76,8 +83,8 @@ func NewInstallService() InstallService {
 		adapters: map[repository.ClientID]clientRegistrationAdapter{
 			claudeDesktop.ID: jsonAdapter,
 			claudeCLI.ID:     commandPreviewClientAdapter{client: claudeCLI, notes: claudeCLINotes()},
-			codexApp.ID:      previewOnlyClientAdapter{client: codexApp, configPath: "preview", notes: codexAppNotes()},
-			codexCLI.ID:      previewOnlyClientAdapter{client: codexCLI, configPath: "preview", notes: codexCLINotes()},
+			codexApp.ID:      codexConfigClientAdapter{client: codexApp, resolvePath: resolveCodexConfigPath, readFile: os.ReadFile, notes: codexAppNotes()},
+			codexCLI.ID:      codexConfigClientAdapter{client: codexCLI, resolvePath: resolveCodexConfigPath, readFile: os.ReadFile, notes: codexCLINotes()},
 			generic.ID:       genericClientAdapter{client: generic, notes: genericMCPNotes()},
 		},
 	}
@@ -213,6 +220,35 @@ func (a commandPreviewClientAdapter) Write(_ context.Context, _ InstallRequest) 
 	return repository.RenderedClientConfig{}, errors.New("this client does not support --write yet; preview the native Claude CLI registration command for now")
 }
 
+func (a codexConfigClientAdapter) Preview(request InstallRequest) (repository.RenderedClientConfig, error) {
+	configPath, err := a.resolvePath(request.ConfigPath)
+	if err != nil {
+		return repository.RenderedClientConfig{}, err
+	}
+
+	existing, err := readExistingClientConfig(a.readFile, configPath)
+	if err != nil {
+		return repository.RenderedClientConfig{}, err
+	}
+
+	content, err := repository.MergeCodexConfig(existing, request.ServerName, repository.NewServeCommand(request.BinaryPath))
+	if err != nil {
+		return repository.RenderedClientConfig{}, err
+	}
+
+	return repository.RenderedClientConfig{
+		Client:     a.client,
+		ConfigPath: configPath,
+		Mode:       repository.RenderModePreview,
+		Content:    content,
+		Notes:      append([]string(nil), a.notes...),
+	}, nil
+}
+
+func (a codexConfigClientAdapter) Write(_ context.Context, _ InstallRequest) (repository.RenderedClientConfig, error) {
+	return repository.RenderedClientConfig{}, errors.New("this client does not support --write yet; preview the shared native Codex config until Phase 21 adds write-backed registration")
+}
+
 func (a genericClientAdapter) Preview(request InstallRequest) (repository.RenderedClientConfig, error) {
 	content, err := renderGenericPreviewContent(request)
 	if err != nil {
@@ -248,17 +284,17 @@ func claudeCLINotes() []string {
 
 func codexAppNotes() []string {
 	return []string{
-		"Codex App is on an explicit preview adapter now instead of the generic fallback.",
-		"Phase 20 plan 02 will replace this transitional preview with the native shared Codex config contract.",
-		"The preview still keeps `optimusctx run` as the canonical runtime handoff.",
+		"Codex App now previews the native shared Codex `config.toml` contract instead of the generic fallback.",
+		"The preview target defaults to `~/.codex/config.toml` and preserves unrelated Codex settings during merges.",
+		"Phase 21 will add write-backed registration on top of this shared native Codex config foundation.",
 	}
 }
 
 func codexCLINotes() []string {
 	return []string{
-		"Codex CLI is on an explicit preview adapter now instead of the generic fallback.",
-		"Phase 20 plan 02 will replace this transitional preview with the native shared Codex config contract.",
-		"The preview still keeps `optimusctx run` as the canonical runtime handoff.",
+		"Codex CLI now previews the native shared Codex `config.toml` contract instead of the generic fallback.",
+		"The preview target defaults to `~/.codex/config.toml` and preserves unrelated Codex settings during merges.",
+		"Phase 21 will add write-backed registration on top of this shared native Codex config foundation.",
 	}
 }
 
@@ -278,6 +314,30 @@ func renderGenericPreviewContent(request InstallRequest) (string, error) {
 	}
 
 	return content, nil
+}
+
+func readExistingClientConfig(readFile func(string) ([]byte, error), configPath string) ([]byte, error) {
+	content, err := readFile(configPath)
+	if err == nil {
+		return content, nil
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	return nil, fmt.Errorf("read client config: %w", err)
+}
+
+func resolveCodexConfigPath(explicitPath string) (string, error) {
+	if explicitPath != "" {
+		return explicitPath, nil
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve home directory: %w", err)
+	}
+
+	return filepath.Join(homeDir, ".codex", "config.toml"), nil
 }
 
 func resolveClaudeDesktopConfigPath(explicitPath string) (string, error) {
