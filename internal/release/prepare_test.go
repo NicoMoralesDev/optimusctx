@@ -583,19 +583,11 @@ jobs:
       contents: read
     steps:
       - run: bash scripts/render-npm-package.sh "${{ inputs.release_tag }}" out
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-      - run: |
-          if [ -n "${NPM_TOKEN:-}" ]; then
-            export NODE_AUTH_TOKEN="${NPM_TOKEN}"
-          else
-            unset NODE_AUTH_TOKEN
-          fi
-          npm publish --access public --provenance
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish --access public --provenance
   publish_homebrew:
     name: Publish Homebrew formula
     needs: release
@@ -618,7 +610,7 @@ jobs:
 			Data: []byte(`
 - Confirm the release operator credentials for publication are still HOMEBREW_TAP_GITHUB_TOKEN.
 - Confirm the release operator credentials for publication are still SCOOP_BUCKET_GITHUB_TOKEN.
-- Confirm npm trusted publishing is configured for this workflow, or keep NPM_TOKEN available as a fallback.
+- Confirm npm trusted publishing is configured for this workflow.
 `),
 		},
 		npmRenderScriptPath: {
@@ -660,19 +652,11 @@ jobs:
       contents: read
     steps:
       - run: bash scripts/render-npm-package.sh "${{ inputs.release_tag }}" out
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-      - run: |
-          if [ -n "${NPM_TOKEN:-}" ]; then
-            export NODE_AUTH_TOKEN="${NPM_TOKEN}"
-          else
-            unset NODE_AUTH_TOKEN
-          fi
-          npm publish --access public --provenance
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish --access public --provenance
 `),
 	}
 	return files

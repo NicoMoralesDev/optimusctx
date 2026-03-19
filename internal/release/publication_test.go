@@ -36,7 +36,7 @@ func TestPlanReleasePublicationFanout(t *testing.T) {
 	if got, want := npm.PublicationTarget, "@niccrow/optimusctx"; got != want {
 		t.Fatalf("npm PublicationTarget = %q, want %q", got, want)
 	}
-	if got, want := npm.CredentialEnvVar, "NPM_TOKEN"; got != want {
+	if got, want := npm.CredentialEnvVar, ""; got != want {
 		t.Fatalf("npm CredentialEnvVar = %q, want %q", got, want)
 	}
 	if got, want := npm.RenderCommand, "bash scripts/render-npm-package.sh"; got != want {

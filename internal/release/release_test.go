@@ -191,7 +191,7 @@ func TestNPMPublishWorkflow(t *testing.T) {
 		"permissions:",
 		"id-token: write",
 		"inputs.publication_channel == 'npm'",
-		"uses: actions/setup-node@v4",
+		"uses: actions/setup-node@v6",
 		"node-version: 24",
 		"registry-url: https://registry.npmjs.org",
 		"bash scripts/render-npm-package.sh",
@@ -342,8 +342,6 @@ func TestNPMPublishConfig(t *testing.T) {
 	renderScript := readRepoFile(t, "scripts/render-npm-package.sh")
 
 	for _, want := range []string{
-		"NPM_TOKEN",
-		"NODE_AUTH_TOKEN",
 		"id-token: write",
 		"needs.release.outputs.tag",
 	} {

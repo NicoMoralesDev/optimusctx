@@ -109,7 +109,6 @@ func publicationChannelSpec(channelID string) (releasePublicationChannelSpec, bo
 	switch channelID {
 	case ReleaseChannelNPM:
 		return releasePublicationChannelSpec{
-			CredentialEnvVar:  "NPM_TOKEN",
 			RenderCommand:     "bash scripts/render-npm-package.sh",
 			NeedsExternalRepo: false,
 		}, true

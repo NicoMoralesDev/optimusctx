@@ -149,7 +149,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
@@ -166,16 +166,7 @@ jobs:
       - name: Publish npm package
         id: publish_npm_step
         working-directory: ${{ runner.temp }}/npm-package
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -n "${NPM_TOKEN:-}" ]; then
-            export NODE_AUTH_TOKEN="${NPM_TOKEN}"
-          else
-            unset NODE_AUTH_TOKEN
-          fi
-          npm publish --access public --provenance
+        run: npm publish --access public --provenance
 
       - name: Summarize npm publication
         if: ${{ always() }}
