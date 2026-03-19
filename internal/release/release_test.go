@@ -261,6 +261,11 @@ func TestReleaseWorkflowSummaryShowsChannelStatus(t *testing.T) {
 		`- tag:`,
 		`- outcome:`,
 		`- failure_reason:`,
+		`- github_event_name:`,
+		`- github_workflow:`,
+		`- github_workflow_ref:`,
+		`- github_ref:`,
+		`- github_ref_name:`,
 		`- next_step:`,
 	} {
 		if !strings.Contains(workflow, want) {
