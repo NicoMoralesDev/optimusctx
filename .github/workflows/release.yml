@@ -153,7 +153,6 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-          token: ""
 
       - name: Verify npm publish contract against canonical release root
         env:
@@ -167,9 +166,7 @@ jobs:
       - name: Publish npm package
         id: publish_npm_step
         working-directory: ${{ runner.temp }}/npm-package
-        run: |
-          unset NODE_AUTH_TOKEN
-          npm publish --access public --provenance
+        run: npm publish --access public --provenance
 
       - name: Summarize npm publication
         if: ${{ always() }}
