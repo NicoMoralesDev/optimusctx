@@ -21,7 +21,7 @@
 ### What Was Inefficient
 
 - Phase 18 finished without a `VERIFICATION.md`, which created avoidable lifecycle friction at milestone closeout.
-- The final hosted GitHub Actions summary sanity check depends on remote state that was not available during local milestone completion.
+- The final hosted GitHub Actions summary sanity check initially depended on remote state that was not available during local milestone completion, then was closed after publication and Actions were fixed.
 
 ### Patterns Established
 
@@ -32,7 +32,7 @@
 ### Key Lessons
 
 - Verification artifacts are part of the deliverable; missing one can block archival even when the code is done.
-- External release-channel validation should be planned explicitly as hosted follow-up so it does not blur repository-complete work with environment availability.
+- External release-channel validation should still be planned explicitly, but the v1.2 hosted verification gap was ultimately closed once GitHub Actions and publication were fixed.
 
 ## Cross-Milestone Trends
 

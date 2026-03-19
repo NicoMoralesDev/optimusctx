@@ -46,13 +46,13 @@ progress:
 - Active milestone: none; `v1.2` was archived on 2026-03-19
 - Next execution action: start the next milestone with `$gsd-new-milestone`
 - Historical v1.0, v1.1, and v1.2 requirements and roadmaps are archived under `.planning/milestones/`
-- Deferred operational follow-up: inspect one real hosted GitHub Actions `release.yml` summary once a safe run exists
+- Hosted GitHub Actions `release.yml` summary and publication validation were confirmed resolved on 2026-03-19
 
 ## Verification Status
 
 - Phase 18 verification was backfilled on 2026-03-19 from the committed UAT evidence, fresh release-layer test runs, and a passing full `go test ./...` suite.
 - Phase 19 repository verification passed, including the manual operator-guide walkthrough.
-- Hosted GitHub Actions summary verification remains deferred until a real `release.yml` run exists to inspect remotely.
+- Hosted GitHub Actions summary verification passed on 2026-03-19, closing the last remote validation item from v1.2.
 
 ## Recent Decisions
 

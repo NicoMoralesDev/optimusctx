@@ -18,7 +18,7 @@
 ## Current Status
 
 - v1.2 is archived and shipped.
-- One hosted GitHub Actions release-summary inspection remains deferred as operational follow-up, not as a repository implementation blocker.
+- The hosted GitHub Actions release-summary and publication validation for v1.2 is resolved.
 - The next milestone has not been defined yet.
 
 ---

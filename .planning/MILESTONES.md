@@ -11,7 +11,7 @@
 - Established one canonical release metadata and orchestration contract so GitHub Release remains the single source of truth for versioned archives and checksums.
 - Automated npm, Homebrew, and Scoop publication from the canonical release tag, including exact `workflow_dispatch` reruns with `release_tag` and `publication_channel`.
 - Locked prepare readiness, workflow fan-out, rendered package-manager payloads, and operator docs to the same release contract with release-layer regression coverage.
-- Added one canonical operator guide for release, verification, selective rerun, and rollback, with the remaining hosted summary render check carried as explicit follow-up tech debt.
+- Added one canonical operator guide for release, verification, selective rerun, and rollback, and later closed the hosted GitHub Actions summary/publication verification.
 
 **Stats:**
 - 4 phases, 18 plans, 18 tasks
@@ -19,7 +19,7 @@
 
 **Git range:** `feat(16-01)` → `docs(19-03)`
 
-**What's next:** Define the next milestone around signed distribution trust and deeper benchmark coverage while carrying one deferred hosted release-summary sanity check.
+**What's next:** Define the next milestone around signed distribution trust and deeper benchmark coverage.
 
 ---
 

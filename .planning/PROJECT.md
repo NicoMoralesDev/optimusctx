@@ -53,7 +53,7 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 v1.0 proved the core runtime wedge. v1.1 then proved the shipped product works end to end on fixture-backed CLI and MCP workflows, tightened benchmark claims around declared agent-facing inputs and comparable final artifacts, and expanded distribution through a narrow set of verifiable release channels.
 
-v1.2 closed the operator loop around that shipped surface. The repository now has a safe release-preparation entrypoint, one canonical release metadata and workflow contract, multi-channel publication fan-out, and a single operator guide for verification and recovery. The remaining follow-up from the milestone is operational rather than implementation-focused: inspect one real hosted GitHub Actions release summary once a safe run exists.
+v1.2 closed the operator loop around that shipped surface. The repository now has a safe release-preparation entrypoint, one canonical release metadata and workflow contract, multi-channel publication fan-out, and a single operator guide for verification and recovery, with the hosted GitHub Actions summary and publication flow now also confirmed.
 
 <details>
 <summary>Archived v1.1 planning context</summary>

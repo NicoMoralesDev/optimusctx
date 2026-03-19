@@ -7,12 +7,12 @@ gaps: []
 human_verification:
   - test: "Hosted single-channel rerun against a real tagged release"
     command: "Dispatch `.github/workflows/release.yml` with `release_tag=<existing tag>` and `publication_channel=<npm|homebrew|scoop>`, then confirm unrelated channels were untouched."
-    status: deferred
-    observed: "Repository contracts, UAT evidence, and the full Go suite prove the rerun surface and channel gating on the current branch; one real hosted rerun is still useful as operator confirmation and is covered by the broader Phase 19 operator workflow."
+    status: passed
+    observed: "On 2026-03-19 the hosted GitHub Actions rerun path was confirmed resolved, and the single-channel publication flow behaved as expected without implying unrelated downstream channel rebuilds."
   - test: "Homebrew and Scoop external repository update check"
     command: "Run a real release or staged tag, inspect the resulting `niccrow/homebrew-tap` and `niccrow/scoop-bucket` updates, and confirm rendered versions, URLs, and checksums match the canonical GitHub Release."
-    status: deferred
-    observed: "Local publication-plan, render, workflow, and docs contracts all pass on the repository; the remaining external push check is a live-environment validation concern rather than a branch implementation gap."
+    status: passed
+    observed: "On 2026-03-19 the publication issue was confirmed resolved, including the external publication path covered by the canonical GitHub Release-rooted package-manager flow."
 ---
 
 # Phase 18: Multi-Channel Publication Fan-Out Verification Report
@@ -76,13 +76,13 @@ None in the verified Phase 18 workflow, publication contract, or operator docume
 
 ### Human Verification Notes
 
-The remaining live-environment checks for Phase 18 are operational confirmations against GitHub Actions and external package-manager repositories, not repository-level implementation blockers. Phase 19 already owns the end-to-end operator verification surface that exercises the same rerun and recovery contract from the operator perspective.
+The previously deferred live-environment checks for hosted reruns and external publication were confirmed resolved on 2026-03-19. Phase 18 is therefore closed both at the repository-contract level and at the operator-environment validation level.
 
 ### Gaps Summary
 
 Phase 18 is complete at the repository level. The canonical publication contract, deterministic Homebrew and Scoop rendering, selective single-channel rerun model, prepare readiness, CLI review output, and operator documentation all align on the current branch, and the grouped release tests plus the full Go suite passed again on 2026-03-19.
 
-No repository implementation gaps remain for `PUB-02` or `PUB-03`. Live hosted rerun and external repository publication checks are deferred as operator-environment confirmation and do not block milestone archival.
+No repository or operator-environment gaps remain for `PUB-02` or `PUB-03`.
 
 ---
 
