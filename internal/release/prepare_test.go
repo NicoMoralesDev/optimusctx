@@ -587,7 +587,10 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-      - run: npm publish --access public --provenance
+          token: ""
+      - run: |
+          unset NODE_AUTH_TOKEN
+          npm publish --access public --provenance
   publish_homebrew:
     name: Publish Homebrew formula
     needs: release
@@ -656,7 +659,10 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-      - run: npm publish --access public --provenance
+          token: ""
+      - run: |
+          unset NODE_AUTH_TOKEN
+          npm publish --access public --provenance
 `),
 	}
 	return files
