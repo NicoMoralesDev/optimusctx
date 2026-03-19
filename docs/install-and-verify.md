@@ -20,9 +20,15 @@ GitHub Release is the canonical root and rollback source even when downstream au
 The verification path below uses the shipped commands that matter for first-run confidence:
 
 - `optimusctx version`
+- `optimusctx status`
 - `optimusctx doctor`
+- `optimusctx run`
+- optional `optimusctx status --client ...`
+
+Deprecated compatibility paths still exist for transition:
+
 - `optimusctx snippet`
-- optional `optimusctx install --client ...`
+- `optimusctx install --client ...`
 
 `go run` is useful for development, but it is not the supported end-user install flow in this guide.
 
@@ -72,36 +78,6 @@ Scoop installs the manifest rendered from the same canonical tagged GitHub Relea
 
 Download the archive that matches your OS and CPU from the canonical tagged GitHub Release.
 
-macOS or Linux example:
-
-```bash
-VERSION="<version>"
-OS="linux"
-ARCH="amd64"
-curl -fsSL -o /tmp/optimusctx.tar.gz "https://github.com/NicoMoralesDev/optimusctx/releases/download/${VERSION}/optimusctx_${VERSION#v}_${OS}_${ARCH}.tar.gz"
-tar -xzf /tmp/optimusctx.tar.gz -C /tmp
-install /tmp/optimusctx /usr/local/bin/optimusctx
-```
-
-Windows PowerShell example:
-
-```powershell
-$Version = "<version>"
-$Archive = "$env:TEMP\optimusctx.zip"
-Invoke-WebRequest -Uri "https://github.com/NicoMoralesDev/optimusctx/releases/download/$Version/optimusctx_$($Version.TrimStart('v'))_windows_amd64.zip" -OutFile $Archive
-Expand-Archive -Path $Archive -DestinationPath "$env:TEMP\optimusctx"
-Copy-Item "$env:TEMP\optimusctx\optimusctx.exe" "$env:USERPROFILE\bin\optimusctx.exe"
-```
-
-Use the archive name that matches the release asset you downloaded:
-
-- `optimusctx_<version>_darwin_amd64.tar.gz`
-- `optimusctx_<version>_darwin_arm64.tar.gz`
-- `optimusctx_<version>_linux_amd64.tar.gz`
-- `optimusctx_<version>_linux_arm64.tar.gz`
-- `optimusctx_<version>_windows_amd64.zip`
-- `optimusctx_<version>_windows_arm64.zip`
-
 ## 2. Verify the installed binary reports release metadata
 
 Run:
@@ -125,89 +101,45 @@ Move into the repository you want to use and initialize it:
 ```bash
 cd /path/to/your-repo
 optimusctx init
-optimusctx doctor
+optimusctx status
 ```
 
 `optimusctx init` creates `.optimusctx/` for that repo and builds the first snapshot.
 
-After that, `optimusctx doctor` should show a healthy runtime and fresh repository state.
+After that, `optimusctx status` should show the repo as initialized and ready. Use `optimusctx doctor` when you need deeper diagnostics.
 
-Typical healthy output includes:
+## 4. Start the agent-facing runtime
 
-- `overall status: healthy`
-- `runtime version: ...`
-- `freshness: fresh`
-- `snippet available: yes`
+For normal MCP client use, point the client at:
 
-If `doctor` reports missing state instead, run `optimusctx init` from the repository root you actually want to index and then rerun `optimusctx doctor`.
+```bash
+optimusctx run
+```
 
-## 4. Choose how updates should work
+`run` is now the canonical entrypoint. It bootstraps missing state, refreshes stale state before serving MCP, and then serves the runtime over STDIO.
 
-After `init`, pick one normal way to keep the repository state fresh.
+## 5. Optional manual refresh behavior
 
-### Manual mode
-
-Run this when you want to refresh on demand:
+If you still want an explicit manual refresh path, run:
 
 ```bash
 optimusctx refresh
 ```
 
-Use this if you only need occasional updates.
+This remains available as an advanced or secondary command, but it is no longer the main runtime entrypoint.
 
-### Watch mode
-
-Run this if you want automatic refreshes while you work:
-
-```bash
-optimusctx watch run
-```
-
-Important:
-
-- it runs in the foreground
-- keep it open in its own terminal
-- stop it with `Ctrl+C`
-
-From another terminal, inspect it with:
-
-```bash
-optimusctx watch status
-optimusctx doctor
-```
-
-Simple rule:
-
-- use `refresh` in manual mode
-- use `watch run` in continuous mode
-- if `watch run` is active, you usually do not need `refresh`
-
-## 5. Inspect the MCP snippet without modifying client config
-
-Run:
-
-```bash
-optimusctx snippet
-```
-
-This prints the manual-copy MCP configuration for `optimusctx mcp serve`. It does not edit Claude Desktop or any other client config file.
-
-Use this command when you want to inspect or paste the JSON yourself.
-
-## 6. Preview or write explicit client registration
-
-`install` stays opt-in. It does not silently register MCP clients during package installation or archive extraction.
+## 6. Preview or write MCP client registration
 
 Preview the default Claude Desktop config path:
 
 ```bash
-optimusctx install --client claude-desktop
+optimusctx status --client claude-desktop
 ```
 
 Preview a specific config file path:
 
 ```bash
-optimusctx install --client claude-desktop --config /path/to/claude_desktop_config.json
+optimusctx status --client claude-desktop --config /path/to/claude_desktop_config.json
 ```
 
 The default mode is preview-only. The command prints the rendered JSON and the target config path, then ends with:
@@ -219,16 +151,19 @@ status: preview only
 Only write the config when you are ready:
 
 ```bash
-optimusctx install --client claude-desktop --write
+optimusctx status --client claude-desktop --write
 ```
 
 Or, with an explicit config override:
 
 ```bash
-optimusctx install --client claude-desktop --config /path/to/claude_desktop_config.json --write
+optimusctx status --client claude-desktop --config /path/to/claude_desktop_config.json --write
 ```
 
-This is the same MCP contract that `optimusctx snippet` prints, but `--write` is the explicit consent boundary that persists it.
+Legacy compatibility paths still exist:
+
+- `optimusctx snippet` prints the same registration contract in deprecated manual-snippet form
+- `optimusctx install --client claude-desktop` remains available as a deprecated compatibility wrapper
 
 ## 7. Scope and support boundaries
 
@@ -236,7 +171,8 @@ v1.2 intentionally keeps distribution narrow:
 
 - supported release retrieval: GitHub release archives
 - supported package managers: Homebrew, Scoop, and the npm wrapper package
-- supported local verification: `version`, `init`, `doctor`, `snippet`, optional `install --client`
+- supported local verification: `version`, `init`, `status`, `doctor`, `run`
+- deprecated compatibility commands remain available during migration: `snippet`, `install --client ...`
 - GitHub Release stays the canonical root even when a package-manager install path is used
 - npm, Homebrew, and Scoop now publish from the same canonical tagged release contract after GitHub Release assets are available
 

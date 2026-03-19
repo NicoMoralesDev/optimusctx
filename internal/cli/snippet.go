@@ -10,7 +10,7 @@ import (
 func newSnippetCommandImpl() *Command {
 	return &Command{
 		Name:    "snippet",
-		Summary: "Print the manual integration snippet",
+		Summary: "Deprecated: print the manual integration snippet",
 		Run: func(stdout io.Writer, args []string) error {
 			if len(args) > 0 {
 				return errors.New("snippet does not accept arguments")

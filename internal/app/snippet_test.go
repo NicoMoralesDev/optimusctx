@@ -10,13 +10,13 @@ func TestSnippetRender(t *testing.T) {
 
 	required := []string{
 		"# OptimusCtx manual integration snippet",
-		"OptimusCtx now serves MCP over `optimusctx mcp serve`.",
-		"optimusctx install --client claude-desktop",
+		"`optimusctx snippet` is deprecated; use `optimusctx status --client claude-desktop`",
+		"OptimusCtx now serves MCP over `optimusctx run`.",
+		"optimusctx status --client claude-desktop",
 		"\"mcpServers\"",
 		"\"command\": \"optimusctx\"",
 		"\"args\": [",
-		"\"mcp\"",
-		"\"serve\"",
+		"\"run\"",
 		"\"optimusctx\": {",
 	}
 	for _, fragment := range required {

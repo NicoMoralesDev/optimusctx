@@ -512,8 +512,8 @@ func TestOperatorReleaseGuideStaysCanonical(t *testing.T) {
 		`niccrow/homebrew-tap`,
 		`niccrow/scoop-bucket`,
 		`optimusctx version`,
+		`optimusctx status`,
 		`optimusctx doctor`,
-		`optimusctx snippet`,
 	} {
 		if !strings.Contains(guide, want) {
 			t.Fatalf("docs/operator-release-guide.md missing %q", want)

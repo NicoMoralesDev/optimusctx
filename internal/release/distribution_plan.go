@@ -63,7 +63,7 @@ func CurrentDistributionPolicy() DistributionPolicy {
 			{
 				ID:                "github-release-archive",
 				Name:              "GitHub Release archives",
-				UserFacingInstall: "Download the tagged archive from GitHub Releases, unpack it, place `optimusctx` on your PATH, then verify with `optimusctx version` and `optimusctx doctor`.",
+				UserFacingInstall: "Download the tagged archive from GitHub Releases, unpack it, place `optimusctx` on your PATH, then verify with `optimusctx version`, `optimusctx status`, and `optimusctx doctor`.",
 				PublicationTarget: "github.com/NicoMoralesDev/optimusctx releases",
 				Audience:          "Users who want the raw binary, need a fallback when package-manager metadata lags, or prefer explicit archive installs.",
 				UpgradePath:       "Download a newer tagged archive, replace the binary on your PATH, and rerun the verification commands.",
@@ -76,7 +76,7 @@ func CurrentDistributionPolicy() DistributionPolicy {
 				UserFacingInstall: "Run `brew install niccrow/tap/optimusctx` on macOS or Linux once the formula is published.",
 				PublicationTarget: "niccrow/homebrew-tap",
 				Audience:          "macOS and Linux users who already rely on Homebrew for CLI distribution.",
-				UpgradePath:       "Use `brew upgrade niccrow/tap/optimusctx`, then rerun `optimusctx version` and `optimusctx doctor`.",
+				UpgradePath:       "Use `brew upgrade niccrow/tap/optimusctx`, then rerun `optimusctx version`, `optimusctx status`, and `optimusctx doctor`.",
 				RollbackPath:      "If a package-manager rollback is needed, fall back to a prior tagged GitHub Release archive.",
 				SupportBoundary:   "Support covers the published tap path and verification commands, not Homebrew-specific environment repair outside the documented flow.",
 			},
@@ -86,7 +86,7 @@ func CurrentDistributionPolicy() DistributionPolicy {
 				UserFacingInstall: "Run `scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git` and `scoop install niccrow/optimusctx` on Windows.",
 				PublicationTarget: "niccrow/scoop-bucket",
 				Audience:          "Windows users who already manage developer tooling through Scoop.",
-				UpgradePath:       "Use `scoop update optimusctx`, then rerun `optimusctx version` and `optimusctx doctor`.",
+				UpgradePath:       "Use `scoop update optimusctx`, then rerun `optimusctx version`, `optimusctx status`, and `optimusctx doctor`.",
 				RollbackPath:      "If Scoop metadata is insufficient for a rollback, reinstall a prior tagged GitHub Release archive.",
 				SupportBoundary:   "Support covers the named bucket, install command, and verification path, not broader Windows package-manager alternatives.",
 			},
@@ -96,7 +96,7 @@ func CurrentDistributionPolicy() DistributionPolicy {
 				UserFacingInstall: "Run `npm install -g @niccrow/optimusctx` or `npx @niccrow/optimusctx version` to use the wrapper package over the tagged release binary.",
 				PublicationTarget: "@niccrow/optimusctx",
 				Audience:          "Users who already manage CLI tooling through npm or want an `npx` wrapper without changing the single-binary runtime contract.",
-				UpgradePath:       "Use `npm install -g @niccrow/optimusctx@latest` or rerun `npx @niccrow/optimusctx version`, then rerun `optimusctx version`, `optimusctx doctor`, and `optimusctx snippet` if the binary stays installed locally.",
+				UpgradePath:       "Use `npm install -g @niccrow/optimusctx@latest` or rerun `npx @niccrow/optimusctx version`, then rerun `optimusctx version`, `optimusctx status`, and `optimusctx doctor` if the binary stays installed locally.",
 				RollbackPath:      "If the npm wrapper path regresses, reinstall a prior tagged archive directly from GitHub Releases or rerun the wrapper against the desired tagged version.",
 				SupportBoundary:   "Support covers the published npm package and wrapper verification flow, not arbitrary Node environment repair or a JavaScript reimplementation path.",
 			},
@@ -104,8 +104,8 @@ func CurrentDistributionPolicy() DistributionPolicy {
 		Upgrade: UpgradePolicy{
 			VerificationCommands: []string{
 				"optimusctx version",
+				"optimusctx status",
 				"optimusctx doctor",
-				"optimusctx snippet",
 			},
 			ArchiveExpectation: "Archive users upgrade by replacing the binary manually and verifying the shipped command surface again.",
 			PackageManagerRule: "Package-manager users upgrade through the channel-native command while GitHub Release archives remain the rollback fallback, including the npm wrapper package.",
@@ -113,20 +113,20 @@ func CurrentDistributionPolicy() DistributionPolicy {
 		Support: SupportPolicy{
 			SupportedCommands: []string{
 				"optimusctx version",
+				"optimusctx status",
 				"optimusctx doctor",
-				"optimusctx snippet",
-				"optimusctx install --client claude-desktop --write",
+				"optimusctx status --client claude-desktop --write",
 			},
 			IssueTracking:      "Support is issue-driven through repository documentation and GitHub issues rather than a managed installer or helpdesk.",
 			OperatorModel:      "Best-effort support assumes a user can rerun documented commands locally and report the exact failing step.",
-			ConfigMutationRule: "`optimusctx install` stays explicit and preview-first; config files are only written when the operator opts into `--write`.",
+			ConfigMutationRule: "`optimusctx status --client ...` is preview-first; config files are only written when the operator opts into `--write`.",
 		},
 		DeferredScope: []DeferredScopeItem{
 			{Name: "native Linux packages", Reason: "`.deb` and `.rpm` packaging is deferred until v2 expansion work."},
-			{Name: "WinGet", Reason: "Windows distribution stays on Scoop plus GitHub Release archives for v1.1."},
-			{Name: "Chocolatey", Reason: "Only one native Windows package-manager channel is supported in v1.1."},
+			{Name: "WinGet", Reason: "Windows distribution stays on Scoop plus GitHub Release archives for v1.2."},
+			{Name: "Chocolatey", Reason: "Only one native Windows package-manager channel is supported in v1.2."},
 			{Name: "artifact signing", Reason: "Signed artifacts are deferred to later distribution-hardening work."},
-			{Name: "SBOM publication", Reason: "SBOM generation and publication remain out of scope for v1.1."},
+			{Name: "SBOM publication", Reason: "SBOM generation and publication remain out of scope for v1.2."},
 		},
 	}
 }

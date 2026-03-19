@@ -28,16 +28,8 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 - Verify the GitHub Release contains the canonical versioned archives and checksum manifest for the tag.
 - Verify the release metadata lines up with `optimusctx version`.
 - Verify the npm package was rendered from `scripts/render-npm-package.sh` and published with `npm publish` against the same tagged release facts.
-- Verify Homebrew and Scoop were rendered and published from the same tagged GitHub Release checksum and archive facts.
+- Verify Homebrew and Scoop were rendered and published from the same canonical tagged GitHub Release checksum and archive facts.
 - Treat GitHub Release archives as the baseline distribution channel, canonical metadata root, and rollback source.
-
-## GitHub Release Archive Checks
-
-- Download one produced archive and confirm it unpacks to the `optimusctx` binary.
-- Verify the checksum manifest is present for the tagged release.
-- Confirm the archive and checksum names match the canonical tagged GitHub Release contract.
-- Confirm the archive instructions stay truthful: unpack, place the binary on PATH, then run `optimusctx version` and `optimusctx doctor`.
-- Confirm rollback guidance still points to reinstalling a prior tagged GitHub Release archive.
 
 ## Homebrew Checks
 
@@ -46,7 +38,6 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 - Confirm the user-facing install command is `brew install niccrow/tap/optimusctx`.
 - Confirm the user-facing upgrade command is `brew upgrade niccrow/tap/optimusctx`.
 - Confirm the release operator credentials for publication are still `HOMEBREW_TAP_GITHUB_TOKEN`.
-- Confirm Homebrew messaging stays scoped to macOS and Linux users who already use Homebrew.
 - Confirm Homebrew publication is automated from the same canonical tagged release after GitHub Release assets are available.
 - If Homebrew needs recovery, rerun `workflow_dispatch` with `release_tag=<tag>` and `publication_channel=homebrew`.
 
@@ -57,7 +48,6 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 - Confirm the user-facing install commands are `scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git` and `scoop install niccrow/optimusctx`.
 - Confirm the user-facing upgrade command is `scoop update optimusctx`.
 - Confirm the release operator credentials for publication are still `SCOOP_BUCKET_GITHUB_TOKEN`.
-- Confirm Scoop messaging stays scoped to Windows users who already use Scoop.
 - Confirm Scoop publication is automated from the same canonical tagged release after GitHub Release assets are available.
 - If Scoop needs recovery, rerun `workflow_dispatch` with `release_tag=<tag>` and `publication_channel=scoop`.
 
@@ -73,9 +63,9 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 ## Verification Commands
 
 - After installation or upgrade, run `optimusctx version`.
+- After installation or upgrade, run `optimusctx status`.
 - After installation or upgrade, run `optimusctx doctor`.
-- After installation or upgrade, run `optimusctx snippet`.
-- Use `optimusctx install --client claude-desktop --write` only when the operator explicitly wants the config-write path after reviewing the preview output.
+- Use `optimusctx status --client claude-desktop --write` only when the operator explicitly wants the config-write path after reviewing the preview output.
 
 ## Rollout Messaging
 
@@ -87,15 +77,7 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 
 ## Support Follow-Through
 
-- Watch incoming reports for failures in `optimusctx version`, `optimusctx doctor`, `optimusctx snippet`, or the explicit `install --client` flow.
+- Watch incoming reports for failures in `optimusctx version`, `optimusctx status`, `optimusctx doctor`, or the explicit `status --client` flow.
 - Ask for the exact channel used by the reporter: GitHub Release archive, Homebrew, Scoop, or npm.
 - Treat undocumented channels as unsupported and route users back to the named release channels.
 - Prefer GitHub Release archive rollback guidance when package-manager state is unclear.
-
-## Release Complete
-
-- The tagged GitHub Release artifacts are published and retrievable as the canonical root.
-- The npm, Homebrew, and Scoop publication paths match the same automated downstream contract rooted in the canonical tagged GitHub Release.
-- The npm publication and install path match the structured policy contract.
-- The docs still describe the real verification and support flow.
-- The release remains narrow, truthful, and aligned with the v1.2 operator plan.

@@ -23,15 +23,15 @@ func TestDistributionChannelPolicy(t *testing.T) {
 		t.Fatalf("channel IDs = %v, want %v", got, want)
 	}
 
-	if got, want := policy.Upgrade.VerificationCommands, []string{"optimusctx version", "optimusctx doctor", "optimusctx snippet"}; !reflect.DeepEqual(got, want) {
+	if got, want := policy.Upgrade.VerificationCommands, []string{"optimusctx version", "optimusctx status", "optimusctx doctor"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("verification commands = %v, want %v", got, want)
 	}
 
 	if got, want := policy.Support.SupportedCommands, []string{
 		"optimusctx version",
+		"optimusctx status",
 		"optimusctx doctor",
-		"optimusctx snippet",
-		"optimusctx install --client claude-desktop --write",
+		"optimusctx status --client claude-desktop --write",
 	}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("supported commands = %v, want %v", got, want)
 	}
@@ -121,8 +121,8 @@ func TestRolloutPlanExamples(t *testing.T) {
 		"npm install -g @niccrow/optimusctx",
 		"npx @niccrow/optimusctx version",
 		"optimusctx version",
+		"optimusctx status",
 		"optimusctx doctor",
-		"optimusctx snippet",
 	} {
 		if !strings.Contains(strategy, want) {
 			t.Fatalf("distribution strategy missing %q", want)
@@ -157,7 +157,7 @@ func TestUpgradePolicy(t *testing.T) {
 		"brew upgrade niccrow/tap/optimusctx",
 		"scoop update optimusctx",
 		"npm install -g @niccrow/optimusctx@latest",
-		"`optimusctx install` is preview-first",
+		"`optimusctx status --client ...` is preview-first",
 		"operator opts into `--write`",
 		"native Linux packages such as `.deb` and `.rpm`",
 		"WinGet",
@@ -273,3 +273,4 @@ func TestDistributionDocsStayWithinSupportedScope(t *testing.T) {
 		}
 	}
 }
+

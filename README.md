@@ -4,19 +4,14 @@ OptimusCtx is a local-first runtime that builds and maintains persistent reposit
 
 ## Current status
 
-The current command surface covers repository bootstrap, refresh, diagnostics, export, MCP serving, eval harness runs, and watch-mode support:
+The main command surface is now centered on repository bootstrap, agent-facing runtime use, short status, diagnostics, and versioning:
 
 - `optimusctx --help`
 - `optimusctx version`
 - `optimusctx doctor`
-- `optimusctx eval --scenario <id>`
 - `optimusctx init`
-- `optimusctx install`
-- `optimusctx mcp serve`
-- `optimusctx pack export`
-- `optimusctx refresh`
-- `optimusctx snippet`
-- `optimusctx watch`
+- `optimusctx run`
+- `optimusctx status`
 
 ## Install and verify
 
@@ -37,9 +32,9 @@ That guide covers:
 - Homebrew on macOS and Linux
 - Scoop on Windows
 - GitHub release archives
-- local verification with `optimusctx version`, `optimusctx doctor`, and `optimusctx snippet`
-- choosing between manual refresh and `watch run`
-- optional MCP client registration through explicit `optimusctx install --client ...`
+- local verification with `optimusctx version`, `optimusctx status`, and `optimusctx doctor`
+- the agent-facing runtime entrypoint `optimusctx run`
+- optional MCP client registration through `optimusctx status --client ... [--write]`
 
 The top-level release boundary stays narrow:
 
@@ -303,4 +298,6 @@ OptimusCtx is being built with an explicit local-first, non-invasive contract:
 
 - project state lives under `.optimusctx/` inside the target repository
 - Phase 1 commands do not rewrite instruction files such as `AGENTS.md`, `CLAUDE.md`, or editor settings
+- integration guidance is emitted as manual-copy output instead of automatic repository edits
+ settings
 - integration guidance is emitted as manual-copy output instead of automatic repository edits

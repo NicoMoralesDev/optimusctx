@@ -170,7 +170,7 @@ func formatDoctorInt64(value int64) string {
 
 func doctorWatchReason(report repository.DoctorReport) string {
 	if report.Watch.Optional && report.Watch.Health.Status == repository.WatchStatusKindAbsent {
-		return "watch status file not found because watch mode is not running"
+		return "watch status file not found because `optimusctx run` is not active"
 	}
 	return report.Watch.Health.Reason
 }

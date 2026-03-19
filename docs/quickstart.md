@@ -43,8 +43,8 @@ If you installed it globally, run:
 
 ```bash
 optimusctx version
+optimusctx status
 optimusctx doctor
-optimusctx snippet
 ```
 
 If you are only trying it with `npx`, run:
@@ -57,8 +57,8 @@ npx @niccrow/optimusctx doctor
 What these commands do:
 
 - `version` shows the installed release version
-- `doctor` shows whether the runtime looks healthy
-- `snippet` prints the MCP config snippet without writing anything
+- `status` shows whether the runtime and repository state are ready, and can preview MCP registration
+- `doctor` shows deeper diagnostics when something looks wrong
 
 ## 3. Start using it in one repository
 
@@ -67,87 +67,44 @@ Move into the repository you want to use:
 ```bash
 cd /path/to/your-repo
 optimusctx init
-optimusctx doctor
+optimusctx status
 ```
 
 `init` creates the local `.optimusctx/` state for that repo and builds the first snapshot.
 
-## 4. Choose how you want updates to work
+## 4. Start the agent-facing runtime
 
-After `init`, you have two normal ways to keep the repo state fresh.
-
-### Option A: Manual mode
-
-Use this if you only want to refresh when you decide to:
+For normal MCP client use, run:
 
 ```bash
-optimusctx refresh
+optimusctx run
 ```
 
-Good for:
-
-- occasional use
-- small repos
-- simple workflows
-
-### Option B: Watch mode
-
-Use this if you want OptimusCtx to refresh automatically while you work:
-
-```bash
-cd /path/to/your-repo
-optimusctx watch run
-```
-
-Important:
-
-- this runs in the foreground
-- leave it open in its own terminal
-- stop it with `Ctrl+C`
-
-From another terminal, check its state with:
-
-```bash
-cd /path/to/your-repo
-optimusctx watch status
-optimusctx doctor
-```
-
-Good for:
-
-- active work in one repo for a while
-- frequent file changes
-- not wanting to run `refresh` manually
-
-Simple rule:
-
-- if you use `watch run`, you usually do not need `refresh`
-- if you do not use `watch run`, use `refresh` when the repo changed
+`run` is the canonical entrypoint now. It bootstraps missing repository state, refreshes stale state before serving MCP, and then serves the runtime over STDIO.
 
 ## 5. Daily use
 
 Most people only need a small set of commands:
 
 ```bash
+optimusctx status
 optimusctx doctor
-optimusctx snippet
-optimusctx refresh
-optimusctx watch status
+optimusctx run
 ```
 
 Use them like this:
 
-- `doctor` to check health
-- `snippet` to reprint the MCP config snippet
-- `refresh` if you are in manual mode
-- `watch status` if you are in watch mode
+- `status` to check readiness and preview MCP registration
+- `doctor` to inspect deeper issues
+- `run` as the actual MCP runtime entrypoint for agents
+- `refresh` only when you intentionally want a manual advanced refresh path
 
 ## 6. Connect it to your MCP client
 
 Preview the Claude Desktop config first:
 
 ```bash
-optimusctx install --client claude-desktop
+optimusctx status --client claude-desktop
 ```
 
 That shows the config and target path, but does not write anything yet.
@@ -155,14 +112,10 @@ That shows the config and target path, but does not write anything yet.
 Only write it when you want to opt in:
 
 ```bash
-optimusctx install --client claude-desktop --write
+optimusctx status --client claude-desktop --write
 ```
 
-If you prefer to copy it manually, use:
-
-```bash
-optimusctx snippet
-```
+If you still want the legacy manual snippet output, `optimusctx snippet` remains available as a deprecated compatibility path.
 
 ## 7. Common flows
 
@@ -171,30 +124,20 @@ optimusctx snippet
 ```bash
 cd /path/to/repo
 optimusctx init
-optimusctx doctor
+optimusctx status
 ```
 
-### Manual mode
+### Agent runtime
+
+```bash
+cd /path/to/repo
+optimusctx run
+```
+
+### Manual repair path
 
 ```bash
 optimusctx refresh
-optimusctx doctor
-```
-
-### Watch mode
-
-In one terminal:
-
-```bash
-cd /path/to/repo
-optimusctx watch run
-```
-
-In another terminal:
-
-```bash
-cd /path/to/repo
-optimusctx watch status
 optimusctx doctor
 ```
 
@@ -203,16 +146,16 @@ optimusctx doctor
 Start here:
 
 ```bash
+optimusctx status
 optimusctx doctor
 ```
 
 Then:
 
 - if the repo was never initialized, run `optimusctx init`
-- if you are in manual mode, run `optimusctx refresh`
-- if you are in watch mode, run `optimusctx watch status`
-- if the watch heartbeat is stale, restart `optimusctx watch run`
-- if the MCP integration looks wrong, run `optimusctx snippet`
+- if the repo state is stale, run `optimusctx refresh`
+- if the MCP integration needs preview or registration help, run `optimusctx status --client claude-desktop`
+- if the deeper health report is degraded, use `optimusctx doctor`
 
 ## 9. More docs
 

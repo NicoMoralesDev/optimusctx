@@ -201,7 +201,7 @@ func TestDoctorHealthyWithoutWatch(t *testing.T) {
 	if !report.Watch.Optional {
 		t.Fatal("Watch.Optional = false, want true")
 	}
-	if got, want := report.Watch.Summary, "watch mode is not running; background watch is optional"; got != want {
+	if got, want := report.Watch.Summary, "runtime watch loop is not running"; got != want {
 		t.Fatalf("Watch.Summary = %q, want %q", got, want)
 	}
 	if len(report.Summary.Issues) != 0 {

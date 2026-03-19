@@ -56,7 +56,8 @@ func runMCPServeCommand(stdout io.Writer, args []string) error {
 		}
 	}
 
-	return mcpServeServer(context.Background(), mcpServeInput, stdout, mcpServeStderr)
+	_, _ = io.WriteString(mcpServeStderr, "warning: `optimusctx mcp serve` is deprecated; use `optimusctx run` instead\n")
+	return runCommandServer(context.Background(), mcpServeInput, stdout, mcpServeStderr)
 }
 
 func writeMCPHelp(stdout io.Writer) {

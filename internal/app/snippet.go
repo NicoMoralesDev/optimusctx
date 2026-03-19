@@ -24,14 +24,15 @@ func (SnippetGenerator) Render() string {
 
 	lines := []string{
 		"# OptimusCtx manual integration snippet",
-		"# OptimusCtx now serves MCP over `optimusctx mcp serve`.",
+		"# `optimusctx snippet` is deprecated; use `optimusctx status --client claude-desktop` for the current preview path.",
+		"# OptimusCtx now serves MCP over `optimusctx run`.",
 		"# You can paste this into a supported client config or preview the same contract with:",
-		"#   optimusctx install --client claude-desktop --config /path/to/claude_desktop_config.json",
+		"#   optimusctx status --client claude-desktop --config /path/to/claude_desktop_config.json",
 		"",
 		strings.TrimSuffix(rendered, "\n"),
 		"",
 		"# Write the same registration explicitly with:",
-		"#   optimusctx install --client claude-desktop --config /path/to/claude_desktop_config.json --write",
+		"#   optimusctx status --client claude-desktop --config /path/to/claude_desktop_config.json --write",
 	}
 
 	return strings.Join(lines, "\n") + "\n"

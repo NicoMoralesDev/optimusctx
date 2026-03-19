@@ -341,9 +341,9 @@ func doctorWatchStatus(result repository.WatchStatusResult) repository.DoctorSta
 func doctorWatchSummary(result repository.WatchStatusResult) string {
 	switch result.Status {
 	case repository.WatchStatusKindAbsent:
-		return "watch mode is not running; background watch is optional"
+		return "runtime watch loop is not running"
 	case repository.WatchStatusKindRunning:
-		return "watch mode is running"
+		return "runtime watch loop is running"
 	default:
 		return result.Reason
 	}
@@ -385,8 +385,8 @@ func doctorSummary(report repository.DoctorReport) repository.DoctorSummary {
 	addIssue("refresh", report.Refresh.Status, doctorRefreshIssue(report), doctorRefreshAction(report))
 	addIssue("watch", report.Watch.Status, doctorWatchIssue(report), doctorWatchAction(report))
 	addIssue("structural", report.Structural.Status, doctorStructuralIssue(report), doctorStructuralAction(report))
-	addIssue("budget", report.Budget.Status, "no persisted token-cost hotspots available", "run `optimusctx refresh` so budget analysis can rank persisted files")
-	addIssue("mcp", report.MCPReadiness.Status, doctorMCPIssue(report), "use `optimusctx snippet` or `optimusctx install --client claude-desktop` to validate the MCP contract")
+	addIssue("budget", report.Budget.Status, "no persisted token-cost hotspots available", "run `optimusctx run` so runtime refresh can persist budget analysis inputs")
+	addIssue("mcp", report.MCPReadiness.Status, doctorMCPIssue(report), "use `optimusctx status --client claude-desktop` to validate the MCP contract")
 
 	status := repository.DoctorStatusHealthy
 	for _, issue := range issues {
@@ -485,9 +485,9 @@ func doctorStructuralIssue(report repository.DoctorReport) string {
 
 func doctorStructuralAction(report repository.DoctorReport) string {
 	if report.Structural.Status == repository.DoctorStatusMissing {
-		return "run `optimusctx refresh` so structural extraction artifacts are persisted"
+		return "run `optimusctx run` so structural extraction artifacts are persisted"
 	}
-	return "inspect the flagged files and re-run `optimusctx refresh` after fixing parser or extraction issues"
+	return "inspect the flagged files and re-run `optimusctx run` after fixing parser or extraction issues"
 }
 
 func doctorMCPIssue(report repository.DoctorReport) string {

@@ -63,7 +63,7 @@ func NewServeCommand(binaryPath string) ServeCommand {
 	binaryPath = CanonicalServeCommandPath(binaryPath)
 	return ServeCommand{
 		Command: binaryPath,
-		Args:    []string{"mcp", "serve"},
+		Args:    []string{"run"},
 	}
 }
 

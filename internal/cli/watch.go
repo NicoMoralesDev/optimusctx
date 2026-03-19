@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/niccrow/optimusctx/internal/app"
 	"github.com/niccrow/optimusctx/internal/repository"
@@ -56,7 +54,7 @@ func runWatchRunCommand(stdout io.Writer, args []string) error {
 	for _, arg := range args {
 		switch arg {
 		case "-h", "--help":
-			_, err := io.WriteString(stdout, "Usage:\n  optimusctx watch run\n\nRun the optional repository watch process in the foreground.\n")
+			_, err := io.WriteString(stdout, "Usage:\n  optimusctx watch run\n\nDeprecated alias for `optimusctx run`.\n")
 			return err
 		default:
 			if len(arg) > 0 && arg[0] == '-' {
@@ -66,15 +64,8 @@ func runWatchRunCommand(stdout io.Writer, args []string) error {
 		}
 	}
 
-	workingDir, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("resolve working directory: %w", err)
-	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	_, err = watchRunCommandService(ctx, workingDir, stdout)
-	return err
+	_, _ = io.WriteString(stdout, "warning: `optimusctx watch run` is deprecated; use `optimusctx run` instead\n")
+	return runCommandServer(context.Background(), runCommandInput, stdout, runCommandStderr)
 }
 
 func runWatchStatusCommand(stdout io.Writer, args []string) error {
