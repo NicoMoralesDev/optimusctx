@@ -95,6 +95,38 @@ Write MCP client registration only when you want to opt in:
 optimusctx status --client claude-desktop --write
 ```
 
+## Update
+
+### npm
+
+```bash
+npm install -g @niccrow/optimusctx@latest
+```
+
+### Homebrew
+
+```bash
+brew upgrade niccrow/tap/optimusctx
+```
+
+### Scoop
+
+```powershell
+scoop update optimusctx
+```
+
+### GitHub Release archives
+
+Download the newer tagged archive, replace the existing `optimusctx` binary on your PATH, and rerun verification.
+
+After any upgrade, verify the installed binary again:
+
+```bash
+optimusctx version
+optimusctx status
+optimusctx doctor
+```
+
 ## Command reference
 
 ### `optimusctx init`
