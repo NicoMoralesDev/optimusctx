@@ -16,6 +16,8 @@ OptimusCtx supports these public install paths:
 - GitHub Release archives
 
 GitHub Release is the canonical root for release archives, checksum manifests, and downstream channel facts.
+After GitHub Release assets are available, npm, Homebrew, and Scoop are published from the same canonical tagged release contract.
+GitHub Release is the canonical root and rollback source even when downstream automation republishes one package-manager channel.
 
 ## 1. Install
 
@@ -42,6 +44,8 @@ Use this if you want to try the tool before installing globally.
 brew install niccrow/tap/optimusctx
 ```
 
+Homebrew installs the formula rendered from the same canonical tagged GitHub Release checksum and archive contract.
+
 ### Scoop
 
 ```powershell
@@ -49,9 +53,11 @@ scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git
 scoop install niccrow/optimusctx
 ```
 
+Scoop installs the manifest rendered from the same canonical tagged GitHub Release checksum and archive contract.
+
 ### GitHub Release archives
 
-Download the tagged archive for your OS and CPU from GitHub Releases, unpack it, and place `optimusctx` on your PATH.
+Download the archive that matches your OS and CPU from the canonical tagged GitHub Release.
 
 ## 2. Verify the installed binary
 
@@ -160,6 +166,9 @@ Supported package-manager channels:
 Fallback install path:
 
 - GitHub Release archives
+
+If one downstream package-manager publication needs recovery, rerun the release workflow with `workflow_dispatch`, `release_tag=<tag>`, and `publication_channel=npm`, `publication_channel=homebrew`, or `publication_channel=scoop` for the existing tagged release without rebuilding unrelated channels.
+GitHub Release remains the canonical root and rollback source for those reruns.
 
 Not claimed in the current product boundary:
 
