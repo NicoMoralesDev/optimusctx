@@ -28,6 +28,10 @@ go.work.sum
 .env
 .optimusctx/
 
+# Local agent/runtime artifacts
+.bg-shell/
+.gsd/
+
 # Editor/IDE
 # .idea/
 # .vscode/
