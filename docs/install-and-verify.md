@@ -1,102 +1,75 @@
 # Install and Verify OptimusCtx
 
-This guide explains how to install OptimusCtx, check that it works, and start using it clearly.
+This guide explains how to install OptimusCtx, verify the installed binary, start using it in one repository, and update it later.
 
-If you want the shorter user path from install to daily use, see [`quickstart.md`](./quickstart.md).
-If you are operating a release, use [`operator-release-guide.md`](./operator-release-guide.md) for the end-to-end flow from `optimusctx release prepare` through GitHub Release verification, `workflow_dispatch` reruns with `release_tag` and `publication_channel`, and rollback.
+If you want the shortest user path, see [`quickstart.md`](./quickstart.md).
+If you are operating releases, use [`operator-release-guide.md`](./operator-release-guide.md).
 
-Supported install channels for v1.2:
+## Supported install channels
 
-- npm global install for the JavaScript ecosystem wrapper path
-- `npx` for ephemeral execution of the same wrapper package
-- Homebrew for macOS and Linux
-- Scoop for Windows
-- GitHub release archives for macOS, Linux, and Windows
+OptimusCtx supports these public install paths:
+
+- npm global install
+- `npx` for ephemeral execution
+- Homebrew on macOS and Linux
+- Scoop on Windows
+- GitHub Release archives
 
 GitHub Release is the canonical root for release archives, checksum manifests, and downstream channel facts.
-After GitHub Release assets are available, npm, Homebrew, and Scoop are published from the same canonical tagged release contract.
-GitHub Release is the canonical root and rollback source even when downstream automation republishes one package-manager channel.
 
-The verification path below uses the shipped commands that matter for first-run confidence:
+## 1. Install
 
-- `optimusctx version`
-- `optimusctx status`
-- `optimusctx doctor`
-- `optimusctx run`
-- optional `optimusctx status --client ...`
-
-Deprecated compatibility paths still exist for transition:
-
-- `optimusctx snippet`
-- `optimusctx install --client ...`
-
-`go run` is useful for development, but it is not the supported end-user install flow in this guide.
-
-## 1. Choose one install path
-
-### Recommended for most users: npm
+### npm
 
 ```bash
 npm install -g @niccrow/optimusctx
 ```
 
-Why this is recommended:
+The npm package is a wrapper over the canonical tagged GitHub Release binary.
 
-- it is the simplest install for most users
-- it still runs the real tagged OptimusCtx binary
-- it does not silently write MCP client config
-
-The npm package is a wrapper over the canonical tagged GitHub Release binary. During installation it downloads the exact release archive for your host platform, verifies the SHA-256 from `optimusctx_<version>_checksums.txt`, and unpacks the binary under the package-local `runtime/` directory.
-
-### Try it first with `npx`
+### npx
 
 ```bash
 npx @niccrow/optimusctx version
 npx @niccrow/optimusctx doctor
 ```
 
-Use `npx` if you want to try the tool without keeping a global install on your PATH. If you decide to keep using OptimusCtx, switch to `npm install -g @niccrow/optimusctx`.
+Use this if you want to try the tool before installing globally.
 
-### Alternative: Homebrew
+### Homebrew
 
 ```bash
 brew install niccrow/tap/optimusctx
 ```
 
-Homebrew installs the formula rendered from the same canonical tagged GitHub Release checksum and archive contract.
-
-### Alternative: Scoop
+### Scoop
 
 ```powershell
 scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git
 scoop install niccrow/optimusctx
 ```
 
-Scoop installs the manifest rendered from the same canonical tagged GitHub Release checksum and archive contract.
+### GitHub Release archives
 
-### Fallback: install from a release archive
+Download the tagged archive for your OS and CPU from GitHub Releases, unpack it, and place `optimusctx` on your PATH.
 
-Download the archive that matches your OS and CPU from the canonical tagged GitHub Release.
-
-## 2. Verify the installed binary reports release metadata
+## 2. Verify the installed binary
 
 Run:
 
 ```bash
 optimusctx version
+optimusctx status
+optimusctx doctor
 ```
 
-Expected shape:
+Expected intent:
 
-```text
-optimusctx version=<tag> commit=<git-sha> build_date=<timestamp>
-```
-
-If `version=dev`, you are not verifying a release build. Re-check the archive or package-manager source you installed.
+- `version` confirms release metadata
+- `status` confirms runtime and repository readiness
+- `doctor` confirms deeper diagnostics when needed
 
 ## 3. Start in one repository
-
-Move into the repository you want to use and initialize it:
 
 ```bash
 cd /path/to/your-repo
@@ -104,85 +77,94 @@ optimusctx init
 optimusctx status
 ```
 
-`optimusctx init` creates `.optimusctx/` for that repo and builds the first snapshot.
+`init` creates `.optimusctx/` and persists the first repository snapshot.
 
-After that, `optimusctx status` should show the repo as initialized and ready. Use `optimusctx doctor` when you need deeper diagnostics.
+## 4. Start the runtime
 
-## 4. Start the agent-facing runtime
-
-For normal MCP client use, point the client at:
+For normal MCP client use:
 
 ```bash
 optimusctx run
 ```
 
-`run` is now the canonical entrypoint. It bootstraps missing state, refreshes stale state before serving MCP, and then serves the runtime over STDIO.
+`run` is the canonical runtime entrypoint.
 
-## 5. Optional manual refresh behavior
+## 5. Preview or write MCP client registration
 
-If you still want an explicit manual refresh path, run:
-
-```bash
-optimusctx refresh
-```
-
-This remains available as an advanced or secondary command, but it is no longer the main runtime entrypoint.
-
-## 6. Preview or write MCP client registration
-
-Preview the default Claude Desktop config path:
+Preview Claude Desktop registration:
 
 ```bash
 optimusctx status --client claude-desktop
 ```
 
-Preview a specific config file path:
+Preview a specific config path:
 
 ```bash
 optimusctx status --client claude-desktop --config /path/to/claude_desktop_config.json
 ```
 
-The default mode is preview-only. The command prints the rendered JSON and the target config path, then ends with:
-
-```text
-status: preview only
-```
-
-Only write the config when you are ready:
+Write the config only when you want to opt in:
 
 ```bash
 optimusctx status --client claude-desktop --write
 ```
 
-Or, with an explicit config override:
+## 6. Update
+
+### npm
 
 ```bash
-optimusctx status --client claude-desktop --config /path/to/claude_desktop_config.json --write
+npm install -g @niccrow/optimusctx@latest
 ```
 
-Legacy compatibility paths still exist:
+### Homebrew
 
-- `optimusctx snippet` prints the same registration contract in deprecated manual-snippet form
-- `optimusctx install --client claude-desktop` remains available as a deprecated compatibility wrapper
+```bash
+brew upgrade niccrow/tap/optimusctx
+```
 
-## 7. Scope and support boundaries
+### Scoop
 
-v1.2 intentionally keeps distribution narrow:
+```powershell
+scoop update optimusctx
+```
 
-- supported release retrieval: GitHub release archives
-- supported package managers: Homebrew, Scoop, and the npm wrapper package
-- supported local verification: `version`, `init`, `status`, `doctor`, `run`
-- deprecated compatibility commands remain available during migration: `snippet`, `install --client ...`
-- GitHub Release stays the canonical root even when a package-manager install path is used
-- npm, Homebrew, and Scoop now publish from the same canonical tagged release contract after GitHub Release assets are available
+### GitHub Release archives
 
-If one downstream package-manager publication needs recovery, rerun the release workflow with `workflow_dispatch`, `release_tag=<tag>`, and `publication_channel=npm`, `publication_channel=homebrew`, or `publication_channel=scoop` for the existing tagged release without rebuilding unrelated channels.
-GitHub Release remains the canonical root and rollback source for those reruns.
+Download the newer tagged archive and replace the existing `optimusctx` binary on your PATH.
 
-Not claimed in this milestone:
+After any update, verify again:
+
+```bash
+optimusctx version
+optimusctx status
+optimusctx doctor
+```
+
+## 7. Scope and support boundary
+
+OptimusCtx keeps a narrow public contract:
+
+- local-first single binary
+- repository state under `.optimusctx/`
+- explicit MCP registration preview/write flow
+- no hosted service
+- no silent mutation of client configuration during install
+
+Supported package-manager channels:
+
+- Homebrew
+- Scoop
+- npm wrapper package
+
+Fallback install path:
+
+- GitHub Release archives
+
+Not claimed in the current product boundary:
 
 - `.deb` or `.rpm`
 - WinGet or Chocolatey
 - signed artifacts
 - SBOM generation
-- automatic edits to agent instruction files or repository config
+- automatic edits to repository instruction files
