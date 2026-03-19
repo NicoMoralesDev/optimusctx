@@ -1,115 +1,173 @@
-# v1.1 Architecture Research
+# Architecture Research
 
-## Direction
+**Domain:** MCP client compatibility for local coding-agent hosts
+**Researched:** 2026-03-19
+**Confidence:** HIGH
 
-v1.1 should extend the shipped runtime, not introduce a second evaluation-only stack. The current seams are already correct:
+## Standard Architecture
 
-- `internal/cli` owns command surfaces
-- `internal/app` owns orchestration (`RefreshService`, `WatchService`, `PackService`, `PackExportService`, `HealthService`)
-- `internal/mcp` owns the agent-facing protocol boundary
-- `internal/repository` owns transport-neutral contracts
-- `internal/store/sqlite` plus migrations own persisted state under `.optimusctx`
-- `internal/state/layout.go` already gives durable locations for DB, logs, and temp outputs
+### System Overview
 
-The architecture implication is to add an evaluation layer beside existing runtime services, then reuse the same CLI, MCP, pack/export, and build-info paths for capture and distribution.
+```text
++--------------------------------------------------------------------------+
+|                               CLI Surface                               |
+|  init --client / status --client / onboarding / doctor next-step hints  |
++----------------------------------+---------------------------------------+
+                                   |
++----------------------------------v---------------------------------------+
+|                        Install / Registration Service                    |
+|  request validation • supported-client lookup • preview/write boundary   |
++----------------------+------------------------------+--------------------+
+                       |                              |
++----------------------v------------+ +---------------v--------------------+
+| Host-specific preview models      | | Host-specific persistence backends |
+| Claude Desktop JSON               | | JSON file merge/write              |
+| Claude CLI registration           | | TOML file merge/write              |
+| Codex App TOML                    | | Optional host CLI command execute  |
+| Codex CLI TOML                    | | Path and scope resolvers           |
++----------------------+------------+ +---------------+--------------------+
+                       |                              |
++----------------------v------------------------------v--------------------+
+|                       Regression and operator docs                       |
++--------------------------------------------------------------------------+
+```
 
-## Integration Points
+### Component Responsibilities
 
-### Functional test harnesses
+| Component | Responsibility | Typical Implementation |
+|-----------|----------------|------------------------|
+| CLI command layer | Parse flags and display host-specific preview/write results | `internal/cli/init.go`, `internal/cli/status.go`, doctor/onboarding strings |
+| Install service | Preserve explicit write consent and delegate by client ID | `internal/app/install.go` |
+| Host adapter | Render preview content, resolve host defaults, perform write | Per-host-family adapter with shared helpers where appropriate |
+| Config backend | Safely merge or register native host config | JSON for Claude Desktop, TOML for Codex, Claude CLI command wrapper if needed |
+| Test/docs layer | Lock support claims and operator flows | Go tests plus README, quickstart, and install docs |
 
-- Drive the real product surfaces: CLI commands and MCP tools, not private helpers.
-- Reuse temp-repo fixture patterns already used by integration tests.
-- Treat `optimusctx refresh`, `optimusctx pack export`, `optimusctx mcp serve`, and watch-driven refresh as primary workflow steps to validate.
-- Keep harness logic outside core query/refresh code so runtime behavior stays deterministic and production code stays small.
+## Recommended Project Structure
 
-### Benchmark fixtures
+```text
+internal/
+├── app/
+│   └── install.go              # registration service and host adapters
+├── repository/
+│   └── client_config.go        # supported client catalog and shared render types
+├── cli/
+│   ├── init.go                 # onboarding integration
+│   ├── status.go               # preview/write surface
+│   └── doctor.go               # next-step guidance
+docs/
+├── install-and-verify.md
+├── quickstart.md
+└── distribution-strategy.md
+```
 
-- Add fixture repositories and scenario specs as versioned testdata inputs.
-- Baseline and OptimusCtx runs should both execute against the same fixture snapshot and scenario definition.
-- Reuse existing repository identity and freshness metadata so each benchmark run records exactly which repo state and generation was measured.
+### Structure Rationale
 
-### Token and workflow measurement
+- **`internal/app/`:** the preview/write boundary already lives here, so new host integration should extend this layer instead of bypassing it.
+- **`internal/repository/`:** supported-client and rendered-output types are shared domain concerns.
+- **`internal/cli/`:** user-facing guidance must stop assuming Claude Desktop is the only real host.
+- **`docs/`:** supported-client claims are part of the executable contract and must evolve with code.
 
-- Reuse current token-related services instead of inventing a second estimator:
-  - `BudgetAnalysisService` for per-file and hotspot estimates
-  - `TokenTreeService` for hierarchical token totals
-  - `PackExportService` manifest summaries for export-sized estimates
-- Add a shared measurement component that records:
-  - wall-clock timings
-  - command/tool step counts
-  - estimated token totals before and after OptimusCtx usage
-  - refresh generation, freshness, and fixture identity
-- Keep measurement explicit at orchestration boundaries in `internal/app`, not hidden in low-level store code.
+## Architectural Patterns
 
-### Result capture
+### Pattern 1: Host-Specific Adapters Behind One Service
 
-- Do not overload `refresh_runs` or `refresh_file_events`; they describe repository maintenance, not evaluation evidence.
-- Add dedicated evaluation persistence, preferably new SQLite tables in the same `.optimusctx/db.sqlite`, for:
-  - benchmark runs
-  - workflow steps
-  - measured metrics
-  - produced artifacts
-- Store larger rendered outputs under `.optimusctx/logs/` or a dedicated eval artifact subdirectory, with DB rows pointing at paths plus hashes.
+**What:** Keep one install service and one CLI surface, but delegate preview and write behavior to per-host adapters.
+**When to use:** When the command surface is common but the host contracts differ.
+**Trade-offs:** More adapter code, but much lower risk of lying about support.
 
-### Distribution artifacts
+### Pattern 2: Shared Backend Only When the Host Shares Storage
 
-- Keep product distribution and result distribution separate.
-- Product distribution should continue to target a single binary plus `install`/MCP registration flows.
-- Result distribution should reuse pack/export ideas: versioned manifest, generator/build info, schema version, fixture identity, and optional compression.
-- Release automation should sit downstream of the runtime. It consumes versioned artifacts; it should not change how evaluation data is produced.
+**What:** Reuse the same persistence backend for multiple explicit clients only if vendor docs say they share one config store.
+**When to use:** `codex-app` and `codex-cli`, because both use `config.toml`.
+**Trade-offs:** Reduces duplication, but notes and labels still need to remain explicit per client.
 
-## New Vs Modified Components
+### Pattern 3: Command-First Write for Underdocumented Host Storage
 
-### New components
-
-- `internal/repository/eval.go` or similar for benchmark, workflow, and artifact contracts
-- `internal/app/eval` services for harness execution, measurement, and result writing
-- new SQLite migration(s) and store package methods for evaluation entities
-- fixture/scenario definitions under `testdata/` or a dedicated benchmarks directory
-- artifact encoder for benchmark/result bundles
-
-### Modified components
-
-- `internal/cli`: add explicit evaluation and benchmark commands or subcommands
-- `internal/mcp`: optionally expose read-only result/report tools after CLI flow is stable
-- `internal/app/pack_export.go`: reuse manifest/build-info patterns for benchmark/result exports
-- `internal/state/layout.go`: add a stable location for eval artifacts if logs become too mixed
-- release/build pipeline: produce binary archives and checksums from the existing single-binary runtime
+**What:** Use the host's official CLI registration command for writes when raw file structure is not well documented.
+**When to use:** `claude-cli` if implementation confirms the official `claude mcp add-json` path is the safest authority.
+**Trade-offs:** Adds dependency on the external host CLI for writes, but avoids brittle mutation of host-owned state.
 
 ## Data Flow
 
+### Request Flow
+
 ```text
-fixture repo + scenario spec
-  -> harness runner (CLI or MCP driven)
-  -> existing runtime services (refresh/query/pack/watch)
-  -> measurement collector
-  -> eval store rows + artifact files
-  -> summary/report/export bundle
-  -> release/distribution outputs
+[operator selects client]
+    -> [init/status parser]
+    -> [InstallRequest]
+    -> [InstallService.Register]
+    -> [host adapter]
+    -> [preview renderer or write executor]
+    -> [rendered host-native output + notes]
 ```
 
-More concretely:
+### State Management
 
-1. Load a fixture repo and scenario definition.
-2. Run baseline workflow and OptimusCtx workflow against the same repo state.
-3. Collect timings, token estimates, step counts, freshness/generation, and any emitted packs.
-4. Persist structured results in SQLite and write report artifacts to disk.
-5. Export concise result bundles for milestone evidence and later distribution collateral.
+```text
+[supported client catalog]
+    -> [adapter registry]
+    -> [host path/scope resolution]
+    -> [config merge or command execution]
+    -> [rendered content + operator notes]
+```
 
-## Build Order
+### Key Data Flows
 
-1. Define evaluation domain types and scenario/result schemas in `internal/repository`.
-2. Add SQLite migrations and store APIs for eval runs, steps, metrics, and artifact references.
-3. Build shared measurement/orchestration services in `internal/app`, reusing refresh, token-tree, budget, pack, and health services.
-4. Add fixture repositories and repeatable scenario specs.
-5. Add CLI entrypoints for running functional workflows and benchmarks.
-6. Add artifact/report export using the existing manifest/build-info patterns.
-7. Add optional MCP read/report surfaces only after CLI-driven evaluation is stable.
-8. Wire release packaging around the existing binary and exported evidence artifacts.
+1. **Preview:** resolve host defaults, emit native host content, and show notes that still point to `optimusctx run`.
+2. **Write:** execute only on explicit `--write`, then return the resulting host-native registration output.
+3. **Shared Codex backend:** persist both Codex clients through one `config.toml` path while preserving separate explicit client choices in the CLI.
 
-## Key Constraints
+## Scaling Considerations
 
-- Keep evaluation local-first and deterministic; no hosted metrics dependency.
-- Keep baseline vs OptimusCtx comparisons reproducible from fixture inputs.
-- Keep evaluation data separate from core refresh history.
-- Keep distribution simple: one runtime binary, plus versioned result/export artifacts.
+| Scale | Architecture Adjustments |
+|-------|--------------------------|
+| One host family | Per-host adapters are enough |
+| Multiple host families | Share only low-level helpers, not preview/write policy |
+| More first-class hosts later | Add adapters behind the same boundary; do not bloat the generic fallback |
+
+### Scaling Priorities
+
+1. **First bottleneck:** adapter sprawl if preview and write behavior are coupled too tightly. Prevent with shared helpers under distinct host policies.
+2. **Second bottleneck:** docs drift. Prevent by treating docs and tests as required integration outputs, not cleanup work.
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Generic Adapter for Supported Named Clients
+
+**What people do:** Reuse one manual JSON adapter for every client and vary only the note text.
+**Why it's wrong:** The product appears to support named hosts without matching their real contract.
+**Do this instead:** Give each supported host family a truthful preview/write path.
+
+### Anti-Pattern 2: File Mutation Logic in the CLI Layer
+
+**What people do:** Put path resolution and writes directly in `status` or `init`.
+**Why it's wrong:** Behavior gets duplicated, harder to test, and inconsistent across commands.
+**Do this instead:** Keep mutation inside the install service.
+
+## Integration Points
+
+### External Services
+
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| Claude Desktop | JSON config file merge | Existing shipped path already proves the pattern |
+| Claude CLI | Scope-aware MCP registration command and config semantics | Prefer the official command path unless raw user-config mutation is later validated |
+| Codex App / Codex CLI | Shared TOML config merge | Both official surfaces point at the same `config.toml` model |
+
+### Internal Boundaries
+
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| `cli` ↔ `app install` | Request/response structs | Keep all host mutations behind the service |
+| `app install` ↔ `repository client config` | Shared supported-client and render types | Shared metadata should remain transport-neutral and testable |
+
+## Sources
+
+- https://code.claude.com/docs/en/mcp
+- https://developers.openai.com/codex/mcp
+- https://developers.openai.com/codex/app/settings
+- Local code: `internal/app/install.go`, `internal/cli/status.go`, `internal/cli/init.go`, `internal/repository/client_config.go`
+
+---
+*Architecture research for: MCP client compatibility for local coding-agent hosts*
+*Researched: 2026-03-19*

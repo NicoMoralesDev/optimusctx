@@ -1,99 +1,187 @@
-# v1.1 Pitfalls Research
+# Pitfalls Research
 
-## Main Risks
+**Domain:** MCP client compatibility for local coding-agent hosts
+**Researched:** 2026-03-19
+**Confidence:** HIGH
 
-### 1. Benchmarks that prove the script, not the product
+## Critical Pitfalls
 
-Risk:
+### Pitfall 1: Claiming support while still routing named clients through generic preview/manual paths
 
-- Control and treatment paths diverge in prompts, stop conditions, or repo state, making the reported savings meaningless.
+**What goes wrong:**
+The product lists explicit clients but still leaves the operator to translate config by hand.
 
-Prevention:
+**Why it happens:**
+Client enumeration grows faster than host-specific adapter support.
 
-- Fix scenario definitions, repo snapshots, stopping rules, and metric collection before running comparisons.
-- Keep baseline and OptimusCtx paths comparable enough that the only intended difference is use of the runtime.
+**How to avoid:**
+Treat a named client as supported only when preview output, write behavior, and docs match that host's real contract.
 
-### 2. Measuring only command latency instead of workflow value
+**Warning signs:**
+- A named client still shows `config path: manual`
+- Notes still tell the user to translate JSON manually
+- Docs only explain Claude Desktop
 
-Risk:
+**Phase to address:**
+Phase 20
 
-- A benchmark shows one command is fast, but ignores the real user question: whether the agent needed fewer broad searches, fewer file reads, or less context assembly work.
+---
 
-Prevention:
+### Pitfall 2: Corrupting host-owned config during `--write`
 
-- Measure end-to-end workflow steps, not just single command durations.
-- Separate discovery time, context assembly time, refresh-after-change time, and completion time.
+**What goes wrong:**
+Persisted writes drop unrelated entries, duplicate the same server, or damage shared config such as Codex `config.toml`.
 
-### 3. Token claims that change the measuring stick mid-run
+**Why it happens:**
+Writes are implemented as string replacement instead of structured merge logic.
 
-Risk:
+**How to avoid:**
+Use typed parse/merge/write flows and cover repeated-write idempotence in tests.
 
-- The milestone mixes different token estimators, different model assumptions, or different artifact scopes across runs.
+**Warning signs:**
+- Re-running `--write` duplicates the same server entry
+- Existing MCP entries disappear after an OptimusCtx write
+- Diffs show full-file churn for a one-entry update
 
-Prevention:
+**Phase to address:**
+Phase 20
 
-- Use one required estimator for milestone claims: the shipped `bytes_div_4_ceiling` policy.
-- If later tokenizer-specific numbers are added, report them as secondary metrics, not as the milestone truth.
+---
 
-### 4. Overbuilding an evaluation platform
+### Pitfall 3: Implementing Claude CLI writes against an inferred file schema
 
-Risk:
+**What goes wrong:**
+The product edits a guessed Claude user config layout that official docs do not clearly promise.
 
-- v1.1 turns into a generic telemetry or analytics system instead of proving the value of the shipped runtime.
+**Why it happens:**
+Claude Desktop's JSON model looks close enough that teams assume Claude CLI persists the same way.
 
-Prevention:
+**How to avoid:**
+Prefer the documented Claude CLI registration path and scope semantics first, then use raw file mutation only if validated during implementation.
 
-- Keep the scope narrow: scenario runner, fixture repos, result capture, summary/export.
-- Avoid hosted dashboards, remote collection, or large reporting surfaces this milestone.
+**Warning signs:**
+- Implementation treats Claude CLI as Claude Desktop with a different path
+- Write success depends on one machine or one scope only
+- Docs cannot cite an official schema for the chosen raw file path
 
-### 5. Distribution planning that silently changes the product category
+**Phase to address:**
+Phase 21
 
-Risk:
+---
 
-- The distribution work pulls the project toward cloud services, daemon requirements, or vendor-specific integrations.
+### Pitfall 4: Splitting Codex App and Codex CLI into separate persistence implementations
 
-Prevention:
+**What goes wrong:**
+Two code paths drift even though vendor docs say both surfaces use the same `config.toml`.
 
-- Keep distribution aligned with the current single-binary, local-first, MCP-first story.
-- Treat release automation, package-manager support, docs, and install verification as the milestone core.
+**Why it happens:**
+App and CLI are modeled as separate client IDs, so the implementation duplicates storage logic unnecessarily.
 
-### 6. Packaging breadth outruns adoption proof
+**How to avoid:**
+Keep separate client labels, but route both through one shared Codex config backend.
 
-Risk:
+**Warning signs:**
+- `codex-app` and `codex-cli` resolve different default config paths without source evidence
+- Docs describe two different Codex MCP stores
+- Tests duplicate the same write logic under different code paths
 
-- The team spends time on many package managers before proving that archives plus one or two primary channels are enough.
+**Phase to address:**
+Phase 20
 
-Prevention:
+---
 
-- Prioritize GitHub Releases, Homebrew, and Scoop first.
-- Defer Linux native packages, signing, SBOMs, and extra channels until the base path is stable.
+### Pitfall 5: Shipping code changes without updating operator guidance
 
-### 7. Functional coverage that misses degraded and stale states
+**What goes wrong:**
+Backend support lands, but `init`, `doctor`, README, and quickstart still steer users only toward Claude Desktop.
 
-Risk:
+**Why it happens:**
+Docs and onboarding are treated as polish instead of part of the support contract.
 
-- The test plan validates only healthy repos and ignores the actual operational edge cases that matter for trust.
+**How to avoid:**
+Make onboarding, docs, and verification part of the milestone's definition of done.
 
-Prevention:
+**Warning signs:**
+- `init` still recommends only `claude-desktop`
+- Doctor guidance only mentions one client
+- Install docs still present one supported write flow
 
-- Include healthy, stale, degraded, and recovery scenarios.
-- Reuse the current doctor, refresh, watch, and pack flows rather than mocking the failure paths away.
+**Phase to address:**
+Phase 22
 
-### 8. Distribution docs that drift from real commands
+## Technical Debt Patterns
 
-Risk:
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Keep named clients preview-only | Less backend work now | Support claims remain misleading and setup remains manual | Never for a shipped supported client |
+| Generate TOML with string concatenation only | Faster first draft | Persisted writes become brittle and unsafe | Acceptable only for preview prototypes, not final write support |
+| Skip idempotence tests | Less test work now | Config corruption slips into releases | Never for shared config backends |
 
-- Install and usage docs start advertising flows that differ from what the shipped CLI actually does.
+## Integration Gotchas
 
-Prevention:
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| Claude CLI | Assume Claude Desktop's raw JSON file model applies directly | Follow documented Claude CLI scopes and registration commands first |
+| Codex App | Treat the app as a separate config store from CLI | Reuse the shared `config.toml` backend the docs describe |
+| Codex CLI | Reuse generic JSON preview because it already exists | Render and write native TOML |
 
-- Derive docs from the real command surface and verify them with runnable examples.
-- Keep `doctor` and `snippet` part of the install verification story.
+## Performance Traps
 
-## Recommended Guardrails
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Rewriting the whole host config blindly | Excessive churn and broken unrelated entries | Merge only the relevant server entry | Immediately once users have more than one MCP server |
+| Shell-fragile Claude CLI write commands | Writes fail on spaces, quoting, or platform differences | Keep execution structured in Go rather than telling users to paste shell-escaped blobs | As soon as commands or paths stop being trivial |
 
-- Freeze a small benchmark corpus early and version it.
-- Publish the measurement rules before the first milestone claim.
-- Use current shipped surfaces as the only supported treatment path.
-- Keep result capture local and deterministic.
-- Treat distribution as a reproducible release pipeline, not a marketing-only document.
+## Security Mistakes
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Writing config without explicit operator intent | Surprising mutation of user tooling | Keep preview-first and gate writes behind `--write` |
+| Over-broad generated env passthrough | Credential leakage or excessive host process access | Generate only the minimum runtime command and env surface |
+| Trusting undocumented host storage contracts | Future host updates can silently break writes | Prefer documented config contracts and official commands |
+
+## UX Pitfalls
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Showing `manual` for named clients | Users conclude support is incomplete | Resolve the real host path or registration mechanism |
+| Making users translate JSON to TOML by hand | Setup remains slow and error-prone | Render the native host format directly |
+| Leaving onboarding Claude Desktop-only | Users miss the newly supported clients | Update onboarding and docs to list all supported named clients explicitly |
+
+## "Looks Done But Isn't" Checklist
+
+- [ ] **Named clients:** preview output is host-native, not generic JSON with different note text
+- [ ] **Writes:** repeated `--write` calls are idempotent and preserve unrelated host entries
+- [ ] **Claude CLI:** the chosen write path is backed by documented command/scope behavior or explicit validation
+- [ ] **Codex:** App and CLI docs/tests agree on the shared `config.toml` contract
+- [ ] **Docs:** README, quickstart, install, and onboarding guidance no longer imply only Claude Desktop is real
+
+## Recovery Strategies
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Generic support claim persists | LOW | Tighten support scope, add host-specific adapters, and update docs before release |
+| Host config corruption | HIGH | Restore prior config, fix merge logic, and add idempotence tests before retry |
+| Wrong Claude CLI contract | MEDIUM | Switch to the official CLI registration path and update tests and docs |
+| Docs drift | LOW | Audit onboarding and install references, then lock them with targeted tests where possible |
+
+## Pitfall-to-Phase Mapping
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| Generic support for named clients | Phase 20 | Named clients render native host preview output |
+| Host config corruption | Phase 20 | Repeated writes preserve unrelated entries and avoid duplicates |
+| Wrong Claude CLI contract | Phase 21 | Claude CLI write behavior matches the documented host flow |
+| Wrong Codex backend split | Phase 20 | App and CLI share one tested config backend |
+| Code complete but docs incomplete | Phase 22 | Docs and onboarding all reflect the supported clients |
+
+## Sources
+
+- https://code.claude.com/docs/en/mcp
+- https://developers.openai.com/codex/mcp
+- https://developers.openai.com/codex/app/settings
+- Local code and docs review
+
+---
+*Pitfalls research for: MCP client compatibility for local coding-agent hosts*
+*Researched: 2026-03-19*

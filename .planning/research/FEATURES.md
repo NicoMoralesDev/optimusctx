@@ -1,96 +1,108 @@
 # Feature Research
 
-**Project:** OptimusCtx
-**Milestone:** v1.1 Validation, Benchmarking, and Distribution
-**Researched:** 2026-03-15
+**Domain:** MCP client compatibility for local coding-agent hosts
+**Researched:** 2026-03-19
 **Confidence:** HIGH
 
-## Focus
+## Feature Landscape
 
-`v1.1` is not a new runtime-capability milestone. It is a proof milestone for the shipped `v1.0` runtime: validate end-to-end usefulness, measure savings against a baseline, and turn the existing local binary into something credibly distributable.
+### Table Stakes (Users Expect These)
 
-## Feature Expectations
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Explicit named clients for real hosts | If a client is listed as supported, users expect it not to fall back to generic instructions | LOW | `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` all need truthful host handling |
+| Host-native preview output | Users expect `status --client <client>` to show the actual host contract they will use | MEDIUM | Codex wants TOML, Claude Desktop wants JSON, Claude CLI may be command-oriented for writes |
+| Real explicit `--write` for supported clients | Users expect a supported host to be finishable without manual transcription | HIGH | This is the main patch gap today |
+| Canonical runtime handoff on `optimusctx run` | Users expect every generated registration to launch the same supported runtime entrypoint | LOW | Must stay fixed across preview, write, docs, and tests |
+| End-to-end operator docs and regression tests | Users expect support claims to be documented and locked, not only present in a client enum | MEDIUM | Current docs still center almost entirely on Claude Desktop |
 
-| Area | Table Stakes | Differentiators | Anti-Features | Complexity | Depends On Shipped v1.0 |
-|------|--------------|-----------------|---------------|------------|--------------------------|
-| Functional validation | Repeatable end-to-end flows that exercise `init`, `refresh`, lookup/context tools, `mcp serve`, `doctor`, and optional `watch` on realistic repos | Scenario suite that mirrors real agent workflows instead of isolated command tests; includes degraded/stale-state recovery | Inventing new serving features before proving current flows; synthetic tests that do not resemble agent usage | MEDIUM | `init`, `refresh`, freshness states, exact lookup/context layers, `mcp serve`, `doctor`, `watch` |
-| A/B token-savings measurement | A baseline-vs-OptimusCtx methodology with fixed tasks, fixed repos, fixed prompts, and published measurement rules | Per-task token delta by lookup mode (`repo map`, symbol lookup, L2 context, pack) plus explanation of where savings come from | Vague “feels smaller” claims; changing prompts/tools between control and treatment; mixing semantic retrieval into the test | MEDIUM | `CTX-01..06`, `MCP-02..04`, token tree, bounded payload defaults, pack export |
-| Workflow-speed measurement | Time-to-answer or time-to-task-completion comparisons between broad repo exploration and exact-first retrieval | Split metrics into discovery time, context assembly time, and recovery time after repo changes or stale state | Measuring only raw command latency; relying on anecdotal demos instead of repeatable runs | MEDIUM | incremental refresh, freshness reporting, exact symbol/structure lookup, context blocks, optional watch |
-| Distribution planning | Clear install shape, release channels, packaging targets, and adoption path for individual users and teams | Distribution plan that preserves the local-first single-binary story while covering MCP registration, docs, samples, and pack-based sharing | Hosted service scope, default daemonization, auto-editing instruction files, platform-specific deep integrations as milestone blockers | LOW-MEDIUM | existing single-binary CLI surface, manual `snippet`, optional MCP registration, `doctor`, pack export |
+### Differentiators (Competitive Advantage)
 
-## Table Stakes
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Shared Codex backend for App and CLI | One correct backend can close two supported clients at once | MEDIUM | Official docs say App, CLI, and IDE all use `config.toml` |
+| Preview-first but real write-capable setup | Preserves trust while still reducing operator effort | LOW | This matches the existing product posture |
+| Host-specific notes, paths, and next actions | Makes setup actually usable without reading vendor docs first | LOW | Important for scope/path differences and shared-config caveats |
 
-- Functional validation must prove the current shipped flows work on realistic repositories, not just fixture-scale unit coverage.
-- Token-savings measurement must use a stable A/B harness with comparable tasks, prompts, and stopping rules.
-- Workflow-speed measurement must show whether exact-first retrieval reduces search and context assembly time in practice.
-- Distribution planning must answer how a new user installs, verifies, integrates, updates, and shares the tool without changing the product category.
+### Anti-Features (Commonly Requested, Often Problematic)
 
-## Differentiators
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| One universal JSON snippet for all hosts | Simpler implementation and docs | Misstates native host config and makes named-client support misleading | Render native host output and keep `generic` only as fallback |
+| Silent config mutation on plain `init` | Feels frictionless | Breaks the explicit-consent boundary already established by the product | Keep preview-first and require `--write` |
+| Expanding first-class support to every MCP client in the same patch | Tempting while touching integration code | Spreads effort and risks leaving Claude/Codex half-finished again | Close the listed Claude/Codex clients first |
 
-- OptimusCtx can benchmark a shipped deterministic runtime rather than a speculative prototype, which makes results more credible.
-- The benchmark can expose savings by artifact type because `v1.0` already ships layered context and token-budget surfaces.
-- Workflow validation can include stale, degraded, and watch-assisted paths because freshness and doctor semantics already exist.
-- Distribution planning can stay agent-agnostic and non-invasive because `snippet`, MCP serving, and pack export are already shipped.
+## Feature Dependencies
 
-## Anti-Features
+```text
+Supported client catalog
+    -> Host-specific preview contracts
+        -> Host-specific write paths
+            -> Regression coverage
 
-- Do not turn `v1.1` into a semantic-retrieval milestone to improve benchmark optics.
-- Do not add hosted sync, cloud dashboards, or remote serving as prerequisites for distribution planning.
-- Do not require automatic instruction-file edits or vendor-specific wrappers to claim distribution readiness.
-- Do not treat benchmark instrumentation as permission to expand the command surface unless a measurement gap is real and blocking.
+Operator docs -> Supported-client onboarding
 
-## Complexity Notes
+Generic fallback for named clients -> conflicts with truthful first-class host support
+```
 
-| Topic | Complexity | Why |
-|------|------------|-----|
-| Functional validation | MEDIUM | Mostly orchestration and fixture design, but it must cover realistic repos, MCP flows, and degraded-state behavior. |
-| Token-savings A/B | MEDIUM | Measurement discipline matters more than implementation; the hard part is controlling task shape and baseline behavior. |
-| Workflow-speed measurement | MEDIUM | Requires repeatable timings across discovery, lookup, refresh, and possibly watch-assisted paths. |
-| Distribution planning | LOW-MEDIUM | Primarily product/release design, but it depends on accurate install, upgrade, support, and packaging assumptions. |
+### Dependency Notes
 
-## Dependencies On Current Shipped Capabilities
+- **Supported client catalog requires host-specific preview contracts:** a named client is only real if preview output matches the host's real config model.
+- **Host-specific preview contracts require host-specific write paths:** the user explicitly wants the named options left ready with `run`, not still manual.
+- **Write paths require regression coverage:** shared config backends and command-driven registration can regress quietly.
+- **Operator docs enhance supported-client onboarding:** the feature is not done if the operator still has to reverse-engineer host-specific next steps.
+- **Generic fallback conflicts with truthful support:** keeping named clients generic would preserve the shipped gap.
 
-### Functional Validation
+## MVP Definition
 
-- Needs `init` and repository discovery to establish a reproducible starting state.
-- Needs `refresh`, freshness reporting, and incremental change handling to validate live-repo behavior.
-- Needs `mcp serve` plus lookup/context tools to test the main agent integration contract.
-- Needs `doctor` and watch status reporting to validate failure handling and operational trust.
+### Launch With (v1.3.1)
 
-### A/B Token-Savings Measurement
+- [x] Explicit supported flows for `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli`
+- [x] Host-native preview output that always targets `optimusctx run`
+- [x] Real `--write` support for the named clients through supported host config or registration paths
+- [x] Updated onboarding, docs, and regression coverage for the supported clients
 
-- Needs L0/L1/L2 context outputs and exact symbol/structure lookup to define the OptimusCtx treatment path.
-- Needs token-cost reporting to attribute savings to bounded context selection rather than hand-waving.
-- Needs MCP bounded payload behavior so benchmark responses stay comparable and reproducible.
-- Can use `pack export` as an alternate treatment path for non-MCP or offline comparisons.
+### Add After Validation (v1.3.x)
 
-### Workflow-Speed Measurement
+- [ ] Additional scope controls beyond the default user-level write path
+- [ ] Better preflight detection for missing external host CLIs before write attempts
 
-- Needs the canonical incremental refresh pipeline to compare “refresh then query” against repeated manual exploration.
-- Needs exact lookup primitives to measure search-effort reduction.
-- Needs optional watch mode to test whether continuous freshness reduces task interruption in active-edit loops.
-- Needs `doctor` to separate true workflow regressions from broken local setup.
+### Future Consideration (v2+)
 
-### Distribution Planning
+- [ ] More first-class MCP hosts beyond Claude and Codex
+- [ ] Managed team policies, shared host templates, or remote provisioning
 
-- Depends on the already-shipped small CLI surface and local state model; the plan should package what exists rather than redefine it.
-- Depends on manual `snippet` and optional MCP registration for adoption flows across agent clients.
-- Depends on `doctor` for first-run verification and supportability.
-- Depends on pack export to describe sharing and offline workflows without introducing cloud scope.
+## Feature Prioritization Matrix
 
-## Recommended v1.1 Feature Cut
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| Truthful named-client previews | HIGH | MEDIUM | P1 |
+| Real `claude-cli --write` path | HIGH | HIGH | P1 |
+| Real `codex-app` and `codex-cli` write path | HIGH | MEDIUM | P1 |
+| Onboarding/docs/test parity across clients | HIGH | MEDIUM | P1 |
+| Extra scope variants | MEDIUM | MEDIUM | P2 |
+| Broader MCP-host expansion | MEDIUM | HIGH | P3 |
 
-- Must ship: realistic functional validation suite, benchmark methodology, token-savings evidence, workflow-speed evidence, and a written distribution plan.
-- Should ship: a small benchmark harness or reproducible script path that others can rerun locally.
-- Nice to have: one or two polished reference workflows for major agent clients using the existing MCP/snippet path.
-- Should not ship: new retrieval modes, hosted infrastructure, automatic repo modification, or broad packaging expansion that outruns product proof.
+**Priority key:**
+- P1: Must have for launch
+- P2: Should have, add when possible
+- P3: Nice to have, future consideration
+
+## Competitor Feature Analysis
+
+| Feature | Competitor A | Competitor B | Our Approach |
+|---------|--------------|--------------|--------------|
+| MCP host registration | Claude exposes CLI commands and scope-aware config | Codex exposes `config.toml` plus CLI helpers | Match each host's native setup model instead of flattening them into one generic path |
+| Shared App/CLI setup | Codex shares one config store | Claude separates Desktop JSON from CLI scopes | Keep both families explicit while sharing backends only where the host itself shares config |
+| Consent boundary | Host tooling expects explicit server addition | Desktop files can be edited directly | Preserve explicit `--write`, never implicit mutation |
 
 ## Sources
 
-- `.planning/PROJECT.md`
-- `.planning/milestones/v1.0-REQUIREMENTS.md`
-- `.planning/v1.0-v1.0-MILESTONE-AUDIT.md`
-- Existing shipped command and capability framing in `README.md`
+- https://code.claude.com/docs/en/mcp
+- https://developers.openai.com/codex/mcp
+- https://developers.openai.com/codex/app/settings
+- Local code and docs: `internal/app/install.go`, `README.md`, `docs/install-and-verify.md`, `docs/quickstart.md`
 
 ---
-*Milestone-specific feature research for OptimusCtx v1.1*
+*Feature research for: MCP client compatibility for local coding-agent hosts*
+*Researched: 2026-03-19*
