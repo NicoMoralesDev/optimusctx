@@ -14,7 +14,7 @@
 
 ### Claude Clients
 
-- [ ] **CLD-01**: Operator can preview and write Claude Desktop registration with the resolved default config path or an explicit override path.
+- [x] **CLD-01**: Operator can preview and write Claude Desktop registration with the resolved default config path or an explicit override path.
 - [ ] **CLD-02**: Operator can preview Claude CLI registration using the host's documented scope and registration model instead of a generic JSON/manual fallback.
 - [ ] **CLD-03**: Operator can complete Claude CLI registration through `optimusctx ... --write` without manually retyping or translating the server definition.
 
@@ -58,7 +58,7 @@
 | MCP-01 | Phase 20 | Complete |
 | MCP-02 | Phase 20 | Complete |
 | MCP-04 | Phase 20 | Complete |
-| CLD-01 | Phase 20 | Pending |
+| CLD-01 | Phase 20 | Complete |
 | CDX-03 | Phase 20 | Complete |
 | MCP-03 | Phase 21 | Pending |
 | CLD-02 | Phase 21 | Pending |

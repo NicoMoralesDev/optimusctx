@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.3.1
 milestone_name: MCP client compatibility
 current_phase: 20
-current_phase_name: mcp-client-contract-and-config-backend-foundation
-current_plan: "03"
-status: ready_to_execute
-stopped_at: Completed 20-02-PLAN.md
-last_updated: "2026-03-19T20:44:01.348Z"
+current_phase_name: MCP Client Contract and Config Backend Foundation
+current_plan: 03
+status: verifying
+stopped_at: Completed 20-03-PLAN.md
+last_updated: "2026-03-19T20:51:59.009Z"
 last_activity: 2026-03-19
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute Phase 20 Plan 03
+**Status:** Phase complete — ready for verification
 **Current Phase:** 20
 **Current Phase Name:** MCP Client Contract and Config Backend Foundation
 **Total Phases:** 3
 **Current Plan:** 03
 **Total Plans in Phase:** 3
-**Progress:** [███████░░░] 67%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-19
-**Last Activity Description:** Completed plan 20-02 with shared Codex `config.toml` merge helpers and native Codex App/CLI preview adapters
+**Last Activity Description:** Completed plan 20-03 with explicit Claude Desktop path resolution helpers and persisted JSON regression coverage
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: `v1.3.1` MCP client compatibility
 - Latest published release: `v1.3.0`
-- Next execution action: execute plan 20-03 to tighten Claude Desktop parity and remaining host-path resolution details
+- Next execution action: verify Phase 20 completion and begin Phase 21 real write-path planning
 - Historical v1.0, v1.1, and v1.2 requirements and roadmaps are archived under `.planning/milestones/`
 - Hosted GitHub Actions `release.yml` summary and publication validation were confirmed resolved on 2026-03-19
 
@@ -265,6 +265,7 @@ progress:
 | Phase 19 P03 | 6m | 2 tasks | 2 files |
 | Phase 20 P01 | 7min | 2 tasks | 6 files |
 | Phase 20-mcp-client-contract-and-config-backend-foundation P02 | 3min | 2 tasks | 6 files |
+| Phase 20 P03 | 2min | 2 tasks | 2 files |
 
 ## Decisions Made
 
@@ -459,6 +460,8 @@ progress:
 - [Phase 20]: The generic adapter remains the only manual fallback while named clients move onto explicit preview adapter types.
 - [Phase 20-mcp-client-contract-and-config-backend-foundation]: Codex App and Codex CLI now share one ~/.codex/config.toml preview backend so Phase 21 can add writes without changing the storage model.
 - [Phase 20-mcp-client-contract-and-config-backend-foundation]: Codex preview output now uses TOML parsing plus a deterministic renderer so the shared config emits the documented [mcp_servers.<name>] contract with double-quoted values.
+- [Phase 20]: Claude Desktop path resolution now delegates runtime values into a platform-input helper so default locations stay explicit and directly testable.
+- [Phase 20]: Claude Desktop JSON-file safety is locked through InstallService regression tests instead of lower-level merge-only coverage.
 
 ## Blockers
 
@@ -466,9 +469,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-19T20:44:01.345Z
-**Stopped At:** Completed 20-02-PLAN.md
+**Last Date:** 2026-03-19T20:51:59.006Z
+**Stopped At:** Completed 20-03-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-19 after completing plan 20-02 shared Codex config backend and preview integration*
+*Last updated: 2026-03-19 after completing plan 20-03 Claude Desktop parity lock and regression coverage*

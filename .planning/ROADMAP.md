@@ -28,7 +28,7 @@ Plans:
 
 - [x] 20-01: supported-client contract and preview model refactor
 - [x] 20-02: Codex shared `config.toml` backend and merge semantics
-- [ ] 20-03: Claude Desktop parity lock and host-path resolution cleanup
+- [x] 20-03: Claude Desktop parity lock and host-path resolution cleanup
 
 **Requirements covered:** `MCP-01`, `MCP-02`, `MCP-04`, `CLD-01`, `CDX-03`
 
@@ -83,13 +83,13 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.3.1` with Phase 20 in progress and plan `20-02` complete
+Active milestone: `v1.3.1` with Phase 20 complete and Phase 21 next
 
 Next step:
 
-- Execute `20-03` to lock Claude Desktop parity and finish the remaining Phase 20 host-path cleanup.
+- Start Phase 21 to add real explicit write paths for Claude CLI and Codex clients on top of the stabilized Phase 20 host backends.
 - Preserve `optimusctx run` as the one canonical runtime handoff across every supported client.
-- Carry the shared Codex `~/.codex/config.toml` foundation forward unchanged into the explicit write-backed work in Phase 21.
+- Keep Claude Desktop's resolved-path and JSON merge guarantees unchanged while new write-backed hosts land.
 
 ---
-*Last updated: 2026-03-19 after completing plan 20-02 and updating Phase 20 progress*
+*Last updated: 2026-03-19 after completing plan 20-03 and closing Phase 20*
