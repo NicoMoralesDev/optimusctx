@@ -2,10 +2,13 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/niccrow/optimusctx/internal/repository"
 )
 
 func TestResolveClaudeDesktopConfigPathExplicitOverride(t *testing.T) {
@@ -236,4 +239,154 @@ func TestInstallServiceRejectsGenericWrite(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "does not support --write") {
 		t.Fatalf("Register(generic write) error = %v", err)
 	}
+}
+
+func TestInstallServiceClaudeDesktopPreviewUsesResolvedPath(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+	t.Setenv("AppData", filepath.Join(homeDir, "AppData", "Roaming"))
+
+	configPath, err := resolveClaudeDesktopConfigPath("")
+	if err != nil {
+		t.Fatalf("resolveClaudeDesktopConfigPath() error = %v", err)
+	}
+	writeClaudeDesktopConfig(t, configPath, repository.ClientConfigDocument{
+		MCPServers: map[string]repository.ServeCommand{
+			"existing": {Command: "existing-mcp", Args: []string{"serve"}},
+		},
+	})
+
+	service := NewInstallService()
+	result, err := service.Register(context.Background(), InstallRequest{ClientID: "claude-desktop"})
+	if err != nil {
+		t.Fatalf("Register(claude-desktop) error = %v", err)
+	}
+	if result.Wrote {
+		t.Fatal("claude-desktop preview should not write")
+	}
+	if result.Rendered.ConfigPath != configPath {
+		t.Fatalf("config path = %q, want %q", result.Rendered.ConfigPath, configPath)
+	}
+
+	document := mustDecodeClientConfig(t, result.Rendered.Content)
+	if _, ok := document.MCPServers["existing"]; !ok {
+		t.Fatalf("preview missing existing server: %s", result.Rendered.Content)
+	}
+	command, ok := document.MCPServers["optimusctx"]
+	if !ok {
+		t.Fatalf("preview missing optimusctx server: %s", result.Rendered.Content)
+	}
+	if command.Command != "optimusctx" || len(command.Args) != 1 || command.Args[0] != "run" {
+		t.Fatalf("optimusctx server command = %+v", command)
+	}
+}
+
+func TestInstallServiceClaudeDesktopWritePreservesExistingServers(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "Claude", "claude_desktop_config.json")
+	writeClaudeDesktopConfig(t, configPath, repository.ClientConfigDocument{
+		MCPServers: map[string]repository.ServeCommand{
+			"existing": {Command: "existing-mcp", Args: []string{"serve"}},
+		},
+	})
+
+	service := NewInstallService()
+	result, err := service.Register(context.Background(), InstallRequest{
+		ClientID:   "claude-desktop",
+		ConfigPath: configPath,
+		Write:      true,
+	})
+	if err != nil {
+		t.Fatalf("Register(claude-desktop write) error = %v", err)
+	}
+	if !result.Wrote {
+		t.Fatal("claude-desktop write should report wrote=true")
+	}
+
+	document := readClaudeDesktopConfig(t, configPath)
+	if _, ok := document.MCPServers["existing"]; !ok {
+		t.Fatalf("written config missing existing server: %+v", document.MCPServers)
+	}
+	command, ok := document.MCPServers["optimusctx"]
+	if !ok {
+		t.Fatalf("written config missing optimusctx server: %+v", document.MCPServers)
+	}
+	if command.Command != "optimusctx" || len(command.Args) != 1 || command.Args[0] != "run" {
+		t.Fatalf("optimusctx server command = %+v", command)
+	}
+	if len(document.MCPServers) != 2 {
+		t.Fatalf("server count = %d, want 2", len(document.MCPServers))
+	}
+}
+
+func TestInstallServiceClaudeDesktopWriteIsIdempotent(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "Claude", "claude_desktop_config.json")
+
+	service := NewInstallService()
+	request := InstallRequest{
+		ClientID:   "claude-desktop",
+		ConfigPath: configPath,
+		Write:      true,
+	}
+	if _, err := service.Register(context.Background(), request); err != nil {
+		t.Fatalf("Register(first write) error = %v", err)
+	}
+	if _, err := service.Register(context.Background(), request); err != nil {
+		t.Fatalf("Register(second write) error = %v", err)
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if strings.Count(string(content), "\"optimusctx\":") != 1 {
+		t.Fatalf("optimusctx entry duplicated: %s", string(content))
+	}
+
+	document := mustDecodeClientConfig(t, string(content))
+	command, ok := document.MCPServers["optimusctx"]
+	if !ok {
+		t.Fatalf("written config missing optimusctx server: %+v", document.MCPServers)
+	}
+	if command.Command != "optimusctx" || len(command.Args) != 1 || command.Args[0] != "run" {
+		t.Fatalf("optimusctx server command = %+v", command)
+	}
+	if len(document.MCPServers) != 1 {
+		t.Fatalf("server count = %d, want 1", len(document.MCPServers))
+	}
+}
+
+func writeClaudeDesktopConfig(t *testing.T, configPath string, document repository.ClientConfigDocument) {
+	t.Helper()
+
+	content, err := repository.RenderClientConfig(document)
+	if err != nil {
+		t.Fatalf("RenderClientConfig() error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+}
+
+func readClaudeDesktopConfig(t *testing.T, configPath string) repository.ClientConfigDocument {
+	t.Helper()
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	return mustDecodeClientConfig(t, string(content))
+}
+
+func mustDecodeClientConfig(t *testing.T, content string) repository.ClientConfigDocument {
+	t.Helper()
+
+	var document repository.ClientConfigDocument
+	if err := json.Unmarshal([]byte(content), &document); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	return document
 }
