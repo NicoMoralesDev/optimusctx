@@ -5,9 +5,9 @@ milestone_name: MCP client compatibility
 current_phase: 20
 current_phase_name: mcp-client-contract-and-config-backend-foundation
 current_plan: null
-status: ready_for_planning
-stopped_at: Roadmap defined for Phase 20 planning
-last_updated: "2026-03-19T19:54:54Z"
+status: ready_to_execute
+stopped_at: Phase 20 planned and ready for execution
+last_updated: "2026-03-19T20:21:31Z"
 last_activity: 2026-03-19
 progress:
   total_phases: 3
@@ -23,7 +23,7 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to plan `v1.3.1`
+**Status:** Ready to execute Phase 20
 **Current Phase:** 20
 **Current Phase Name:** MCP Client Contract and Config Backend Foundation
 **Total Phases:** 3
@@ -31,7 +31,7 @@ progress:
 **Total Plans in Phase:** 3
 **Progress:** [░░░░░░░░░░] 0%
 **Last Activity:** 2026-03-19
-**Last Activity Description:** Defined roadmap and requirements for v1.3.1 MCP client compatibility
+**Last Activity Description:** Planned Phase 20 with 3 executable plans for MCP client contract and backend foundation
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: `v1.3.1` MCP client compatibility
 - Latest published release: `v1.3.0`
-- Next execution action: plan Phase 20 for first-class MCP client support across Claude and Codex clients
+- Next execution action: run execute-phase for Phase 20 to build the client contract and config backend foundation
 - Historical v1.0, v1.1, and v1.2 requirements and roadmaps are archived under `.planning/milestones/`
 - Hosted GitHub Actions `release.yml` summary and publication validation were confirmed resolved on 2026-03-19
 
