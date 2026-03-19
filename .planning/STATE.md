@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.3.1
 milestone_name: MCP client compatibility
-current_phase: null
-current_phase_name: none
+current_phase: 20
+current_phase_name: mcp-client-contract-and-config-backend-foundation
 current_plan: null
-status: defining_requirements
-stopped_at: Milestone v1.3.1 started
-last_updated: "2026-03-19T19:26:55.033Z"
+status: ready_for_planning
+stopped_at: Roadmap defined for Phase 20 planning
+last_updated: "2026-03-19T19:54:54Z"
 last_activity: 2026-03-19
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
-  total_plans: 0
+  total_plans: 9
   completed_plans: 0
   percent: 0
 ---
@@ -22,16 +22,16 @@ progress:
 **Initialized:** 2026-03-14
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
-**Requirements reference:** `.planning/milestones/v1.2-REQUIREMENTS.md` (last shipped scope; no active requirements file yet)
-**Status:** Defining requirements for `v1.3.1`
-**Current Phase:** None
-**Current Phase Name:** None
-**Total Phases:** 0
+**Requirements reference:** `.planning/REQUIREMENTS.md`
+**Status:** Ready to plan `v1.3.1`
+**Current Phase:** 20
+**Current Phase Name:** MCP Client Contract and Config Backend Foundation
+**Total Phases:** 3
 **Current Plan:** None
-**Total Plans in Phase:** 0
+**Total Plans in Phase:** 3
 **Progress:** [░░░░░░░░░░] 0%
 **Last Activity:** 2026-03-19
-**Last Activity Description:** Started milestone v1.3.1 for MCP client compatibility
+**Last Activity Description:** Defined roadmap and requirements for v1.3.1 MCP client compatibility
 
 ## Project Memory
 
@@ -45,9 +45,16 @@ progress:
 
 - Active milestone: `v1.3.1` MCP client compatibility
 - Latest published release: `v1.3.0`
-- Next execution action: define requirements and roadmap for first-class MCP client support across Claude and Codex clients
+- Next execution action: plan Phase 20 for first-class MCP client support across Claude and Codex clients
 - Historical v1.0, v1.1, and v1.2 requirements and roadmaps are archived under `.planning/milestones/`
 - Hosted GitHub Actions `release.yml` summary and publication validation were confirmed resolved on 2026-03-19
+
+## Current Milestone Scope
+
+- Close first-class MCP client support for `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli`
+- Make `optimusctx run` the canonical runtime handoff across every supported named client
+- Replace preview-only/manual fallback for Claude CLI and Codex clients with real explicit `--write` support
+- Update onboarding, docs, and regression coverage so the supported-client story is truthful end to end
 
 ## Verification Status
 
@@ -99,7 +106,7 @@ progress:
 ## References
 
 - Source of truth for intent: `.planning/PROJECT.md`
-- Source of truth for current scope: `.planning/PROJECT.md` until the next milestone requirements are created
+- Source of truth for current scope: `.planning/REQUIREMENTS.md`
 - Source of truth for last shipped scope: `.planning/milestones/v1.2-REQUIREMENTS.md`
 - Source of truth for phase sequence: `.planning/ROADMAP.md`
 - Source of truth for technical direction: `.planning/research/SUMMARY.md`

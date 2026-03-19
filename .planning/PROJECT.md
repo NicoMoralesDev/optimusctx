@@ -126,4 +126,4 @@ This repository is greenfield. The development process is expected to be heavily
 | Every downstream channel should derive from the same tag and release metadata contract | Multi-channel automation is only trustworthy if there is one source of truth for archives, checksums, and package metadata | ✓ Shipped in v1.2 |
 
 ---
-*Last updated: 2026-03-19 after starting v1.3.1 MCP client compatibility milestone*
+*Last updated: 2026-03-19 after defining the v1.3.1 MCP client compatibility scope, requirements, and roadmap*
