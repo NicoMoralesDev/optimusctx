@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: release automation and operator workflow
-current_phase: 19
-current_phase_name: operator verification, recovery, and end-to-end guide
-current_plan: 3
-status: human_verification_needed
-stopped_at: Completed 19-03-PLAN.md
-last_updated: "2026-03-18T18:25:57Z"
-last_activity: 2026-03-18
+milestone: none
+milestone_name: planning next milestone
+current_phase: null
+current_phase_name: none
+current_plan: null
+status: planning_next_milestone
+stopped_at: Archived v1.2 milestone
+last_updated: "2026-03-19T19:26:55.033Z"
+last_activity: 2026-03-19
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 18
-  completed_plans: 18
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Planning State: OptimusCtx
@@ -22,16 +22,16 @@ progress:
 **Initialized:** 2026-03-14
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
-**Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Awaiting hosted workflow verification
-**Current Phase:** 19
-**Current Phase Name:** operator verification, recovery, and end-to-end guide
-**Total Phases:** 4
-**Current Plan:** 3
-**Total Plans in Phase:** 3
-**Progress:** [██████████] 100%
-**Last Activity:** 2026-03-18
-**Last Activity Description:** Completed Phase 19 plan 03 with canonical recovery policy wording and tests that lock rerun-versus-rollback semantics to the GitHub Release root
+**Requirements reference:** `.planning/milestones/v1.2-REQUIREMENTS.md` (last shipped scope; no active requirements file yet)
+**Status:** Planning next milestone
+**Current Phase:** None
+**Current Phase Name:** None
+**Total Phases:** 0
+**Current Plan:** None
+**Total Plans in Phase:** 0
+**Progress:** [░░░░░░░░░░] 0%
+**Last Activity:** 2026-03-19
+**Last Activity Description:** v1.2 milestone completed and archived
 
 ## Project Memory
 
@@ -43,17 +43,16 @@ progress:
 
 ## Current Planning Context
 
-- Active milestone: `v1.2` release automation and operator workflow
-- Active phase: `19-operator-verification-recovery-and-end-to-end-guide`
-- Next execution action: expose a real GitHub Actions `release` workflow run for this branch or a safe tag, then inspect the hosted summary UI documented in `19-VERIFICATION.md`
-- Historical v1.0 and v1.1 requirements and roadmaps are archived under `.planning/milestones/`
-- Coverage status: Phase 19 plans 01-03 are complete with workflow summary guidance, canonical operator docs, and recovery policy locked to the GitHub Release root
+- Active milestone: none; `v1.2` was archived on 2026-03-19
+- Next execution action: start the next milestone with `$gsd-new-milestone`
+- Historical v1.0, v1.1, and v1.2 requirements and roadmaps are archived under `.planning/milestones/`
+- Deferred operational follow-up: inspect one real hosted GitHub Actions `release.yml` summary once a safe run exists
 
 ## Verification Status
 
-- Automated verification passed for the workflow summary contract, operator-guide linkage, recovery-policy contract, and the full `go test ./...` suite.
-- Manual operator-guide walkthrough passed: the guide is linear, rooted in the canonical GitHub Release, and the rerun-versus-rollback branch is unambiguous.
-- Hosted GitHub Actions summary verification is still required because the remote repo currently exposes no `release` workflow or runs to inspect.
+- Phase 18 verification was backfilled on 2026-03-19 from the committed UAT evidence, fresh release-layer test runs, and a passing full `go test ./...` suite.
+- Phase 19 repository verification passed, including the manual operator-guide walkthrough.
+- Hosted GitHub Actions summary verification remains deferred until a real `release.yml` run exists to inspect remotely.
 
 ## Recent Decisions
 
@@ -99,8 +98,8 @@ progress:
 ## References
 
 - Source of truth for intent: `.planning/PROJECT.md`
-- Source of truth for current scope: `.planning/REQUIREMENTS.md`
-- Source of truth for last shipped scope: `.planning/milestones/v1.1-REQUIREMENTS.md`
+- Source of truth for current scope: `.planning/PROJECT.md` until the next milestone requirements are created
+- Source of truth for last shipped scope: `.planning/milestones/v1.2-REQUIREMENTS.md`
 - Source of truth for phase sequence: `.planning/ROADMAP.md`
 - Source of truth for technical direction: `.planning/research/SUMMARY.md`
 

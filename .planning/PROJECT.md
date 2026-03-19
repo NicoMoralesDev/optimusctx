@@ -10,25 +10,16 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 ## Current State
 
-- Shipped version: `v1.1`
+- Shipped version: `v1.2`
 - Runtime stack: Go, SQLite, Tree-sitter, MCP-over-STDIO
-- Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `doctor`, `eval`, `install`, `version`
-- Product state: `v1.0` and `v1.1` are shipped, the `v1.1` audit passed, and functional, benchmark, and distribution evidence is archived
-
-## Current Milestone: v1.2 Release Automation and Operator Workflow
-
-**Goal:** Turn the existing release process into one operator-friendly flow that prepares version and tag state safely, publishes the supported channels from one canonical source, and documents verification and recovery end to end.
-
-**Target features:**
-- Interactive release preparation that proposes a version and tag, validates prerequisites, and blocks duplicate tags before publication
-- Automated multi-channel publication rooted in the same GitHub Release tag for archives, npm, Homebrew, and Scoop
-- One operator guide that covers release, republish, verification, and rollback from start to finish
+- Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `doctor`, `eval`, `install`, `version`, `release prepare`
+- Product state: `v1.0`, `v1.1`, and `v1.2` are shipped; release preparation, canonical release orchestration, downstream publication fan-out, and operator recovery guidance are now archived alongside the core runtime
 
 ## Next Milestone Goals
 
-- Add an interactive or guided release-preparation entrypoint that validates the tag, worktree, and publication prerequisites before anything is published
-- Finish the missing channel automation so Homebrew and Scoop publish alongside the existing GitHub Release and npm flow
-- Give the release operator one trustworthy documented procedure for fresh release, selective republish, verification, and rollback
+- Expand distribution trust with signed artifacts, SBOM verification, and clearer release authenticity checks
+- Evaluate broader package-manager reach, starting with native Linux formats such as `.deb` and `.rpm`
+- Deepen benchmark evidence with secondary tokenizer metrics and a watch-assisted workflow lane once the current baseline remains stable
 
 ## Requirements
 
@@ -40,12 +31,16 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 - ✓ Fixture-backed CLI and MCP evaluation flows with persisted rerun evidence — `v1.1`
 - ✓ Counted-input benchmark methodology, reproducible exports, and human-readable evidence — `v1.1`
 - ✓ Supported distribution channels through GitHub Releases, Homebrew, Scoop, npm, and `npx` without implicit config writes — `v1.1`
+- ✓ Guided release preparation with canonical version/tag proposal and preflight gating — `v1.2`
+- ✓ Canonical GitHub Release-rooted downstream publication and selective rerun control — `v1.2`
+- ✓ Canonical operator workflow for release, verification, rerun, and rollback — `v1.2`
 
 ### Active
 
-- [ ] Interactive release preparation that proposes a version and tag, rejects duplicate tags, and stops on missing prerequisites before publication
-- [ ] Automated publication across GitHub Releases, npm, Homebrew, and Scoop from one canonical tag and shared metadata contract
-- [ ] One operator workflow for release, republish, verification, and rollback documented against the real shipped channels
+- [ ] Native Linux package distribution for the shipped binary, starting with `.deb` and `.rpm`
+- [ ] Signed artifacts and SBOM verification for release consumers
+- [ ] Secondary tokenizer metrics in benchmark evidence exports
+- [ ] Watch-assisted benchmark lanes once the non-watch baseline remains stable
 
 ### Out of Scope
 
@@ -58,7 +53,7 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 v1.0 proved the core runtime wedge. v1.1 then proved the shipped product works end to end on fixture-backed CLI and MCP workflows, tightened benchmark claims around declared agent-facing inputs and comparable final artifacts, and expanded distribution through a narrow set of verifiable release channels.
 
-v1.2 does not reopen the runtime surface. It focuses on the operator side of shipping what already exists: preparing a release safely, publishing every claimed channel from the same tagged source, and documenting how to run and recover the process without guesswork.
+v1.2 closed the operator loop around that shipped surface. The repository now has a safe release-preparation entrypoint, one canonical release metadata and workflow contract, multi-channel publication fan-out, and a single operator guide for verification and recovery. The remaining follow-up from the milestone is operational rather than implementation-focused: inspect one real hosted GitHub Actions release summary once a safe run exists.
 
 <details>
 <summary>Archived v1.1 planning context</summary>
@@ -117,8 +112,8 @@ This repository is greenfield. The development process is expected to be heavily
 | Keep evaluation and benchmark evidence fixture-backed and repo-local | Milestone claims need rerunnable evidence anchored in committed inputs and persisted outputs | ✓ Shipped in v1.1 |
 | Count only declared agent-facing inputs in benchmark claims | Token savings must measure user-visible OptimusCtx value, not hidden system provenance | ✓ Shipped in v1.1 |
 | Keep GitHub Releases as the canonical binary source and package managers as wrappers | Distribution breadth is useful only if every channel stays truthful to the same shipped runtime | ✓ Shipped in v1.1 |
-| Release automation must fail before publication when version, tag, or prerequisite checks are invalid | The operator workflow should be safe to start and cheap to abort before touching release channels | — Pending in v1.2 |
-| Every downstream channel should derive from the same tag and release metadata contract | Multi-channel automation is only trustworthy if there is one source of truth for archives, checksums, and package metadata | — Pending in v1.2 |
+| Release automation must fail before publication when version, tag, or prerequisite checks are invalid | The operator workflow should be safe to start and cheap to abort before touching release channels | ✓ Shipped in v1.2 |
+| Every downstream channel should derive from the same tag and release metadata contract | Multi-channel automation is only trustworthy if there is one source of truth for archives, checksums, and package metadata | ✓ Shipped in v1.2 |
 
 ---
-*Last updated: 2026-03-17 after starting v1.2 milestone*
+*Last updated: 2026-03-19 after completing v1.2 milestone*
