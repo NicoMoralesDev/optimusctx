@@ -13,7 +13,13 @@ const (
 
 type ClientID string
 
-const ClientClaudeDesktop ClientID = "claude-desktop"
+const (
+	ClientClaudeDesktop ClientID = "claude-desktop"
+	ClientClaudeCLI     ClientID = "claude-cli"
+	ClientCodexApp      ClientID = "codex-app"
+	ClientCodexCLI      ClientID = "codex-cli"
+	ClientGenericMCP    ClientID = "generic"
+)
 
 type SupportedClient struct {
 	ID          ClientID
@@ -41,11 +47,16 @@ type RenderedClientConfig struct {
 	ConfigPath string
 	Mode       RenderMode
 	Content    string
+	Notes      []string
 }
 
 func SupportedClients() []SupportedClient {
 	return []SupportedClient{
 		{ID: ClientClaudeDesktop, DisplayName: "Claude Desktop"},
+		{ID: ClientClaudeCLI, DisplayName: "Claude CLI"},
+		{ID: ClientCodexApp, DisplayName: "Codex App"},
+		{ID: ClientCodexCLI, DisplayName: "Codex CLI"},
+		{ID: ClientGenericMCP, DisplayName: "Generic MCP Client"},
 	}
 }
 

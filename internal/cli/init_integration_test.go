@@ -45,6 +45,9 @@ func TestInitCommandInitializesFromNestedRepositoryPath(t *testing.T) {
 		if !strings.Contains(output, "discovered files: 3") {
 			t.Fatalf("output = %q, want discovered file count", output)
 		}
+		if !strings.Contains(output, "next step: run `optimusctx status --client claude-desktop`") {
+			t.Fatalf("output = %q, want onboarding next step", output)
+		}
 	})
 
 	if _, err := os.Stat(filepath.Join(repoRoot, ".optimusctx", "db.sqlite")); err != nil {

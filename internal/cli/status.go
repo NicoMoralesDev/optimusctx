@@ -113,6 +113,9 @@ func runStatusCommand(stdout io.Writer, args []string) error {
 			return err
 		}
 		_, _ = fmt.Fprintf(&b, "\nclient: %s\nconfig path: %s\nmode: %s\n\n%s", preview.Rendered.Client.DisplayName, preview.Rendered.ConfigPath, preview.Rendered.Mode, preview.Rendered.Content)
+		for _, note := range preview.Rendered.Notes {
+			_, _ = fmt.Fprintf(&b, "note: %s\n", note)
+		}
 		if preview.Wrote {
 			_, _ = io.WriteString(&b, "status: wrote config\n")
 		} else {

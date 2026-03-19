@@ -41,9 +41,20 @@ type jsonFileClientAdapter struct {
 	mkdirAll    func(string, os.FileMode) error
 }
 
+type genericClientAdapter struct {
+	client repository.SupportedClient
+	notes  []string
+}
+
 func NewInstallService() InstallService {
-	adapter := jsonFileClientAdapter{
-		client:      repository.SupportedClients()[0],
+	clients := repository.SupportedClients()
+	claudeDesktop := clients[0]
+	claudeCLI := clients[1]
+	codexApp := clients[2]
+	codexCLI := clients[3]
+	generic := clients[4]
+	jsonAdapter := jsonFileClientAdapter{
+		client:      claudeDesktop,
 		resolvePath: resolveClaudeDesktopConfigPath,
 		readFile:    os.ReadFile,
 		writeFile:   os.WriteFile,
@@ -52,7 +63,11 @@ func NewInstallService() InstallService {
 
 	return InstallService{
 		adapters: map[repository.ClientID]clientRegistrationAdapter{
-			adapter.client.ID: adapter,
+			claudeDesktop.ID: jsonAdapter,
+			claudeCLI.ID:     genericClientAdapter{client: claudeCLI, notes: claudeCLINotes()},
+			codexApp.ID:      genericClientAdapter{client: codexApp, notes: codexAppNotes()},
+			codexCLI.ID:      genericClientAdapter{client: codexCLI, notes: codexCLINotes()},
+			generic.ID:       genericClientAdapter{client: generic, notes: genericMCPNotes()},
 		},
 	}
 }
@@ -146,6 +161,66 @@ func (a jsonFileClientAdapter) readExisting(configPath string) ([]byte, error) {
 		return nil, nil
 	}
 	return nil, fmt.Errorf("read client config: %w", err)
+}
+
+func (a genericClientAdapter) Preview(request InstallRequest) (repository.RenderedClientConfig, error) {
+	serverName := request.ServerName
+	if serverName == "" {
+		serverName = repository.DefaultMCPServerName
+	}
+	document, err := repository.MergeClientConfig(nil, serverName, repository.NewServeCommand(request.BinaryPath))
+	if err != nil {
+		return repository.RenderedClientConfig{}, err
+	}
+	content, err := repository.RenderClientConfig(document)
+	if err != nil {
+		return repository.RenderedClientConfig{}, err
+	}
+	return repository.RenderedClientConfig{
+		Client:     a.client,
+		ConfigPath: "manual",
+		Mode:       repository.RenderModePreview,
+		Content:    content,
+		Notes: []string{
+			"Place this JSON into your MCP host configuration.",
+			"Use command `optimusctx` with args `[\"run\"]`.",
+		},
+	}, nil
+}
+
+func (a genericClientAdapter) Write(_ context.Context, request InstallRequest) (repository.RenderedClientConfig, error) {
+	return repository.RenderedClientConfig{}, errors.New("this client does not support --write yet; preview the config and add it to your MCP host manually")
+}
+
+func genericMCPNotes() []string {
+	return []string{
+		"Place this JSON into your MCP host configuration.",
+		"Use command `optimusctx` with args `[\"run\"]`.",
+	}
+}
+
+func claudeCLINotes() []string {
+	return []string{
+		"Claude CLI support is preview-only right now.",
+		"Add this MCP server definition to your Claude CLI MCP configuration.",
+		"Use command `optimusctx` with args `[\"run\"]`.",
+	}
+}
+
+func codexAppNotes() []string {
+	return []string{
+		"Codex App support is preview-only right now.",
+		"Add this MCP server definition to the Codex app MCP configuration.",
+		"Use command `optimusctx` with args `[\"run\"]`.",
+	}
+}
+
+func codexCLINotes() []string {
+	return []string{
+		"Codex CLI support is preview-only right now.",
+		"If you use ~/.codex/config.toml, translate this JSON MCP server definition into the CLI's config format.",
+		"Use command `optimusctx` with args `[\"run\"]`.",
+	}
 }
 
 func resolveClaudeDesktopConfigPath(explicitPath string) (string, error) {
