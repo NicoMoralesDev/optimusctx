@@ -41,6 +41,17 @@ type jsonFileClientAdapter struct {
 	mkdirAll    func(string, os.FileMode) error
 }
 
+type previewOnlyClientAdapter struct {
+	client     repository.SupportedClient
+	configPath string
+	notes      []string
+}
+
+type commandPreviewClientAdapter struct {
+	client repository.SupportedClient
+	notes  []string
+}
+
 type genericClientAdapter struct {
 	client repository.SupportedClient
 	notes  []string
@@ -64,9 +75,9 @@ func NewInstallService() InstallService {
 	return InstallService{
 		adapters: map[repository.ClientID]clientRegistrationAdapter{
 			claudeDesktop.ID: jsonAdapter,
-			claudeCLI.ID:     genericClientAdapter{client: claudeCLI, notes: claudeCLINotes()},
-			codexApp.ID:      genericClientAdapter{client: codexApp, notes: codexAppNotes()},
-			codexCLI.ID:      genericClientAdapter{client: codexCLI, notes: codexCLINotes()},
+			claudeCLI.ID:     commandPreviewClientAdapter{client: claudeCLI, notes: claudeCLINotes()},
+			codexApp.ID:      previewOnlyClientAdapter{client: codexApp, configPath: "preview", notes: codexAppNotes()},
+			codexCLI.ID:      previewOnlyClientAdapter{client: codexCLI, configPath: "preview", notes: codexCLINotes()},
 			generic.ID:       genericClientAdapter{client: generic, notes: genericMCPNotes()},
 		},
 	}
@@ -163,16 +174,47 @@ func (a jsonFileClientAdapter) readExisting(configPath string) ([]byte, error) {
 	return nil, fmt.Errorf("read client config: %w", err)
 }
 
-func (a genericClientAdapter) Preview(request InstallRequest) (repository.RenderedClientConfig, error) {
+func (a previewOnlyClientAdapter) Preview(request InstallRequest) (repository.RenderedClientConfig, error) {
+	content, err := renderGenericPreviewContent(request)
+	if err != nil {
+		return repository.RenderedClientConfig{}, err
+	}
+
+	return repository.RenderedClientConfig{
+		Client:     a.client,
+		ConfigPath: a.configPath,
+		Mode:       repository.RenderModePreview,
+		Content:    content,
+		Notes:      append([]string(nil), a.notes...),
+	}, nil
+}
+
+func (a previewOnlyClientAdapter) Write(_ context.Context, _ InstallRequest) (repository.RenderedClientConfig, error) {
+	return repository.RenderedClientConfig{}, errors.New("this client does not support --write yet; preview the host-specific contract until native config writes land")
+}
+
+func (a commandPreviewClientAdapter) Preview(request InstallRequest) (repository.RenderedClientConfig, error) {
 	serverName := request.ServerName
 	if serverName == "" {
 		serverName = repository.DefaultMCPServerName
 	}
-	document, err := repository.MergeClientConfig(nil, serverName, repository.NewServeCommand(request.BinaryPath))
-	if err != nil {
-		return repository.RenderedClientConfig{}, err
-	}
-	content, err := repository.RenderClientConfig(document)
+
+	content := repository.RenderClaudeCLIAddCommand(serverName, repository.NewServeCommand(request.BinaryPath))
+	return repository.RenderedClientConfig{
+		Client:     a.client,
+		ConfigPath: "command",
+		Mode:       repository.RenderModePreview,
+		Content:    content,
+		Notes:      append([]string(nil), a.notes...),
+	}, nil
+}
+
+func (a commandPreviewClientAdapter) Write(_ context.Context, _ InstallRequest) (repository.RenderedClientConfig, error) {
+	return repository.RenderedClientConfig{}, errors.New("this client does not support --write yet; preview the native Claude CLI registration command for now")
+}
+
+func (a genericClientAdapter) Preview(request InstallRequest) (repository.RenderedClientConfig, error) {
+	content, err := renderGenericPreviewContent(request)
 	if err != nil {
 		return repository.RenderedClientConfig{}, err
 	}
@@ -181,10 +223,7 @@ func (a genericClientAdapter) Preview(request InstallRequest) (repository.Render
 		ConfigPath: "manual",
 		Mode:       repository.RenderModePreview,
 		Content:    content,
-		Notes: []string{
-			"Place this JSON into your MCP host configuration.",
-			"Use command `optimusctx` with args `[\"run\"]`.",
-		},
+		Notes:      append([]string(nil), a.notes...),
 	}, nil
 }
 
@@ -201,26 +240,44 @@ func genericMCPNotes() []string {
 
 func claudeCLINotes() []string {
 	return []string{
-		"Claude CLI support is preview-only right now.",
-		"Add this MCP server definition to your Claude CLI MCP configuration.",
-		"Use command `optimusctx` with args `[\"run\"]`.",
+		"This previews the native Claude CLI stdio registration command.",
+		"Phase 21 will let `optimusctx status --client claude-cli --write` execute this command for you.",
+		"The rendered command keeps `optimusctx run` as the canonical runtime handoff.",
 	}
 }
 
 func codexAppNotes() []string {
 	return []string{
-		"Codex App support is preview-only right now.",
-		"Add this MCP server definition to the Codex app MCP configuration.",
-		"Use command `optimusctx` with args `[\"run\"]`.",
+		"Codex App is on an explicit preview adapter now instead of the generic fallback.",
+		"Phase 20 plan 02 will replace this transitional preview with the native shared Codex config contract.",
+		"The preview still keeps `optimusctx run` as the canonical runtime handoff.",
 	}
 }
 
 func codexCLINotes() []string {
 	return []string{
-		"Codex CLI support is preview-only right now.",
-		"If you use ~/.codex/config.toml, translate this JSON MCP server definition into the CLI's config format.",
-		"Use command `optimusctx` with args `[\"run\"]`.",
+		"Codex CLI is on an explicit preview adapter now instead of the generic fallback.",
+		"Phase 20 plan 02 will replace this transitional preview with the native shared Codex config contract.",
+		"The preview still keeps `optimusctx run` as the canonical runtime handoff.",
 	}
+}
+
+func renderGenericPreviewContent(request InstallRequest) (string, error) {
+	serverName := request.ServerName
+	if serverName == "" {
+		serverName = repository.DefaultMCPServerName
+	}
+
+	document, err := repository.MergeClientConfig(nil, serverName, repository.NewServeCommand(request.BinaryPath))
+	if err != nil {
+		return "", err
+	}
+	content, err := repository.RenderClientConfig(document)
+	if err != nil {
+		return "", err
+	}
+
+	return content, nil
 }
 
 func resolveClaudeDesktopConfigPath(explicitPath string) (string, error) {

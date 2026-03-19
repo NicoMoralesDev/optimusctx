@@ -112,7 +112,7 @@ func runStatusCommand(stdout io.Writer, args []string) error {
 		if err != nil {
 			return err
 		}
-		_, _ = fmt.Fprintf(&b, "\nclient: %s\nconfig path: %s\nmode: %s\n\n%s", preview.Rendered.Client.DisplayName, preview.Rendered.ConfigPath, preview.Rendered.Mode, preview.Rendered.Content)
+		_, _ = fmt.Fprintf(&b, "\nclient: %s\nconfig path: %s\nmode: %s\n\n%s", preview.Rendered.Client.DisplayName, preview.Rendered.ConfigPath, preview.Rendered.Mode, ensureTrailingNewline(preview.Rendered.Content))
 		for _, note := range preview.Rendered.Notes {
 			_, _ = fmt.Fprintf(&b, "note: %s\n", note)
 		}

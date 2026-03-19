@@ -84,7 +84,7 @@ func runInstallCommand(stdout io.Writer, args []string) error {
 		return err
 	}
 
-	if _, err := fmt.Fprintf(stdout, "client: %s\nconfig path: %s\nmode: %s\n\n%s", result.Rendered.Client.DisplayName, result.Rendered.ConfigPath, result.Rendered.Mode, result.Rendered.Content); err != nil {
+	if _, err := fmt.Fprintf(stdout, "client: %s\nconfig path: %s\nmode: %s\n\n%s", result.Rendered.Client.DisplayName, result.Rendered.ConfigPath, result.Rendered.Mode, ensureTrailingNewline(result.Rendered.Content)); err != nil {
 		return err
 	}
 	if result.Wrote {
@@ -121,4 +121,11 @@ func normalizeInstallBinaryPath(runtimeBinaryPath string) string {
 func looksEphemeralRuntimeBinary(path string) bool {
 	path = strings.ReplaceAll(strings.TrimSpace(path), "\\", "/")
 	return strings.Contains(path, "/.cache/go-build/") || strings.Contains(path, "/go-build/")
+}
+
+func ensureTrailingNewline(content string) string {
+	if strings.HasSuffix(content, "\n") {
+		return content
+	}
+	return content + "\n"
 }
