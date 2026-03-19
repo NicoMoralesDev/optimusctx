@@ -1,12 +1,12 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: planning next milestone
+milestone: v1.3.1
+milestone_name: planning v1.3.1
 current_phase: null
 current_phase_name: none
 current_plan: null
 status: planning_next_milestone
-stopped_at: Archived v1.2 milestone
+stopped_at: v1.3.0 published; preparing v1.3.1
 last_updated: "2026-03-19T19:26:55.033Z"
 last_activity: 2026-03-19
 progress:
@@ -23,7 +23,7 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/milestones/v1.2-REQUIREMENTS.md` (last shipped scope; no active requirements file yet)
-**Status:** Planning next milestone
+**Status:** Planning next milestone (`v1.3.1`)
 **Current Phase:** None
 **Current Phase Name:** None
 **Total Phases:** 0
@@ -31,7 +31,7 @@ progress:
 **Total Plans in Phase:** 0
 **Progress:** [░░░░░░░░░░] 0%
 **Last Activity:** 2026-03-19
-**Last Activity Description:** v1.2 milestone completed and archived
+**Last Activity Description:** v1.3.0 published; next milestone target set to v1.3.1
 
 ## Project Memory
 
@@ -43,8 +43,9 @@ progress:
 
 ## Current Planning Context
 
-- Active milestone: none; `v1.2` was archived on 2026-03-19
-- Next execution action: start the next milestone with `$gsd-new-milestone`
+- Active milestone: planning `v1.3.1`
+- Latest published release: `v1.3.0`
+- Next execution action: start the `v1.3.1` milestone with `$gsd-new-milestone`
 - Historical v1.0, v1.1, and v1.2 requirements and roadmaps are archived under `.planning/milestones/`
 - Hosted GitHub Actions `release.yml` summary and publication validation were confirmed resolved on 2026-03-19
 

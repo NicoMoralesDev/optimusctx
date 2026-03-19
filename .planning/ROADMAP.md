@@ -13,13 +13,13 @@
 ## Current Milestone
 
 - None active
-- Next step: run `$gsd-new-milestone` to define the next shipped scope from the queued distribution-signing and benchmark-depth themes.
+- Next step: run `$gsd-new-milestone` to define `v1.3.1` from the queued distribution-signing and benchmark-depth themes.
 
 ## Current Status
 
-- v1.2 is archived and shipped.
+- v1.3.0 is the latest published release.
 - The hosted GitHub Actions release-summary and publication validation for v1.2 is resolved.
-- The next milestone has not been defined yet.
+- The next milestone target is `v1.3.1`.
 
 ---
-*Last updated: 2026-03-19 after completing and archiving v1.2*
+*Last updated: 2026-03-19 after confirming v1.3.0 is published and setting v1.3.1 as next milestone*

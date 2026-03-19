@@ -10,12 +10,12 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 ## Current State
 
-- Shipped version: `v1.2`
+- Shipped version: `v1.3.0`
 - Runtime stack: Go, SQLite, Tree-sitter, MCP-over-STDIO
 - Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `doctor`, `eval`, `install`, `version`, `release prepare`
-- Product state: `v1.0`, `v1.1`, and `v1.2` are shipped; release preparation, canonical release orchestration, downstream publication fan-out, and operator recovery guidance are now archived alongside the core runtime
+- Product state: `v1.0`, `v1.1`, `v1.2`, and `v1.3.0` are shipped; release preparation, canonical release orchestration, downstream publication fan-out, and operator recovery guidance are part of the shipped surface
 
-## Next Milestone Goals
+## Next Milestone Goals: v1.3.1
 
 - Expand distribution trust with signed artifacts, SBOM verification, and clearer release authenticity checks
 - Evaluate broader package-manager reach, starting with native Linux formats such as `.deb` and `.rpm`
@@ -53,7 +53,7 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 v1.0 proved the core runtime wedge. v1.1 then proved the shipped product works end to end on fixture-backed CLI and MCP workflows, tightened benchmark claims around declared agent-facing inputs and comparable final artifacts, and expanded distribution through a narrow set of verifiable release channels.
 
-v1.2 closed the operator loop around that shipped surface. The repository now has a safe release-preparation entrypoint, one canonical release metadata and workflow contract, multi-channel publication fan-out, and a single operator guide for verification and recovery, with the hosted GitHub Actions summary and publication flow now also confirmed.
+v1.2 closed the operator loop around that shipped surface. v1.3.0 is already published as the current shipped release. The next planning target is therefore v1.3.1, which should be treated as the next patch release rather than reopening v1.3 planning.
 
 <details>
 <summary>Archived v1.1 planning context</summary>
@@ -116,4 +116,4 @@ This repository is greenfield. The development process is expected to be heavily
 | Every downstream channel should derive from the same tag and release metadata contract | Multi-channel automation is only trustworthy if there is one source of truth for archives, checksums, and package metadata | ✓ Shipped in v1.2 |
 
 ---
-*Last updated: 2026-03-19 after completing v1.2 milestone*
+*Last updated: 2026-03-19 after confirming v1.3.0 is shipped and setting v1.3.1 as next milestone*

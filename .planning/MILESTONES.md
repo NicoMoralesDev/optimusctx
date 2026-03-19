@@ -21,6 +21,8 @@
 
 **What's next:** Define the next milestone around signed distribution trust and deeper benchmark coverage.
 
+**Planning note:** `v1.3.0` is already published; the next milestone target is `v1.3.1`.
+
 ---
 
 ## v1.1 Validation, Benchmarking, and Distribution (Shipped: 2026-03-17)
