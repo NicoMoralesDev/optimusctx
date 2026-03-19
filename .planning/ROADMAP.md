@@ -26,7 +26,7 @@
 
 Plans:
 
-- [ ] 20-01: supported-client contract and preview model refactor
+- [x] 20-01: supported-client contract and preview model refactor
 - [ ] 20-02: Codex shared `config.toml` backend and merge semantics
 - [ ] 20-03: Claude Desktop parity lock and host-path resolution cleanup
 
@@ -83,13 +83,13 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.3.1` with roadmap defined and ready to start Phase 20 planning
+Active milestone: `v1.3.1` with Phase 20 in progress and plan `20-01` complete
 
 Next step:
 
-- Run `$gsd-plan-phase 20` to plan the contract and config-backend foundation.
+- Execute `20-02` to move Codex App and Codex CLI onto the shared native `config.toml` preview backend.
 - Preserve `optimusctx run` as the one canonical runtime handoff across every supported client.
 - Treat Claude CLI write-path choice as the main implementation-risk item during Phase 20/21 planning.
 
 ---
-*Last updated: 2026-03-19 after defining the v1.3.1 MCP client compatibility roadmap*
+*Last updated: 2026-03-19 after completing plan 20-01 and updating Phase 20 progress*

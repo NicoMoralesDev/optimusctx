@@ -7,8 +7,8 @@
 
 ### MCP Client Contracts
 
-- [ ] **MCP-01**: Operator can select `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` as explicit supported clients from the `optimusctx` client-registration surface.
-- [ ] **MCP-02**: Operator can preview a host-native registration contract for each supported client and every preview points at `optimusctx run`.
+- [x] **MCP-01**: Operator can select `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` as explicit supported clients from the `optimusctx` client-registration surface.
+- [x] **MCP-02**: Operator can preview a host-native registration contract for each supported client and every preview points at `optimusctx run`.
 - [ ] **MCP-03**: Operator can execute an explicit `--write` flow for each supported client through that host's real config or registration path instead of manual translation.
 - [ ] **MCP-04**: Operator gets idempotent writes that preserve unrelated MCP registrations when OptimusCtx updates an existing supported-host configuration.
 
@@ -55,8 +55,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MCP-01 | Phase 20 | Pending |
-| MCP-02 | Phase 20 | Pending |
+| MCP-01 | Phase 20 | Complete |
+| MCP-02 | Phase 20 | Complete |
 | MCP-04 | Phase 20 | Pending |
 | CLD-01 | Phase 20 | Pending |
 | CDX-03 | Phase 20 | Pending |

@@ -4,17 +4,17 @@ milestone: v1.3.1
 milestone_name: MCP client compatibility
 current_phase: 20
 current_phase_name: mcp-client-contract-and-config-backend-foundation
-current_plan: null
+current_plan: "02"
 status: ready_to_execute
-stopped_at: Phase 20 planned and ready for execution
-last_updated: "2026-03-19T20:21:31Z"
+stopped_at: Completed 20-01-PLAN.md
+last_updated: "2026-03-19T20:31:23.192Z"
 last_activity: 2026-03-19
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 9
-  completed_plans: 0
-  percent: 0
+  total_plans: 3
+  completed_plans: 1
+  percent: 33
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute Phase 20
+**Status:** Ready to execute Phase 20 Plan 02
 **Current Phase:** 20
 **Current Phase Name:** MCP Client Contract and Config Backend Foundation
 **Total Phases:** 3
-**Current Plan:** None
+**Current Plan:** 02
 **Total Plans in Phase:** 3
-**Progress:** [░░░░░░░░░░] 0%
+**Progress:** [███░░░░░░░] 33%
 **Last Activity:** 2026-03-19
-**Last Activity Description:** Planned Phase 20 with 3 executable plans for MCP client contract and backend foundation
+**Last Activity Description:** Completed plan 20-01 with explicit supported-client preview helpers and a native Claude CLI preview contract
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: `v1.3.1` MCP client compatibility
 - Latest published release: `v1.3.0`
-- Next execution action: run execute-phase for Phase 20 to build the client contract and config backend foundation
+- Next execution action: execute plan 20-02 to add the shared Codex `config.toml` backend and native preview adapters
 - Historical v1.0, v1.1, and v1.2 requirements and roadmaps are archived under `.planning/milestones/`
 - Hosted GitHub Actions `release.yml` summary and publication validation were confirmed resolved on 2026-03-19
 
@@ -263,6 +263,7 @@ progress:
 | Phase 18-multi-channel-publication-fan-out P04 | 6m | 2 tasks | 6 files |
 | Phase 19 P01 | 2m | 2 tasks | 2 files |
 | Phase 19 P03 | 6m | 2 tasks | 2 files |
+| Phase 20 P01 | 7min | 2 tasks | 6 files |
 
 ## Decisions Made
 
@@ -453,6 +454,8 @@ progress:
 - [Phase 19]: Release contract tests now prevent summary wording drift and explicitly forbid inventing publication_channel=github-release for reruns.
 - [Phase 19]: Distribution strategy now points operators to the canonical operator guide and states that GitHub Release must be fixed before any downstream rerun.
 - [Phase 19]: Recovery tests lock npm unpublish and unsupported recovery-channel claims out of the supported operator path.
+- [Phase 20]: Claude CLI preview now uses a native command contract with ConfigPath "command" instead of JSON/manual rendering.
+- [Phase 20]: The generic adapter remains the only manual fallback while named clients move onto explicit preview adapter types.
 
 ## Blockers
 
@@ -460,8 +463,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-18T18:22:46.043Z
-**Stopped At:** Completed 19-03-PLAN.md
+**Last Date:** 2026-03-19T20:31:19.882Z
+**Stopped At:** Completed 20-01-PLAN.md
 **Resume File:** None
 
 ---
