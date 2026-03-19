@@ -78,6 +78,19 @@ func NewServeCommand(binaryPath string) ServeCommand {
 	}
 }
 
+func NormalizeServeCommand(command ServeCommand) ServeCommand {
+	if strings.TrimSpace(command.Command) == "" {
+		return NewServeCommand("")
+	}
+
+	command.Command = CanonicalServeCommandPath(command.Command)
+	if len(command.Args) == 0 {
+		command.Args = []string{"run"}
+	}
+
+	return command
+}
+
 func CanonicalServeCommandPath(binaryPath string) string {
 	binaryPath = strings.TrimSpace(binaryPath)
 	if binaryPath == "" {
@@ -108,4 +121,17 @@ func RenderClientConfig(document ClientConfigDocument) (string, error) {
 		return "", fmt.Errorf("encode client config: %w", err)
 	}
 	return string(encoded) + "\n", nil
+}
+
+func RenderClaudeCLIAddCommand(serverName string, command ServeCommand) string {
+	serverName = strings.TrimSpace(serverName)
+	if serverName == "" {
+		serverName = DefaultMCPServerName
+	}
+
+	command = NormalizeServeCommand(command)
+	parts := []string{"claude", "mcp", "add", "--transport", "stdio", serverName, "--", command.Command}
+	parts = append(parts, command.Args...)
+
+	return strings.Join(parts, " ")
 }
