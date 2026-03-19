@@ -10,7 +10,7 @@
 - [x] **MCP-01**: Operator can select `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` as explicit supported clients from the `optimusctx` client-registration surface.
 - [x] **MCP-02**: Operator can preview a host-native registration contract for each supported client and every preview points at `optimusctx run`.
 - [ ] **MCP-03**: Operator can execute an explicit `--write` flow for each supported client through that host's real config or registration path instead of manual translation.
-- [ ] **MCP-04**: Operator gets idempotent writes that preserve unrelated MCP registrations when OptimusCtx updates an existing supported-host configuration.
+- [x] **MCP-04**: Operator gets idempotent writes that preserve unrelated MCP registrations when OptimusCtx updates an existing supported-host configuration.
 
 ### Claude Clients
 
@@ -22,7 +22,7 @@
 
 - [ ] **CDX-01**: Operator can preview and write Codex App registration in the native `config.toml` MCP format.
 - [ ] **CDX-02**: Operator can preview and write Codex CLI registration in the native `config.toml` MCP format.
-- [ ] **CDX-03**: Codex App and Codex CLI registration stay consistent because both use one shared `config.toml`-backed integration model.
+- [x] **CDX-03**: Codex App and Codex CLI registration stay consistent because both use one shared `config.toml`-backed integration model.
 
 ### Operator Surface
 
@@ -57,9 +57,9 @@
 |-------------|-------|--------|
 | MCP-01 | Phase 20 | Complete |
 | MCP-02 | Phase 20 | Complete |
-| MCP-04 | Phase 20 | Pending |
+| MCP-04 | Phase 20 | Complete |
 | CLD-01 | Phase 20 | Pending |
-| CDX-03 | Phase 20 | Pending |
+| CDX-03 | Phase 20 | Complete |
 | MCP-03 | Phase 21 | Pending |
 | CLD-02 | Phase 21 | Pending |
 | CLD-03 | Phase 21 | Pending |
@@ -76,4 +76,4 @@
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after defining the v1.3.1 MCP client compatibility milestone*
+*Last updated: 2026-03-19 after completing plan 20-02 and marking the shared Codex config requirements complete*

@@ -4,17 +4,17 @@ milestone: v1.3.1
 milestone_name: MCP client compatibility
 current_phase: 20
 current_phase_name: mcp-client-contract-and-config-backend-foundation
-current_plan: "02"
+current_plan: "03"
 status: ready_to_execute
-stopped_at: Completed 20-01-PLAN.md
-last_updated: "2026-03-19T20:31:23.192Z"
+stopped_at: Completed 20-02-PLAN.md
+last_updated: "2026-03-19T20:44:01.348Z"
 last_activity: 2026-03-19
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 33
+  completed_plans: 2
+  percent: 67
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute Phase 20 Plan 02
+**Status:** Ready to execute Phase 20 Plan 03
 **Current Phase:** 20
 **Current Phase Name:** MCP Client Contract and Config Backend Foundation
 **Total Phases:** 3
-**Current Plan:** 02
+**Current Plan:** 03
 **Total Plans in Phase:** 3
-**Progress:** [███░░░░░░░] 33%
+**Progress:** [███████░░░] 67%
 **Last Activity:** 2026-03-19
-**Last Activity Description:** Completed plan 20-01 with explicit supported-client preview helpers and a native Claude CLI preview contract
+**Last Activity Description:** Completed plan 20-02 with shared Codex `config.toml` merge helpers and native Codex App/CLI preview adapters
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: `v1.3.1` MCP client compatibility
 - Latest published release: `v1.3.0`
-- Next execution action: execute plan 20-02 to add the shared Codex `config.toml` backend and native preview adapters
+- Next execution action: execute plan 20-03 to tighten Claude Desktop parity and remaining host-path resolution details
 - Historical v1.0, v1.1, and v1.2 requirements and roadmaps are archived under `.planning/milestones/`
 - Hosted GitHub Actions `release.yml` summary and publication validation were confirmed resolved on 2026-03-19
 
@@ -264,6 +264,7 @@ progress:
 | Phase 19 P01 | 2m | 2 tasks | 2 files |
 | Phase 19 P03 | 6m | 2 tasks | 2 files |
 | Phase 20 P01 | 7min | 2 tasks | 6 files |
+| Phase 20-mcp-client-contract-and-config-backend-foundation P02 | 3min | 2 tasks | 6 files |
 
 ## Decisions Made
 
@@ -456,6 +457,8 @@ progress:
 - [Phase 19]: Recovery tests lock npm unpublish and unsupported recovery-channel claims out of the supported operator path.
 - [Phase 20]: Claude CLI preview now uses a native command contract with ConfigPath "command" instead of JSON/manual rendering.
 - [Phase 20]: The generic adapter remains the only manual fallback while named clients move onto explicit preview adapter types.
+- [Phase 20-mcp-client-contract-and-config-backend-foundation]: Codex App and Codex CLI now share one ~/.codex/config.toml preview backend so Phase 21 can add writes without changing the storage model.
+- [Phase 20-mcp-client-contract-and-config-backend-foundation]: Codex preview output now uses TOML parsing plus a deterministic renderer so the shared config emits the documented [mcp_servers.<name>] contract with double-quoted values.
 
 ## Blockers
 
@@ -463,9 +466,9 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-19T20:31:19.882Z
-**Stopped At:** Completed 20-01-PLAN.md
+**Last Date:** 2026-03-19T20:44:01.345Z
+**Stopped At:** Completed 20-02-PLAN.md
 **Resume File:** None
 
 ---
-*Last updated: 2026-03-17 after completing plan 17-04 canonical-root documentation and regression lock*
+*Last updated: 2026-03-19 after completing plan 20-02 shared Codex config backend and preview integration*
