@@ -341,27 +341,30 @@ func resolveCodexConfigPath(explicitPath string) (string, error) {
 }
 
 func resolveClaudeDesktopConfigPath(explicitPath string) (string, error) {
-	if explicitPath != "" {
-		return explicitPath, nil
-	}
-
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("resolve home directory: %w", err)
 	}
 
-	switch runtime.GOOS {
+	return resolveClaudeDesktopConfigPathForPlatform(runtime.GOOS, homeDir, os.Getenv("AppData"), explicitPath)
+}
+
+func resolveClaudeDesktopConfigPathForPlatform(goos string, homeDir string, appData string, explicitPath string) (string, error) {
+	if explicitPath != "" {
+		return explicitPath, nil
+	}
+
+	switch goos {
 	case "darwin":
 		return filepath.Join(homeDir, "Library", "Application Support", "Claude", "claude_desktop_config.json"), nil
 	case "linux":
 		return filepath.Join(homeDir, ".config", "Claude", "claude_desktop_config.json"), nil
 	case "windows":
-		appData := os.Getenv("AppData")
 		if appData == "" {
 			return "", errors.New("resolve Claude Desktop config path: %AppData% is not set; pass --config")
 		}
 		return filepath.Join(appData, "Claude", "claude_desktop_config.json"), nil
 	default:
-		return "", fmt.Errorf("resolve Claude Desktop config path: unsupported platform %q; pass --config", runtime.GOOS)
+		return "", fmt.Errorf("resolve Claude Desktop config path: unsupported platform %q; pass --config", goos)
 	}
 }

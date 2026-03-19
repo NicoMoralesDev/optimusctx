@@ -8,6 +8,49 @@ import (
 	"testing"
 )
 
+func TestResolveClaudeDesktopConfigPathExplicitOverride(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	got, err := resolveClaudeDesktopConfigPathForPlatform("windows", "/ignored/home", "", "/tmp/custom/claude.json")
+	if err != nil {
+		t.Fatalf("resolveClaudeDesktopConfigPathForPlatform() error = %v", err)
+	}
+	if got != "/tmp/custom/claude.json" {
+		t.Fatalf("config path = %q", got)
+	}
+}
+
+func TestResolveClaudeDesktopConfigPathLinux(t *testing.T) {
+	got, err := resolveClaudeDesktopConfigPathForPlatform("linux", "/home/tester", "", "")
+	if err != nil {
+		t.Fatalf("resolveClaudeDesktopConfigPathForPlatform() error = %v", err)
+	}
+
+	want := filepath.Join("/home/tester", ".config", "Claude", "claude_desktop_config.json")
+	if got != want {
+		t.Fatalf("config path = %q, want %q", got, want)
+	}
+}
+
+func TestResolveClaudeDesktopConfigPathDarwin(t *testing.T) {
+	got, err := resolveClaudeDesktopConfigPathForPlatform("darwin", "/Users/tester", "", "")
+	if err != nil {
+		t.Fatalf("resolveClaudeDesktopConfigPathForPlatform() error = %v", err)
+	}
+
+	want := filepath.Join("/Users/tester", "Library", "Application Support", "Claude", "claude_desktop_config.json")
+	if got != want {
+		t.Fatalf("config path = %q, want %q", got, want)
+	}
+}
+
+func TestResolveClaudeDesktopConfigPathWindowsRequiresAppData(t *testing.T) {
+	_, err := resolveClaudeDesktopConfigPathForPlatform("windows", `C:\Users\tester`, "", "")
+	if err == nil || !strings.Contains(err.Error(), "%AppData% is not set") {
+		t.Fatalf("resolveClaudeDesktopConfigPathForPlatform() error = %v", err)
+	}
+}
+
 func TestInstallServiceSupportsGenericPreview(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
