@@ -9,99 +9,22 @@
 - [x] **v1.0** — shipped 2026-03-15, `8` phases, `39` plans, `117` tasks. [Roadmap archive](/home/nico/projects/optimusctx/.planning/milestones/v1.0-ROADMAP.md) · [Requirements archive](/home/nico/projects/optimusctx/.planning/milestones/v1.0-REQUIREMENTS.md)
 - [x] **v1.1** — shipped 2026-03-17, `7` phases, `27` plans, `78` tasks. [Roadmap archive](/home/nico/projects/optimusctx/.planning/milestones/v1.1-ROADMAP.md) · [Requirements archive](/home/nico/projects/optimusctx/.planning/milestones/v1.1-REQUIREMENTS.md) · [Audit archive](/home/nico/projects/optimusctx/.planning/milestones/v1.1-MILESTONE-AUDIT.md) · [Phase archive](/home/nico/projects/optimusctx/.planning/milestones/v1.1-phases)
 - [x] **v1.2** — shipped 2026-03-19, `4` phases, `18` plans, `18` tasks. [Roadmap archive](/home/nico/projects/optimusctx/.planning/milestones/v1.2-ROADMAP.md) · [Requirements archive](/home/nico/projects/optimusctx/.planning/milestones/v1.2-REQUIREMENTS.md) · [Audit archive](/home/nico/projects/optimusctx/.planning/milestones/v1.2-MILESTONE-AUDIT.md) · [Phase archive](/home/nico/projects/optimusctx/.planning/milestones/v1.2-phases) · [Milestones ledger](/home/nico/projects/optimusctx/.planning/MILESTONES.md)
+- [x] **v1.3.1** — shipped 2026-03-20, `4` phases, `12` plans, `18` tasks. [Roadmap archive](/home/nico/projects/optimusctx/.planning/milestones/v1.3.1-ROADMAP.md) · [Requirements archive](/home/nico/projects/optimusctx/.planning/milestones/v1.3.1-REQUIREMENTS.md) · [Audit archive](/home/nico/projects/optimusctx/.planning/milestones/v1.3.1-MILESTONE-AUDIT.md) · [Phase archive](/home/nico/projects/optimusctx/.planning/milestones/v1.3.1-phases) · [Milestones ledger](/home/nico/projects/optimusctx/.planning/MILESTONES.md)
 
 ## Current Milestone
 
-- [ ] **v1.3.1** — MCP client compatibility
-- Goal: finish first-class MCP client registration for the supported Claude and Codex hosts so named clients no longer fall back to generic/manual setup paths.
-- Requirements: [REQUIREMENTS.md](/home/nico/projects/optimusctx/.planning/REQUIREMENTS.md)
+No active milestone.
 
-## Phase Plan
-
-### Phase 20: MCP Client Contract and Config Backend Foundation
-
-**Goal**: Replace generic named-client handling with truthful host-native preview contracts and safe config-backend foundations for Claude and Codex clients.
-**Depends on**: Phase 19
-**Plans**: 3 plans
-
-Plans:
-
-- [x] 20-01: supported-client contract and preview model refactor
-- [x] 20-02: Codex shared `config.toml` backend and merge semantics
-- [x] 20-03: Claude Desktop parity lock and host-path resolution cleanup
-
-**Requirements covered:** `MCP-01`, `MCP-02`, `MCP-04`, `CLD-01`, `CDX-03`
-
-**Success criteria:**
-- Each named supported client renders a host-native registration preview instead of falling back to generic JSON/manual notes.
-- Codex App and Codex CLI share one safe persisted config model.
-- Repeated preview/write preparation preserves unrelated host config entries and keeps `optimusctx run` canonical.
-
-**Details:** Phase 20 closes the contract gap first, so later write flows do not build on misleading or lossy host assumptions.
-
-### Phase 21: Real Write Paths and Operator Surface Integration
-
-**Goal**: Deliver real explicit write flows for Claude CLI and Codex clients, then wire the supported-client story through onboarding and operator guidance.
-**Depends on**: Phase 20
-**Plans**: 3 plans
-
-Plans:
-
-- [x] 21-01: Claude CLI supported write path and scope-aware notes
-- [x] 21-02: Codex App and Codex CLI persisted write flow
-- [x] 21-03: init, status, and operator-guidance surface update
-
-**Requirements covered:** `MCP-03`, `CLD-02`, `CLD-03`, `CDX-01`, `CDX-02`, `OPS-01`
-
-**Success criteria:**
-- `optimusctx status --client <client> --write` performs a real supported registration flow for every named client in scope.
-- Claude CLI registration follows the host's documented model rather than a generic/manual fallback.
-- Onboarding and status guidance stop assuming Claude Desktop is the only fully supported integration.
-
-**Details:** Phase 21 turns the backend contract work into the real operator flow the milestone promises.
-
-### Phase 21.1: Init-led MCP onboarding and read-only status contract (INSERTED)
-
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
-**Depends on:** Phase 21
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 21.1 to break down)
-
-### Phase 22: Documentation and Compatibility Verification
-
-**Goal**: Lock the supported-client surface with docs, regression coverage, and explicit verification evidence.
-**Depends on**: Phase 21
-**Plans**: 3 plans
-
-Plans:
-
-- [ ] 22-01: README, quickstart, and install-path documentation update
-- [ ] 22-02: supported-client regression coverage and idempotence verification
-- [ ] 22-03: end-to-end operator verification and release-facing doc sync
-
-**Requirements covered:** `DOC-01`, `TST-01`
-
-**Success criteria:**
-- Public docs explain preview, write, and runtime handoff for the supported named clients.
-- Regression coverage locks host-native preview/write behavior and repeated-write safety.
-- The milestone closes with operator evidence that the supported clients are actually ready to use with `optimusctx run`.
-
-**Details:** Phase 22 makes the support claim durable by closing the documentation and verification loop.
+Define the next milestone with fresh requirements before adding new phases.
 
 ## Current Status
 
-Active milestone: `v1.3.1` with Phase 20 and Phase 21 complete; Phase 21.1 inserted and ready to plan
+The v1.3.1 MCP client compatibility milestone is archived.
 
 Next step:
 
-- Plan Phase `21.1` to move MCP registration ownership back to `init` and restore `status` to a read-only surface.
-- Re-check Phase 22 dependencies after `21.1` is planned so docs and verification target the corrected onboarding contract.
-- Phase 21 plan `21-01` is complete with the real Claude CLI write path and scope-aware status surface.
-- Phase 21 plan `21-02` is complete with real Codex App and Codex CLI writes through the shared native `config.toml` backend.
-- Phase 21 plan `21-03` is complete with truthful supported-client onboarding, status, doctor, and snippet guidance.
+- Define the next milestone scope and requirements.
+- Decide whether the deferred real-Claude host validation should be cleared first or carried into the next milestone as explicit tech debt.
 
 ---
-*Last updated: 2026-03-20 after inserting phase 21.1 before phase 22*
+*Last updated: 2026-03-20 after archiving v1.3.1*

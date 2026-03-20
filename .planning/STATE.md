@@ -1,19 +1,19 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-current_phase: 21
-current_phase_name: real write paths and operator surface integration
-current_plan: 3
-status: verifying
-stopped_at: Completed 21-03-PLAN.md
-last_updated: "2026-03-20T02:37:41.987Z"
+milestone: none
+milestone_name: none
+current_phase: none
+current_phase_name: none
+current_plan: 0
+status: milestone_archived
+stopped_at: Archived v1.3.1 after milestone audit and cleanup
+last_updated: "2026-03-20T10:52:22Z"
 last_activity: 2026-03-20
 progress:
-  total_phases: 4
-  completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
   percent: 100
 ---
 
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Phase complete — ready for verification
-**Current Phase:** 21
-**Current Phase Name:** real write paths and operator surface integration
-**Total Phases:** 4
-**Current Plan:** 3
-**Total Plans in Phase:** 3
+**Status:** No active milestone; `v1.3.1` is archived
+**Current Phase:** None
+**Current Phase Name:** None
+**Total Phases:** 0
+**Current Plan:** 0
+**Total Plans in Phase:** 0
 **Progress:** [██████████] 100%
 **Last Activity:** 2026-03-20
-**Last Activity Description:** Inserted Phase 21.1 to realign MCP onboarding ownership around init-led registration and read-only status behavior
+**Last Activity Description:** Archived `v1.3.1` after milestone audit, planning collapse, and phase-directory cleanup
 
 ## Project Memory
 
@@ -43,26 +43,32 @@ progress:
 
 ## Current Planning Context
 
-- Active milestone: `v1.3.1` MCP client compatibility
-- Latest published release: `v1.3.0`
-- Next execution action: run plan-phase for Phase 21.1 to restore init-led MCP onboarding before Phase 22 documentation and verification
+- Active milestone: none
+- Most recently archived milestone: `v1.3.1` MCP client compatibility
+- Latest published release: `v1.3.1`
+- Next execution action: define the next milestone or explicitly clear the deferred real-Claude host validation on a machine with Claude Code installed
 - Historical v1.0, v1.1, and v1.2 requirements and roadmaps are archived under `.planning/milestones/`
 - Hosted GitHub Actions `release.yml` summary and publication validation were confirmed resolved on 2026-03-19
 
-## Current Milestone Scope
+## Most Recent Milestone Scope
 
-- Close first-class MCP client support for `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli`
-- Make `optimusctx run` the canonical runtime handoff across every supported named client
-- Replace preview-only/manual fallback for Claude CLI and Codex clients with real explicit `--write` support
-- Update onboarding, docs, and regression coverage so the supported-client story is truthful end to end
+- Closed first-class MCP client support for `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli`
+- Kept `optimusctx run` as the canonical runtime handoff across every supported named client
+- Replaced preview-only/manual fallback for Claude CLI and Codex clients with real explicit `--write` support
+- Updated onboarding, docs, and regression coverage so the supported-client story is truthful end to end
 
 ## Verification Status
 
 - Phase 18 verification was backfilled on 2026-03-19 from the committed UAT evidence, fresh release-layer test runs, and a passing full `go test ./...` suite.
 - Phase 19 repository verification passed, including the manual operator-guide walkthrough.
 - Hosted GitHub Actions summary verification passed on 2026-03-19, closing the last remote validation item from v1.2.
+- v1.3.1 milestone audit is archived as `tech_debt`: all shipped requirements are implemented, documented, and covered by repository evidence.
+- The only deferred manual step is still the real `claude` binary validation for `optimusctx init --client claude-cli --scope local --write` on a host with Claude Code installed.
 
 ## Recent Decisions
+
+- Phase 21.1 restores `optimusctx init --client <client> [--write]` as the supported-client onboarding owner and removes registration behavior from `optimusctx status`.
+- Deprecated/operator helper surfaces now point at init-led onboarding while preserving `optimusctx run` as the canonical runtime handoff.
 
 - v1.2 focuses on release automation and operator workflow, not on new runtime retrieval capabilities.
 - The next release flow should start with interactive or guided version and tag preparation rather than ad hoc tag creation.
@@ -107,7 +113,7 @@ progress:
 
 - Source of truth for intent: `.planning/PROJECT.md`
 - Source of truth for current scope: `.planning/REQUIREMENTS.md`
-- Source of truth for last shipped scope: `.planning/milestones/v1.2-REQUIREMENTS.md`
+- Source of truth for last shipped scope: `.planning/milestones/v1.3.1-REQUIREMENTS.md`
 - Source of truth for phase sequence: `.planning/ROADMAP.md`
 - Source of truth for technical direction: `.planning/research/SUMMARY.md`
 

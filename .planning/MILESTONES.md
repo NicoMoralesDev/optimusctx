@@ -1,5 +1,27 @@
 # Project Milestones: OptimusCtx
 
+## v1.3.1 MCP Client Compatibility (Shipped: 2026-03-20)
+
+**Delivered:** First-class supported-client onboarding and write-backed integration for Claude and Codex hosts, plus corrected init-led onboarding ownership and release-facing documentation/evidence for the final contract.
+
+**Phases completed:** 20-22, including urgent correction Phase 21.1 (12 plans total)
+
+**Key accomplishments:**
+- Added explicit host-native preview contracts and shared backend foundations for `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli`.
+- Delivered real write-backed Claude CLI and Codex registration flows while preserving `optimusctx run` as the canonical runtime handoff.
+- Corrected command ownership so `optimusctx init --client <client> [--write]` owns onboarding and `optimusctx status` is read-only again.
+- Updated public docs, release/operator docs, release-policy tests, and local operator walkthrough evidence to the corrected init-led contract.
+
+**Stats:**
+- 4 phases, 12 plans, 18 tasks
+- Rough execution window: 2026-03-20
+
+**Git range:** `feat(20-01)` → `fix(22-03)`
+
+**What's next:** Define the next milestone around broader MCP host expansion and integration hardening once the deferred real-Claude validation item is addressed or explicitly accepted.
+
+---
+
 ## v1.2 Release Automation and Operator Workflow (Shipped: 2026-03-19)
 
 **Delivered:** Safe guided release preparation, canonical GitHub Release orchestration, automated downstream npm/Homebrew/Scoop fan-out, and one operator-facing guide for verification, rerun, and rollback.

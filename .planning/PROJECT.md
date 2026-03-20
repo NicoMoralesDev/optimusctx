@@ -10,26 +10,20 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 ## Current State
 
-- Shipped version: `v1.3.0`
+- Shipped version: `v1.3.1`
 - Runtime stack: Go, SQLite, Tree-sitter, MCP-over-STDIO
-- Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `doctor`, `eval`, `install`, `version`, `release prepare`
-- Product state: `v1.0`, `v1.1`, `v1.2`, and `v1.3.0` are shipped; release preparation, canonical release orchestration, downstream publication fan-out, and operator recovery guidance are part of the shipped surface
+- Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `doctor`, `eval`, `install`, `version`, and `release prepare`, with first-class supported-client onboarding for Claude and Codex hosts
+- Product state: `v1.0`, `v1.1`, `v1.2`, `v1.3.0`, and `v1.3.1` are shipped; the MCP client compatibility patch now closes the supported-host onboarding story around init-led preview/write onboarding and read-only status reporting
 
-## Current Milestone: v1.3.1 MCP Client Compatibility
+## Current Milestone
 
-**Goal:** Close first-class MCP client compatibility so OptimusCtx can register and run cleanly in the real supported hosts instead of relying on generic manual fallback paths.
+No active milestone. `v1.3.1` is archived and the next scope has not been defined yet.
 
-**Target features:**
-- First-class client registration targets for `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli`
-- Correct generated configuration or registration payloads for each supported client, all pointing at `optimusctx run`
-- Real `--write` support for those named clients where the host stores writable local config
-- End-to-end docs and regression tests for preview, write, and runtime handoff across the supported clients
+## Next Milestone Goals
 
-## Next Milestone Goals: v1.3.1
-
-- Finish the remaining MCP client compatibility work for Claude and Codex surfaces
-- Replace preview-only/manual guidance with concrete writable client integrations where the host supports it
-- Make `optimusctx run` the explicit ready-to-use runtime handoff for the supported named clients
+- Expand first-class MCP host support beyond the current Claude and Codex set
+- Add host-capability preflight and integration hardening around supported-client writes
+- Keep the onboarding and runtime contract truthful as additional hosts and validation paths are introduced
 
 ## Requirements
 
@@ -44,13 +38,13 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 - ✓ Guided release preparation with canonical version/tag proposal and preflight gating — `v1.2`
 - ✓ Canonical GitHub Release-rooted downstream publication and selective rerun control — `v1.2`
 - ✓ Canonical operator workflow for release, verification, rerun, and rollback — `v1.2`
+- ✓ First-class supported-client onboarding and write-backed Claude/Codex integration with init-led command ownership — `v1.3.1`
 
 ### Active
 
-- [ ] Claude Desktop, Claude CLI, Codex App, and Codex CLI can be selected as first-class MCP clients instead of falling back to generic manual guidance
-- [ ] `optimusctx status --client <client>` renders the correct host-specific registration payload for each supported client and always points at `optimusctx run`
-- [ ] `optimusctx status --client <client> --write` performs real config writes for the supported named clients
-- [ ] Documentation and tests cover preview, write, and runtime handoff for the supported MCP clients
+- [ ] Additional first-class MCP hosts can be added beyond `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli`
+- [ ] Supported hosts get explicit capability preflight before write-backed registration runs
+- [ ] Maintainers can remove or manage existing supported-host registrations through OptimusCtx instead of host tooling directly
 
 ### Out of Scope
 
@@ -63,7 +57,7 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 v1.0 proved the core runtime wedge. v1.1 then proved the shipped product works end to end on fixture-backed CLI and MCP workflows, tightened benchmark claims around declared agent-facing inputs and comparable final artifacts, and expanded distribution through a narrow set of verifiable release channels.
 
-v1.2 closed the operator loop around the release surface, and v1.3.0 is already published as the current shipped release. The next patch milestone, v1.3.1, focuses on the remaining MCP host integration gap: today only Claude Desktop has true write support, while Claude CLI and Codex surfaces still fall back to preview/manual instructions.
+v1.2 closed the operator loop around the release surface. v1.3.1 then finished the supported Claude and Codex onboarding story by delivering host-native preview/write behavior, correcting command ownership around `init`, and updating the docs/evidence to match the shipped contract.
 
 <details>
 <summary>Archived v1.1 planning context</summary>
@@ -126,4 +120,4 @@ This repository is greenfield. The development process is expected to be heavily
 | Every downstream channel should derive from the same tag and release metadata contract | Multi-channel automation is only trustworthy if there is one source of truth for archives, checksums, and package metadata | ✓ Shipped in v1.2 |
 
 ---
-*Last updated: 2026-03-19 after defining the v1.3.1 MCP client compatibility scope, requirements, and roadmap*
+*Last updated: 2026-03-20 after archiving v1.3.1 MCP client compatibility*
