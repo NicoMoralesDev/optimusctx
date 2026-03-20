@@ -2,7 +2,7 @@
 
 ## What This Is
 
-OptimusCtx is a shipped local-first context runtime for coding agents. It maintains a persistent, incrementally refreshed representation of a repository and exposes that context through a vendor-neutral interface, with MCP as the primary integration layer. Shipped versions now cover repository discovery, persistent state, incremental refresh, structural extraction, layered exact-first context, MCP serving, optional watch mode, pack export, doctor diagnostics, evaluation flows, benchmark evidence, and narrow release channels.
+OptimusCtx is a shipped local-first context runtime for coding agents. It maintains a persistent, incrementally refreshed representation of a repository and exposes that context through a vendor-neutral interface, with MCP as the primary integration layer. Shipped versions now cover repository discovery, persistent state, incremental refresh, structural extraction, layered exact-first context, MCP serving, optional watch mode, pack export, doctor diagnostics, evaluation flows, benchmark evidence, narrow release channels, supported-client onboarding, and release automation.
 
 ## Core Value
 
@@ -10,20 +10,27 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 ## Current State
 
-- Shipped version: `v1.3.2`
+- Shipped version: `v1.3.3`
 - Runtime stack: Go, SQLite, Tree-sitter, MCP-over-STDIO
-- Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `doctor`, `eval`, `install`, `version`, and `release prepare`, with first-class supported-client onboarding for Claude and Codex hosts
-- Product state: `v1.0`, `v1.1`, `v1.2`, `v1.3.0`, `v1.3.1`, and `v1.3.2` are published, and the `v1.3.3` intent-led onboarding milestone is complete and archived in planning pending any release cut
+- Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `doctor`, `eval`, `install`, `version`, and `release prepare`, with first-class supported-client onboarding for Claude and Codex hosts plus canonical GitHub Release-rooted downstream publication
+- Product state: `v1.0`, `v1.1`, `v1.2`, `v1.3.0`, `v1.3.1`, `v1.3.2`, and `v1.3.3` are published
 
 ## Current Milestone
 
-No active milestone. `v1.3.3` is archived in planning and the latest published release remains `v1.3.2`.
+`v1.3.4` Release channel truthfulness and publication readiness
+
+**Goal:** Make downstream release publication readiness and outcomes explicit enough that operators cannot mistake skipped Homebrew or Scoop jobs for successful publication.
+
+**Target features:**
+- `optimusctx release prepare` surfaces per-channel credential readiness and publication blockers before a tag is pushed
+- Release workflow and summaries make `published` versus `skipped` downstream channels unambiguous
+- Operator docs explain the real credential requirements, post-release checks, and rerun path for Homebrew and Scoop clearly
 
 ## Next Milestone Goals
 
-- Expand first-class MCP host support beyond the current Claude and Codex set
-- Add host-capability preflight and integration hardening around supported-client writes
-- Keep the onboarding and runtime contract truthful as additional hosts and validation paths are introduced
+- Add credential-aware preflight for downstream release channels
+- Make downstream publication outcome reporting truthful and operator-facing
+- Tighten release/operator docs so missing channel credentials are visible before and after publication
 
 ## Requirements
 
@@ -44,55 +51,28 @@ No active milestone. `v1.3.3` is archived in planning and the latest published r
 
 ### Active
 
-- [ ] Additional first-class MCP hosts can be added beyond `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli`
-- [ ] Supported hosts get explicit capability preflight before write-backed registration runs
-- [ ] Maintainers can remove or manage existing supported-host registrations through OptimusCtx instead of host tooling directly
+- [ ] Release preflight distinguishes canonical GitHub Release readiness from downstream channel credential readiness
+- [ ] Downstream channel publication outcomes make `published`, `skipped`, and `failed` states obvious to operators
+- [ ] Homebrew and Scoop credential prerequisites are visible enough that operators do not assume skipped publication means success
+- [ ] Release/operator docs match the real downstream publication contract and rerun path
 
 ### Out of Scope
 
 - Hosted telemetry, dashboards, or managed rollout services — the product remains local-first and operator-driven.
 - Default semantic retrieval or general-purpose RAG behavior — the wedge is still deterministic exact-first context optimization.
 - Automatic modification of repository instruction files or client configs during install — installation and integration remain explicit.
-- New distribution channels beyond the currently supported set — `.deb`, `.rpm`, WinGet, Chocolatey, signing, and SBOMs stay deferred until the current channels are fully automated.
+- Additional first-class MCP hosts beyond `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` — `v1.3.4` is a release-surface hardening milestone, not a host-expansion milestone.
+- New distribution channels beyond the currently supported set — `.deb`, `.rpm`, WinGet, Chocolatey, signing, and SBOMs stay deferred until the current channels are fully truthful and operator-safe.
 
 ## Context
 
 v1.0 proved the core runtime wedge. v1.1 then proved the shipped product works end to end on fixture-backed CLI and MCP workflows, tightened benchmark claims around declared agent-facing inputs and comparable final artifacts, and expanded distribution through a narrow set of verifiable release channels.
 
-v1.2 closed the operator loop around the release surface. v1.3.1 then finished the supported Claude and Codex onboarding story by delivering host-native preview/write behavior, correcting command ownership around `init`, and updating the docs/evidence to match the shipped contract. v1.3.2 tightened that operator experience further by collapsing the common bootstrap and onboarding path into one smooth interactive `init` flow while preserving explicit scripting and direct-flag usage. `v1.3.3` then refined that same onboarding path again by making the conversation intent-led and destination-first, while trimming avoidable noise from the result output and docs.
+v1.2 closed the operator loop around the release surface. v1.3.1 then finished the supported Claude and Codex onboarding story by delivering host-native preview/write behavior, correcting command ownership around `init`, and updating the docs/evidence to match the shipped contract. v1.3.2 tightened that operator experience further by collapsing the common bootstrap and onboarding path into one smooth interactive `init` flow while preserving explicit scripting and direct-flag usage. v1.3.3 refined that same onboarding path again by making the conversation intent-led and destination-first, while trimming avoidable noise from the result output and docs.
 
-<details>
-<summary>Archived v1.1 planning context</summary>
+The `v1.3.3` release then exposed a remaining operator gap in the release surface: GitHub Release and npm published successfully, but Homebrew and Scoop were skipped because their publication secrets were absent. The workflow technically reported this truth, but not strongly enough for the operator mental model; the result was surprise about what had and had not actually shipped.
 
-## Current Milestone: v1.1 Validation, Benchmarking, and Distribution
-
-**Goal:** Prove the real-world value of OptimusCtx with functional evaluation, measurable A/B token and workflow savings, and a credible distribution plan.
-
-**Target features:**
-- Functional test flows that validate the runtime end to end in realistic agent workflows
-- A/B benchmarking for token savings and work-speed improvements versus baseline repository exploration
-- A solid technical distribution plan for adoption beyond the current local development setup
-
-## Next Milestone Goals
-
-- Prove functional correctness in end-to-end user and agent flows
-- Quantify token savings and search-time reduction with repeatable benchmarks
-- Define the distribution strategy, packaging shape, and rollout path for the tool
-
-</details>
-
-<details>
-<summary>Archived pre-v1.0 project context</summary>
-
-OptimusCtx exists to fix a repeated failure mode in agent-driven development: repository understanding gets rebuilt from scratch across sessions, context compressions, and broad exploratory tool calls. The intended wedge is a lightweight local runtime that precomputes and serves structured repository context so agents can avoid repeated scans, full-file reads, and broad traversal before doing targeted work.
-
-The product is deliberately agent-agnostic. MCP is the universal contract, and vendor-specific instruction-file differences are treated as thin optional wrappers rather than separate product implementations. The product must remain useful even when users never paste the optional snippet into agent instructions.
-
-The v1 scope centers on deterministic local indexing and delivery: repository discovery, ignore-aware traversal, hashing, structural extraction, symbol indexing, layered context outputs, token-cost analysis, exact lookup, MCP-over-STDIO serving, optional watch mode, pack/export, and operator diagnostics. The recommended implementation stack is Go for a cross-platform single-binary runtime, SQLite for persistent state, and Tree-sitter for structural extraction.
-
-This repository is greenfield. The development process is expected to be heavily agent-driven under human supervision, with strong emphasis on stable command surfaces, stable storage and MCP contracts, incremental execution, and tests accompanying every meaningful feature.
-
-</details>
+`v1.3.4` is a narrow release-hardening milestone aimed at that gap. The product already has multi-channel publication machinery; the problem is making channel readiness and channel outcomes explicit enough that operators do not misread a partially published release as a fully published one.
 
 ## Constraints
 
@@ -122,6 +102,7 @@ This repository is greenfield. The development process is expected to be heavily
 | Every downstream channel should derive from the same tag and release metadata contract | Multi-channel automation is only trustworthy if there is one source of truth for archives, checksums, and package metadata | ✓ Shipped in v1.2 |
 | `init` is the onboarding front door for supported clients | Repository bootstrap and host onboarding should feel like one coherent operator flow, while explicit flags remain available for automation and direct control | ✓ Shipped in v1.3.2 |
 | Onboarding prompts should speak in terms of user intention and destination, not backend implementation jargon | The init flow should optimize for operator comprehension first, while still preserving precise direct-control escape hatches | ✓ Shipped in v1.3.3 |
+| Downstream release channels must be operator-truthful even when they do not publish | A release flow that silently degrades into `skipped` publication is too easy to misread; channel readiness and outcomes need first-class visibility | — Active in v1.3.4 |
 
 ---
-*Last updated: 2026-03-20 after archiving v1.3.3 Intent-led onboarding conversation UX*
+*Last updated: 2026-03-20 after starting milestone v1.3.4 Release channel truthfulness and publication readiness*

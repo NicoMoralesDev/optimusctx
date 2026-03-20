@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: none
-current_phase: none
-current_phase_name: none
+milestone: v1.3.4
+milestone_name: release channel truthfulness and publication readiness
+current_phase: 26
+current_phase_name: release preflight credential awareness and downstream gating
 current_plan: 0
-status: milestone_archived
-stopped_at: Archived v1.3.3 after milestone audit and cleanup
-last_updated: "2026-03-20T17:00:00Z"
+status: ready_for_planning
+stopped_at: Started milestone v1.3.4 and defined roadmap Phases 26-27
+last_updated: "2026-03-20T16:30:00Z"
 last_activity: 2026-03-20
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 100
+  percent: 0
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** No active milestone; `v1.3.3` is archived
-**Current Phase:** None
-**Current Phase Name:** None
-**Total Phases:** 0
+**Status:** Milestone defined and ready for planning
+**Current Phase:** 26
+**Current Phase Name:** release preflight credential awareness and downstream gating
+**Total Phases:** 2
 **Current Plan:** 0
 **Total Plans in Phase:** 0
-**Progress:** [██████████] 100%
+**Progress:** [----------] 0%
 **Last Activity:** 2026-03-20
-**Last Activity Description:** Archived `v1.3.3` after verification, milestone audit, and planning cleanup
+**Last Activity Description:** Started milestone `v1.3.4` for release channel truthfulness and publication readiness and defined roadmap Phases 26-27
 
 ## Project Memory
 
@@ -42,18 +42,18 @@ progress:
 
 ## Current Planning Context
 
-- Active milestone: none
+- Active milestone: `v1.3.4` Release channel truthfulness and publication readiness
 - Most recently archived milestone: `v1.3.3` Intent-led onboarding conversation UX
-- Latest published release: `v1.3.2`
-- Next execution action: cut the `v1.3.3` release or define the next milestone before adding fresh phases
+- Latest published release: `v1.3.3`
+- Next execution action: run `$gsd-plan-phase 26` for release preflight credential awareness and downstream gating
 - Historical v1.0, v1.1, v1.2, and v1.3.x requirements and roadmaps are archived under `.planning/milestones/`
 
-## Most Recent Milestone Scope
+## Current Milestone Scope
 
-- Replace preview/write-centric language in interactive onboarding with intent-led user-facing language
-- Ask where OptimusCtx should be configured before any mutation, using client-appropriate scope labels and exact targets
-- Reduce result-output noise so the command emphasizes what changed, where it changed, and what to do next
-- Keep the direct `init --client <client> [--write]` contract explicit for scripts and operator control
+- Surface downstream publication credential readiness before the operator pushes a release tag
+- Make downstream `published`, `skipped`, and `failed` outcomes harder to misread in release summaries and operator flows
+- Keep GitHub Release as the canonical root while making partial downstream publication states explicit
+- Align release/operator docs to the actual Homebrew and Scoop credential contract
 
 ## Verification Status
 
@@ -62,6 +62,7 @@ progress:
 - Phase 24 verification passed on 2026-03-20 with passing targeted CLI/app coverage and a passing full `go test ./...` suite.
 - Phase 25 verification passed on 2026-03-20 with a passing full `go test ./...` suite and PTY walkthroughs of repo-local review-first and shared-config configure-now onboarding.
 - v1.3.3 milestone audit passed with all eight milestone requirements satisfied.
+- `v1.3.3` release publication completed on 2026-03-20; GitHub Release and npm published successfully, while Homebrew and Scoop again skipped because publication credentials were absent.
 - v1.3.1 milestone audit still carries one unchanged deferred manual item: real `claude` binary validation for `optimusctx init --client claude-cli --scope local --write` on a host with Claude Code installed.
 
 ## Recent Decisions
@@ -71,6 +72,8 @@ progress:
 - Supported-client destination choices must show exact config paths or native registration targets before mutation happens.
 - Configure-now output should summarize outcome and target, while review-first output is the place where the exact change is shown.
 - Public docs must mirror the shipped CLI conversation instead of describing backend implementation terms.
+- `v1.3.4` should harden the release operator experience before expanding hosts or channels again.
+- Missing Homebrew and Scoop publication credentials are now treated as a product-truthfulness problem, not just an external-ops footnote.
 
 ---
-*Last updated: 2026-03-20 after archiving v1.3.3*
+*Last updated: 2026-03-20 after starting milestone v1.3.4 Release channel truthfulness and publication readiness*
