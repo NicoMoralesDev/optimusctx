@@ -35,6 +35,8 @@ func (c *Command) Execute(args []string, stdout io.Writer) error {
 		return newDoctorCommand().Run(stdout, args[1:])
 	case "init":
 		return newInitCommand().Run(stdout, args[1:])
+	case "release":
+		return newReleaseCommand().Run(stdout, args[1:])
 	case "run":
 		return newRunCommand().Run(stdout, args[1:])
 	case "status":
@@ -48,12 +50,13 @@ func (c *Command) Execute(args []string, stdout io.Writer) error {
 }
 
 func (c *Command) printHelp(stdout io.Writer) {
-	_, _ = fmt.Fprintf(stdout, "%s\n\n%s\n\nUsage:\n  %s <command>\n\nAvailable Commands:\n  doctor    %s\n  init      %s\n  run       %s\n  status    %s\n  version   %s\n\nFlags:\n  -h, --help   Show help for optimusctx\n",
+	_, _ = fmt.Fprintf(stdout, "%s\n\n%s\n\nUsage:\n  %s <command>\n\nAvailable Commands:\n  doctor    %s\n  init      %s\n  release   %s\n  run       %s\n  status    %s\n  version   %s\n\nFlags:\n  -h, --help   Show help for optimusctx\n",
 		c.Name,
 		c.Description,
 		c.Name,
 		newDoctorCommand().Summary,
 		newInitCommand().Summary,
+		newReleaseCommand().Summary,
 		newRunCommand().Summary,
 		newStatusCommand().Summary,
 		newVersionCommand().Summary,
