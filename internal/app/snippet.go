@@ -25,17 +25,17 @@ func (SnippetGenerator) Render() string {
 	lines := []string{
 		"# OptimusCtx manual integration snippet",
 		"# Supported native clients: claude-desktop, claude-cli, codex-app, codex-cli",
-		"# `optimusctx snippet` is deprecated; use `optimusctx status --client <client> [--write]` for the current supported-client surface.",
+		"# `optimusctx snippet` is deprecated; use `optimusctx init --client <client> [--write]` for the current supported-client surface.",
 		"# OptimusCtx now serves MCP over `optimusctx run`.",
-		"# You can paste this into a supported client config or preview the same contract with:",
-		"#   optimusctx status --client claude-cli --scope local",
-		"#   optimusctx status --client codex-app --config /path/to/.codex/config.toml",
-		"#   optimusctx status --client codex-cli --config /path/to/.codex/config.toml",
+		"# You can paste this into a supported client config or drive onboarding with:",
+		"#   optimusctx init --client claude-cli --scope local",
+		"#   optimusctx init --client codex-app --config /path/to/.codex/config.toml",
+		"#   optimusctx init --client codex-cli --config /path/to/.codex/config.toml",
 		"",
 		strings.TrimSuffix(rendered, "\n"),
 		"",
 		"# Write the same registration explicitly with:",
-		"#   optimusctx status --client <client> [--write]",
+		"#   optimusctx init --client <client> [--write]",
 		"# Supported native clients: claude-desktop, claude-cli, codex-app, codex-cli",
 	}
 

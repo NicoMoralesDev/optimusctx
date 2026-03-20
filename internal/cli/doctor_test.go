@@ -141,24 +141,27 @@ func TestDoctorCommandRendersSupportedClientMCPAction(t *testing.T) {
 				{
 					Section: "mcp",
 					Summary: "snippet preview could not be rendered",
-					Action:  "use `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to validate or register the MCP contract",
+					Action:  "use `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register the MCP contract",
 				},
 			},
 		},
 		RecommendedFix: []string{
-			"use `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to validate or register the MCP contract",
+			"use `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register the MCP contract",
 		},
 	}
 
 	output := formatDoctorReport(report)
 	for _, want := range []string{
 		"serve command: optimusctx run",
-		"item: mcp: snippet preview could not be rendered; next action: use `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to validate or register the MCP contract",
-		"step: use `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to validate or register the MCP contract",
+		"item: mcp: snippet preview could not be rendered; next action: use `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register the MCP contract",
+		"step: use `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register the MCP contract",
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output missing %q:\n%s", want, output)
 		}
+	}
+	if strings.Contains(output, "optimusctx status --client <client> [--write]") {
+		t.Fatalf("output should not keep the stale status-led MCP action:\n%s", output)
 	}
 }
 

@@ -386,7 +386,7 @@ func doctorSummary(report repository.DoctorReport) repository.DoctorSummary {
 	addIssue("watch", report.Watch.Status, doctorWatchIssue(report), doctorWatchAction(report))
 	addIssue("structural", report.Structural.Status, doctorStructuralIssue(report), doctorStructuralAction(report))
 	addIssue("budget", report.Budget.Status, "no persisted token-cost hotspots available", "run `optimusctx run` so runtime refresh can persist budget analysis inputs")
-	addIssue("mcp", report.MCPReadiness.Status, doctorMCPIssue(report), "use `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to validate or register the MCP contract")
+	addIssue("mcp", report.MCPReadiness.Status, doctorMCPIssue(report), "use `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register the MCP contract")
 
 	status := repository.DoctorStatusHealthy
 	for _, issue := range issues {

@@ -11,12 +11,12 @@ func TestSnippetRender(t *testing.T) {
 	required := []string{
 		"# OptimusCtx manual integration snippet",
 		"# Supported native clients: claude-desktop, claude-cli, codex-app, codex-cli",
-		"`optimusctx snippet` is deprecated; use `optimusctx status --client <client> [--write]`",
+		"`optimusctx snippet` is deprecated; use `optimusctx init --client <client> [--write]`",
 		"OptimusCtx now serves MCP over `optimusctx run`.",
-		"optimusctx status --client claude-cli --scope local",
-		"optimusctx status --client codex-app --config /path/to/.codex/config.toml",
-		"optimusctx status --client codex-cli --config /path/to/.codex/config.toml",
-		"optimusctx status --client <client> [--write]",
+		"optimusctx init --client claude-cli --scope local",
+		"optimusctx init --client codex-app --config /path/to/.codex/config.toml",
+		"optimusctx init --client codex-cli --config /path/to/.codex/config.toml",
+		"optimusctx init --client <client> [--write]",
 		"\"mcpServers\"",
 		"\"command\": \"optimusctx\"",
 		"\"args\": [",
@@ -34,6 +34,9 @@ func TestSnippetRender(t *testing.T) {
 	}
 	if strings.Contains(output, "use `optimusctx status --client claude-desktop` for the current preview path") {
 		t.Fatalf("Render() output should not keep the Claude Desktop-only preview path: %q", output)
+	}
+	if strings.Contains(output, "optimusctx status --client <client> [--write]") {
+		t.Fatalf("Render() output should not keep the stale status-led onboarding path: %q", output)
 	}
 }
 
