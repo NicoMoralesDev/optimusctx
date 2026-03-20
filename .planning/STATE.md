@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3.4
-milestone_name: release channel truthfulness and publication readiness
-current_phase: 26
-current_phase_name: release preflight credential awareness and downstream gating
+milestone: none
+milestone_name: none
+current_phase: 0
+current_phase_name: none
 current_plan: 0
-status: ready_for_planning
-stopped_at: Started milestone v1.3.4 and defined roadmap Phases 26-27
-last_updated: "2026-03-20T16:30:00Z"
+status: no_active_milestone
+stopped_at: Archived milestone v1.3.4 after completing Phases 26-28
+last_updated: "2026-03-20T19:10:00Z"
 last_activity: 2026-03-20
 progress:
-  total_phases: 2
+  total_phases: 0
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 0
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Milestone defined and ready for planning
-**Current Phase:** 26
-**Current Phase Name:** release preflight credential awareness and downstream gating
-**Total Phases:** 2
+**Status:** No active milestone
+**Current Phase:** none
+**Current Phase Name:** none
+**Total Phases:** 0
 **Current Plan:** 0
 **Total Plans in Phase:** 0
-**Progress:** [----------] 0%
+**Progress:** [##########] 100%
 **Last Activity:** 2026-03-20
-**Last Activity Description:** Started milestone `v1.3.4` for release channel truthfulness and publication readiness and defined roadmap Phases 26-27
+**Last Activity Description:** Archived milestone `v1.3.4` after finishing release hardening, MCP guidance visibility, and documentation alignment
 
 ## Project Memory
 
@@ -42,46 +42,42 @@ progress:
 
 ## Current Planning Context
 
-- Active milestone: `v1.3.4` Release channel truthfulness and publication readiness
-- Most recently archived milestone: `v1.3.3` Intent-led onboarding conversation UX
+- No active milestone
+- Most recently completed milestone: `v1.3.4` Release channel truthfulness and publication readiness
 - Latest published release: `v1.3.3`
-- Next execution action: run `$gsd-plan-phase 26` for release preflight credential awareness and downstream gating
+- Next execution action: cut the `v1.3.4` release or define the next milestone
 - Historical v1.0, v1.1, v1.2, and v1.3.x requirements and roadmaps are archived under `.planning/milestones/`
 
-## Current Milestone Scope
+## Latest Completed Milestone Scope
 
 - Surface downstream publication credential readiness before the operator pushes a release tag
 - Make downstream `published`, `skipped`, and `failed` outcomes harder to misread in release summaries and operator flows
-- Keep GitHub Release as the canonical root while making partial downstream publication states explicit
 - Align release/operator docs to the actual Homebrew and Scoop credential contract
+- Make supported-client onboarding and docs explicit about automatic runtime handoff and MCP usage verification
 
 ## Verification Status
 
-- Phase 23 verification passed on 2026-03-20 with a passing full `go test ./...` suite and a real PTY walkthrough of interactive `init` in a disposable repository.
-- `v1.3.2` release publication completed on 2026-03-20; GitHub Release and npm published successfully, while Homebrew and Scoop workflow jobs skipped because publication credentials were absent.
-- Phase 24 verification passed on 2026-03-20 with passing targeted CLI/app coverage and a passing full `go test ./...` suite.
-- Phase 25 verification passed on 2026-03-20 with a passing full `go test ./...` suite and PTY walkthroughs of repo-local review-first and shared-config configure-now onboarding.
-- v1.3.3 milestone audit passed with all eight milestone requirements satisfied.
-- `v1.3.3` release publication completed on 2026-03-20; GitHub Release and npm published successfully, while Homebrew and Scoop again skipped because publication credentials were absent.
+- Phase 26 verification passed on 2026-03-20 with a passing full `go test ./...` suite and a real `go run ./cmd/optimusctx release prepare --json` walkthrough showing Homebrew and Scoop blocked by missing repository secrets before tag creation.
+- Phase 27 verification passed on 2026-03-20 with a passing full `go test ./...` suite and workflow summary assertions updated for `publication_status`.
+- Phase 28 verification passed on 2026-03-20 with a passing full `go test ./...` suite and real onboarding/result guidance aligned to automatic `optimusctx run` host handoff.
+- `v1.3.3` release publication completed on 2026-03-20; GitHub Release and npm published successfully, while Homebrew and Scoop skipped because publication credentials were absent.
 - v1.3.1 milestone audit still carries one unchanged deferred manual item: real `claude` binary validation for `optimusctx init --client claude-cli --scope local --write` on a host with Claude Code installed.
 
 ## Recent Decisions
 
-- `init` remains the onboarding front door for supported clients.
-- Interactive onboarding should ask first about operator intent and registration destination, not backend concepts like preview and write.
-- Supported-client destination choices must show exact config paths or native registration targets before mutation happens.
-- Configure-now output should summarize outcome and target, while review-first output is the place where the exact change is shown.
-- Public docs must mirror the shipped CLI conversation instead of describing backend implementation terms.
-- `v1.3.4` should harden the release operator experience before expanding hosts or channels again.
-- Missing Homebrew and Scoop publication credentials are now treated as a product-truthfulness problem, not just an external-ops footnote.
+- `release prepare` should use the GitHub repository itself as the truth source for downstream publication-secret presence when possible.
+- Missing Homebrew and Scoop publication credentials are now treated as hard blockers for all-channel release preparation instead of an easy-to-miss post-tag surprise.
+- Downstream workflow summaries must say whether a channel was actually published, not only whether a job step ran or skipped.
+- Supported-client onboarding must explain that registered hosts launch `optimusctx run` automatically; manual `run` is the direct/debug path.
+- MCP value is not just registration success; the docs now need to explain which `optimusctx.*` tools exist, how to use them, and how to verify actual discovery and usage.
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
-- Phase 28 added: agent MCP guidance, init visibility, and MCP usage verification
-
-This follow-up captures the agent-side adoption gap that remains after MCP registration works: operators need the toolchain and docs to explain what `optimusctx` exposes, when `optimusctx run` is automatic via MCP host registration, and how to verify that an agent is actually discovering and using the runtime.
+- Phase 26 completed: release preflight now distinguishes canonical GitHub Release readiness from downstream channel-secret readiness and fixed the milestone-version parsing gap inside `release prepare`.
+- Phase 27 completed: workflow summaries and operator docs now distinguish `published`, `not_published`, and `failed` for downstream channels.
+- Phase 28 completed: onboarding output, status guidance, and MCP docs now explain automatic runtime handoff and how to verify real `optimusctx.*` tool usage.
 
 ---
-*Last updated: 2026-03-20 after starting milestone v1.3.4 Release channel truthfulness and publication readiness*
+*Last updated: 2026-03-20 after archiving milestone v1.3.4*

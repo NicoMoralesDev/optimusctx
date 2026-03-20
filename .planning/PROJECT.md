@@ -13,24 +13,16 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 - Shipped version: `v1.3.3`
 - Runtime stack: Go, SQLite, Tree-sitter, MCP-over-STDIO
 - Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `doctor`, `eval`, `install`, `version`, and `release prepare`, with first-class supported-client onboarding for Claude and Codex hosts plus canonical GitHub Release-rooted downstream publication
-- Product state: `v1.0`, `v1.1`, `v1.2`, `v1.3.0`, `v1.3.1`, `v1.3.2`, and `v1.3.3` are published
+- Product state: `v1.0`, `v1.1`, `v1.2`, `v1.3.1`, `v1.3.2`, and `v1.3.3` are published; `v1.3.4` is complete on the branch and ready to release
 
 ## Current Milestone
 
-`v1.3.4` Release channel truthfulness and publication readiness
-
-**Goal:** Make downstream release publication readiness and outcomes explicit enough that operators cannot mistake skipped Homebrew or Scoop jobs for successful publication.
-
-**Target features:**
-- `optimusctx release prepare` surfaces per-channel credential readiness and publication blockers before a tag is pushed
-- Release workflow and summaries make `published` versus `skipped` downstream channels unambiguous
-- Operator docs explain the real credential requirements, post-release checks, and rerun path for Homebrew and Scoop clearly
+No active milestone.
 
 ## Next Milestone Goals
 
-- Add credential-aware preflight for downstream release channels
-- Make downstream publication outcome reporting truthful and operator-facing
-- Tighten release/operator docs so missing channel credentials are visible before and after publication
+- Cut the `v1.3.4` release so the new release-preflight truthfulness and MCP guidance land publicly
+- Define the next milestone only after the release is out and the downstream publication contract is confirmed in production
 
 ## Requirements
 
@@ -48,20 +40,18 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 - ✓ First-class supported-client onboarding and write-backed Claude/Codex integration with init-led command ownership — `v1.3.1`
 - ✓ Smooth same-command `init` onboarding with focused client previews and aligned docs — `v1.3.2`
 - ✓ Intent-led onboarding conversation, destination-first targeting, and outcome-oriented supported-client output — `v1.3.3`
+- ✓ Release preflight secret verification, downstream publication-status truth, and MCP runtime-usage guidance are complete on the branch — `v1.3.4`
 
 ### Active
 
-- [ ] Release preflight distinguishes canonical GitHub Release readiness from downstream channel credential readiness
-- [ ] Downstream channel publication outcomes make `published`, `skipped`, and `failed` states obvious to operators
-- [ ] Homebrew and Scoop credential prerequisites are visible enough that operators do not assume skipped publication means success
-- [ ] Release/operator docs match the real downstream publication contract and rerun path
+- [ ] No active milestone requirements
 
 ### Out of Scope
 
 - Hosted telemetry, dashboards, or managed rollout services — the product remains local-first and operator-driven.
 - Default semantic retrieval or general-purpose RAG behavior — the wedge is still deterministic exact-first context optimization.
 - Automatic modification of repository instruction files or client configs during install — installation and integration remain explicit.
-- Additional first-class MCP hosts beyond `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` — `v1.3.4` is a release-surface hardening milestone, not a host-expansion milestone.
+- Additional first-class MCP hosts beyond `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` — current work hardened release truthfulness and current-host guidance rather than expanding hosts.
 - New distribution channels beyond the currently supported set — `.deb`, `.rpm`, WinGet, Chocolatey, signing, and SBOMs stay deferred until the current channels are fully truthful and operator-safe.
 
 ## Context
@@ -70,9 +60,7 @@ v1.0 proved the core runtime wedge. v1.1 then proved the shipped product works e
 
 v1.2 closed the operator loop around the release surface. v1.3.1 then finished the supported Claude and Codex onboarding story by delivering host-native preview/write behavior, correcting command ownership around `init`, and updating the docs/evidence to match the shipped contract. v1.3.2 tightened that operator experience further by collapsing the common bootstrap and onboarding path into one smooth interactive `init` flow while preserving explicit scripting and direct-flag usage. v1.3.3 refined that same onboarding path again by making the conversation intent-led and destination-first, while trimming avoidable noise from the result output and docs.
 
-The `v1.3.3` release then exposed a remaining operator gap in the release surface: GitHub Release and npm published successfully, but Homebrew and Scoop were skipped because their publication secrets were absent. The workflow technically reported this truth, but not strongly enough for the operator mental model; the result was surprise about what had and had not actually shipped.
-
-`v1.3.4` is a narrow release-hardening milestone aimed at that gap. The product already has multi-channel publication machinery; the problem is making channel readiness and channel outcomes explicit enough that operators do not misread a partially published release as a fully published one.
+The `v1.3.3` release then exposed two remaining gaps: downstream Homebrew and Scoop publication could still be misread after the workflow reported `skipped`, and supported MCP registration still did not explain clearly enough that host registration, tool discovery, and actual tool usage are three separate truths. `v1.3.4` closed those gaps by making release-preflight credential truth visible before tagging, making workflow summaries publication-truthful, and adding explicit MCP usage/verification guidance.
 
 ## Constraints
 
@@ -102,7 +90,8 @@ The `v1.3.3` release then exposed a remaining operator gap in the release surfac
 | Every downstream channel should derive from the same tag and release metadata contract | Multi-channel automation is only trustworthy if there is one source of truth for archives, checksums, and package metadata | ✓ Shipped in v1.2 |
 | `init` is the onboarding front door for supported clients | Repository bootstrap and host onboarding should feel like one coherent operator flow, while explicit flags remain available for automation and direct control | ✓ Shipped in v1.3.2 |
 | Onboarding prompts should speak in terms of user intention and destination, not backend implementation jargon | The init flow should optimize for operator comprehension first, while still preserving precise direct-control escape hatches | ✓ Shipped in v1.3.3 |
-| Downstream release channels must be operator-truthful even when they do not publish | A release flow that silently degrades into `skipped` publication is too easy to misread; channel readiness and outcomes need first-class visibility | — Active in v1.3.4 |
+| Downstream release channels must be operator-truthful even when they do not publish | A release flow that silently degrades into `skipped` publication is too easy to misread; channel readiness and outcomes need first-class visibility | ✓ Completed in v1.3.4 |
+| Registered MCP hosts should own runtime launch while OptimusCtx explains verification clearly | Registration is only useful if users know that hosts auto-launch `optimusctx run` and how to verify real `optimusctx.*` tool usage | ✓ Completed in v1.3.4 |
 
 ---
-*Last updated: 2026-03-20 after starting milestone v1.3.4 Release channel truthfulness and publication readiness*
+*Last updated: 2026-03-20 after archiving milestone v1.3.4*

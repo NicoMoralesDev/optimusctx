@@ -1,5 +1,27 @@
 # Project Milestones: OptimusCtx
 
+## v1.3.4 Release Truthfulness and MCP Guidance Visibility (Completed: 2026-03-20)
+
+**Delivered:** Credential-aware release preflight, publication-truthful downstream summaries, automatic-runtime-handoff guidance in onboarding, and a dedicated MCP usage/verification guide.
+
+**Phases completed:** 26-28 (6 plans total)
+
+**Key accomplishments:**
+- `optimusctx release prepare` now verifies Homebrew and Scoop publication secrets against the GitHub repository when possible and blocks all-channel release prep when they are missing.
+- Fixed `release prepare` so active patch milestones like `v1.3.4` still resolve the correct `v1.3` release lane instead of crashing on milestone parsing.
+- GitHub Actions summaries now distinguish actual downstream publication status with `published`, `not_published`, and `failed`, making partial release truth visible after the run.
+- Init and status output now state clearly that registered hosts launch `optimusctx run` automatically, and the new MCP guide explains tool families, usage order, and how to verify real agent adoption.
+
+**Stats:**
+- 3 phases, 6 plans, 8 tasks
+- Rough execution window: 2026-03-20
+
+**Git range:** `feat: harden release preflight and MCP onboarding guidance` → `chore: archive v1.3.4 milestone`
+
+**What's next:** Cut the `v1.3.4` release, then confirm the updated preflight catches the still-missing Homebrew and Scoop secrets before the next tag push.
+
+---
+
 ## v1.3.3 Intent-led Onboarding Conversation UX (Shipped: 2026-03-20)
 
 **Delivered:** Intent-led `init` onboarding prompts, destination-first registration choices with exact targets shown up front, quieter apply output, and docs aligned to the new conversation.
