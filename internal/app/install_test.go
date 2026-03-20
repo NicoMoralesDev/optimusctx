@@ -361,6 +361,115 @@ approval_policy = "on-request"
 	}
 }
 
+func TestInstallServiceCodexAppWritePersistsNativeConfig(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	service := NewInstallService()
+	result, err := service.Register(context.Background(), InstallRequest{
+		ClientID: "codex-app",
+		Write:    true,
+	})
+	if err != nil {
+		t.Fatalf("Register(codex-app write) error = %v", err)
+	}
+	if !result.Wrote {
+		t.Fatal("write should report wrote=true")
+	}
+	if result.Rendered.Mode != repository.RenderModeWrite {
+		t.Fatalf("mode = %q", result.Rendered.Mode)
+	}
+
+	content, err := os.ReadFile(result.Rendered.ConfigPath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if !strings.Contains(string(content), "[mcp_servers.optimusctx]") {
+		t.Fatalf("content missing optimusctx table: %s", string(content))
+	}
+	if !strings.Contains(string(content), `command = "optimusctx"`) {
+		t.Fatalf("content missing command line: %s", string(content))
+	}
+	if !strings.Contains(string(content), `args = ["run"]`) {
+		t.Fatalf("content missing args line: %s", string(content))
+	}
+	if strings.Count(string(content), "[mcp_servers.optimusctx]") != 1 {
+		t.Fatalf("optimusctx table duplicated: %s", string(content))
+	}
+}
+
+func TestInstallServiceCodexCLIWriteUsesExplicitConfigPath(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	configPath := filepath.Join(t.TempDir(), ".codex", "config.toml")
+	service := NewInstallService()
+	result, err := service.Register(context.Background(), InstallRequest{
+		ClientID:   "codex-cli",
+		ConfigPath: configPath,
+		Write:      true,
+	})
+	if err != nil {
+		t.Fatalf("Register(codex-cli write) error = %v", err)
+	}
+	if !result.Wrote {
+		t.Fatal("write should report wrote=true")
+	}
+	if result.Rendered.ConfigPath != configPath {
+		t.Fatalf("config path = %q, want %q", result.Rendered.ConfigPath, configPath)
+	}
+	if _, err := os.Stat(configPath); err != nil {
+		t.Fatalf("Stat() error = %v", err)
+	}
+}
+
+func TestInstallServiceCodexWritePreservesExistingContent(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	configPath := filepath.Join(homeDir, ".codex", "config.toml")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+
+	const existing = `model = "gpt-5"
+
+[mcp_servers.other]
+command = "other"
+args = ["serve"]
+
+[profiles.default]
+approval_policy = "on-request"
+`
+	if err := os.WriteFile(configPath, []byte(existing), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	service := NewInstallService()
+	result, err := service.Register(context.Background(), InstallRequest{
+		ClientID: "codex-app",
+		Write:    true,
+	})
+	if err != nil {
+		t.Fatalf("Register(codex-app write) error = %v", err)
+	}
+	content, err := os.ReadFile(result.Rendered.ConfigPath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if !strings.Contains(string(content), `model = "gpt-5"`) {
+		t.Fatalf("content missing existing model: %s", string(content))
+	}
+	if !strings.Contains(string(content), "[mcp_servers.other]") {
+		t.Fatalf("content missing existing server: %s", string(content))
+	}
+	if !strings.Contains(string(content), "[profiles.default]") {
+		t.Fatalf("content missing profile table: %s", string(content))
+	}
+	if strings.Count(string(content), "[mcp_servers.optimusctx]") != 1 {
+		t.Fatalf("optimusctx table duplicated: %s", string(content))
+	}
+}
+
 func TestInstallServiceRejectsGenericWrite(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
