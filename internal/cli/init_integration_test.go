@@ -127,3 +127,56 @@ func TestInitCommandHelpIncludesScope(t *testing.T) {
 		t.Fatalf("help output missing %q:\n%s", want, output)
 	}
 }
+
+func TestInitCommandCodexPreviewDoesNotDumpWholeConfig(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	writeCLIFile(t, filepath.Join(repoRoot, "main.go"), "package main\n")
+
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+	configPath := filepath.Join(homeDir, ".codex", "config.toml")
+	writeCLIFile(t, configPath, `model = "gpt-5.4"
+model_reasoning_effort = "high"
+
+[agents.gsd-debugger]
+config_file = "agents/gsd-debugger.toml"
+
+[mcp_servers.linear]
+url = "https://mcp.linear.app/mcp"
+
+[projects."/home/nico/projects/genera-platita"]
+trust_level = "trusted"
+`)
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"init", "--client", "codex-cli"}, &stdout); err != nil {
+			t.Fatalf("Execute(init --client codex-cli) error = %v", err)
+		}
+
+		output := stdout.String()
+		for _, want := range []string{
+			"client: Codex CLI",
+			"config path: " + configPath,
+			"mode: preview",
+			"[mcp_servers.optimusctx]",
+			`command = "optimusctx"`,
+			`args = ["run"]`,
+			"status: preview only",
+		} {
+			if !strings.Contains(output, want) {
+				t.Fatalf("missing %q in:\n%s", want, output)
+			}
+		}
+		for _, unwanted := range []string{
+			`model = "gpt-5.4"`,
+			`[agents.gsd-debugger]`,
+			`[mcp_servers.linear]`,
+			`[projects."/home/nico/projects/genera-platita"]`,
+		} {
+			if strings.Contains(output, unwanted) {
+				t.Fatalf("output should not dump unrelated existing Codex config %q:\n%s", unwanted, output)
+			}
+		}
+	})
+}

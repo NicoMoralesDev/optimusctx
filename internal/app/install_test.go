@@ -277,6 +277,9 @@ func TestInstallServiceSupportsCodexAppPreview(t *testing.T) {
 	if !strings.Contains(result.Rendered.Content, `command = "optimusctx"`) {
 		t.Fatalf("content missing command line: %s", result.Rendered.Content)
 	}
+	if strings.TrimSpace(result.Rendered.AppliedContent) == "" {
+		t.Fatal("codex-app preview should keep applied content for real writes")
+	}
 	if len(result.Rendered.Notes) == 0 {
 		t.Fatal("codex-app preview should include notes")
 	}
@@ -312,6 +315,9 @@ func TestInstallServiceSupportsCodexCLIPreview(t *testing.T) {
 	if !strings.Contains(result.Rendered.Content, `command = "optimusctx"`) {
 		t.Fatalf("content missing command line: %s", result.Rendered.Content)
 	}
+	if strings.TrimSpace(result.Rendered.AppliedContent) == "" {
+		t.Fatal("codex-cli preview should keep applied content for real writes")
+	}
 	if len(result.Rendered.Notes) == 0 {
 		t.Fatal("codex-cli preview should include notes")
 	}
@@ -344,20 +350,35 @@ approval_policy = "on-request"
 	if err != nil {
 		t.Fatalf("Register(codex-app) error = %v", err)
 	}
-	if !strings.Contains(result.Rendered.Content, `model = "gpt-5"`) {
-		t.Fatalf("content missing existing model: %s", result.Rendered.Content)
+	if strings.Contains(result.Rendered.Content, `model = "gpt-5"`) {
+		t.Fatalf("preview should not dump existing model settings: %s", result.Rendered.Content)
 	}
-	if !strings.Contains(result.Rendered.Content, "[mcp_servers.other]") {
-		t.Fatalf("content missing existing server: %s", result.Rendered.Content)
+	if strings.Contains(result.Rendered.Content, "[mcp_servers.other]") {
+		t.Fatalf("preview should not dump unrelated MCP servers: %s", result.Rendered.Content)
 	}
-	if !strings.Contains(result.Rendered.Content, "[profiles.default]") {
-		t.Fatalf("content missing profile table: %s", result.Rendered.Content)
+	if strings.Contains(result.Rendered.Content, "[profiles.default]") {
+		t.Fatalf("preview should not dump unrelated profile tables: %s", result.Rendered.Content)
 	}
 	if !strings.Contains(result.Rendered.Content, "[mcp_servers.optimusctx]") {
 		t.Fatalf("content missing optimusctx table: %s", result.Rendered.Content)
 	}
 	if strings.Count(result.Rendered.Content, "[mcp_servers.optimusctx]") != 1 {
 		t.Fatalf("optimusctx table duplicated: %s", result.Rendered.Content)
+	}
+	if !strings.Contains(result.Rendered.AppliedContent, `model = "gpt-5"`) {
+		t.Fatalf("applied content missing existing model: %s", result.Rendered.AppliedContent)
+	}
+	if !strings.Contains(result.Rendered.AppliedContent, "[mcp_servers.other]") {
+		t.Fatalf("applied content missing existing server: %s", result.Rendered.AppliedContent)
+	}
+	if !strings.Contains(result.Rendered.AppliedContent, "[profiles.default]") {
+		t.Fatalf("applied content missing profile table: %s", result.Rendered.AppliedContent)
+	}
+	if !strings.Contains(result.Rendered.AppliedContent, "[mcp_servers.optimusctx]") {
+		t.Fatalf("applied content missing optimusctx table: %s", result.Rendered.AppliedContent)
+	}
+	if strings.Count(result.Rendered.AppliedContent, "[mcp_servers.optimusctx]") != 1 {
+		t.Fatalf("applied optimusctx table duplicated: %s", result.Rendered.AppliedContent)
 	}
 }
 

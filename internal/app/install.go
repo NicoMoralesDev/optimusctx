@@ -170,10 +170,11 @@ func (a jsonFileClientAdapter) Preview(request InstallRequest) (repository.Rende
 	}
 
 	return repository.RenderedClientConfig{
-		Client:     a.client,
-		ConfigPath: configPath,
-		Mode:       mode,
-		Content:    content,
+		Client:         a.client,
+		ConfigPath:     configPath,
+		Mode:           mode,
+		Content:        content,
+		AppliedContent: content,
 	}, nil
 }
 
@@ -187,7 +188,7 @@ func (a jsonFileClientAdapter) Write(_ context.Context, request InstallRequest) 
 	if err := a.mkdirAll(filepath.Dir(rendered.ConfigPath), 0o755); err != nil {
 		return repository.RenderedClientConfig{}, fmt.Errorf("prepare client config directory: %w", err)
 	}
-	if err := a.writeFile(rendered.ConfigPath, []byte(rendered.Content), 0o644); err != nil {
+	if err := a.writeFile(rendered.ConfigPath, []byte(rendered.ContentForWrite()), 0o644); err != nil {
 		return repository.RenderedClientConfig{}, fmt.Errorf("write client config: %w", err)
 	}
 
@@ -212,11 +213,12 @@ func (a previewOnlyClientAdapter) Preview(request InstallRequest) (repository.Re
 	}
 
 	return repository.RenderedClientConfig{
-		Client:     a.client,
-		ConfigPath: a.configPath,
-		Mode:       repository.RenderModePreview,
-		Content:    content,
-		Notes:      append([]string(nil), a.notes...),
+		Client:         a.client,
+		ConfigPath:     a.configPath,
+		Mode:           repository.RenderModePreview,
+		Content:        content,
+		AppliedContent: content,
+		Notes:          append([]string(nil), a.notes...),
 	}, nil
 }
 
@@ -271,11 +273,12 @@ func (a claudeCLIClientAdapter) renderCommand(request InstallRequest, mode repos
 	command := repository.NewServeCommand(request.BinaryPath)
 	content := repository.RenderClaudeCLIAddCommand(serverName, scope, command)
 	rendered := repository.RenderedClientConfig{
-		Client:     a.client,
-		ConfigPath: "command",
-		Mode:       mode,
-		Content:    content,
-		Notes:      append([]string(nil), a.notes...),
+		Client:         a.client,
+		ConfigPath:     "command",
+		Mode:           mode,
+		Content:        content,
+		AppliedContent: content,
+		Notes:          append([]string(nil), a.notes...),
 	}
 
 	args := []string{"mcp", "add", "--transport", "stdio", "--scope", scope, serverName, "--", command.Command}
@@ -298,6 +301,10 @@ func (a codexConfigClientAdapter) Preview(request InstallRequest) (repository.Re
 	if err != nil {
 		return repository.RenderedClientConfig{}, err
 	}
+	preview, err := repository.RenderCodexConfig(request.ServerName, repository.NewServeCommand(request.BinaryPath))
+	if err != nil {
+		return repository.RenderedClientConfig{}, err
+	}
 
 	mode := repository.RenderModePreview
 	if request.Write {
@@ -305,11 +312,12 @@ func (a codexConfigClientAdapter) Preview(request InstallRequest) (repository.Re
 	}
 
 	return repository.RenderedClientConfig{
-		Client:     a.client,
-		ConfigPath: configPath,
-		Mode:       mode,
-		Content:    content,
-		Notes:      append([]string(nil), a.notes...),
+		Client:         a.client,
+		ConfigPath:     configPath,
+		Mode:           mode,
+		Content:        preview,
+		AppliedContent: content,
+		Notes:          append([]string(nil), a.notes...),
 	}, nil
 }
 
@@ -323,7 +331,7 @@ func (a codexConfigClientAdapter) Write(_ context.Context, request InstallReques
 	if err := a.mkdirAll(filepath.Dir(rendered.ConfigPath), 0o755); err != nil {
 		return repository.RenderedClientConfig{}, fmt.Errorf("prepare client config directory: %w", err)
 	}
-	if err := a.writeFile(rendered.ConfigPath, []byte(rendered.Content), 0o644); err != nil {
+	if err := a.writeFile(rendered.ConfigPath, []byte(rendered.ContentForWrite()), 0o644); err != nil {
 		return repository.RenderedClientConfig{}, fmt.Errorf("write client config: %w", err)
 	}
 
@@ -336,11 +344,12 @@ func (a genericClientAdapter) Preview(request InstallRequest) (repository.Render
 		return repository.RenderedClientConfig{}, err
 	}
 	return repository.RenderedClientConfig{
-		Client:     a.client,
-		ConfigPath: "manual",
-		Mode:       repository.RenderModePreview,
-		Content:    content,
-		Notes:      append([]string(nil), a.notes...),
+		Client:         a.client,
+		ConfigPath:     "manual",
+		Mode:           repository.RenderModePreview,
+		Content:        content,
+		AppliedContent: content,
+		Notes:          append([]string(nil), a.notes...),
 	}, nil
 }
 

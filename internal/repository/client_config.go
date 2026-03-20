@@ -46,11 +46,19 @@ const (
 )
 
 type RenderedClientConfig struct {
-	Client     SupportedClient
-	ConfigPath string
-	Mode       RenderMode
-	Content    string
-	Notes      []string
+	Client         SupportedClient
+	ConfigPath     string
+	Mode           RenderMode
+	Content        string
+	AppliedContent string
+	Notes          []string
+}
+
+func (r RenderedClientConfig) ContentForWrite() string {
+	if strings.TrimSpace(r.AppliedContent) != "" {
+		return r.AppliedContent
+	}
+	return r.Content
 }
 
 func SupportedClients() []SupportedClient {
