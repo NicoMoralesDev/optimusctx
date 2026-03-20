@@ -120,17 +120,23 @@ jobs:
         env:
           RELEASE_TAG: ${{ steps.release_ref.outputs.tag }}
           PUBLICATION_OUTCOME: ${{ steps.publish_github_release_step.outcome }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           failure_reason="none"
+          publication_status="published"
           if [ "${PUBLICATION_OUTCOME:-skipped}" = "failure" ]; then
             failure_reason="GitHub Release archive publication failed"
+            publication_status="failed"
+          elif [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            publication_status="reused_existing_release"
           fi
           {
             echo "### GitHub Release publication"
             echo "- channel: github-release"
             echo "- tag: ${RELEASE_TAG}"
             echo "- outcome: ${PUBLICATION_OUTCOME:-skipped}"
+            echo "- publication_status: ${publication_status}"
             echo "- failure_reason: ${failure_reason}"
             echo "- next_step: Inspect the release job logs and fix the canonical GitHub Release/archive state before any downstream rerun."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -184,14 +190,17 @@ jobs:
         run: |
           set -euo pipefail
           failure_reason="none"
+          publication_status="published"
           if [ "${PUBLICATION_OUTCOME:-skipped}" = "failure" ]; then
             failure_reason="npm publish failed"
+            publication_status="failed"
           fi
           {
             echo "### npm publication"
             echo "- channel: npm"
             echo "- tag: ${RELEASE_TAG}"
             echo "- outcome: ${PUBLICATION_OUTCOME:-skipped}"
+            echo "- publication_status: ${publication_status}"
             echo "- failure_reason: ${failure_reason}"
             echo "- github_event_name: ${GITHUB_EVENT_NAME}"
             echo "- github_workflow: ${GITHUB_WORKFLOW}"
@@ -281,18 +290,22 @@ jobs:
         run: |
           set -euo pipefail
           failure_reason="none"
+          publication_status="published"
           if [ "${UPDATE_OUTCOME:-skipped}" = "failure" ]; then
             failure_reason="Homebrew tap update failed"
+            publication_status="failed"
           elif [ "${CREDENTIALS_ENABLED:-false}" != "true" ]; then
             failure_reason="missing HOMEBREW_TAP_GITHUB_TOKEN"
+            publication_status="not_published"
           fi
           {
             echo "### Homebrew publication"
             echo "- channel: homebrew"
             echo "- tag: ${RELEASE_TAG}"
             echo "- outcome: ${UPDATE_OUTCOME:-skipped}"
+            echo "- publication_status: ${publication_status}"
             echo "- failure_reason: ${failure_reason}"
-            echo "- next_step: Inspect the failing job logs, confirm GitHub Release remains the canonical root, and use workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=homebrew."
+            echo "- next_step: If publication_status=not_published, add HOMEBREW_TAP_GITHUB_TOKEN and rerun workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=homebrew. Otherwise inspect the failing job logs, confirm GitHub Release remains the canonical root, and rerun the same channel only."
           } >> "$GITHUB_STEP_SUMMARY"
 
   publish_scoop:
@@ -375,16 +388,20 @@ jobs:
         run: |
           set -euo pipefail
           failure_reason="none"
+          publication_status="published"
           if [ "${UPDATE_OUTCOME:-skipped}" = "failure" ]; then
             failure_reason="Scoop bucket update failed"
+            publication_status="failed"
           elif [ "${CREDENTIALS_ENABLED:-false}" != "true" ]; then
             failure_reason="missing SCOOP_BUCKET_GITHUB_TOKEN"
+            publication_status="not_published"
           fi
           {
             echo "### Scoop publication"
             echo "- channel: scoop"
             echo "- tag: ${RELEASE_TAG}"
             echo "- outcome: ${UPDATE_OUTCOME:-skipped}"
+            echo "- publication_status: ${publication_status}"
             echo "- failure_reason: ${failure_reason}"
-            echo "- next_step: Inspect the failing job logs, confirm GitHub Release remains the canonical root, and use workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=scoop."
+            echo "- next_step: If publication_status=not_published, add SCOOP_BUCKET_GITHUB_TOKEN and rerun workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=scoop. Otherwise inspect the failing job logs, confirm GitHub Release remains the canonical root, and rerun the same channel only."
           } >> "$GITHUB_STEP_SUMMARY"

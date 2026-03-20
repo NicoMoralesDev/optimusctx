@@ -260,6 +260,7 @@ func TestReleaseWorkflowSummaryShowsChannelStatus(t *testing.T) {
 		`- channel:`,
 		`- tag:`,
 		`- outcome:`,
+		`- publication_status:`,
 		`- failure_reason:`,
 		`- github_event_name:`,
 		`- github_workflow:`,
@@ -279,10 +280,14 @@ func TestReleaseWorkflowSummaryShowsFailureGuidance(t *testing.T) {
 
 	for _, want := range []string{
 		`GitHub Release archive publication failed`,
+		`reused_existing_release`,
 		`fix the canonical GitHub Release/archive state before any downstream rerun`,
 		`npm publish failed`,
 		`Homebrew tap update failed`,
 		`Scoop bucket update failed`,
+		`publication_status=not_published`,
+		`missing HOMEBREW_TAP_GITHUB_TOKEN`,
+		`missing SCOOP_BUCKET_GITHUB_TOKEN`,
 		`confirm GitHub Release remains the canonical root`,
 		`workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=npm`,
 		`workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=homebrew`,

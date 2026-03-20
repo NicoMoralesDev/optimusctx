@@ -45,8 +45,11 @@ func TestInitCommandInitializesFromNestedRepositoryPath(t *testing.T) {
 		if !strings.Contains(output, "discovered files: 3") {
 			t.Fatalf("output = %q, want discovered file count", output)
 		}
-		if !strings.Contains(output, "next step: use `optimusctx init --client <client>` to review the change for claude-desktop, claude-cli, codex-app, or codex-cli, or add `--write` to configure one right away, then use `optimusctx run`") {
+		if !strings.Contains(output, "next step: use `optimusctx init --client <client>` to review the change for claude-desktop, claude-cli, codex-app, or codex-cli, or add `--write` to configure one right away") {
 			t.Fatalf("output = %q, want onboarding next step", output)
+		}
+		if !strings.Contains(output, "runtime after registration: your MCP client should launch `optimusctx run` automatically when it connects") {
+			t.Fatalf("output = %q, want automatic runtime handoff", output)
 		}
 	})
 
@@ -164,7 +167,8 @@ trust_level = "trusted"
 			`command = "optimusctx"`,
 			`args = ["run"]`,
 			"status: ready to configure",
-			"next step: rerun `optimusctx init --client codex-cli --write` to apply this setup, then use `optimusctx run`",
+			"next step: rerun `optimusctx init --client codex-cli --write` to apply this setup",
+			"runtime after apply: your MCP client should launch `optimusctx run` automatically when it connects",
 		} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("missing %q in:\n%s", want, output)

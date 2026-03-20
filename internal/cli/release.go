@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -22,6 +23,7 @@ var (
 	releasePrepareResolveRepoRoot = repository.ResolveRepositoryRoot
 	releasePrepareLoadMilestone   = loadReleaseMilestone
 	releasePrepareCommandService  = defaultReleasePrepareCommandService
+	releasePrepareCredentialProbe = defaultReleasePrepareCredentialProbe
 	errReleasePlanHasBlockers     = errors.New("release plan has blockers")
 	errReleaseRequiresSubcommand  = errors.New("release requires a subcommand")
 )
@@ -211,10 +213,12 @@ func normalizeReleaseChannels(input []string) ([]string, error) {
 }
 
 func defaultReleasePrepareCommandService(ctx context.Context, request releasePrepareRequest) (release.ReleasePreparation, error) {
+	credentialChecks := releasePrepareCredentialProbe(ctx, request.RepositoryRoot)
 	return release.PrepareRelease(ctx, request.Version, request.Milestone, release.ReleasePreparationOptions{
 		Git:              releaseCLIGitProbe{dir: request.RepositoryRoot},
 		Files:            os.DirFS(request.RepositoryRoot),
 		SelectedChannels: request.SelectedChannels,
+		CredentialChecks: credentialChecks,
 	})
 }
 
@@ -273,6 +277,106 @@ func runGitInDir(ctx context.Context, dir string, args ...string) (string, error
 	return string(output), nil
 }
 
+var githubHTTPSRemotePattern = regexp.MustCompile(`^https://github\.com/([^/]+)/([^/]+?)(?:\.git)?$`)
+
+func defaultReleasePrepareCredentialProbe(ctx context.Context, repoRoot string) map[string]release.ReleaseCredentialCheck {
+	const source = "GitHub Actions repository secrets via gh secret list"
+
+	unknown := func(secretName string, details ...string) release.ReleaseCredentialCheck {
+		return release.ReleaseCredentialCheck{
+			SecretName: secretName,
+			Status:     "unknown",
+			Source:     source,
+			Details:    append([]string(nil), details...),
+		}
+	}
+
+	slug, err := releasePrepareGitHubRepository(repoRoot)
+	if err != nil {
+		return map[string]release.ReleaseCredentialCheck{
+			"HOMEBREW_TAP_GITHUB_TOKEN": unknown("HOMEBREW_TAP_GITHUB_TOKEN", err.Error()),
+			"SCOOP_BUCKET_GITHUB_TOKEN": unknown("SCOOP_BUCKET_GITHUB_TOKEN", err.Error()),
+		}
+	}
+
+	names, err := releasePrepareListGitHubActionsSecrets(ctx, repoRoot, slug)
+	if err != nil {
+		return map[string]release.ReleaseCredentialCheck{
+			"HOMEBREW_TAP_GITHUB_TOKEN": unknown("HOMEBREW_TAP_GITHUB_TOKEN", err.Error()),
+			"SCOOP_BUCKET_GITHUB_TOKEN": unknown("SCOOP_BUCKET_GITHUB_TOKEN", err.Error()),
+		}
+	}
+
+	checks := map[string]release.ReleaseCredentialCheck{}
+	for _, secretName := range []string{"HOMEBREW_TAP_GITHUB_TOKEN", "SCOOP_BUCKET_GITHUB_TOKEN"} {
+		status := "missing"
+		details := []string{fmt.Sprintf("repository: %s", slug)}
+		if _, ok := names[secretName]; ok {
+			status = "present"
+			details = append(details, "secret is configured on the repository")
+		} else {
+			details = append(details, "secret is not configured on the repository")
+		}
+		checks[secretName] = release.ReleaseCredentialCheck{
+			SecretName: secretName,
+			Status:     status,
+			Source:     source,
+			Details:    details,
+		}
+	}
+
+	return checks
+}
+
+func releasePrepareGitHubRepository(repoRoot string) (string, error) {
+	remote, err := runGitInDir(context.Background(), repoRoot, "config", "--get", "remote.origin.url")
+	if err != nil {
+		return "", fmt.Errorf("unable to resolve remote.origin.url for release credential verification: %w", err)
+	}
+
+	return parseGitHubRepositorySlug(strings.TrimSpace(remote))
+}
+
+func parseGitHubRepositorySlug(remote string) (string, error) {
+	if remote == "" {
+		return "", errors.New("remote.origin.url is empty; release prepare cannot verify GitHub Actions secrets")
+	}
+	if strings.HasPrefix(remote, "git@github.com:") {
+		slug := strings.TrimPrefix(remote, "git@github.com:")
+		slug = strings.TrimSuffix(slug, ".git")
+		if strings.Count(slug, "/") == 1 {
+			return slug, nil
+		}
+	}
+	if matches := githubHTTPSRemotePattern.FindStringSubmatch(remote); matches != nil {
+		return matches[1] + "/" + matches[2], nil
+	}
+
+	return "", fmt.Errorf("remote.origin.url %q is not a GitHub repository; release prepare cannot verify GitHub Actions secrets", remote)
+}
+
+func releasePrepareListGitHubActionsSecrets(ctx context.Context, repoRoot string, slug string) (map[string]struct{}, error) {
+	cmd := exec.CommandContext(ctx, "gh", "secret", "list", "--repo", slug)
+	cmd.Dir = repoRoot
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("gh secret list failed for %s: %s", slug, strings.TrimSpace(string(output)))
+	}
+
+	names := map[string]struct{}{}
+	for _, line := range nonEmptyReleaseLines(string(output)) {
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
+		if strings.EqualFold(fields[0], "NAME") {
+			continue
+		}
+		names[fields[0]] = struct{}{}
+	}
+	return names, nil
+}
+
 func loadReleaseMilestone(repoRoot string) (string, error) {
 	statePath := filepath.Join(repoRoot, ".planning", "STATE.md")
 	data, err := os.ReadFile(statePath)
@@ -313,6 +417,12 @@ func formatReleasePreparation(preparation release.ReleasePreparation, options re
 			continue
 		}
 		_, _ = fmt.Fprintf(&b, "  - %s (%s) [%s] -> %s\n", channel.ID, channel.Name, channel.Readiness, channel.PublicationTarget)
+		if strings.TrimSpace(channel.Summary) != "" {
+			_, _ = fmt.Fprintf(&b, "    summary: %s\n", channel.Summary)
+		}
+		for _, detail := range channel.Details {
+			_, _ = fmt.Fprintf(&b, "    %s\n", detail)
+		}
 	}
 
 	writeReleaseIssues(&b, "Blockers", preparation.Blockers)
@@ -382,6 +492,8 @@ func releasePrepareNextStep(preparation release.ReleasePreparation, confirm bool
 		return "Resolve the blockers, then rerun optimusctx release prepare."
 	case confirm:
 		return "Phase 16 review gate is complete; no tag created and publication not started."
+	case len(preparation.Warnings) > 0:
+		return "Review the warnings, especially any downstream credential verification gaps, then rerun optimusctx release prepare --confirm when ready."
 	default:
 		return "Review the plan, then rerun optimusctx release prepare --confirm when ready."
 	}

@@ -20,7 +20,13 @@ func writeOnboardingResult(stdout io.Writer, request app.InstallRequest, result 
 		if _, err := io.WriteString(stdout, "status: configured\n"); err != nil {
 			return err
 		}
-		_, err := fmt.Fprintf(stdout, "next step: use the registered %s MCP setup with `optimusctx run`\n", result.Rendered.Client.DisplayName)
+		if _, err := io.WriteString(stdout, "runtime: your registered MCP client should launch `optimusctx run` automatically when it connects\n"); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(stdout, "verify: confirm your host exposes `optimusctx.*` tools such as `optimusctx.repository_map`, `optimusctx.symbol_lookup`, and `optimusctx.health`\n"); err != nil {
+			return err
+		}
+		_, err := io.WriteString(stdout, "manual fallback: run `optimusctx run` yourself only for direct STDIO use or debugging\n")
 		return err
 	}
 	if _, err := fmt.Fprintf(stdout, "\nreview this change first:\n\n%s", ensureTrailingNewline(result.Rendered.Content)); err != nil {
@@ -29,12 +35,18 @@ func writeOnboardingResult(stdout io.Writer, request app.InstallRequest, result 
 	if _, err := io.WriteString(stdout, "status: ready to configure\n"); err != nil {
 		return err
 	}
-	_, err := fmt.Fprintf(stdout, "next step: rerun `%s` to apply this setup, then use `optimusctx run`\n", renderInitWriteCommand(request))
+	if _, err := fmt.Fprintf(stdout, "next step: rerun `%s` to apply this setup\n", renderInitWriteCommand(request)); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(stdout, "runtime after apply: your MCP client should launch `optimusctx run` automatically when it connects\n"); err != nil {
+		return err
+	}
+	_, err := io.WriteString(stdout, "manual fallback: run `optimusctx run` yourself only for direct STDIO use or debugging\n")
 	return err
 }
 
 func renderDefaultInitNextStep() string {
-	return "next step: use `optimusctx init --client <client>` to review the change for claude-desktop, claude-cli, codex-app, or codex-cli, or add `--write` to configure one right away, then use `optimusctx run`\n"
+	return "next step: use `optimusctx init --client <client>` to review the change for claude-desktop, claude-cli, codex-app, or codex-cli, or add `--write` to configure one right away\nruntime after registration: your MCP client should launch `optimusctx run` automatically when it connects\nmanual fallback: run `optimusctx run` yourself only for direct STDIO use or debugging\n"
 }
 
 func renderInitWriteCommand(request app.InstallRequest) string {

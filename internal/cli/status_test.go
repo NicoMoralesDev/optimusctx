@@ -49,7 +49,7 @@ func TestStatusCommandBasic(t *testing.T) {
 			"watch status: running",
 			"mcp command: optimusctx run",
 			"supported clients: claude-desktop, claude-cli, codex-app, codex-cli",
-			"next action: runtime is ready; rerun `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register MCP, then use `optimusctx run`",
+			"next action: runtime is ready; rerun `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register MCP. Registered MCP clients should launch `optimusctx run` automatically, and manual `optimusctx run` remains the direct/debug path.",
 		} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("status output missing %q:\n%s", want, output)

@@ -20,7 +20,7 @@ At a high level:
 
 - `optimusctx init` creates `.optimusctx/` and persists the first repository snapshot.
 - OptimusCtx then keeps structured repository data locally, including freshness state, repository maps, and exact symbol lookup data.
-- `optimusctx run` exposes that local state over STDIO for MCP clients.
+- `optimusctx run` exposes that local state over STDIO for MCP clients, and registered MCP hosts launch it automatically when they connect.
 - Supported-client onboarding stays opt-in through `init`, with a review/apply flow for host registration.
 
 ## Command surface
@@ -100,7 +100,7 @@ optimusctx status
 
 In an interactive terminal, `optimusctx init` can offer Claude and Codex onboarding during that same command after the repository bootstrap finishes. It asks where the client should be configured, then lets you either configure it now or review the exact change first.
 
-Start the runtime for agent use:
+Registered MCP hosts should launch the runtime automatically after onboarding. Run it manually only when you want direct STDIO access or you are debugging startup:
 
 ```bash
 optimusctx run
@@ -166,7 +166,7 @@ Creates repository-local state in `.optimusctx/`, persists the first repository 
 
 Runs the agent-facing runtime over STDIO.
 
-This is the canonical MCP entrypoint. It is also responsible for bringing repository state into a usable condition before serving the runtime.
+This is the canonical MCP entrypoint. It is also responsible for bringing repository state into a usable condition before serving the runtime. When a supported host is registered through `init`, the host should invoke this entrypoint automatically.
 
 ### `optimusctx status`
 
@@ -213,6 +213,7 @@ go run ./cmd/optimusctx version
 
 - [docs/quickstart.md](./docs/quickstart.md) — shortest path from install to daily use
 - [docs/install-and-verify.md](./docs/install-and-verify.md) — fuller install and verification guide
+- [docs/mcp-agent-guide.md](./docs/mcp-agent-guide.md) — how registered hosts use the MCP surface well and how to verify real tool usage
 - [docs/distribution-strategy.md](./docs/distribution-strategy.md) — release channels and support boundary
 - [docs/operator-release-guide.md](./docs/operator-release-guide.md) — release operator workflow
 - [docs/release-checklist.md](./docs/release-checklist.md) — release checklist

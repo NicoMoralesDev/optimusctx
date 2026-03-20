@@ -67,9 +67,11 @@ Check the read-only runtime status any time:
 optimusctx status
 ```
 
-## 4. Start the runtime
+## 4. Runtime handoff
 
-For normal agent and MCP client use:
+If you registered a supported MCP client through `init`, the host should launch `optimusctx run` automatically when it connects.
+
+Run it manually only for direct STDIO use or debugging:
 
 ```bash
 optimusctx run
@@ -98,6 +100,8 @@ optimusctx init --client claude-desktop --write
 optimusctx init --client codex-app --write
 optimusctx init --client codex-cli --config /path/to/.codex/config.toml --write
 ```
+
+After registration, verify in your host that `optimusctx.*` tools are available and actually being called. Use [`mcp-agent-guide.md`](./mcp-agent-guide.md) for the recommended tool-usage pattern and verification checks.
 
 ## 6. Update
 
@@ -143,11 +147,12 @@ optimusctx doctor
 Then:
 
 - if the repo was never initialized, run `optimusctx init`
-- if the runtime is not active for agent use, start `optimusctx run`
+- if the runtime is not active for direct/debug use, start `optimusctx run`
 - if MCP registration needs review or you skipped the interactive onboarding flow, use `optimusctx init --client <client>` to review the exact change, then add `--write` when you want to apply it
 
 ## 8. More docs
 
 - [`install-and-verify.md`](./install-and-verify.md)
+- [`mcp-agent-guide.md`](./mcp-agent-guide.md)
 - [`distribution-strategy.md`](./distribution-strategy.md)
 - [`operator-release-guide.md`](./operator-release-guide.md)

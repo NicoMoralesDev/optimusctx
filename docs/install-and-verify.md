@@ -91,9 +91,11 @@ Check the read-only runtime status at any time with:
 optimusctx status
 ```
 
-## 4. Start the runtime
+## 4. Runtime handoff
 
-For normal MCP client use:
+If you registered a supported MCP client through `init`, the host should launch `optimusctx run` automatically when it connects.
+
+Run it manually only for direct STDIO use or debugging:
 
 ```bash
 optimusctx run
@@ -130,6 +132,7 @@ Notes:
 - Claude CLI supports `--scope local`, `--scope project`, and `--scope user`.
 - Codex App and Codex CLI can target the shared `~/.codex/config.toml` path or an explicit repo-local `.codex/config.toml` path.
 - The interactive `init` flow surfaces those destinations before anything is written.
+- After registration, your host should discover the `optimusctx.*` tool surface automatically. Use [`mcp-agent-guide.md`](./mcp-agent-guide.md) for the recommended usage order and verification checks.
 
 ## 6. Update
 

@@ -107,6 +107,6 @@ func deriveShortNextAction(health repository.HealthResult, watch repository.Watc
 	case watch.Status == repository.WatchStatusKindStale:
 		return "restart with `optimusctx run` or inspect deeper with `optimusctx doctor`"
 	default:
-		return "runtime is ready; rerun `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register MCP, then use `optimusctx run`"
+		return "runtime is ready; rerun `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register MCP. Registered MCP clients should launch `optimusctx run` automatically, and manual `optimusctx run` remains the direct/debug path."
 	}
 }

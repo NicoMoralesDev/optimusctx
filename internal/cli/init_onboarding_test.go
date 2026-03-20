@@ -42,7 +42,9 @@ func TestInitCommandClientPreview(t *testing.T) {
 			"review this change first:",
 			"claude mcp add --transport stdio --scope local optimusctx -- optimusctx run",
 			"status: ready to configure",
-			"next step: rerun `optimusctx init --client claude-cli --write` to apply this setup, then use `optimusctx run`",
+			"next step: rerun `optimusctx init --client claude-cli --write` to apply this setup",
+			"runtime after apply: your MCP client should launch `optimusctx run` automatically when it connects",
+			"manual fallback: run `optimusctx run` yourself only for direct STDIO use or debugging",
 		} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("missing %q in:\n%s", want, output)
@@ -90,7 +92,8 @@ func TestInitCommandClaudeCLIPreviewUsesScope(t *testing.T) {
 			"review this change first:",
 			"claude mcp add --transport stdio --scope project optimusctx -- optimusctx run",
 			"status: ready to configure",
-			"next step: rerun `optimusctx init --client claude-cli --scope project --write` to apply this setup, then use `optimusctx run`",
+			"next step: rerun `optimusctx init --client claude-cli --scope project --write` to apply this setup",
+			"runtime after apply: your MCP client should launch `optimusctx run` automatically when it connects",
 		} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("missing %q in:\n%s", want, output)
@@ -127,7 +130,8 @@ func TestInitCommandInteractiveSkipOnboarding(t *testing.T) {
 			"set up a supported MCP client now?",
 			"1. Claude Desktop",
 			"4. Codex CLI",
-			"next step: use `optimusctx init --client <client>` to review the change for claude-desktop, claude-cli, codex-app, or codex-cli, or add `--write` to configure one right away, then use `optimusctx run`",
+			"next step: use `optimusctx init --client <client>` to review the change for claude-desktop, claude-cli, codex-app, or codex-cli, or add `--write` to configure one right away",
+			"runtime after registration: your MCP client should launch `optimusctx run` automatically when it connects",
 		} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("missing %q in:\n%s", want, output)
@@ -182,7 +186,8 @@ func TestInitCommandInteractiveChoosesClientPreview(t *testing.T) {
 			"destination: This repo only",
 			"review this change first:",
 			"status: ready to configure",
-			"next step: rerun `optimusctx init --client codex-app --config " + filepath.Join(repoRoot, ".codex", "config.toml") + " --write` to apply this setup, then use `optimusctx run`",
+			"next step: rerun `optimusctx init --client codex-app --config " + filepath.Join(repoRoot, ".codex", "config.toml") + " --write` to apply this setup",
+			"runtime after apply: your MCP client should launch `optimusctx run` automatically when it connects",
 		} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("missing %q in:\n%s", want, output)
@@ -234,7 +239,8 @@ func TestInitCommandInteractiveClaudeCLIWriteUsesScope(t *testing.T) {
 			"destination: This project",
 			"native target: claude mcp add --scope project",
 			"status: configured",
-			"next step: use the registered Claude CLI MCP setup with `optimusctx run`",
+			"runtime: your registered MCP client should launch `optimusctx run` automatically when it connects",
+			"verify: confirm your host exposes `optimusctx.*` tools such as `optimusctx.repository_map`, `optimusctx.symbol_lookup`, and `optimusctx.health`",
 		} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("missing %q in:\n%s", want, output)

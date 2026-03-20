@@ -77,6 +77,12 @@ func TestReleaseVersionProposal(t *testing.T) {
 			existingTags: []string{"v1.1.4", "v1.2.0", "v1.2.3", "latest"},
 			want:         "1.2.4",
 		},
+		{
+			name:         "accepts active patch milestones and reuses their major minor lane",
+			milestone:    "v1.2.7",
+			existingTags: []string{"v1.2.0", "v1.2.3"},
+			want:         "1.2.4",
+		},
 	}
 
 	for _, tc := range cases {
@@ -212,6 +218,85 @@ func TestReleasePrepareHomebrewAndScoopAutomationMarkers(t *testing.T) {
 		}
 		if got := releaseChannel(t, preparation, ReleaseChannelScoop).Readiness; got != releaseChannelReadinessReady {
 			t.Fatalf("scoop readiness = %q, want %q", got, releaseChannelReadinessReady)
+		}
+	})
+}
+
+func TestReleasePrepareDownstreamCredentialChecks(t *testing.T) {
+	t.Run("blocks selected downstream channels when required GitHub secrets are missing", func(t *testing.T) {
+		preparation, err := PrepareRelease(context.Background(), "1.2.3", "v1.2", ReleasePreparationOptions{
+			Git:   fakeGitProbe{},
+			Files: releaseRepoFiles(),
+			CredentialChecks: map[string]ReleaseCredentialCheck{
+				homebrewTapTokenEnv: {
+					SecretName: homebrewTapTokenEnv,
+					Status:     releaseCredentialStatusMissing,
+					Source:     "GitHub Actions repository secrets via gh secret list",
+					Details:    []string{"repository: NicoMoralesDev/optimusctx", "secret is not configured on the repository"},
+				},
+				scoopBucketTokenEnv: {
+					SecretName: scoopBucketTokenEnv,
+					Status:     releaseCredentialStatusMissing,
+					Source:     "GitHub Actions repository secrets via gh secret list",
+					Details:    []string{"repository: NicoMoralesDev/optimusctx", "secret is not configured on the repository"},
+				},
+			},
+		})
+		if err != nil {
+			t.Fatalf("PrepareRelease() error = %v", err)
+		}
+
+		if got := releaseChannel(t, preparation, ReleaseChannelHomebrew).Readiness; got != releaseChannelReadinessBlocked {
+			t.Fatalf("homebrew readiness = %q, want %q", got, releaseChannelReadinessBlocked)
+		}
+		if got := releaseChannel(t, preparation, ReleaseChannelScoop).Readiness; got != releaseChannelReadinessBlocked {
+			t.Fatalf("scoop readiness = %q, want %q", got, releaseChannelReadinessBlocked)
+		}
+		if blocker := findBlocker(preparation, channelCheckHomebrew); blocker == nil {
+			t.Fatalf("expected %s blocker in %+v", channelCheckHomebrew, preparation.Blockers)
+		}
+		if blocker := findBlocker(preparation, channelCheckScoop); blocker == nil {
+			t.Fatalf("expected %s blocker in %+v", channelCheckScoop, preparation.Blockers)
+		}
+	})
+
+	t.Run("warns when credential verification is unavailable", func(t *testing.T) {
+		preparation, err := PrepareRelease(context.Background(), "1.2.3", "v1.2", ReleasePreparationOptions{
+			Git:   fakeGitProbe{},
+			Files: releaseRepoFiles(),
+			CredentialChecks: map[string]ReleaseCredentialCheck{
+				homebrewTapTokenEnv: {
+					SecretName: homebrewTapTokenEnv,
+					Status:     releaseCredentialStatusUnknown,
+					Source:     "GitHub Actions repository secrets via gh secret list",
+					Details:    []string{"gh secret list failed for NicoMoralesDev/optimusctx: authentication required"},
+				},
+				scoopBucketTokenEnv: {
+					SecretName: scoopBucketTokenEnv,
+					Status:     releaseCredentialStatusPresent,
+					Source:     "GitHub Actions repository secrets via gh secret list",
+					Details:    []string{"repository: NicoMoralesDev/optimusctx", "secret is configured on the repository"},
+				},
+			},
+		})
+		if err != nil {
+			t.Fatalf("PrepareRelease() error = %v", err)
+		}
+
+		if got := releaseChannel(t, preparation, ReleaseChannelHomebrew).Readiness; got != releaseChannelReadinessReviewRequired {
+			t.Fatalf("homebrew readiness = %q, want %q", got, releaseChannelReadinessReviewRequired)
+		}
+		if got := releaseChannel(t, preparation, ReleaseChannelScoop).Readiness; got != releaseChannelReadinessReady {
+			t.Fatalf("scoop readiness = %q, want %q", got, releaseChannelReadinessReady)
+		}
+		if !hasCheck(preparation, channelCheckHomebrew, releaseCheckStatusWarning) {
+			t.Fatalf("expected %s warning check in %+v", channelCheckHomebrew, preparation.Checks)
+		}
+		if warning := findWarning(preparation, channelCheckHomebrew); warning == nil {
+			t.Fatalf("expected %s warning in %+v", channelCheckHomebrew, preparation.Warnings)
+		}
+		if blocker := findBlocker(preparation, channelCheckHomebrew); blocker != nil {
+			t.Fatalf("unexpected %s blocker: %+v", channelCheckHomebrew, blocker)
 		}
 	})
 }
@@ -679,6 +764,16 @@ func findBlocker(preparation ReleasePreparation, code string) *ReleaseIssue {
 	for _, blocker := range preparation.Blockers {
 		if blocker.Code == code {
 			copy := blocker
+			return &copy
+		}
+	}
+	return nil
+}
+
+func findWarning(preparation ReleasePreparation, code string) *ReleaseIssue {
+	for _, warning := range preparation.Warnings {
+		if warning.Code == code {
+			copy := warning
 			return &copy
 		}
 	}

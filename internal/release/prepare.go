@@ -19,12 +19,18 @@ const (
 	ReleaseChannelScoop         = "scoop"
 	ReleaseChannelNPM           = "npm"
 
-	releaseChannelReadinessPending = "pending"
-	releaseChannelReadinessReady   = "ready"
-	releaseChannelReadinessBlocked = "blocked"
+	releaseChannelReadinessPending        = "pending"
+	releaseChannelReadinessReady          = "ready"
+	releaseChannelReadinessBlocked        = "blocked"
+	releaseChannelReadinessReviewRequired = "review_required"
 
 	releaseCheckStatusReady   = "ready"
+	releaseCheckStatusWarning = "warning"
 	releaseCheckStatusBlocked = "blocked"
+
+	releaseCredentialStatusPresent = "present"
+	releaseCredentialStatusMissing = "missing"
+	releaseCredentialStatusUnknown = "unknown"
 
 	defaultGitRemote = "origin"
 
@@ -44,7 +50,6 @@ const (
 
 var (
 	canonicalReleaseVersionPattern = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$`)
-	milestoneSeriesPattern         = regexp.MustCompile(`^v?(0|[1-9]\d*)\.(0|[1-9]\d*)$`)
 	legacyReleaseTagPattern        = regexp.MustCompile(`^v(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?$`)
 )
 
@@ -69,11 +74,20 @@ type ReleaseCheck struct {
 }
 
 type ReleaseChannelPlan struct {
-	ID                string `json:"id"`
-	Name              string `json:"name"`
-	PublicationTarget string `json:"publicationTarget"`
-	Selected          bool   `json:"selected"`
-	Readiness         string `json:"readiness"`
+	ID                string   `json:"id"`
+	Name              string   `json:"name"`
+	PublicationTarget string   `json:"publicationTarget"`
+	Selected          bool     `json:"selected"`
+	Readiness         string   `json:"readiness"`
+	Summary           string   `json:"summary,omitempty"`
+	Details           []string `json:"details,omitempty"`
+}
+
+type ReleaseCredentialCheck struct {
+	SecretName string   `json:"secretName"`
+	Status     string   `json:"status"`
+	Source     string   `json:"source,omitempty"`
+	Details    []string `json:"details,omitempty"`
 }
 
 type ReleasePreparation struct {
@@ -105,6 +119,7 @@ type ReleasePreparationOptions struct {
 	SelectedChannels   []string
 	RequireRemoteCheck bool
 	RemoteName         string
+	CredentialChecks   map[string]ReleaseCredentialCheck
 }
 
 type systemGitProbe struct{}
@@ -581,8 +596,8 @@ func applyPrerequisiteChecks(preparation *ReleasePreparation, options ReleasePre
 
 	setChannelReadiness(preparation, ReleaseChannelGitHubArchive, evaluateGitHubChannel(workflow, missingFiles))
 	setChannelReadiness(preparation, ReleaseChannelNPM, evaluateNPMChannel(workflow, missingFiles))
-	setChannelReadiness(preparation, ReleaseChannelHomebrew, evaluateHomebrewChannel(workflow, missingFiles))
-	setChannelReadiness(preparation, ReleaseChannelScoop, evaluateScoopChannel(workflow, missingFiles))
+	setChannelReadiness(preparation, ReleaseChannelHomebrew, evaluateHomebrewChannel(workflow, missingFiles, options.CredentialChecks[homebrewTapTokenEnv]))
+	setChannelReadiness(preparation, ReleaseChannelScoop, evaluateScoopChannel(workflow, missingFiles, options.CredentialChecks[scoopBucketTokenEnv]))
 
 	return nil
 }
@@ -662,7 +677,7 @@ func evaluateNPMChannel(workflow string, missingFiles map[string]bool) channelEv
 	}
 }
 
-func evaluateHomebrewChannel(workflow string, missingFiles map[string]bool) channelEvaluation {
+func evaluateHomebrewChannel(workflow string, missingFiles map[string]bool, credential ReleaseCredentialCheck) channelEvaluation {
 	if missingFiles[homebrewTemplatePath] {
 		return channelEvaluation{
 			ID:        ReleaseChannelHomebrew,
@@ -690,15 +705,17 @@ func evaluateHomebrewChannel(workflow string, missingFiles map[string]bool) chan
 		}
 	}
 
-	return channelEvaluation{
-		ID:        ReleaseChannelHomebrew,
-		CheckCode: channelCheckHomebrew,
-		Readiness: releaseChannelReadinessReady,
-		Message:   "Homebrew publication contract is wired",
-	}
+	return evaluateCredentialBackedChannel(
+		ReleaseChannelHomebrew,
+		channelCheckHomebrew,
+		"Homebrew publication contract is wired",
+		"Homebrew publication is blocked until the GitHub Actions secret HOMEBREW_TAP_GITHUB_TOKEN is configured",
+		"Homebrew publication still needs the GitHub Actions secret HOMEBREW_TAP_GITHUB_TOKEN; release prepare could not verify whether it exists",
+		credential,
+	)
 }
 
-func evaluateScoopChannel(workflow string, missingFiles map[string]bool) channelEvaluation {
+func evaluateScoopChannel(workflow string, missingFiles map[string]bool, credential ReleaseCredentialCheck) channelEvaluation {
 	if missingFiles[scoopTemplatePath] {
 		return channelEvaluation{
 			ID:        ReleaseChannelScoop,
@@ -726,12 +743,14 @@ func evaluateScoopChannel(workflow string, missingFiles map[string]bool) channel
 		}
 	}
 
-	return channelEvaluation{
-		ID:        ReleaseChannelScoop,
-		CheckCode: channelCheckScoop,
-		Readiness: releaseChannelReadinessReady,
-		Message:   "Scoop publication contract is wired",
-	}
+	return evaluateCredentialBackedChannel(
+		ReleaseChannelScoop,
+		channelCheckScoop,
+		"Scoop publication contract is wired",
+		"Scoop publication is blocked until the GitHub Actions secret SCOOP_BUCKET_GITHUB_TOKEN is configured",
+		"Scoop publication still needs the GitHub Actions secret SCOOP_BUCKET_GITHUB_TOKEN; release prepare could not verify whether it exists",
+		credential,
+	)
 }
 
 type channelEvaluation struct {
@@ -741,6 +760,60 @@ type channelEvaluation struct {
 	Message   string
 	Details   []string
 	Blocker   bool
+	Warning   bool
+}
+
+func evaluateCredentialBackedChannel(channelID string, checkCode string, readyMessage string, blockedMessage string, reviewMessage string, credential ReleaseCredentialCheck) channelEvaluation {
+	if strings.TrimSpace(credential.Status) == "" && strings.TrimSpace(credential.SecretName) == "" && strings.TrimSpace(credential.Source) == "" && len(credential.Details) == 0 {
+		return channelEvaluation{
+			ID:        channelID,
+			CheckCode: checkCode,
+			Readiness: releaseChannelReadinessReady,
+			Message:   readyMessage,
+		}
+	}
+
+	details := credentialDetails(credential)
+	switch credential.Status {
+	case releaseCredentialStatusPresent:
+		return channelEvaluation{
+			ID:        channelID,
+			CheckCode: checkCode,
+			Readiness: releaseChannelReadinessReady,
+			Message:   readyMessage,
+			Details:   details,
+		}
+	case releaseCredentialStatusMissing:
+		return channelEvaluation{
+			ID:        channelID,
+			CheckCode: checkCode,
+			Readiness: releaseChannelReadinessBlocked,
+			Message:   blockedMessage,
+			Details:   details,
+			Blocker:   true,
+		}
+	default:
+		return channelEvaluation{
+			ID:        channelID,
+			CheckCode: checkCode,
+			Readiness: releaseChannelReadinessReviewRequired,
+			Message:   reviewMessage,
+			Details:   details,
+			Warning:   true,
+		}
+	}
+}
+
+func credentialDetails(credential ReleaseCredentialCheck) []string {
+	details := make([]string, 0, len(credential.Details)+2)
+	if credential.SecretName != "" {
+		details = append(details, "required secret: "+credential.SecretName)
+	}
+	if credential.Source != "" {
+		details = append(details, "verification source: "+credential.Source)
+	}
+	details = append(details, credential.Details...)
+	return details
 }
 
 func setChannelReadiness(preparation *ReleasePreparation, channelID string, evaluation channelEvaluation) {
@@ -751,12 +824,16 @@ func setChannelReadiness(preparation *ReleasePreparation, channelID string, eval
 		}
 		selected = preparation.Channels[index].Selected
 		preparation.Channels[index].Readiness = evaluation.Readiness
+		preparation.Channels[index].Summary = evaluation.Message
+		preparation.Channels[index].Details = append([]string(nil), evaluation.Details...)
 		break
 	}
 
 	status := releaseCheckStatusReady
 	if evaluation.Readiness == releaseChannelReadinessBlocked {
 		status = releaseCheckStatusBlocked
+	} else if evaluation.Readiness == releaseChannelReadinessReviewRequired {
+		status = releaseCheckStatusWarning
 	}
 	preparation.Checks = append(preparation.Checks, ReleaseCheck{
 		Code:    evaluation.CheckCode,
@@ -768,6 +845,13 @@ func setChannelReadiness(preparation *ReleasePreparation, channelID string, eval
 
 	if evaluation.Readiness == releaseChannelReadinessBlocked && selected {
 		preparation.Blockers = append(preparation.Blockers, ReleaseIssue{
+			Code:    evaluation.CheckCode,
+			Message: evaluation.Message,
+			Details: evaluation.Details,
+		})
+	}
+	if evaluation.Readiness == releaseChannelReadinessReviewRequired && selected {
+		preparation.Warnings = append(preparation.Warnings, ReleaseIssue{
 			Code:    evaluation.CheckCode,
 			Message: evaluation.Message,
 			Details: evaluation.Details,
@@ -845,16 +929,17 @@ func parseMilestoneSeries(input string) (releaseVersion, error) {
 		return releaseVersion{}, fmt.Errorf("milestone series must not contain leading or trailing whitespace")
 	}
 
-	matches := milestoneSeriesPattern.FindStringSubmatch(input)
-	if matches == nil {
-		return releaseVersion{}, fmt.Errorf("milestone series %q must use vMAJOR.MINOR", input)
+	candidate := strings.TrimPrefix(input, "v")
+	parts := strings.Split(candidate, ".")
+	if len(parts) != 2 && len(parts) != 3 {
+		return releaseVersion{}, fmt.Errorf("milestone series %q must use vMAJOR.MINOR or vMAJOR.MINOR.PATCH", input)
 	}
 
-	major, err := strconv.Atoi(matches[1])
+	major, err := strconv.Atoi(parts[0])
 	if err != nil {
 		return releaseVersion{}, fmt.Errorf("parse milestone major: %w", err)
 	}
-	minor, err := strconv.Atoi(matches[2])
+	minor, err := strconv.Atoi(parts[1])
 	if err != nil {
 		return releaseVersion{}, fmt.Errorf("parse milestone minor: %w", err)
 	}

@@ -15,6 +15,7 @@ The guiding constraint is unchanged from the product itself: OptimusCtx is a loc
 - The supported post-install commands are `optimusctx version`, `optimusctx init`, `optimusctx status`, `optimusctx doctor`, and the agent-facing runtime entrypoint `optimusctx run`.
 - Distribution does not promise a hosted onboarding flow, background agent, or managed update service.
 - Configuration writes remain explicit. `optimusctx init --client ...` reviews the exact change first, and host registration is only written when the operator opts into `--write`.
+- When a supported host is registered, it should launch `optimusctx run` automatically; manual `run` remains the direct/debug path.
 
 ## Supported Release Channels
 
@@ -70,6 +71,7 @@ In practice that means:
 
 - If the canonical GitHub Release archives or checksums are wrong, stop and fix GitHub Release first before you rerun any downstream publication channel.
 - If exactly one downstream channel failed after the canonical release is correct, rerun only that channel with `gh workflow run release.yml -f release_tag=vX.Y.Z -f publication_channel=npm`, `gh workflow run release.yml -f release_tag=vX.Y.Z -f publication_channel=homebrew`, or `gh workflow run release.yml -f release_tag=vX.Y.Z -f publication_channel=scoop`.
+- If Homebrew or Scoop shows `publication_status=not_published`, that channel did not ship; add the missing repository secret and rerun only that channel.
 - The primary rollback source is a prior tagged GitHub Release archive.
 - If a published release should be abandoned, reinstall a prior tagged GitHub Release archive, verify the fallback binary again, and publish a new fixed version instead of reusing the same version.
 - GitHub Release is the canonical root and rollback source even when downstream automation republishes one package-manager channel.
@@ -83,6 +85,7 @@ Every supported channel should converge on the same verification path:
 3. `optimusctx doctor` when deeper diagnostics are needed.
 4. `optimusctx init --client claude-desktop` to review supported-client onboarding in a real repository.
 5. `optimusctx init --client claude-desktop --write` only if the operator explicitly wants the config file write path after reviewing the rendered change.
+6. Confirm the MCP host exposes and uses `optimusctx.*` tools if the release claim includes supported-client onboarding.
 
 ## Support Boundary
 

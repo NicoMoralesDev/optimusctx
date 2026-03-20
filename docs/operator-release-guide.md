@@ -13,6 +13,15 @@ optimusctx release prepare --confirm
 
 Use the exact reviewed tag for every later verification, `workflow_dispatch` rerun, and rollback decision.
 
+`release prepare` now distinguishes:
+
+- canonical GitHub Release readiness
+- downstream publication readiness per channel
+- credential verification gaps for Homebrew and Scoop
+
+If Homebrew or Scoop stays `review_required`, `release prepare` could not verify the required GitHub Actions secret yet.
+If either channel is `blocked`, the repository secret is known to be missing and that channel will not publish on tag push.
+
 ## Publish
 
 ```bash
@@ -99,6 +108,8 @@ gh workflow run release.yml -f release_tag="$TAG" -f publication_channel=npm
 ```
 
 Allowed `publication_channel` values are `all`, `npm`, `homebrew`, and `scoop`.
+
+If the workflow summary shows `publication_status=not_published` for Homebrew or Scoop, that channel did not ship. Add the missing repository secret first, then rerun only that channel.
 
 ## Roll Back From The Canonical Root
 

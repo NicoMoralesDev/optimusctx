@@ -23,6 +23,7 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 ## Tag And Publish
 
 - Follow [`operator-release-guide.md`](./operator-release-guide.md) for the canonical end-to-end operator flow before and after the tag push.
+- Treat `optimusctx release prepare` as the last truth gate before tagging: if Homebrew or Scoop are `blocked`, those channels will not publish; if they are `review_required`, confirm the repo secrets before pushing.
 - Create the release tag that should drive the canonical GitHub Release and downstream publication flow.
 - Use `workflow_dispatch` with `release_tag` and `publication_channel` to rerun `npm`, `homebrew`, or `scoop` for an existing tagged release without rebuilding unrelated channels.
 - Verify the GitHub Release contains the canonical versioned archives and checksum manifest for the tag.
@@ -39,6 +40,7 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 - Confirm the user-facing upgrade command is `brew upgrade niccrow/tap/optimusctx`.
 - Confirm the release operator credentials for publication are still `HOMEBREW_TAP_GITHUB_TOKEN`.
 - Confirm Homebrew publication is automated from the same canonical tagged release after GitHub Release assets are available.
+- If the workflow summary shows `publication_status=not_published`, Homebrew did not ship.
 - If Homebrew needs recovery, rerun `workflow_dispatch` with `release_tag=<tag>` and `publication_channel=homebrew`.
 
 ## Scoop Checks
@@ -49,6 +51,7 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 - Confirm the user-facing upgrade command is `scoop update optimusctx`.
 - Confirm the release operator credentials for publication are still `SCOOP_BUCKET_GITHUB_TOKEN`.
 - Confirm Scoop publication is automated from the same canonical tagged release after GitHub Release assets are available.
+- If the workflow summary shows `publication_status=not_published`, Scoop did not ship.
 - If Scoop needs recovery, rerun `workflow_dispatch` with `release_tag=<tag>` and `publication_channel=scoop`.
 
 ## npm Checks
