@@ -39,7 +39,7 @@ func runStatusCommand(stdout io.Writer, args []string) error {
 		arg := args[i]
 		switch arg {
 		case "-h", "--help":
-			_, err := io.WriteString(stdout, "Usage:\n  optimusctx status [--client <client>] [--config <path>] [--binary <path>] [--write]\n\nShow the current repository/runtime status. When --client is provided, also preview or write MCP client registration.\n")
+			_, err := io.WriteString(stdout, "Usage:\n  optimusctx status [--client <client>] [--config <path>] [--binary <path>] [--scope <local|project|user>] [--write]\n\nShow the current repository/runtime status. When --client is provided, also preview or write MCP client registration.\n")
 			return err
 		case "--client":
 			value, next, err := requireInstallValue(args, i, arg)
@@ -61,6 +61,13 @@ func runStatusCommand(stdout io.Writer, args []string) error {
 				return err
 			}
 			request.BinaryPath = value
+			i = next
+		case "--scope":
+			value, next, err := requireInstallValue(args, i, arg)
+			if err != nil {
+				return err
+			}
+			request.Scope = value
 			i = next
 		case "--write":
 			request.Write = true
