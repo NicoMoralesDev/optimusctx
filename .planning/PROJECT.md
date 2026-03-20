@@ -12,25 +12,23 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 - Shipped version: `v1.3.3`
 - Runtime stack: Go, SQLite, Tree-sitter, MCP-over-STDIO
-- Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `status`, `doctor`, `eval`, `install`, `version`, and `release prepare`, with first-class supported-client onboarding for Claude and Codex hosts plus canonical GitHub Release-rooted downstream publication
-- Product state: `v1.0`, `v1.1`, `v1.2`, `v1.3.1`, `v1.3.2`, and `v1.3.3` are published; `v1.3.4` is complete on the branch but intentionally skipped for release while `v1.3.5` folds in the missing MCP observability and status unification work
+- Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `status`, deprecated alias `doctor`, `eval`, `install`, `version`, and `release prepare`, with first-class supported-client onboarding for Claude and Codex hosts plus canonical GitHub Release-rooted downstream publication
+- Product state: `v1.0`, `v1.1`, `v1.2`, `v1.3.1`, `v1.3.2`, and `v1.3.3` are published; `v1.3.4` remains intentionally unreleased; `v1.3.5` is complete on the branch and is the next intended public release cut
 
 ## Current Milestone
 
-`v1.3.5` MCP observability and status unification
+No active milestone
 
-**Goal:** Make `status` the canonical operational surface, prove whether a registered MCP host actually discovered and used OptimusCtx, and register agent-usable guidance where host integrations support it.
-
-**Target features:**
-- Persist local MCP session evidence for `initialize`, `tools/list`, and `tools/call` so the product can distinguish registered vs discovered vs used
-- Unify the useful `doctor` diagnostics into `status` and make `status` answer the real operator question: "is this actually working?"
-- Register durable OptimusCtx usage guidance for the agent where host config formats support it, with explicit fallback truth where they do not
+**Current release position:**
+- `v1.3.5` is complete on the branch and ready for release
+- `v1.3.4` stays intentionally unreleased
+- the next planning action should happen only after the `v1.3.5` release decision
 
 ## Next Milestone Goals
 
-- Deliver MCP observability that lets operators prove real host discovery and tool usage from OptimusCtx itself
-- Collapse duplicated operational diagnostics into one authoritative `status` command
-- Tighten supported-host integrations so agent guidance is actually consumable by the host when possible
+- Cut the `v1.3.5` release cleanly
+- Observe real day-to-day host sessions against the new `status` evidence surface
+- Define the next milestone only after that release and validation loop
 
 ## Requirements
 
@@ -50,17 +48,17 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 - ✓ Intent-led onboarding conversation, destination-first targeting, and outcome-oriented supported-client output — `v1.3.3`
 - ✓ Release preflight secret verification, downstream publication-status truth, and better MCP runtime-handoff guidance — `v1.3.4`
 
-### Active
+### Recently Completed
 
-- [ ] `status` becomes the authoritative command for runtime readiness, MCP discovery, and MCP usage evidence
-- [ ] MCP session evidence proves whether a supported host only registered OptimusCtx, actually discovered it, and actually used its tools
-- [ ] Supported-host onboarding registers durable agent-usable OptimusCtx guidance where the host supports it, with explicit fallback truth where it does not
+- ✓ `status` is now the authoritative command for runtime readiness, MCP discovery, and MCP usage evidence — `v1.3.5`
+- ✓ MCP session evidence now proves whether a supported host only registered OptimusCtx, actually discovered it, and actually used its tools — `v1.3.5`
+- ✓ Supported-host onboarding now registers durable agent-usable OptimusCtx guidance where the host supports it, with explicit fallback truth where it does not — `v1.3.5`
 
 ### Out of Scope
 
 - Hosted telemetry, dashboards, or managed rollout services — the product remains local-first and operator-driven.
 - Default semantic retrieval or general-purpose RAG behavior — the wedge is still deterministic exact-first context optimization.
-- Automatic modification of repository instruction files or client configs during install beyond explicit supported-host onboarding — installation and integration remain explicit.
+- Automatic or silent modification of repository instruction files or client configs outside explicit supported-host onboarding — installation and integration remain explicit.
 - Additional first-class MCP hosts beyond `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` — `v1.3.5` fixes observability and guidance quality for the current host set rather than expanding coverage.
 - New distribution channels beyond the currently supported set — `.deb`, `.rpm`, WinGet, Chocolatey, signing, and SBOMs stay deferred until the current channels are fully truthful and operator-safe.
 
@@ -70,7 +68,7 @@ v1.0 proved the core runtime wedge. v1.1 then proved the shipped product works e
 
 v1.2 closed the operator loop around the release surface. v1.3.1 then finished the supported Claude and Codex onboarding story by delivering host-native preview/write behavior, correcting command ownership around `init`, and updating the docs/evidence to match the shipped contract. v1.3.2 tightened that operator experience further by collapsing the common bootstrap and onboarding path into one smooth interactive `init` flow while preserving explicit scripting and direct-flag usage. v1.3.3 refined that same onboarding path again by making the conversation intent-led and destination-first, while trimming avoidable noise from the result output and docs.
 
-`v1.3.4` improved release truthfulness and clarified runtime handoff, but it still left the core adoption question unresolved inside the product: OptimusCtx itself still cannot prove whether the host discovered or actually used the MCP server, `status` and `doctor` still overlap heavily, and the new guidance mostly landed as human docs rather than durable agent-facing instructions consumed by the host. `v1.3.5` exists to correct that gap directly before any further release cut.
+`v1.3.4` improved release truthfulness and clarified runtime handoff, but it still left the core adoption question unresolved inside the product: OptimusCtx itself still could not prove whether the host discovered or actually used the MCP server, `status` and `doctor` still overlapped heavily, and the new guidance mostly landed as human docs rather than durable agent-facing instructions consumed by the host. `v1.3.5` corrected that gap directly, so the next step is release rather than more milestone planning.
 
 ## Constraints
 
@@ -93,6 +91,7 @@ v1.2 closed the operator loop around the release surface. v1.3.1 then finished t
 | Keep command surface intentionally small | The product should be easy to adopt and reason about for both humans and agents | ✓ Shipped in v1.0 |
 | Make watch mode optional, not required | Daily usability should not depend on background processes or platform-specific watcher reliability | ✓ Shipped in v1.0 |
 | Never auto-modify agent instruction files | Integration must remain explicit and non-invasive to preserve user control | ✓ Shipped in v1.0 |
+| Allow init-led managed guidance writes where the host explicitly supports them | Durable agent guidance matters, but only through explicit host-aware onboarding and never as a silent install side effect | ✓ Completed in v1.3.5 |
 | Keep evaluation and benchmark evidence fixture-backed and repo-local | Milestone claims need rerunnable evidence anchored in committed inputs and persisted outputs | ✓ Shipped in v1.1 |
 | Count only declared agent-facing inputs in benchmark claims | Token savings must measure user-visible OptimusCtx value, not hidden system provenance | ✓ Shipped in v1.1 |
 | Keep GitHub Releases as the canonical binary source and package managers as wrappers | Distribution breadth is useful only if every channel stays truthful to the same shipped runtime | ✓ Shipped in v1.1 |
@@ -104,4 +103,4 @@ v1.2 closed the operator loop around the release surface. v1.3.1 then finished t
 | Runtime handoff guidance alone is not enough; OptimusCtx must expose proof of host discovery and use | Human docs cannot substitute for product-visible observability and host-consumable guidance | — Active in v1.3.5 |
 
 ---
-*Last updated: 2026-03-20 after starting milestone v1.3.5 MCP observability and status unification*
+*Last updated: 2026-03-20 after archiving milestone v1.3.5*

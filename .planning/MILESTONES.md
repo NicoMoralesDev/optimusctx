@@ -1,5 +1,28 @@
 # Project Milestones: OptimusCtx
 
+## v1.3.5 MCP Observability and Status Unification (Completed: 2026-03-20)
+
+**Delivered:** Repo-local MCP activity evidence, canonical `status` verification, deprecated `doctor` aliasing, durable host guidance wiring, and docs aligned to the new truth.
+
+**Phases completed:** 29-31 (3 plans total)
+
+**Key accomplishments:**
+- Persisted bounded MCP session evidence for `initialize`, `tools/list`, and recent `tools/call` activity under `.optimusctx/`.
+- Replaced the old short/long split with one canonical `optimusctx status` report that shows repository readiness, host registration evidence, discovery evidence, usage evidence, and next action.
+- Reduced `optimusctx doctor` to a deprecated alias that now delegates to `status`.
+- Wired durable agent guidance into supported host surfaces: active Codex `AGENTS` files and Claude CLI rules directories, while making Claude Desktop's limitation explicit.
+- Updated README, quickstart, install, MCP guide, and release/distribution docs to the real contract, including that `v1.3.4` stays unreleased and `v1.3.5` is the next public cut.
+
+**Stats:**
+- 3 phases, 3 plans, 3 tasks
+- Rough execution window: 2026-03-20
+
+**Git range:** `feat: add MCP observability and status-led verification` → `chore: archive v1.3.5 milestone`
+
+**What's next:** Cut the `v1.3.5` release, then validate the new `status` evidence against a real supported host session in day-to-day use.
+
+---
+
 ## v1.3.4 Release Truthfulness and MCP Guidance Visibility (Completed: 2026-03-20)
 
 **Delivered:** Credential-aware release preflight, publication-truthful downstream summaries, automatic-runtime-handoff guidance in onboarding, and a dedicated MCP usage/verification guide.
