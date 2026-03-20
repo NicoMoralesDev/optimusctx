@@ -60,6 +60,16 @@ Plans:
 
 **Details:** Phase 21 turns the backend contract work into the real operator flow the milestone promises.
 
+### Phase 21.1: Init-led MCP onboarding and read-only status contract (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 21
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 21.1 to break down)
+
 ### Phase 22: Documentation and Compatibility Verification
 
 **Goal**: Lock the supported-client surface with docs, regression coverage, and explicit verification evidence.
@@ -83,16 +93,15 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.3.1` with Phase 20 and Phase 21 complete; Phase 22 ready to execute
+Active milestone: `v1.3.1` with Phase 20 and Phase 21 complete; Phase 21.1 inserted and ready to plan
 
 Next step:
 
-- Execute Phase 22 plan `22-01` to update README, quickstart, and install-path docs for the supported-client preview, write, and runtime handoff story.
-- Preserve `optimusctx run` as the one canonical runtime handoff across every supported client.
-- Use the supported-client operator copy from status, init, doctor, and snippet as the documentation contract for Phase 22.
+- Plan Phase `21.1` to move MCP registration ownership back to `init` and restore `status` to a read-only surface.
+- Re-check Phase 22 dependencies after `21.1` is planned so docs and verification target the corrected onboarding contract.
 - Phase 21 plan `21-01` is complete with the real Claude CLI write path and scope-aware status surface.
 - Phase 21 plan `21-02` is complete with real Codex App and Codex CLI writes through the shared native `config.toml` backend.
 - Phase 21 plan `21-03` is complete with truthful supported-client onboarding, status, doctor, and snippet guidance.
 
 ---
-*Last updated: 2026-03-20 after completing plan 21-03*
+*Last updated: 2026-03-20 after inserting phase 21.1 before phase 22*

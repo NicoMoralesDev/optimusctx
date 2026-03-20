@@ -7,10 +7,10 @@ current_phase_name: real write paths and operator surface integration
 current_plan: 3
 status: verifying
 stopped_at: Completed 21-03-PLAN.md
-last_updated: "2026-03-20T01:45:15.376Z"
+last_updated: "2026-03-20T02:37:41.987Z"
 last_activity: 2026-03-20
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 2
   total_plans: 6
   completed_plans: 6
@@ -26,12 +26,12 @@ progress:
 **Status:** Phase complete — ready for verification
 **Current Phase:** 21
 **Current Phase Name:** real write paths and operator surface integration
-**Total Phases:** 3
+**Total Phases:** 4
 **Current Plan:** 3
 **Total Plans in Phase:** 3
 **Progress:** [██████████] 100%
 **Last Activity:** 2026-03-20
-**Last Activity Description:** Completed plan 21-03 with supported-client-aware status, onboarding, doctor, and snippet guidance aligned to the real Claude and Codex write paths
+**Last Activity Description:** Inserted Phase 21.1 to realign MCP onboarding ownership around init-led registration and read-only status behavior
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: `v1.3.1` MCP client compatibility
 - Latest published release: `v1.3.0`
-- Next execution action: run execute-phase for Phase 22 to update docs and verification against the supported-client operator contract
+- Next execution action: run plan-phase for Phase 21.1 to restore init-led MCP onboarding before Phase 22 documentation and verification
 - Historical v1.0, v1.1, and v1.2 requirements and roadmaps are archived under `.planning/milestones/`
 - Hosted GitHub Actions `release.yml` summary and publication validation were confirmed resolved on 2026-03-19
 
@@ -115,6 +115,7 @@ progress:
 
 ### Roadmap Evolution
 
+- Phase 21.1 inserted after Phase 21: Init-led MCP onboarding and read-only status contract (URGENT)
 - Phase 16 added: Release versioning and preflight guardrails
 - Phase 16 planned: three plans cover semver normalization, preflight probes and review JSON, and an operator-facing `release prepare` CLI
 - Phase 17 added: Canonical release orchestration and metadata
