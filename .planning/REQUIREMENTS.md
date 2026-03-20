@@ -1,13 +1,22 @@
 # Requirements: OptimusCtx
 
 **Defined:** 2026-03-20
+**Milestone:** `v1.3.6`
 **Core Value:** Make repository understanding persistent, compact, incremental, and reusable across coding agents.
 
-## No Active Milestone Requirements
+## Milestone v1.3.6 Requirements
 
-`v1.3.5` is complete and archived. There is no active milestone requirement set right now.
+### Release Truth
 
-The next planned public action is to cut the `v1.3.5` release. Start a new milestone only after that release decision.
+- [ ] **REL-01**: The release workflow can publish `Formula/optimusctx.rb` to the configured Homebrew tap even when that tap starts without a `Formula/` directory and the file is being created for the first time.
+- [ ] **REL-02**: The release workflow can publish `bucket/optimusctx.json` to the configured Scoop bucket even when that bucket starts without a `bucket/` directory and the file is being created for the first time.
+- [ ] **REL-03**: Downstream Homebrew and Scoop publication steps treat newly created untracked output files as pending publication instead of exiting early as if nothing changed.
+- [ ] **REL-04**: Release summaries and verification surfaces only report a downstream channel as `published` after a real repo update, and distinguish that from an intentional no-op against already matching tracked content.
+
+### Workflow Runtime
+
+- [ ] **CI-01**: The release workflow uses supported GitHub Actions runtime paths that do not emit the current Node 20 deprecation warnings during the release lane.
+- [ ] **CI-02**: Release operator docs and checklists explain the corrected first-publish behavior for empty tap and bucket repositories and the truthful downstream publication states after the fix.
 
 ## Future Requirements
 
@@ -29,20 +38,21 @@ The next planned public action is to cut the `v1.3.5` release. Start a new miles
 
 | Feature | Reason |
 |---------|--------|
-| Additional first-class MCP hosts beyond `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` | The just-completed v1.3.5 work fixed observability and guidance quality for the current supported host set |
-| Hosted telemetry or cloud dashboards for MCP usage | The milestone is about local proof and local diagnostics, not SaaS observability |
+| Additional first-class MCP hosts beyond `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` | This milestone is narrowly about release-lane correctness and CI runtime modernization |
+| Hosted telemetry or cloud dashboards for MCP usage | `v1.3.6` does not expand observability beyond the already-shipped local evidence surface |
 | Automatic or silent rewriting of repository instruction files | Guidance may now be written through explicit init-led onboarding, but never silently |
-| New public release channels such as `.deb`, `.rpm`, WinGet, or Chocolatey | The current work still prioritizes correctness and truthfulness of the existing channels |
+| New public release channels such as `.deb`, `.rpm`, WinGet, or Chocolatey | The current work still prioritizes correctness and truthfulness of the existing GitHub Release, npm, Homebrew, and Scoop channels |
+| Signing, notarization, or SBOM publication | The immediate gap is false-positive package-manager publication, not broader supply-chain expansion |
 
 ## Traceability
 
-See [v1.3.5-REQUIREMENTS.md](/home/nico/projects/optimusctx/.planning/milestones/v1.3.5-REQUIREMENTS.md) and [v1.3.5-MILESTONE-AUDIT.md](/home/nico/projects/optimusctx/.planning/milestones/v1.3.5-MILESTONE-AUDIT.md) for the completed requirement set and final traceability.
+See [ROADMAP.md](/home/nico/projects/optimusctx/.planning/ROADMAP.md) for the active phase mapping. The v1.3.5 completed requirement set remains archived in [v1.3.5-REQUIREMENTS.md](/home/nico/projects/optimusctx/.planning/milestones/v1.3.5-REQUIREMENTS.md) and [v1.3.5-MILESTONE-AUDIT.md](/home/nico/projects/optimusctx/.planning/milestones/v1.3.5-MILESTONE-AUDIT.md).
 
 **Coverage:**
-- active milestone requirements: 0
-- mapped to phases: 0
+- active milestone requirements: 6
+- mapped to phases: 6
 - unmapped: 0
 
 ---
 *Requirements defined: 2026-03-20*
-*Last updated: 2026-03-20 after archiving milestone v1.3.5*
+*Last updated: 2026-03-20 for milestone v1.3.6*

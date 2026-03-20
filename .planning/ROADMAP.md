@@ -17,20 +17,48 @@
 
 ## Current Milestone
 
-No active milestone
+**v1.3.6 Release Channel Truth and Workflow Modernization**
 
-Next intended public release cut: `v1.3.5`
-Requirements: none active
+Goal: repair first-publish correctness for Homebrew and Scoop, make downstream publication reporting truthful, and remove the remaining Node 20 GitHub Actions warnings from the release lane.
+
+Next intended public release cut: `v1.3.6`
+Requirements: active in [REQUIREMENTS.md](/home/nico/projects/optimusctx/.planning/REQUIREMENTS.md)
 
 ## Current Status
 
-`v1.3.5` is complete on the branch and archived. There is no active milestone right now.
+`v1.3.5` was tagged and its canonical GitHub Release plus npm publication succeeded, but the first real Homebrew and Scoop publication against new downstream repos falsely reported success without committing any files. `v1.3.6` is the corrective milestone for that release truth gap and the remaining release-workflow runtime warnings.
+
+Research decision:
+
+- No milestone research required. This is release-lane hardening on already shipped distribution surfaces, not a new product domain.
+
+Phases:
+
+1. **Phase 32: Downstream First-Publish Correctness And Truthful Publication Status**
+   Goal: ensure Homebrew and Scoop publish correctly into empty tap and bucket repositories, and ensure release reporting only says `published` after a real downstream repo update or a justified no-op against already tracked matching content.
+   Scope:
+   - replace the current untracked-file-blind change detection in the Homebrew and Scoop publish steps
+   - make first publish against empty repos commit and push generated formula and manifest files
+   - tighten downstream summary truth so green jobs do not imply publication when no repo write occurred
+   - add regression coverage around empty external repos and first-file publication behavior
+   Requirements: `REL-01`, `REL-02`, `REL-03`, `REL-04`
+   Phase directory: [32-downstream-first-publish-correctness-and-truthful-publication-status](/home/nico/projects/optimusctx/.planning/phases/32-downstream-first-publish-correctness-and-truthful-publication-status)
+
+2. **Phase 33: GitHub Actions Runtime Modernization And Release Docs Alignment**
+   Goal: eliminate the remaining Node 20 deprecation warnings from the release lane and align operator docs to the repaired downstream publication contract.
+   Scope:
+   - upgrade or replace the remaining release workflow actions that still emit Node 20 deprecation warnings
+   - preserve canonical release behavior and rerun semantics while modernizing the workflow runtime
+   - update release/operator docs and checklists to the corrected first-publish truth contract
+   - verify the release lane remains operator-safe after the workflow modernization
+   Requirements: `CI-01`, `CI-02`
+   Phase directory: [33-github-actions-runtime-modernization-and-release-docs-alignment](/home/nico/projects/optimusctx/.planning/phases/33-github-actions-runtime-modernization-and-release-docs-alignment)
 
 Next step:
 
-- Cut the `v1.3.5` release.
+- Plan Phase 32 with `$gsd-plan-phase 32`.
 - Keep `v1.3.4` intentionally unreleased.
-- Start a fresh milestone only after the `v1.3.5` release decision is done.
+- Treat `v1.3.5` as a partial release whose downstream package-manager truth must be repaired by `v1.3.6`.
 
 ---
-*Last updated: 2026-03-20 after archiving milestone v1.3.5*
+*Last updated: 2026-03-20 after starting milestone v1.3.6*
