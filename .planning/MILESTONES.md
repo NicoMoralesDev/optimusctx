@@ -1,5 +1,27 @@
 # Project Milestones: OptimusCtx
 
+## v1.3.3 Intent-led Onboarding Conversation UX (Shipped: 2026-03-20)
+
+**Delivered:** Intent-led `init` onboarding prompts, destination-first registration choices with exact targets shown up front, quieter apply output, and docs aligned to the new conversation.
+
+**Phases completed:** 24-25 (4 plans total)
+
+**Key accomplishments:**
+- Reframed interactive onboarding around operator intent with `configure now` and `review the exact change first` language instead of preview/write jargon.
+- Added destination-first choices for supported clients, including repo-local versus shared Codex config targets and explicit Claude CLI native scope targets.
+- Reworked onboarding results so configure-now output emphasizes destination, target, and next step without dumping avoidable config content.
+- Updated README, quickstart, and install-and-verify docs to the destination-first review/apply contract and verified the real interactive flow in PTY walkthroughs.
+
+**Stats:**
+- 2 phases, 4 plans, 4 tasks
+- Rough execution window: 2026-03-20
+
+**Git range:** `feat: make init onboarding intent-led and scope-aware` → `chore: archive v1.3.3 milestone`
+
+**What's next:** Cut the `v1.3.3` release if you want this onboarding UX refinement published, or define the next milestone around host expansion and registration hardening.
+
+---
+
 ## v1.3.2 Smooth Init-led Onboarding UX (Shipped: 2026-03-20)
 
 **Delivered:** One-command interactive onboarding during `optimusctx init`, focused preview output for every currently supported client, and public docs aligned to the smoother init-led contract.
