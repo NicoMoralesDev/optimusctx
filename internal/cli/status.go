@@ -23,6 +23,8 @@ var (
 	}
 )
 
+const supportedClientList = "claude-desktop, claude-cli, codex-app, codex-cli"
+
 func newStatusCommand() *Command {
 	return &Command{
 		Name:    "status",
@@ -97,7 +99,7 @@ func runStatusCommand(stdout io.Writer, args []string) error {
 	var b strings.Builder
 	status := deriveShortRuntimeStatus(health, watch)
 	nextAction := deriveShortNextAction(health, watch)
-	_, _ = fmt.Fprintf(&b, "repository root: %s\nruntime status: %s\nstate status: %s\nfreshness: %s\ngeneration: %d\nlast refresh completed: %s\nwatch status: %s\nwatch reason: %s\nmcp command: %s %s\nnext action: %s\n",
+	_, _ = fmt.Fprintf(&b, "repository root: %s\nruntime status: %s\nstate status: %s\nfreshness: %s\ngeneration: %d\nlast refresh completed: %s\nwatch status: %s\nwatch reason: %s\nmcp command: %s %s\nsupported clients: %s\nnext action: %s\n",
 		health.Repository.RepositoryRoot,
 		status,
 		health.Summary.StateStatus,
@@ -108,6 +110,7 @@ func runStatusCommand(stdout io.Writer, args []string) error {
 		watch.Reason,
 		repository.NewServeCommand("").Command,
 		strings.Join(repository.NewServeCommand("").Args, " "),
+		supportedClientList,
 		nextAction,
 	)
 
@@ -158,6 +161,6 @@ func deriveShortNextAction(health repository.HealthResult, watch repository.Watc
 	case watch.Status == repository.WatchStatusKindStale:
 		return "restart with `optimusctx run` or inspect deeper with `optimusctx doctor`"
 	default:
-		return "runtime is ready; point your MCP client at `optimusctx run`"
+		return "runtime is ready; run `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli, then use `optimusctx run`"
 	}
 }

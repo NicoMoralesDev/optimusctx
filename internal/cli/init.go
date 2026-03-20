@@ -85,7 +85,7 @@ func newInitCommand() *Command {
 			}
 
 			if request.ClientID == "" {
-				_, err = io.WriteString(stdout, "\nnext step: run `optimusctx status --client claude-desktop` to preview MCP registration, or rerun `optimusctx init --client claude-desktop [--write]` to do it during onboarding\n")
+				_, err = io.WriteString(stdout, "\nnext step: run `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register MCP, or rerun `optimusctx init --client <client> [--write]` to do it during onboarding\n")
 				return err
 			}
 

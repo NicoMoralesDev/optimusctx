@@ -15,25 +15,25 @@ func TestInitCommandClientPreview(t *testing.T) {
 	previous := initInstallService
 	t.Cleanup(func() { initInstallService = previous })
 	initInstallService = func(ctx context.Context, request app.InstallRequest) (app.InstallResult, error) {
-		if request.ClientID != "claude-desktop" {
+		if request.ClientID != "claude-cli" {
 			t.Fatalf("client = %q", request.ClientID)
 		}
 		return app.InstallResult{Rendered: repository.RenderedClientConfig{
-			Client: repository.SupportedClients()[0],
-			ConfigPath: "/tmp/claude.json",
+			Client: repository.SupportedClient{ID: repository.ClientClaudeCLI, DisplayName: "Claude CLI"},
+			ConfigPath: "command",
 			Mode: repository.RenderModePreview,
-			Content: "{\n  \"mcpServers\": {\n    \"optimusctx\": {\n      \"command\": \"optimusctx\",\n      \"args\": [\"run\"]\n    }\n  }\n}\n",
+			Content: "claude mcp add --transport stdio --scope local optimusctx -- optimusctx run\n",
 		}}, nil
 	}
 
 	withWorkingDirectory(t, repoRoot, func() {
 		writeCLIFile(t, repoRoot+"/main.go", "package main\n")
 		var stdout bytes.Buffer
-		if err := NewRootCommand().Execute([]string{"init", "--client", "claude-desktop"}, &stdout); err != nil {
+		if err := NewRootCommand().Execute([]string{"init", "--client", "claude-cli"}, &stdout); err != nil {
 			t.Fatalf("Execute(init --client) error = %v", err)
 		}
 		output := stdout.String()
-		for _, want := range []string{"client: Claude Desktop", "config path: /tmp/claude.json", "mode: preview", "\"args\": [\"run\"]", "status: preview only"} {
+		for _, want := range []string{"client: Claude CLI", "config path: command", "mode: preview", "claude mcp add --transport stdio --scope local optimusctx -- optimusctx run", "status: preview only"} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("missing %q in:\n%s", want, output)
 			}

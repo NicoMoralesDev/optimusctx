@@ -45,7 +45,7 @@ func TestInitCommandInitializesFromNestedRepositoryPath(t *testing.T) {
 		if !strings.Contains(output, "discovered files: 3") {
 			t.Fatalf("output = %q, want discovered file count", output)
 		}
-		if !strings.Contains(output, "next step: run `optimusctx status --client claude-desktop`") {
+		if !strings.Contains(output, "next step: run `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register MCP, or rerun `optimusctx init --client <client> [--write]` to do it during onboarding") {
 			t.Fatalf("output = %q, want onboarding next step", output)
 		}
 	})

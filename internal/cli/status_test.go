@@ -49,7 +49,8 @@ func TestStatusCommandBasic(t *testing.T) {
 			"generation: 7",
 			"watch status: running",
 			"mcp command: optimusctx run",
-			"next action: runtime is ready; point your MCP client at `optimusctx run`",
+			"supported clients: claude-desktop, claude-cli, codex-app, codex-cli",
+			"next action: runtime is ready; run `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli, then use `optimusctx run`",
 		} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("status output missing %q:\n%s", want, output)
