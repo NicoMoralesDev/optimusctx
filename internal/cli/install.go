@@ -19,7 +19,7 @@ func newInstallCommand() *Command {
 		Name:    "install",
 		Summary: "Deprecated: preview or write supported MCP client registration",
 		Run: func(stdout io.Writer, args []string) error {
-			_, _ = io.WriteString(stdout, "warning: `optimusctx install` is deprecated; use `optimusctx status --client <client> [--write]` instead\n")
+			_, _ = io.WriteString(stdout, "warning: `optimusctx install` is deprecated; use `optimusctx init --client <client> [--write]` instead\n")
 			return runInstallCommand(stdout, args)
 		},
 	}
@@ -108,7 +108,7 @@ func requireInstallValue(args []string, index int, flag string) (string, int, er
 }
 
 func writeInstallHelp(stdout io.Writer) {
-	_, _ = io.WriteString(stdout, "Usage:\n  optimusctx install --client <client> [--config <path>] [--binary <path>] [--write]\n\nDeprecated command. Prefer `optimusctx status --client <client> [--write]`.\n")
+	_, _ = io.WriteString(stdout, "Usage:\n  optimusctx install --client <client> [--config <path>] [--binary <path>] [--write]\n\nDeprecated command. Prefer `optimusctx init --client <client> [--write]`.\n")
 }
 
 func normalizeInstallBinaryPath(runtimeBinaryPath string) string {

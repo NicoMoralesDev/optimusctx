@@ -18,9 +18,6 @@ var (
 	statusWatchService = func(ctx context.Context, workingDir string) (repository.WatchStatusResult, error) {
 		return app.NewWatchService().Status(ctx, workingDir, 0)
 	}
-	statusInstallPreviewService = func(ctx context.Context, request app.InstallRequest) (app.InstallResult, error) {
-		return app.NewInstallService().Register(ctx, request)
-	}
 )
 
 const supportedClientList = "claude-desktop, claude-cli, codex-app, codex-cli"
@@ -28,7 +25,7 @@ const supportedClientList = "claude-desktop, claude-cli, codex-app, codex-cli"
 func newStatusCommand() *Command {
 	return &Command{
 		Name:    "status",
-		Summary: "Show short runtime status and optional MCP client config preview",
+		Summary: "Show short runtime status without mutating MCP client configuration",
 		Run: func(stdout io.Writer, args []string) error {
 			return runStatusCommand(stdout, args)
 		},
@@ -36,43 +33,11 @@ func newStatusCommand() *Command {
 }
 
 func runStatusCommand(stdout io.Writer, args []string) error {
-	request := app.InstallRequest{}
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
+	for _, arg := range args {
 		switch arg {
 		case "-h", "--help":
-			_, err := io.WriteString(stdout, "Usage:\n  optimusctx status [--client <client>] [--config <path>] [--binary <path>] [--scope <local|project|user>] [--write]\n\nShow the current repository/runtime status. When --client is provided, also preview or write MCP client registration.\n")
+			_, err := io.WriteString(stdout, "Usage:\n  optimusctx status\n\nShow the current repository/runtime status without mutating MCP client configuration.\n")
 			return err
-		case "--client":
-			value, next, err := requireInstallValue(args, i, arg)
-			if err != nil {
-				return err
-			}
-			request.ClientID = value
-			i = next
-		case "--config":
-			value, next, err := requireInstallValue(args, i, arg)
-			if err != nil {
-				return err
-			}
-			request.ConfigPath = value
-			i = next
-		case "--binary":
-			value, next, err := requireInstallValue(args, i, arg)
-			if err != nil {
-				return err
-			}
-			request.BinaryPath = value
-			i = next
-		case "--scope":
-			value, next, err := requireInstallValue(args, i, arg)
-			if err != nil {
-				return err
-			}
-			request.Scope = value
-			i = next
-		case "--write":
-			request.Write = true
 		default:
 			if len(arg) > 0 && arg[0] == '-' {
 				return fmt.Errorf("status does not accept flag %q", arg)
@@ -114,25 +79,6 @@ func runStatusCommand(stdout io.Writer, args []string) error {
 		nextAction,
 	)
 
-	if request.ClientID != "" {
-		if request.BinaryPath == "" {
-			request.BinaryPath = repository.DefaultServeCommandName
-		}
-		preview, err := statusInstallPreviewService(ctx, request)
-		if err != nil {
-			return err
-		}
-		_, _ = fmt.Fprintf(&b, "\nclient: %s\nconfig path: %s\nmode: %s\n\n%s", preview.Rendered.Client.DisplayName, preview.Rendered.ConfigPath, preview.Rendered.Mode, ensureTrailingNewline(preview.Rendered.Content))
-		for _, note := range preview.Rendered.Notes {
-			_, _ = fmt.Fprintf(&b, "note: %s\n", note)
-		}
-		if preview.Wrote {
-			_, _ = io.WriteString(&b, "status: wrote config\n")
-		} else {
-			_, _ = io.WriteString(&b, "status: preview only\n")
-		}
-	}
-
 	_, err = io.WriteString(stdout, b.String())
 	return err
 }
@@ -161,6 +107,6 @@ func deriveShortNextAction(health repository.HealthResult, watch repository.Watc
 	case watch.Status == repository.WatchStatusKindStale:
 		return "restart with `optimusctx run` or inspect deeper with `optimusctx doctor`"
 	default:
-		return "runtime is ready; run `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli, then use `optimusctx run`"
+		return "runtime is ready; rerun `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register MCP, then use `optimusctx run`"
 	}
 }

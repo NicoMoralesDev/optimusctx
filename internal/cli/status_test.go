@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/niccrow/optimusctx/internal/app"
 	"github.com/niccrow/optimusctx/internal/repository"
 )
 
@@ -50,7 +49,7 @@ func TestStatusCommandBasic(t *testing.T) {
 			"watch status: running",
 			"mcp command: optimusctx run",
 			"supported clients: claude-desktop, claude-cli, codex-app, codex-cli",
-			"next action: runtime is ready; run `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli, then use `optimusctx run`",
+			"next action: runtime is ready; rerun `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register MCP, then use `optimusctx run`",
 		} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("status output missing %q:\n%s", want, output)
@@ -59,184 +58,43 @@ func TestStatusCommandBasic(t *testing.T) {
 	})
 }
 
-func TestStatusCommandClientPreview(t *testing.T) {
-	repoRoot := initCLIRepo(t)
-
-	previousHealth := statusHealthService
-	previousWatch := statusWatchService
-	previousInstall := statusInstallPreviewService
-	t.Cleanup(func() {
-		statusHealthService = previousHealth
-		statusWatchService = previousWatch
-		statusInstallPreviewService = previousInstall
-	})
-
-	statusHealthService = func(ctx context.Context, workingDir string) (repository.HealthResult, error) {
-		return repository.HealthResult{
-			Repository: repository.LayeredContextEnvelope{RepositoryRoot: repoRoot, Generation: 1, Freshness: repository.FreshnessStatusFresh},
-			Summary:    repository.HealthSummary{StateStatus: repository.HealthStateStatusReady},
-		}, nil
-	}
-	statusWatchService = func(ctx context.Context, workingDir string) (repository.WatchStatusResult, error) {
-		return repository.WatchStatusResult{RepositoryRoot: repoRoot, Status: repository.WatchStatusKindAbsent, Reason: "watch status file not found"}, nil
-	}
-	statusInstallPreviewService = func(ctx context.Context, request app.InstallRequest) (app.InstallResult, error) {
-		return app.InstallResult{
-			Rendered: repository.RenderedClientConfig{
-				Client:     repository.SupportedClients()[0],
-				ConfigPath: "/tmp/claude.json",
-				Mode:       repository.RenderModePreview,
-				Content:    "{\n  \"mcpServers\": {\n    \"optimusctx\": {\n      \"command\": \"optimusctx\",\n      \"args\": [\"run\"]\n    }\n  }\n}\n",
-			},
-		}, nil
-	}
-
-	withWorkingDirectory(t, repoRoot, func() {
-		var stdout bytes.Buffer
-		if err := NewRootCommand().Execute([]string{"status", "--client", "claude-desktop"}, &stdout); err != nil {
-			t.Fatalf("Execute(status --client) error = %v", err)
-		}
-		output := stdout.String()
-		for _, want := range []string{
-			"client: Claude Desktop",
-			"config path: /tmp/claude.json",
-			"mode: preview",
-			"\"args\": [\"run\"]",
-			"status: preview only",
-		} {
-			if !strings.Contains(output, want) {
-				t.Fatalf("status client preview missing %q:\n%s", want, output)
-			}
-		}
-	})
-}
-
-func TestStatusCommandClaudeCLIPreviewUsesScope(t *testing.T) {
-	repoRoot := initCLIRepo(t)
-
-	previousHealth := statusHealthService
-	previousWatch := statusWatchService
-	previousInstall := statusInstallPreviewService
-	t.Cleanup(func() {
-		statusHealthService = previousHealth
-		statusWatchService = previousWatch
-		statusInstallPreviewService = previousInstall
-	})
-
-	statusHealthService = func(ctx context.Context, workingDir string) (repository.HealthResult, error) {
-		return repository.HealthResult{
-			Repository: repository.LayeredContextEnvelope{RepositoryRoot: repoRoot, Generation: 2, Freshness: repository.FreshnessStatusFresh},
-			Summary:    repository.HealthSummary{StateStatus: repository.HealthStateStatusReady},
-		}, nil
-	}
-	statusWatchService = func(ctx context.Context, workingDir string) (repository.WatchStatusResult, error) {
-		return repository.WatchStatusResult{RepositoryRoot: repoRoot, Status: repository.WatchStatusKindAbsent, Reason: "watch status file not found"}, nil
-	}
-	statusInstallPreviewService = func(ctx context.Context, request app.InstallRequest) (app.InstallResult, error) {
-		if request.ClientID != "claude-cli" {
-			t.Fatalf("client id = %q", request.ClientID)
-		}
-		if request.Scope != "project" {
-			t.Fatalf("scope = %q", request.Scope)
-		}
-		if request.Write {
-			t.Fatal("preview request should not set write")
-		}
-		return app.InstallResult{
-			Rendered: repository.RenderedClientConfig{
-				Client:     repository.SupportedClient{ID: repository.ClientClaudeCLI, DisplayName: "Claude CLI"},
-				ConfigPath: "command",
-				Mode:       repository.RenderModePreview,
-				Content:    "claude mcp add --transport stdio --scope project optimusctx -- optimusctx run",
-			},
-		}, nil
-	}
-
-	withWorkingDirectory(t, repoRoot, func() {
-		var stdout bytes.Buffer
-		if err := NewRootCommand().Execute([]string{"status", "--client", "claude-cli", "--scope", "project"}, &stdout); err != nil {
-			t.Fatalf("Execute(status --client claude-cli --scope project) error = %v", err)
-		}
-		output := stdout.String()
-		for _, want := range []string{
-			"client: Claude CLI",
-			"config path: command",
-			"mode: preview",
-			"claude mcp add --transport stdio --scope project optimusctx -- optimusctx run",
-			"status: preview only",
-		} {
-			if !strings.Contains(output, want) {
-				t.Fatalf("status output missing %q:\n%s", want, output)
-			}
-		}
-	})
-}
-
-func TestStatusCommandClaudeCLIWriteReportsWroteConfig(t *testing.T) {
-	repoRoot := initCLIRepo(t)
-
-	previousHealth := statusHealthService
-	previousWatch := statusWatchService
-	previousInstall := statusInstallPreviewService
-	t.Cleanup(func() {
-		statusHealthService = previousHealth
-		statusWatchService = previousWatch
-		statusInstallPreviewService = previousInstall
-	})
-
-	statusHealthService = func(ctx context.Context, workingDir string) (repository.HealthResult, error) {
-		return repository.HealthResult{
-			Repository: repository.LayeredContextEnvelope{RepositoryRoot: repoRoot, Generation: 3, Freshness: repository.FreshnessStatusFresh},
-			Summary:    repository.HealthSummary{StateStatus: repository.HealthStateStatusReady},
-		}, nil
-	}
-	statusWatchService = func(ctx context.Context, workingDir string) (repository.WatchStatusResult, error) {
-		return repository.WatchStatusResult{RepositoryRoot: repoRoot, Status: repository.WatchStatusKindAbsent, Reason: "watch status file not found"}, nil
-	}
-	statusInstallPreviewService = func(ctx context.Context, request app.InstallRequest) (app.InstallResult, error) {
-		if !request.Write {
-			t.Fatal("write request should set write")
-		}
-		return app.InstallResult{
-			Rendered: repository.RenderedClientConfig{
-				Client:     repository.SupportedClient{ID: repository.ClientClaudeCLI, DisplayName: "Claude CLI"},
-				ConfigPath: "command",
-				Mode:       repository.RenderModeWrite,
-				Content:    "claude mcp add --transport stdio --scope local optimusctx -- optimusctx run",
-			},
-			Wrote: true,
-		}, nil
-	}
-
-	withWorkingDirectory(t, repoRoot, func() {
-		var stdout bytes.Buffer
-		if err := NewRootCommand().Execute([]string{"status", "--client", "claude-cli", "--write"}, &stdout); err != nil {
-			t.Fatalf("Execute(status --client claude-cli --write) error = %v", err)
-		}
-		output := stdout.String()
-		for _, want := range []string{
-			"client: Claude CLI",
-			"config path: command",
-			"mode: write",
-			"status: wrote config",
-		} {
-			if !strings.Contains(output, want) {
-				t.Fatalf("status output missing %q:\n%s", want, output)
-			}
-		}
-	})
-}
-
-func TestStatusCommandHelpIncludesScope(t *testing.T) {
+func TestStatusCommandHelp(t *testing.T) {
 	var stdout bytes.Buffer
 	if err := NewRootCommand().Execute([]string{"status", "--help"}, &stdout); err != nil {
 		t.Fatalf("Execute(status --help) error = %v", err)
 	}
 
 	output := stdout.String()
-	want := "optimusctx status [--client <client>] [--config <path>] [--binary <path>] [--scope <local|project|user>] [--write]"
+	want := "optimusctx status"
 	if !strings.Contains(output, want) {
 		t.Fatalf("help output missing %q:\n%s", want, output)
+	}
+	if strings.Contains(output, "--client") {
+		t.Fatalf("help output should not advertise registration flags:\n%s", output)
+	}
+}
+
+func TestStatusCommandRejectsClientRegistrationFlags(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "client", args: []string{"status", "--client", "claude-desktop"}, want: "status does not accept flag \"--client\""},
+		{name: "config", args: []string{"status", "--config", "/tmp/config.json"}, want: "status does not accept flag \"--config\""},
+		{name: "binary", args: []string{"status", "--binary", "/tmp/optimusctx"}, want: "status does not accept flag \"--binary\""},
+		{name: "scope", args: []string{"status", "--scope", "project"}, want: "status does not accept flag \"--scope\""},
+		{name: "write", args: []string{"status", "--write"}, want: "status does not accept flag \"--write\""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := NewRootCommand().Execute(tt.args, &stdout)
+			if err == nil || err.Error() != tt.want {
+				t.Fatalf("Execute(%v) error = %v, want %q", tt.args, err, tt.want)
+			}
+		})
 	}
 }
 
