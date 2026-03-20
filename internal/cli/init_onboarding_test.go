@@ -38,6 +38,9 @@ func TestInitCommandClientPreview(t *testing.T) {
 				t.Fatalf("missing %q in:\n%s", want, output)
 			}
 		}
+		if strings.Contains(output, "runnote:") {
+			t.Fatalf("preview output should keep note lines separated from command content:\n%s", output)
+		}
 	})
 }
 

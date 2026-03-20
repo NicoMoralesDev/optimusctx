@@ -103,7 +103,7 @@ func newInitCommand() *Command {
 			if err != nil {
 				return err
 			}
-			if _, err := fmt.Fprintf(stdout, "\nclient: %s\nconfig path: %s\nmode: %s\n\n%s", installResult.Rendered.Client.DisplayName, installResult.Rendered.ConfigPath, installResult.Rendered.Mode, installResult.Rendered.Content); err != nil {
+			if _, err := fmt.Fprintf(stdout, "\nclient: %s\nconfig path: %s\nmode: %s\n\n%s", installResult.Rendered.Client.DisplayName, installResult.Rendered.ConfigPath, installResult.Rendered.Mode, ensureTrailingNewline(installResult.Rendered.Content)); err != nil {
 				return err
 			}
 			for _, note := range installResult.Rendered.Notes {
