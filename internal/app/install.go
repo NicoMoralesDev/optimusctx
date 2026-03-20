@@ -60,6 +60,8 @@ type codexConfigClientAdapter struct {
 	client      repository.SupportedClient
 	resolvePath func(string) (string, error)
 	readFile    func(string) ([]byte, error)
+	writeFile   func(string, []byte, os.FileMode) error
+	mkdirAll    func(string, os.FileMode) error
 	notes       []string
 }
 
@@ -91,9 +93,23 @@ func NewInstallService() InstallService {
 				notes:      claudeCLINotes(),
 				runCommand: runCommand,
 			},
-			codexApp.ID: codexConfigClientAdapter{client: codexApp, resolvePath: resolveCodexConfigPath, readFile: os.ReadFile, notes: codexAppNotes()},
-			codexCLI.ID: codexConfigClientAdapter{client: codexCLI, resolvePath: resolveCodexConfigPath, readFile: os.ReadFile, notes: codexCLINotes()},
-			generic.ID:  genericClientAdapter{client: generic, notes: genericMCPNotes()},
+			codexApp.ID: codexConfigClientAdapter{
+				client:      codexApp,
+				resolvePath: resolveCodexConfigPath,
+				readFile:    os.ReadFile,
+				writeFile:   os.WriteFile,
+				mkdirAll:    os.MkdirAll,
+				notes:       codexAppNotes(),
+			},
+			codexCLI.ID: codexConfigClientAdapter{
+				client:      codexCLI,
+				resolvePath: resolveCodexConfigPath,
+				readFile:    os.ReadFile,
+				writeFile:   os.WriteFile,
+				mkdirAll:    os.MkdirAll,
+				notes:       codexCLINotes(),
+			},
+			generic.ID: genericClientAdapter{client: generic, notes: genericMCPNotes()},
 		},
 	}
 }
@@ -283,17 +299,35 @@ func (a codexConfigClientAdapter) Preview(request InstallRequest) (repository.Re
 		return repository.RenderedClientConfig{}, err
 	}
 
+	mode := repository.RenderModePreview
+	if request.Write {
+		mode = repository.RenderModeWrite
+	}
+
 	return repository.RenderedClientConfig{
 		Client:     a.client,
 		ConfigPath: configPath,
-		Mode:       repository.RenderModePreview,
+		Mode:       mode,
 		Content:    content,
 		Notes:      append([]string(nil), a.notes...),
 	}, nil
 }
 
-func (a codexConfigClientAdapter) Write(_ context.Context, _ InstallRequest) (repository.RenderedClientConfig, error) {
-	return repository.RenderedClientConfig{}, errors.New("this client does not support --write yet; preview the shared native Codex config until Phase 21 adds write-backed registration")
+func (a codexConfigClientAdapter) Write(_ context.Context, request InstallRequest) (repository.RenderedClientConfig, error) {
+	request.Write = true
+	rendered, err := a.Preview(request)
+	if err != nil {
+		return repository.RenderedClientConfig{}, err
+	}
+
+	if err := a.mkdirAll(filepath.Dir(rendered.ConfigPath), 0o755); err != nil {
+		return repository.RenderedClientConfig{}, fmt.Errorf("prepare client config directory: %w", err)
+	}
+	if err := a.writeFile(rendered.ConfigPath, []byte(rendered.Content), 0o644); err != nil {
+		return repository.RenderedClientConfig{}, fmt.Errorf("write client config: %w", err)
+	}
+
+	return rendered, nil
 }
 
 func (a genericClientAdapter) Preview(request InstallRequest) (repository.RenderedClientConfig, error) {
@@ -331,17 +365,17 @@ func claudeCLINotes() []string {
 
 func codexAppNotes() []string {
 	return []string{
-		"Codex App now previews the native shared Codex `config.toml` contract instead of the generic fallback.",
+		"Codex App writes the native shared Codex config.toml contract.",
 		"The preview target defaults to `~/.codex/config.toml` and preserves unrelated Codex settings during merges.",
-		"Phase 21 will add write-backed registration on top of this shared native Codex config foundation.",
+		"Use --config to target ~/.codex/config.toml or a repo-local .codex/config.toml path.",
 	}
 }
 
 func codexCLINotes() []string {
 	return []string{
-		"Codex CLI now previews the native shared Codex `config.toml` contract instead of the generic fallback.",
+		"Codex CLI writes the native shared Codex config.toml contract.",
 		"The preview target defaults to `~/.codex/config.toml` and preserves unrelated Codex settings during merges.",
-		"Phase 21 will add write-backed registration on top of this shared native Codex config foundation.",
+		"Use --config to target ~/.codex/config.toml or a repo-local .codex/config.toml path.",
 	}
 }
 
