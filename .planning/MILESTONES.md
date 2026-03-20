@@ -1,5 +1,27 @@
 # Project Milestones: OptimusCtx
 
+## v1.3.2 Smooth Init-led Onboarding UX (Shipped: 2026-03-20)
+
+**Delivered:** One-command interactive onboarding during `optimusctx init`, focused preview output for every currently supported client, and public docs aligned to the smoother init-led contract.
+
+**Phases completed:** 23 (3 plans total)
+
+**Key accomplishments:**
+- Added an interactive same-command onboarding flow to plain `optimusctx init`, including skip behavior and Claude CLI scope selection.
+- Narrowed supported-client previews so operators see the relevant command or config block instead of unrelated host configuration.
+- Unified preview/write next-step output across the onboarding surfaces while preserving merge-safe write behavior.
+- Updated README, quickstart, and install-and-verify guidance to present interactive `init` as the smooth path and explicit `--client` usage as the fallback.
+
+**Stats:**
+- 1 phase, 3 plans, 3 tasks
+- Rough execution window: 2026-03-20
+
+**Git range:** `feat: smooth init-led onboarding UX` → `chore: archive v1.3.2 milestone`
+
+**What's next:** Cut the `v1.3.2` release if you want this UX milestone published, or define the next milestone around broader host capability hardening and management.
+
+---
+
 ## v1.3.1 MCP Client Compatibility (Shipped: 2026-03-20)
 
 **Delivered:** First-class supported-client onboarding and write-backed integration for Claude and Codex hosts, plus corrected init-led onboarding ownership and release-facing documentation/evidence for the final contract.

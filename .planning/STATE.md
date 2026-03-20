@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3.2
-milestone_name: smooth init-led onboarding ux
-current_phase: 23
-current_phase_name: smooth init-led client onboarding and docs update
+milestone: none
+milestone_name: none
+current_phase: none
+current_phase_name: none
 current_plan: 0
-status: ready_for_planning
-stopped_at: Started milestone v1.3.2 and defined roadmap Phase 23
-last_updated: "2026-03-20T11:41:17Z"
+status: milestone_archived
+stopped_at: Archived v1.3.2 after milestone audit and cleanup
+last_updated: "2026-03-20T15:36:00Z"
 last_activity: 2026-03-20
 progress:
-  total_phases: 1
+  total_phases: 0
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 0
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Milestone defined and ready for planning
-**Current Phase:** 23
-**Current Phase Name:** smooth init-led client onboarding and docs update
-**Total Phases:** 1
+**Status:** No active milestone; `v1.3.2` is archived
+**Current Phase:** None
+**Current Phase Name:** None
+**Total Phases:** 0
 **Current Plan:** 0
 **Total Plans in Phase:** 0
-**Progress:** [----------] 0%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-20
-**Last Activity Description:** Started milestone `v1.3.2` for smooth init-led onboarding UX and defined Phase 23 plus scoped requirements
+**Last Activity Description:** Archived `v1.3.2` after verification, milestone audit, and phase-directory cleanup
 
 ## Project Memory
 
@@ -43,35 +43,35 @@ progress:
 
 ## Current Planning Context
 
-- Active milestone: `v1.3.2` Smooth init-led onboarding UX
-- Most recently archived milestone: `v1.3.1` MCP client compatibility
+- Active milestone: none
+- Most recently archived milestone: `v1.3.2` Smooth init-led onboarding UX
 - Latest published release: `v1.3.1`
-- Next execution action: run `$gsd-plan-phase 23` for same-command init onboarding, focused client previews, and documentation alignment
-- Historical v1.0, v1.1, and v1.2 requirements and roadmaps are archived under `.planning/milestones/`
+- Next execution action: cut the `v1.3.2` release or define the next milestone before adding new phases
+- Historical v1.0, v1.1, v1.2, and v1.3.x requirements and roadmaps are archived under `.planning/milestones/`
 - Hosted GitHub Actions `release.yml` summary and publication validation were confirmed resolved on 2026-03-19
 
-## Current Milestone Scope
+## Most Recent Milestone Scope
 
-- Collapse plain `init` and supported-client onboarding into one smoother operator path for the current supported host set
-- Keep direct flag-based `init --client <client> [--write]` flows available for scripting and explicit host targeting
-- Make previews uniformly focused so OptimusCtx shows the relevant change rather than dumping unrelated host config
-- Update README, quickstart, install-and-verify, and operator guidance to the same-command onboarding contract
+- Collapsed plain `init` and supported-client onboarding into one smoother operator path for the current supported host set
+- Kept direct flag-based `init --client <client> [--write]` flows available for scripting and explicit host targeting
+- Made previews uniformly focused so OptimusCtx shows the relevant change rather than dumping unrelated host config
+- Updated README, quickstart, and install-and-verify docs to the same-command onboarding contract
 
 ## Verification Status
 
 - Phase 18 verification was backfilled on 2026-03-19 from the committed UAT evidence, fresh release-layer test runs, and a passing full `go test ./...` suite.
 - Phase 19 repository verification passed, including the manual operator-guide walkthrough.
 - Hosted GitHub Actions summary verification passed on 2026-03-19, closing the last remote validation item from v1.2.
-- v1.3.1 milestone audit is archived as `tech_debt`: all shipped requirements are implemented, documented, and covered by repository evidence.
-- The only deferred manual step is still the real `claude` binary validation for `optimusctx init --client claude-cli --scope local --write` on a host with Claude Code installed.
-- `v1.3.2` starts as a UX/documentation milestone on top of the shipped host-integration foundation, so no new domain research was required before scoping requirements.
+- v1.3.1 milestone audit remains archived as `tech_debt`: the only deferred manual step is still the real `claude` binary validation for `optimusctx init --client claude-cli --scope local --write` on a host with Claude Code installed.
+- Phase 23 verification passed on 2026-03-20 with a passing full `go test ./...` suite and a real PTY walkthrough of interactive `init` in a disposable repository.
+- v1.3.2 milestone audit passed with all seven milestone requirements satisfied.
 
 ## Recent Decisions
 
-- `v1.3.2` will optimize the common operator path around `optimusctx init` instead of expanding the host matrix or adding new lifecycle commands.
-- Interactive onboarding should happen during the same `init` invocation for the common path, while explicit flag-based invocation stays available for scripts and direct control.
-- Focused previews are a product requirement for all supported clients; OptimusCtx should show the relevant change, not dump unrelated host configuration.
-- Phase 21.1 restores `optimusctx init --client <client> [--write]` as the supported-client onboarding owner and removes registration behavior from `optimusctx status`.
+- `v1.3.2` optimized the common operator path around `optimusctx init` instead of expanding the host matrix or adding new lifecycle commands.
+- Interactive onboarding now happens during the same `init` invocation for the common path, while explicit flag-based invocation stays available for scripts and direct control.
+- Focused previews are now a product requirement for all supported clients; OptimusCtx should show the relevant change, not dump unrelated host configuration.
+- Phase 21.1 restored `optimusctx init --client <client> [--write]` as the supported-client onboarding owner and removed registration behavior from `optimusctx status`.
 - Deprecated/operator helper surfaces now point at init-led onboarding while preserving `optimusctx run` as the canonical runtime handoff.
 
 - v1.2 focuses on release automation and operator workflow, not on new runtime retrieval capabilities.
