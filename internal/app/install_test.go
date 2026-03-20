@@ -3,7 +3,9 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -109,11 +111,139 @@ func TestInstallServiceSupportsClaudeCLIPreview(t *testing.T) {
 	if result.Rendered.Mode != "preview" {
 		t.Fatalf("mode = %q", result.Rendered.Mode)
 	}
-	if result.Rendered.Content != "claude mcp add --transport stdio optimusctx -- optimusctx run" {
+	if result.Rendered.Content != "claude mcp add --transport stdio --scope local optimusctx -- optimusctx run" {
 		t.Fatalf("content = %q", result.Rendered.Content)
 	}
 	if len(result.Rendered.Notes) == 0 {
 		t.Fatal("claude-cli preview should include notes")
+	}
+}
+
+func TestInstallServiceClaudeCLIPreviewUsesRequestedScope(t *testing.T) {
+	service := NewInstallService()
+
+	result, err := service.Register(context.Background(), InstallRequest{
+		ClientID:   "claude-cli",
+		BinaryPath: "/tmp/optimusctx",
+		Scope:      "project",
+	})
+	if err != nil {
+		t.Fatalf("Register(claude-cli preview) error = %v", err)
+	}
+
+	if result.Rendered.Content != "claude mcp add --transport stdio --scope project optimusctx -- /tmp/optimusctx run" {
+		t.Fatalf("content = %q", result.Rendered.Content)
+	}
+	if result.Rendered.ConfigPath != "command" {
+		t.Fatalf("config path = %q", result.Rendered.ConfigPath)
+	}
+}
+
+func TestInstallServiceClaudeCLIWriteExecutesCommand(t *testing.T) {
+	var gotName string
+	var gotArgs []string
+
+	service := InstallService{
+		adapters: map[repository.ClientID]clientRegistrationAdapter{
+			repository.ClientClaudeCLI: claudeCLIClientAdapter{
+				client: repository.SupportedClient{ID: repository.ClientClaudeCLI, DisplayName: "Claude CLI"},
+				notes:  claudeCLINotes(),
+				runCommand: func(_ context.Context, name string, args ...string) ([]byte, error) {
+					gotName = name
+					gotArgs = append([]string(nil), args...)
+					return []byte("registered"), nil
+				},
+			},
+		},
+	}
+
+	result, err := service.Register(context.Background(), InstallRequest{ClientID: "claude-cli", Write: true})
+	if err != nil {
+		t.Fatalf("Register(claude-cli write) error = %v", err)
+	}
+	if !result.Wrote {
+		t.Fatal("write should report wrote=true")
+	}
+	if gotName != "claude" {
+		t.Fatalf("command name = %q", gotName)
+	}
+	wantArgs := []string{"mcp", "add", "--transport", "stdio", "--scope", "local", "optimusctx", "--", "optimusctx", "run"}
+	if len(gotArgs) != len(wantArgs) {
+		t.Fatalf("args length = %d, want %d (%v)", len(gotArgs), len(wantArgs), gotArgs)
+	}
+	for i, want := range wantArgs {
+		if gotArgs[i] != want {
+			t.Fatalf("arg %d = %q, want %q (args=%v)", i, gotArgs[i], want, gotArgs)
+		}
+	}
+	if result.Rendered.ConfigPath != "command" {
+		t.Fatalf("config path = %q", result.Rendered.ConfigPath)
+	}
+	if result.Rendered.Mode != repository.RenderModeWrite {
+		t.Fatalf("mode = %q", result.Rendered.Mode)
+	}
+	if result.Rendered.Content != "claude mcp add --transport stdio --scope local optimusctx -- optimusctx run" {
+		t.Fatalf("content = %q", result.Rendered.Content)
+	}
+}
+
+func TestInstallServiceClaudeCLIRejectsUnsupportedScope(t *testing.T) {
+	called := false
+	service := InstallService{
+		adapters: map[repository.ClientID]clientRegistrationAdapter{
+			repository.ClientClaudeCLI: claudeCLIClientAdapter{
+				client: repository.SupportedClient{ID: repository.ClientClaudeCLI, DisplayName: "Claude CLI"},
+				runCommand: func(_ context.Context, _ string, _ ...string) ([]byte, error) {
+					called = true
+					return nil, nil
+				},
+			},
+		},
+	}
+
+	_, err := service.Register(context.Background(), InstallRequest{ClientID: "claude-cli", Scope: "workspace", Write: true})
+	if err == nil || err.Error() != `unsupported Claude CLI scope "workspace"; expected local, project, or user` {
+		t.Fatalf("Register(claude-cli invalid scope) error = %v", err)
+	}
+	if called {
+		t.Fatal("runCommand should not execute for unsupported scope")
+	}
+}
+
+func TestInstallServiceClaudeCLIWriteReportsMissingClaudeBinary(t *testing.T) {
+	service := InstallService{
+		adapters: map[repository.ClientID]clientRegistrationAdapter{
+			repository.ClientClaudeCLI: claudeCLIClientAdapter{
+				client: repository.SupportedClient{ID: repository.ClientClaudeCLI, DisplayName: "Claude CLI"},
+				runCommand: func(_ context.Context, _ string, _ ...string) ([]byte, error) {
+					return nil, exec.ErrNotFound
+				},
+			},
+		},
+	}
+
+	_, err := service.Register(context.Background(), InstallRequest{ClientID: "claude-cli", Write: true})
+	const want = "run Claude CLI registration: claude command not found; install Claude Code or rerun without --write to preview the command"
+	if err == nil || err.Error() != want {
+		t.Fatalf("Register(claude-cli missing binary) error = %v, want %q", err, want)
+	}
+}
+
+func TestInstallServiceClaudeCLIWriteReportsCommandFailure(t *testing.T) {
+	service := InstallService{
+		adapters: map[repository.ClientID]clientRegistrationAdapter{
+			repository.ClientClaudeCLI: claudeCLIClientAdapter{
+				client: repository.SupportedClient{ID: repository.ClientClaudeCLI, DisplayName: "Claude CLI"},
+				runCommand: func(_ context.Context, _ string, _ ...string) ([]byte, error) {
+					return []byte("permission denied\n"), errors.New("exit status 1")
+				},
+			},
+		},
+	}
+
+	_, err := service.Register(context.Background(), InstallRequest{ClientID: "claude-cli", Write: true})
+	if err == nil || err.Error() != "run Claude CLI registration: permission denied" {
+		t.Fatalf("Register(claude-cli command failure) error = %v", err)
 	}
 }
 
