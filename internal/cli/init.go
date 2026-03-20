@@ -25,7 +25,7 @@ func newInitCommand() *Command {
 				arg := args[i]
 				switch arg {
 				case "-h", "--help":
-					_, err := io.WriteString(stdout, "Usage:\n  optimusctx init [--client <client>] [--config <path>] [--binary <path>] [--write]\n\nInitialize repository-local OptimusCtx state. When --client is provided, also preview or write MCP client registration as part of onboarding.\n")
+					_, err := io.WriteString(stdout, "Usage:\n  optimusctx init [--client <client>] [--config <path>] [--binary <path>] [--scope <local|project|user>] [--write]\n\nInitialize repository-local OptimusCtx state. When --client is provided, also preview or write MCP client registration as part of onboarding.\n")
 					return err
 				case "--client":
 					value, next, err := requireInstallValue(args, i, arg)
@@ -47,6 +47,13 @@ func newInitCommand() *Command {
 						return err
 					}
 					request.BinaryPath = value
+					i = next
+				case "--scope":
+					value, next, err := requireInstallValue(args, i, arg)
+					if err != nil {
+						return err
+					}
+					request.Scope = value
 					i = next
 				case "--write":
 					request.Write = true
@@ -85,7 +92,7 @@ func newInitCommand() *Command {
 			}
 
 			if request.ClientID == "" {
-				_, err = io.WriteString(stdout, "\nnext step: run `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register MCP, or rerun `optimusctx init --client <client> [--write]` to do it during onboarding\n")
+				_, err = io.WriteString(stdout, "\nnext step: rerun `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register MCP during onboarding, then use `optimusctx run`\n")
 				return err
 			}
 

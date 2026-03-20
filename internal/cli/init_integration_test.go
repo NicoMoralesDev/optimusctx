@@ -45,7 +45,7 @@ func TestInitCommandInitializesFromNestedRepositoryPath(t *testing.T) {
 		if !strings.Contains(output, "discovered files: 3") {
 			t.Fatalf("output = %q, want discovered file count", output)
 		}
-		if !strings.Contains(output, "next step: run `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register MCP, or rerun `optimusctx init --client <client> [--write]` to do it during onboarding") {
+		if !strings.Contains(output, "next step: rerun `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register MCP during onboarding, then use `optimusctx run`") {
 			t.Fatalf("output = %q, want onboarding next step", output)
 		}
 	})
@@ -113,4 +113,17 @@ func withWorkingDirectory(t *testing.T, dir string, fn func()) {
 	}()
 
 	fn()
+}
+
+func TestInitCommandHelpIncludesScope(t *testing.T) {
+	var stdout bytes.Buffer
+	if err := NewRootCommand().Execute([]string{"init", "--help"}, &stdout); err != nil {
+		t.Fatalf("Execute(init --help) error = %v", err)
+	}
+
+	output := stdout.String()
+	want := "optimusctx init [--client <client>] [--config <path>] [--binary <path>] [--scope <local|project|user>] [--write]"
+	if !strings.Contains(output, want) {
+		t.Fatalf("help output missing %q:\n%s", want, output)
+	}
 }
