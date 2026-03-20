@@ -30,6 +30,7 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 - Verify the release metadata lines up with `optimusctx version`.
 - Verify the npm package was rendered from `scripts/render-npm-package.sh` and published with `npm publish` against the same tagged release facts.
 - Verify Homebrew and Scoop were rendered and published from the same canonical tagged GitHub Release checksum and archive facts.
+- For fresh tap or bucket repos, verify the first publish created and committed the generated `Formula/optimusctx.rb` or `bucket/optimusctx.json` file instead of only rendering it in the workflow workspace.
 - Treat GitHub Release archives as the baseline distribution channel, canonical metadata root, and rollback source.
 
 ## Homebrew Checks
@@ -40,6 +41,8 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 - Confirm the user-facing upgrade command is `brew upgrade niccrow/tap/optimusctx`.
 - Confirm the release operator credentials for publication are still `HOMEBREW_TAP_GITHUB_TOKEN`.
 - Confirm Homebrew publication is automated from the same canonical tagged release after GitHub Release assets are available.
+- If the tap repo started empty, confirm the run created the first tracked `Formula/optimusctx.rb` commit on `main`.
+- If the workflow summary shows `publication_status=already_current`, the tap already matched the rendered formula and no new commit was needed.
 - If the workflow summary shows `publication_status=not_published`, Homebrew did not ship.
 - If Homebrew needs recovery, rerun `workflow_dispatch` with `release_tag=<tag>` and `publication_channel=homebrew`.
 
@@ -51,6 +54,8 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 - Confirm the user-facing upgrade command is `scoop update optimusctx`.
 - Confirm the release operator credentials for publication are still `SCOOP_BUCKET_GITHUB_TOKEN`.
 - Confirm Scoop publication is automated from the same canonical tagged release after GitHub Release assets are available.
+- If the bucket repo started empty, confirm the run created the first tracked `bucket/optimusctx.json` commit on `main`.
+- If the workflow summary shows `publication_status=already_current`, the bucket already matched the rendered manifest and no new commit was needed.
 - If the workflow summary shows `publication_status=not_published`, Scoop did not ship.
 - If Scoop needs recovery, rerun `workflow_dispatch` with `release_tag=<tag>` and `publication_channel=scoop`.
 

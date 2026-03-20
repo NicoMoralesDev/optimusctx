@@ -617,7 +617,7 @@ func evaluateGitHubChannel(workflow string, missingFiles map[string]bool) channe
 	requiredMarkers := []string{
 		"workflow_dispatch:",
 		"release_tag:",
-		"goreleaser/goreleaser-action@v6",
+		"goreleaser/goreleaser-action@v7",
 		"args: release --clean",
 	}
 	if missing := missingMarkers(workflow, requiredMarkers...); len(missing) > 0 {

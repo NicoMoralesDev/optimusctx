@@ -73,13 +73,13 @@ jobs:
 
       # Fetch the full tag history so GoReleaser can publish the tagged build.
       - name: Check out tagged source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ steps.release_ref.outputs.ref }}
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
@@ -107,7 +107,7 @@ jobs:
       - name: Publish canonical GitHub Release assets
         id: publish_github_release_step
         if: ${{ github.event_name != 'workflow_dispatch' }}
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: "~> v2"
@@ -152,7 +152,7 @@ jobs:
 
     steps:
       - name: Check out tagged source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.release.outputs.ref }}
           fetch-depth: 0
@@ -218,7 +218,7 @@ jobs:
 
     steps:
       - name: Check out tagged source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.release.outputs.ref }}
           fetch-depth: 0
@@ -253,7 +253,7 @@ jobs:
 
       - name: Check out Homebrew tap repository
         if: ${{ steps.homebrew_credentials.outputs.enabled == 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: niccrow/homebrew-tap
           ref: main
@@ -268,18 +268,11 @@ jobs:
           RELEASE_TAG: ${{ needs.release.outputs.tag }}
         run: |
           set -euo pipefail
-          install -D "$RUNNER_TEMP/Formula/optimusctx.rb" "homebrew-tap/Formula/optimusctx.rb"
-          cd homebrew-tap
-          if git diff --quiet -- Formula/optimusctx.rb; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Formula/optimusctx.rb
-          git commit -m "Update optimusctx ${RELEASE_TAG}"
-          git push origin HEAD:main
-          echo "changed=true" >> "$GITHUB_OUTPUT"
+          bash scripts/update-publication-repo.sh \
+            homebrew-tap \
+            "$RUNNER_TEMP/Formula/optimusctx.rb" \
+            Formula/optimusctx.rb \
+            "Update optimusctx ${RELEASE_TAG}"
 
       - name: Summarize Homebrew publication
         if: ${{ always() }}
@@ -287,6 +280,7 @@ jobs:
           RELEASE_TAG: ${{ needs.release.outputs.tag }}
           UPDATE_OUTCOME: ${{ steps.update_homebrew.outcome }}
           CREDENTIALS_ENABLED: ${{ steps.homebrew_credentials.outputs.enabled }}
+          WRITE_RESULT: ${{ steps.update_homebrew.outputs.write_result }}
         run: |
           set -euo pipefail
           failure_reason="none"
@@ -297,6 +291,8 @@ jobs:
           elif [ "${CREDENTIALS_ENABLED:-false}" != "true" ]; then
             failure_reason="missing HOMEBREW_TAP_GITHUB_TOKEN"
             publication_status="not_published"
+          elif [ "${WRITE_RESULT:-}" = "already_current" ]; then
+            publication_status="already_current"
           fi
           {
             echo "### Homebrew publication"
@@ -305,7 +301,8 @@ jobs:
             echo "- outcome: ${UPDATE_OUTCOME:-skipped}"
             echo "- publication_status: ${publication_status}"
             echo "- failure_reason: ${failure_reason}"
-            echo "- next_step: If publication_status=not_published, add HOMEBREW_TAP_GITHUB_TOKEN and rerun workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=homebrew. Otherwise inspect the failing job logs, confirm GitHub Release remains the canonical root, and rerun the same channel only."
+            echo "- write_result: ${WRITE_RESULT:-none}"
+            echo "- next_step: If publication_status=not_published, add HOMEBREW_TAP_GITHUB_TOKEN and rerun workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=homebrew. If publication_status=already_current, the tap already matched the rendered formula for this tag. Otherwise inspect the failing job logs, confirm GitHub Release remains the canonical root, and rerun the same channel only."
           } >> "$GITHUB_STEP_SUMMARY"
 
   publish_scoop:
@@ -316,7 +313,7 @@ jobs:
 
     steps:
       - name: Check out tagged source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.release.outputs.ref }}
           fetch-depth: 0
@@ -351,7 +348,7 @@ jobs:
 
       - name: Check out Scoop bucket repository
         if: ${{ steps.scoop_credentials.outputs.enabled == 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: niccrow/scoop-bucket
           ref: main
@@ -366,18 +363,11 @@ jobs:
           RELEASE_TAG: ${{ needs.release.outputs.tag }}
         run: |
           set -euo pipefail
-          install -D "$RUNNER_TEMP/bucket/optimusctx.json" "scoop-bucket/bucket/optimusctx.json"
-          cd scoop-bucket
-          if git diff --quiet -- bucket/optimusctx.json; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add bucket/optimusctx.json
-          git commit -m "Update optimusctx ${RELEASE_TAG}"
-          git push origin HEAD:main
-          echo "changed=true" >> "$GITHUB_OUTPUT"
+          bash scripts/update-publication-repo.sh \
+            scoop-bucket \
+            "$RUNNER_TEMP/bucket/optimusctx.json" \
+            bucket/optimusctx.json \
+            "Update optimusctx ${RELEASE_TAG}"
 
       - name: Summarize Scoop publication
         if: ${{ always() }}
@@ -385,6 +375,7 @@ jobs:
           RELEASE_TAG: ${{ needs.release.outputs.tag }}
           UPDATE_OUTCOME: ${{ steps.update_scoop.outcome }}
           CREDENTIALS_ENABLED: ${{ steps.scoop_credentials.outputs.enabled }}
+          WRITE_RESULT: ${{ steps.update_scoop.outputs.write_result }}
         run: |
           set -euo pipefail
           failure_reason="none"
@@ -395,6 +386,8 @@ jobs:
           elif [ "${CREDENTIALS_ENABLED:-false}" != "true" ]; then
             failure_reason="missing SCOOP_BUCKET_GITHUB_TOKEN"
             publication_status="not_published"
+          elif [ "${WRITE_RESULT:-}" = "already_current" ]; then
+            publication_status="already_current"
           fi
           {
             echo "### Scoop publication"
@@ -403,5 +396,6 @@ jobs:
             echo "- outcome: ${UPDATE_OUTCOME:-skipped}"
             echo "- publication_status: ${publication_status}"
             echo "- failure_reason: ${failure_reason}"
-            echo "- next_step: If publication_status=not_published, add SCOOP_BUCKET_GITHUB_TOKEN and rerun workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=scoop. Otherwise inspect the failing job logs, confirm GitHub Release remains the canonical root, and rerun the same channel only."
+            echo "- write_result: ${WRITE_RESULT:-none}"
+            echo "- next_step: If publication_status=not_published, add SCOOP_BUCKET_GITHUB_TOKEN and rerun workflow_dispatch with release_tag=${RELEASE_TAG} and publication_channel=scoop. If publication_status=already_current, the bucket already matched the rendered manifest for this tag. Otherwise inspect the failing job logs, confirm GitHub Release remains the canonical root, and rerun the same channel only."
           } >> "$GITHUB_STEP_SUMMARY"

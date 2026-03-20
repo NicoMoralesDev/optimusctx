@@ -71,7 +71,9 @@ In practice that means:
 
 - If the canonical GitHub Release archives or checksums are wrong, stop and fix GitHub Release first before you rerun any downstream publication channel.
 - If exactly one downstream channel failed after the canonical release is correct, rerun only that channel with `gh workflow run release.yml -f release_tag=vX.Y.Z -f publication_channel=npm`, `gh workflow run release.yml -f release_tag=vX.Y.Z -f publication_channel=homebrew`, or `gh workflow run release.yml -f release_tag=vX.Y.Z -f publication_channel=scoop`.
+- If Homebrew or Scoop shows `publication_status=already_current`, that channel already matched the rendered content for the tag and did not need a new downstream commit.
 - If Homebrew or Scoop shows `publication_status=not_published`, that channel did not ship; add the missing repository secret and rerun only that channel.
+- Fresh Homebrew tap and Scoop bucket repos are expected to receive their first generated file commit on first publication; a green run without that downstream repo update is not a valid publish.
 - The primary rollback source is a prior tagged GitHub Release archive.
 - If a published release should be abandoned, reinstall a prior tagged GitHub Release archive, verify the fallback binary again, and publish a new fixed version instead of reusing the same version.
 - GitHub Release is the canonical root and rollback source even when downstream automation republishes one package-manager channel.

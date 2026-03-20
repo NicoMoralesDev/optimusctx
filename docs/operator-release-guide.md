@@ -31,6 +31,8 @@ git push origin vX.Y.Z
 
 That tag push starts `.github/workflows/release.yml` and builds the canonical GitHub Release archives plus checksum manifest first. npm, Homebrew, and Scoop publish from that same tagged release contract after the canonical release is available.
 
+For Homebrew and Scoop, the downstream repo may start effectively empty apart from a README. The publish step is still expected to create and commit the first generated `Formula/optimusctx.rb` or `bucket/optimusctx.json` file on that initial run.
+
 ## Verify The Canonical GitHub Release
 
 ```bash
@@ -104,6 +106,13 @@ gh workflow run release.yml -f release_tag="$TAG" -f publication_channel=npm
 ```
 
 Allowed `publication_channel` values are `all`, `npm`, `homebrew`, and `scoop`.
+
+Interpret downstream summary states literally:
+
+- `publication_status=published`: the rerun committed and pushed new downstream repo content for that tag.
+- `publication_status=already_current`: the downstream repo already matched the rendered content for that tag, so no new commit was needed.
+- `publication_status=not_published`: that channel did not ship, usually because credentials were missing.
+- `publication_status=failed`: the channel attempted publication and failed.
 
 If the workflow summary shows `publication_status=not_published` for Homebrew or Scoop, that channel did not ship. Add the missing repository secret first, then rerun only that channel.
 

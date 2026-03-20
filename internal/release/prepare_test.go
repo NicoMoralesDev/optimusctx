@@ -657,7 +657,7 @@ on:
 jobs:
   release:
     steps:
-      - uses: goreleaser/goreleaser-action@v6
+      - uses: goreleaser/goreleaser-action@v7
         with:
           args: release --clean
   publish_npm:
@@ -678,7 +678,7 @@ jobs:
     needs: release
     steps:
       - run: bash scripts/render-homebrew-formula.sh "${{ inputs.release_tag }}" checksums out
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
   publish_scoop:
@@ -686,7 +686,7 @@ jobs:
     needs: release
     steps:
       - run: bash scripts/render-scoop-manifest.sh "${{ inputs.release_tag }}" checksums out
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.SCOOP_BUCKET_GITHUB_TOKEN }}
 `),
@@ -726,7 +726,7 @@ on:
 jobs:
   release:
     steps:
-      - uses: goreleaser/goreleaser-action@v6
+      - uses: goreleaser/goreleaser-action@v7
         with:
           args: release --clean
   publish_npm:

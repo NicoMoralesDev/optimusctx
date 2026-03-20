@@ -117,7 +117,7 @@ func TestCanonicalReleaseMatchesGoReleaserContract(t *testing.T) {
 	if !strings.Contains(workflow, `PlanReleaseOrchestrationCreate|TestPlanReleaseOrchestrationReuse`) {
 		t.Fatalf(".github/workflows/release.yml must verify orchestration create and reuse contracts")
 	}
-	if !strings.Contains(workflow, `uses: goreleaser/goreleaser-action@v6`) {
+	if !strings.Contains(workflow, `uses: goreleaser/goreleaser-action@v7`) {
 		t.Fatalf(".github/workflows/release.yml must keep GitHub Release publication rooted in GoReleaser")
 	}
 }
@@ -132,9 +132,9 @@ func TestGitHubReleasePublicationConfig(t *testing.T) {
 		`release_tag:`,
 		`publication_channel:`,
 		`default: all`,
-		`uses: actions/checkout@v4`,
-		`uses: actions/setup-go@v5`,
-		`uses: goreleaser/goreleaser-action@v6`,
+		`uses: actions/checkout@v6`,
+		`uses: actions/setup-go@v6`,
+		`uses: goreleaser/goreleaser-action@v7`,
 		`args: release --clean`,
 		`GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}`,
 		`canonical GitHub Release`,
@@ -262,6 +262,7 @@ func TestReleaseWorkflowSummaryShowsChannelStatus(t *testing.T) {
 		`- outcome:`,
 		`- publication_status:`,
 		`- failure_reason:`,
+		`- write_result:`,
 		`- github_event_name:`,
 		`- github_workflow:`,
 		`- github_workflow_ref:`,
@@ -285,6 +286,7 @@ func TestReleaseWorkflowSummaryShowsFailureGuidance(t *testing.T) {
 		`npm publish failed`,
 		`Homebrew tap update failed`,
 		`Scoop bucket update failed`,
+		`publication_status=already_current`,
 		`publication_status=not_published`,
 		`missing HOMEBREW_TAP_GITHUB_TOKEN`,
 		`missing SCOOP_BUCKET_GITHUB_TOKEN`,
@@ -314,6 +316,7 @@ func TestHomebrewPublishWorkflow(t *testing.T) {
 		"repository: niccrow/homebrew-tap",
 		"HOMEBREW_TAP_GITHUB_TOKEN",
 		"bash scripts/render-homebrew-formula.sh",
+		"bash scripts/update-publication-repo.sh",
 		"Formula/optimusctx.rb",
 		"GITHUB_STEP_SUMMARY",
 		"publication_channel=homebrew",
@@ -332,6 +335,7 @@ func TestScoopPublishWorkflow(t *testing.T) {
 		"repository: niccrow/scoop-bucket",
 		"SCOOP_BUCKET_GITHUB_TOKEN",
 		"bash scripts/render-scoop-manifest.sh",
+		"bash scripts/update-publication-repo.sh",
 		"bucket/optimusctx.json",
 		"GITHUB_STEP_SUMMARY",
 		"publication_channel=scoop",
@@ -441,6 +445,7 @@ func TestReleasePrerequisiteFiles(t *testing.T) {
 		".goreleaser.yml",
 		".github/workflows/release.yml",
 		"scripts/render-npm-package.sh",
+		"scripts/update-publication-repo.sh",
 		"packaging/homebrew/optimusctx.rb.tmpl",
 		"packaging/scoop/optimusctx.json.tmpl",
 		"packaging/npm/package.json",
