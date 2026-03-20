@@ -13,28 +13,36 @@
 
 ## Current Milestone
 
-Draft next milestone (name TBD).
+`v1.3.2` Smooth init-led onboarding UX
 
-Define the milestone name and requirements before planning or executing the draft phase below.
+Goal: collapse repository bootstrap and supported-client onboarding into one smoother `init` flow for the current Claude and Codex host set.
+Requirements: [REQUIREMENTS.md](/home/nico/projects/optimusctx/.planning/REQUIREMENTS.md)
 
 ## Current Status
 
-The v1.3.1 MCP client compatibility milestone is archived, and the next milestone has one draft phase queued.
+The `v1.3.2` milestone is defined and ready for phase planning.
 
 Next step:
 
-- Define the next milestone scope, name, and requirements around the draft Phase 1 below.
-- Decide whether the deferred real-Claude host validation should be cleared first or carried into the next milestone as explicit tech debt.
+- Plan Phase `23` to implement the same-command `init` onboarding flow, focused client previews, and docs updates.
+- Keep the deferred real-Claude host validation from `v1.3.1` tracked as explicit tech debt while this UX milestone lands.
 
-### Phase 1: Smooth init-led client onboarding for all supported clients and docs update
+### Phase 23: Smooth init-led client onboarding and docs update
 
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 0
+**Goal:** Make `optimusctx init` the smooth operator front door for repository bootstrap and supported-client onboarding across the current Claude and Codex hosts, with minimal branching and truthful docs.
+**Depends on:** Phase 22
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 1 to break down)
+- [ ] TBD (run /gsd:plan-phase 23 to break down)
+
+**Requirements covered:** `INIT-01`, `INIT-02`, `INIT-03`, `INIT-04`, `UX-01`, `UX-02`, `DOC-01`
+
+**Success criteria:**
+- Interactive `optimusctx init` can offer supported-client onboarding during the same command instead of bouncing the operator into a separate follow-up invocation.
+- Supported clients receive one focused preview/write contract that shows the relevant change only and keeps native merge semantics intact.
+- Operators can still use direct non-interactive `init --client <client> [--write]` flows for scripts and explicit host targeting.
+- Public and operator docs describe the same-command onboarding flow and explicit fallback consistently.
 
 ---
-*Last updated: 2026-03-20 after adding draft Phase 1 for the next milestone*
+*Last updated: 2026-03-20 after starting milestone v1.3.2 and defining Phase 23*

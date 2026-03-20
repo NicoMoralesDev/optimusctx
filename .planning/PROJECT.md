@@ -17,13 +17,20 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 ## Current Milestone
 
-No active milestone. `v1.3.1` is archived and the next scope has not been defined yet.
+`v1.3.2` Smooth init-led onboarding UX
+
+**Goal:** Make `optimusctx init` the single smooth entrypoint for repository bootstrap and supported-client onboarding across Claude and Codex hosts, without forcing operators into a separate follow-up command for the common path.
+
+**Target features:**
+- Interactive `optimusctx init` can offer supported-client onboarding during the same invocation
+- All supported clients share a focused preview/write UX that shows only the relevant registration change
+- Public and operator docs match the same-command init onboarding flow and direct users cleanly to `optimusctx run`
 
 ## Next Milestone Goals
 
-- Expand first-class MCP host support beyond the current Claude and Codex set
-- Add host-capability preflight and integration hardening around supported-client writes
-- Keep the onboarding and runtime contract truthful as additional hosts and validation paths are introduced
+- Collapse repository bootstrap and supported-client onboarding into one smooth `init` experience
+- Make supported-client preview and write output consistent, minimal, and trustworthy across all current hosts
+- Update operator and public docs so the onboarding contract is obvious and stable
 
 ## Requirements
 
@@ -42,9 +49,9 @@ No active milestone. `v1.3.1` is archived and the next scope has not been define
 
 ### Active
 
-- [ ] Additional first-class MCP hosts can be added beyond `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli`
-- [ ] Supported hosts get explicit capability preflight before write-backed registration runs
-- [ ] Maintainers can remove or manage existing supported-host registrations through OptimusCtx instead of host tooling directly
+- [ ] `optimusctx init` can offer supported-client onboarding during the same interactive invocation instead of always telling the operator to rerun a second command
+- [ ] Supported clients share one focused preview/write UX that shows the relevant registration change without dumping unrelated host config
+- [ ] Public and operator documentation describe the same-command init onboarding flow and its explicit non-interactive fallback truthfully
 
 ### Out of Scope
 
@@ -52,12 +59,16 @@ No active milestone. `v1.3.1` is archived and the next scope has not been define
 - Default semantic retrieval or general-purpose RAG behavior — the wedge is still deterministic exact-first context optimization.
 - Automatic modification of repository instruction files or client configs during install — installation and integration remain explicit.
 - New distribution channels beyond the currently supported set — `.deb`, `.rpm`, WinGet, Chocolatey, signing, and SBOMs stay deferred until the current channels are fully automated.
+- Additional first-class MCP hosts beyond `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` — `v1.3.2` is an onboarding UX milestone, not a host-expansion milestone.
+- Host-registration removal and lifecycle management — this patch focuses on the entry flow, not long-lived host-management commands.
 
 ## Context
 
 v1.0 proved the core runtime wedge. v1.1 then proved the shipped product works end to end on fixture-backed CLI and MCP workflows, tightened benchmark claims around declared agent-facing inputs and comparable final artifacts, and expanded distribution through a narrow set of verifiable release channels.
 
 v1.2 closed the operator loop around the release surface. v1.3.1 then finished the supported Claude and Codex onboarding story by delivering host-native preview/write behavior, correcting command ownership around `init`, and updating the docs/evidence to match the shipped contract.
+
+`v1.3.2` is a UX repair pass on top of that foundation. The current contract is technically correct but still makes the common operator journey feel clumsy: plain `init` bootstraps the repo, then tells the user to rerun another `init --client ...` command. This milestone collapses that friction into one smoother path while preserving explicit scripting and direct-flag usage.
 
 <details>
 <summary>Archived v1.1 planning context</summary>
@@ -118,6 +129,7 @@ This repository is greenfield. The development process is expected to be heavily
 | Keep GitHub Releases as the canonical binary source and package managers as wrappers | Distribution breadth is useful only if every channel stays truthful to the same shipped runtime | ✓ Shipped in v1.1 |
 | Release automation must fail before publication when version, tag, or prerequisite checks are invalid | The operator workflow should be safe to start and cheap to abort before touching release channels | ✓ Shipped in v1.2 |
 | Every downstream channel should derive from the same tag and release metadata contract | Multi-channel automation is only trustworthy if there is one source of truth for archives, checksums, and package metadata | ✓ Shipped in v1.2 |
+| `init` is the onboarding front door for supported clients | Repository bootstrap and host onboarding should feel like one coherent operator flow, while explicit flags remain available for automation and direct control | — Active in v1.3.2 |
 
 ---
-*Last updated: 2026-03-20 after archiving v1.3.1 MCP client compatibility*
+*Last updated: 2026-03-20 after starting milestone v1.3.2 Smooth init-led onboarding UX*

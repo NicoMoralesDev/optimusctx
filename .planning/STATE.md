@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: none
-current_phase: none
-current_phase_name: none
+milestone: v1.3.2
+milestone_name: smooth init-led onboarding ux
+current_phase: 23
+current_phase_name: smooth init-led client onboarding and docs update
 current_plan: 0
-status: roadmap_draft
-stopped_at: Added draft Phase 1 for the next milestone after archiving v1.3.1
+status: ready_for_planning
+stopped_at: Started milestone v1.3.2 and defined roadmap Phase 23
 last_updated: "2026-03-20T11:41:17Z"
 last_activity: 2026-03-20
 progress:
-  total_phases: 0
+  total_phases: 1
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 100
+  percent: 0
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** No active milestone name yet; draft roadmap work resumed after `v1.3.1`
-**Current Phase:** None
-**Current Phase Name:** None
-**Total Phases:** 0
+**Status:** Milestone defined and ready for planning
+**Current Phase:** 23
+**Current Phase Name:** smooth init-led client onboarding and docs update
+**Total Phases:** 1
 **Current Plan:** 0
 **Total Plans in Phase:** 0
-**Progress:** [██████████] 100%
+**Progress:** [----------] 0%
 **Last Activity:** 2026-03-20
-**Last Activity Description:** Added draft Phase 1 for the next milestone around smooth init-led client onboarding and docs follow-through
+**Last Activity Description:** Started milestone `v1.3.2` for smooth init-led onboarding UX and defined Phase 23 plus scoped requirements
 
 ## Project Memory
 
@@ -43,19 +43,19 @@ progress:
 
 ## Current Planning Context
 
-- Active milestone: none
+- Active milestone: `v1.3.2` Smooth init-led onboarding UX
 - Most recently archived milestone: `v1.3.1` MCP client compatibility
 - Latest published release: `v1.3.1`
-- Next execution action: define the next milestone name and requirements, then plan draft Phase 1 around smooth init-led onboarding and documentation updates
+- Next execution action: run `$gsd-plan-phase 23` for same-command init onboarding, focused client previews, and documentation alignment
 - Historical v1.0, v1.1, and v1.2 requirements and roadmaps are archived under `.planning/milestones/`
 - Hosted GitHub Actions `release.yml` summary and publication validation were confirmed resolved on 2026-03-19
 
-## Most Recent Milestone Scope
+## Current Milestone Scope
 
-- Closed first-class MCP client support for `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli`
-- Kept `optimusctx run` as the canonical runtime handoff across every supported named client
-- Replaced preview-only/manual fallback for Claude CLI and Codex clients with real explicit `--write` support
-- Updated onboarding, docs, and regression coverage so the supported-client story is truthful end to end
+- Collapse plain `init` and supported-client onboarding into one smoother operator path for the current supported host set
+- Keep direct flag-based `init --client <client> [--write]` flows available for scripting and explicit host targeting
+- Make previews uniformly focused so OptimusCtx shows the relevant change rather than dumping unrelated host config
+- Update README, quickstart, install-and-verify, and operator guidance to the same-command onboarding contract
 
 ## Verification Status
 
@@ -64,9 +64,13 @@ progress:
 - Hosted GitHub Actions summary verification passed on 2026-03-19, closing the last remote validation item from v1.2.
 - v1.3.1 milestone audit is archived as `tech_debt`: all shipped requirements are implemented, documented, and covered by repository evidence.
 - The only deferred manual step is still the real `claude` binary validation for `optimusctx init --client claude-cli --scope local --write` on a host with Claude Code installed.
+- `v1.3.2` starts as a UX/documentation milestone on top of the shipped host-integration foundation, so no new domain research was required before scoping requirements.
 
 ## Recent Decisions
 
+- `v1.3.2` will optimize the common operator path around `optimusctx init` instead of expanding the host matrix or adding new lifecycle commands.
+- Interactive onboarding should happen during the same `init` invocation for the common path, while explicit flag-based invocation stays available for scripts and direct control.
+- Focused previews are a product requirement for all supported clients; OptimusCtx should show the relevant change, not dump unrelated host configuration.
 - Phase 21.1 restores `optimusctx init --client <client> [--write]` as the supported-client onboarding owner and removes registration behavior from `optimusctx status`.
 - Deprecated/operator helper surfaces now point at init-led onboarding while preserving `optimusctx run` as the canonical runtime handoff.
 
@@ -121,7 +125,7 @@ progress:
 
 ### Roadmap Evolution
 
-- Phase 1 added: Smooth init-led client onboarding for all supported clients and docs update
+- Phase 23 added: Smooth init-led client onboarding and docs update
 - Phase 21.1 inserted after Phase 21: Init-led MCP onboarding and read-only status contract (URGENT)
 - Phase 16 added: Release versioning and preflight guardrails
 - Phase 16 planned: three plans cover semver normalization, preflight probes and review JSON, and an operator-facing `release prepare` CLI
