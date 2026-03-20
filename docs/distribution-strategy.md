@@ -12,10 +12,9 @@ The guiding constraint is unchanged from the product itself: OptimusCtx is a loc
 
 - OptimusCtx ships as one local-first binary.
 - Installation and verification stay on the real shipped command surface.
-- The supported post-install commands are `optimusctx version`, `optimusctx status`, `optimusctx doctor`, and the agent-facing runtime entrypoint `optimusctx run`.
+- The supported post-install commands are `optimusctx version`, `optimusctx init`, `optimusctx status`, `optimusctx doctor`, and the agent-facing runtime entrypoint `optimusctx run`.
 - Distribution does not promise a hosted onboarding flow, background agent, or managed update service.
-- Configuration writes remain explicit. `optimusctx status --client ...` is preview-first, and config files are only written when the operator opts into `--write`.
-- `optimusctx status --client ...` is preview-first, and config files are only written when the operator opts into `--write`.
+- Configuration writes remain explicit. `optimusctx init --client ...` is preview-first, and host registration is only written when the operator opts into `--write`.
 
 ## Supported Release Channels
 
@@ -51,7 +50,7 @@ GitHub Release archives are the fallback and baseline channel.
   - `npm install -g @niccrow/optimusctx`
   - `npx @niccrow/optimusctx version`
 - Upgrade command: `npm install -g @niccrow/optimusctx@latest`
-- Verification after install or upgrade: rerun `optimusctx version`, `optimusctx status`, and `optimusctx doctor`, and only then `optimusctx status --client claude-desktop --write` if desired
+- Verification after install or upgrade: rerun `optimusctx version`, `optimusctx status`, and `optimusctx doctor`, then use `optimusctx init --client claude-desktop` to preview onboarding and `optimusctx init --client claude-desktop --write` only if desired
 - Support boundary: the npm package is a wrapper over the canonical tagged GitHub Release binary, not a JavaScript reimplementation or a silent client-config installer
 
 ## Upgrade Policy
@@ -82,7 +81,8 @@ Every supported channel should converge on the same verification path:
 1. `optimusctx version` to confirm the installed binary reports the expected release metadata.
 2. `optimusctx status` to confirm the runtime and repository state are ready.
 3. `optimusctx doctor` when deeper diagnostics are needed.
-4. `optimusctx status --client claude-desktop --write` only if the operator explicitly wants the config file write path after reviewing the preview output.
+4. `optimusctx init --client claude-desktop` to preview supported-client onboarding in a real repository.
+5. `optimusctx init --client claude-desktop --write` only if the operator explicitly wants the config file write path after reviewing the preview output.
 
 ## Support Boundary
 
@@ -91,7 +91,7 @@ Supported help covers:
 - obtaining the binary from one of the named channels
 - running the documented install commands for Homebrew, Scoop, or npm
 - verifying the binary with `version`, `status`, and `doctor`
-- understanding the explicit `status --client` preview and write flow
+- understanding the explicit `init --client` preview and write flow
 - best-effort and issue-driven support through repository docs and GitHub issues
 
 Support does not cover:

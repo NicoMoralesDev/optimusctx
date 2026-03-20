@@ -113,13 +113,14 @@ func CurrentDistributionPolicy() DistributionPolicy {
 		Support: SupportPolicy{
 			SupportedCommands: []string{
 				"optimusctx version",
+				"optimusctx init",
 				"optimusctx status",
 				"optimusctx doctor",
-				"optimusctx status --client claude-desktop --write",
+				"optimusctx init --client claude-desktop --write",
 			},
 			IssueTracking:      "Support is issue-driven through repository documentation and GitHub issues rather than a managed installer or helpdesk.",
 			OperatorModel:      "Best-effort support assumes a user can rerun documented commands locally and report the exact failing step.",
-			ConfigMutationRule: "`optimusctx status --client ...` is preview-first; config files are only written when the operator opts into `--write`.",
+			ConfigMutationRule: "`optimusctx init --client ...` is preview-first; host registration is only written when the operator opts into `--write`.",
 		},
 		DeferredScope: []DeferredScopeItem{
 			{Name: "native Linux packages", Reason: "`.deb` and `.rpm` packaging is deferred until v2 expansion work."},

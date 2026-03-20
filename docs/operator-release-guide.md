@@ -38,10 +38,15 @@ Unpack one archive and verify the shipped binary surface:
 
 ```bash
 tar -xzf "optimusctx_${VERSION}_linux_amd64.tar.gz"
+mkdir -p /tmp/optimusctx-release-check/repo
+cd /tmp/optimusctx-release-check/repo
+git init
+cp ../optimusctx .
 ./optimusctx version
+./optimusctx init
 ./optimusctx status
 ./optimusctx doctor
-./optimusctx status --client claude-desktop
+./optimusctx init --client claude-desktop
 ```
 
 If the canonical GitHub Release metadata, archives, or checksums are wrong, stop here. Fix the GitHub Release root before you inspect or rerun any downstream package-manager channel.
@@ -101,6 +106,7 @@ Allowed `publication_channel` values are `all`, `npm`, `homebrew`, and `scoop`.
 2. Download the prior tagged archive from GitHub Releases.
 3. Reinstall that archive as the operator-facing fallback.
 4. Re-run `optimusctx version`, `optimusctx status`, and `optimusctx doctor`.
-5. Only after the canonical archive path is stable should you decide whether a downstream rerun or a new fixed release is needed.
+5. Re-run `optimusctx init --client claude-desktop` if you need to verify supported-client onboarding again.
+6. Only after the canonical archive path is stable should you decide whether a downstream rerun or a new fixed release is needed.
 
 GitHub Release remains the canonical root and rollback source even when npm, Homebrew, or Scoop were the failing channels.

@@ -29,9 +29,10 @@ func TestDistributionChannelPolicy(t *testing.T) {
 
 	if got, want := policy.Support.SupportedCommands, []string{
 		"optimusctx version",
+		"optimusctx init",
 		"optimusctx status",
 		"optimusctx doctor",
-		"optimusctx status --client claude-desktop --write",
+		"optimusctx init --client claude-desktop --write",
 	}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("supported commands = %v, want %v", got, want)
 	}
@@ -121,6 +122,7 @@ func TestRolloutPlanExamples(t *testing.T) {
 		"npm install -g @niccrow/optimusctx",
 		"npx @niccrow/optimusctx version",
 		"optimusctx version",
+		"optimusctx init",
 		"optimusctx status",
 		"optimusctx doctor",
 	} {
@@ -157,7 +159,7 @@ func TestUpgradePolicy(t *testing.T) {
 		"brew upgrade niccrow/tap/optimusctx",
 		"scoop update optimusctx",
 		"npm install -g @niccrow/optimusctx@latest",
-		"`optimusctx status --client ...` is preview-first",
+		"`optimusctx init --client ...` is preview-first",
 		"operator opts into `--write`",
 		"native Linux packages such as `.deb` and `.rpm`",
 		"WinGet",
@@ -273,4 +275,3 @@ func TestDistributionDocsStayWithinSupportedScope(t *testing.T) {
 		}
 	}
 }
-
