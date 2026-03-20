@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 21
 current_phase_name: real write paths and operator surface integration
 current_plan: 3
-status: executing
-stopped_at: Completed 21-02-PLAN.md
-last_updated: "2026-03-20T01:36:22.790Z"
+status: verifying
+stopped_at: Completed 21-03-PLAN.md
+last_updated: "2026-03-20T01:45:15.376Z"
 last_activity: 2026-03-20
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_plans: 6
+  percent: 100
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 **Current Phase:** 21
 **Current Phase Name:** real write paths and operator surface integration
 **Total Phases:** 3
 **Current Plan:** 3
 **Total Plans in Phase:** 3
-**Progress:** [████████░░] 83%
+**Progress:** [██████████] 100%
 **Last Activity:** 2026-03-20
-**Last Activity Description:** Completed plan 21-02 with real Codex App and Codex CLI writes through the shared native config.toml backend
+**Last Activity Description:** Completed plan 21-03 with supported-client-aware status, onboarding, doctor, and snippet guidance aligned to the real Claude and Codex write paths
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 
 - Active milestone: `v1.3.1` MCP client compatibility
 - Latest published release: `v1.3.0`
-- Next execution action: run execute-phase for Phase 21 to build real write paths and operator guidance
+- Next execution action: run execute-phase for Phase 22 to update docs and verification against the supported-client operator contract
 - Historical v1.0, v1.1, and v1.2 requirements and roadmaps are archived under `.planning/milestones/`
 - Hosted GitHub Actions `release.yml` summary and publication validation were confirmed resolved on 2026-03-19
 
@@ -267,6 +267,7 @@ progress:
 | Phase 20-mcp-client-contract-and-config-backend-foundation P02 | 3min | 2 tasks | 6 files |
 | Phase 20 P03 | 2min | 2 tasks | 2 files |
 | Phase 21 P02 | 3min | 2 tasks | 2 files |
+| Phase 21-real-write-paths-and-operator-surface-integration P03 | 5min | 2 tasks | 9 files |
 
 ## Decisions Made
 
@@ -467,6 +468,8 @@ progress:
 - [Phase 21]: Claude CLI write failures surface host-native remediation by distinguishing missing claude installs from command execution output.
 - [Phase 21]: Codex App and Codex CLI now share one config.toml merge backend for both preview and persisted writes.
 - [Phase 21]: Codex write support stays file-backed and uses --config for repo-local targets instead of introducing a codex mcp add flow.
+- [Phase 21]: Operator-facing guidance now explicitly enumerates claude-desktop, claude-cli, codex-app, and codex-cli instead of implying Claude Desktop is the only real path.
+- [Phase 21]: Operator-facing surfaces keep optimusctx run as the canonical runtime handoff while registration discovery and writes route through optimusctx status --client <client> [--write].
 
 ## Blockers
 
@@ -474,8 +477,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-20T01:36:22.786Z
-**Stopped At:** Completed 21-02-PLAN.md
+**Last Date:** 2026-03-20T01:45:15.372Z
+**Stopped At:** Completed 21-03-PLAN.md
 **Resume File:** None
 
 ---

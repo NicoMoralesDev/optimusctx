@@ -26,7 +26,7 @@
 
 ### Operator Surface
 
-- [ ] **OPS-01**: Operator-facing onboarding and status guidance mention the supported Claude and Codex clients instead of assuming Claude Desktop is the only real path.
+- [x] **OPS-01**: Operator-facing onboarding and status guidance mention the supported Claude and Codex clients instead of assuming Claude Desktop is the only real path.
 - [ ] **DOC-01**: Operator can follow current docs to preview, write, and run OptimusCtx with each supported named client.
 - [ ] **TST-01**: Maintainer can verify supported-client preview, write, and runtime handoff behavior through regression coverage before release.
 
@@ -65,7 +65,7 @@
 | CLD-03 | Phase 21 | Complete |
 | CDX-01 | Phase 21 | Complete |
 | CDX-02 | Phase 21 | Complete |
-| OPS-01 | Phase 21 | Pending |
+| OPS-01 | Phase 21 | Complete |
 | DOC-01 | Phase 22 | Pending |
 | TST-01 | Phase 22 | Pending |
 
@@ -76,4 +76,4 @@
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after completing plan 20-02 and marking the shared Codex config requirements complete*
+*Last updated: 2026-03-20 after completing plan 21-03 and marking OPS-01 complete*

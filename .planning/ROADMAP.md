@@ -48,8 +48,8 @@ Plans:
 Plans:
 
 - [x] 21-01: Claude CLI supported write path and scope-aware notes
-- [ ] 21-02: Codex App and Codex CLI persisted write flow
-- [ ] 21-03: init, status, and operator-guidance surface update
+- [x] 21-02: Codex App and Codex CLI persisted write flow
+- [x] 21-03: init, status, and operator-guidance surface update
 
 **Requirements covered:** `MCP-03`, `CLD-02`, `CLD-03`, `CDX-01`, `CDX-02`, `OPS-01`
 
@@ -83,15 +83,16 @@ Plans:
 
 ## Current Status
 
-Active milestone: `v1.3.1` with Phase 20 complete and Phase 21 in progress
+Active milestone: `v1.3.1` with Phase 20 and Phase 21 complete; Phase 22 ready to execute
 
 Next step:
 
-- Execute Phase 21 plan `21-03` to update status, onboarding, doctor, and snippet guidance so the supported-client story is truthful end to end.
+- Execute Phase 22 plan `22-01` to update README, quickstart, and install-path docs for the supported-client preview, write, and runtime handoff story.
 - Preserve `optimusctx run` as the one canonical runtime handoff across every supported client.
-- Keep Claude Desktop's resolved-path and JSON merge guarantees unchanged while the new write-backed hosts land.
+- Use the supported-client operator copy from status, init, doctor, and snippet as the documentation contract for Phase 22.
 - Phase 21 plan `21-01` is complete with the real Claude CLI write path and scope-aware status surface.
 - Phase 21 plan `21-02` is complete with real Codex App and Codex CLI writes through the shared native `config.toml` backend.
+- Phase 21 plan `21-03` is complete with truthful supported-client onboarding, status, doctor, and snippet guidance.
 
 ---
-*Last updated: 2026-03-20 after completing plan 21-02*
+*Last updated: 2026-03-20 after completing plan 21-03*
