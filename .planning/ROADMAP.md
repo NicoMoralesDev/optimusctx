@@ -16,16 +16,67 @@
 
 ## Current Milestone
 
-No active milestone.
+`v1.3.5` MCP observability and status unification
+
+Goal: make `status` the single authoritative operational surface, prove whether a registered MCP host actually discovered and used OptimusCtx, and wire in durable agent guidance where the host supports it.
+Requirements: [REQUIREMENTS.md](/home/nico/projects/optimusctx/.planning/REQUIREMENTS.md)
 
 ## Current Status
 
-The `v1.3.4` milestone is complete and archived.
+The `v1.3.5` milestone is defined and ready for phase planning.
 
 Next step:
 
-- Cut the `v1.3.4` release if you want the release hardening and MCP-guidance work published.
-- Or define the next milestone once the release is out.
+- Plan Phase `29` to build MCP session observability and local evidence capture first.
+- Keep `v1.3.5` as the next release target; `v1.3.4` stays intentionally unreleased.
+
+### Phase 29: MCP session observability and evidence capture
+
+**Goal:** Persist enough MCP session evidence locally to distinguish registration, host discovery, and actual tool usage from OptimusCtx itself.
+**Depends on:** Phase 28
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 29 to break down)
+
+**Requirements covered:** `OBS-01`, `OBS-02`, `OBS-03`
+
+**Success criteria:**
+- OptimusCtx records recent `initialize`, `tools/list`, and `tools/call` evidence locally.
+- The stored evidence is bounded, local-first, and cheap enough for normal host usage.
+- The runtime can tell the difference between registered-only, discovered, and used states.
+
+### Phase 30: Status command unification and doctor deprecation
+
+**Goal:** Collapse overlapping operational diagnostics into one canonical `status` surface that answers whether the product is actually working.
+**Depends on:** Phase 29
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 30 to break down)
+
+**Requirements covered:** `STAT-01`, `STAT-02`, `STAT-03`
+
+**Success criteria:**
+- `status` surfaces repository/runtime state, MCP evidence, and next action in one place.
+- `doctor` no longer competes with `status` as the main operational command.
+- The operator can use `status` to answer the concrete question of whether the MCP integration is actually functioning.
+
+### Phase 31: Host guidance registration and documentation truth
+
+**Goal:** Register agent-usable OptimusCtx guidance where host integrations support it, and be explicit where they do not.
+**Depends on:** Phase 30
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 31 to break down)
+
+**Requirements covered:** `GUIDE-01`, `GUIDE-02`, `GUIDE-03`, `DOC-01`, `DOC-02`
+
+**Success criteria:**
+- Supported integrations register durable guidance when the host format supports it.
+- Unsupported cases are called out explicitly during onboarding and in docs.
+- Public docs explain what OptimusCtx can now verify locally, what still depends on the host, and why `v1.3.5` supersedes `v1.3.4` as the next release cut.
 
 ---
-*Last updated: 2026-03-20 after archiving v1.3.4*
+*Last updated: 2026-03-20 after starting milestone v1.3.5*
