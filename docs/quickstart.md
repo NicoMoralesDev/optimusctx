@@ -56,10 +56,15 @@ What these commands do:
 ```bash
 cd /path/to/your-repo
 optimusctx init
-optimusctx status
 ```
 
 `init` creates `.optimusctx/` for that repository and persists the first snapshot.
+
+Check the read-only runtime status any time:
+
+```bash
+optimusctx status
+```
 
 ## 4. Start the runtime
 
@@ -73,16 +78,21 @@ optimusctx run
 
 ## 5. Connect your MCP client
 
-Preview Claude Desktop registration:
+Preview supported-client onboarding:
 
 ```bash
-optimusctx status --client claude-desktop
+optimusctx init --client claude-desktop
+optimusctx init --client claude-cli --scope local
+optimusctx init --client codex-app
+optimusctx init --client codex-cli --config /path/to/.codex/config.toml
 ```
 
 Write it only when you want to opt in:
 
 ```bash
-optimusctx status --client claude-desktop --write
+optimusctx init --client claude-desktop --write
+optimusctx init --client codex-app --write
+optimusctx init --client codex-cli --config /path/to/.codex/config.toml --write
 ```
 
 ## 6. Update
@@ -130,7 +140,7 @@ Then:
 
 - if the repo was never initialized, run `optimusctx init`
 - if the runtime is not active for agent use, start `optimusctx run`
-- if MCP registration needs review, use `optimusctx status --client claude-desktop`
+- if MCP registration needs review, rerun `optimusctx init --client <client> [--write]`
 
 ## 8. More docs
 

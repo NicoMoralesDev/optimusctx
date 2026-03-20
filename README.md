@@ -16,9 +16,9 @@ OptimusCtx is built around five public commands:
 
 In practice:
 
-- `init` bootstraps repository-local state under `.optimusctx/`
+- `init` bootstraps repository-local state under `.optimusctx/` and owns supported-client onboarding when `--client` is provided
 - `run` is the main runtime entrypoint for agents and MCP clients
-- `status` shows short readiness information and can preview or write MCP client registration
+- `status` shows short read-only readiness information
 - `doctor` shows deeper diagnostics when something looks wrong
 - `version` prints build metadata for the installed binary
 
@@ -83,16 +83,18 @@ Start the runtime for agent use:
 optimusctx run
 ```
 
-Preview MCP client registration:
+Preview supported-client onboarding:
 
 ```bash
-optimusctx status --client claude-desktop
+optimusctx init --client claude-desktop
+optimusctx init --client claude-cli --scope local
 ```
 
 Write MCP client registration only when you want to opt in:
 
 ```bash
-optimusctx status --client claude-desktop --write
+optimusctx init --client claude-desktop --write
+optimusctx init --client codex-app --write
 ```
 
 ## Update
@@ -131,7 +133,7 @@ optimusctx doctor
 
 ### `optimusctx init`
 
-Creates repository-local state in `.optimusctx/` and persists the first repository snapshot.
+Creates repository-local state in `.optimusctx/`, persists the first repository snapshot, and optionally previews or writes supported-client MCP registration when `--client` is provided.
 
 ### `optimusctx run`
 
@@ -141,14 +143,7 @@ This is the canonical MCP entrypoint. It is also responsible for bringing reposi
 
 ### `optimusctx status`
 
-Shows short runtime and repository status.
-
-It can also preview or write supported MCP client registration:
-
-```bash
-optimusctx status --client claude-desktop
-optimusctx status --client claude-desktop --write
-```
+Shows short read-only runtime and repository status.
 
 ### `optimusctx doctor`
 
@@ -164,7 +159,7 @@ OptimusCtx keeps a narrow contract:
 
 - local-first single binary
 - repository state lives under `.optimusctx/`
-- explicit MCP registration preview/write flow
+- explicit MCP registration preview/write flow through init-led onboarding
 - no hosted service
 - no silent mutation of client configuration during install
 

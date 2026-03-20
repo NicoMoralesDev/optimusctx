@@ -80,10 +80,15 @@ Expected intent:
 ```bash
 cd /path/to/your-repo
 optimusctx init
-optimusctx status
 ```
 
 `init` creates `.optimusctx/` and persists the first repository snapshot.
+
+Check the read-only runtime status at any time with:
+
+```bash
+optimusctx status
+```
 
 ## 4. Start the runtime
 
@@ -97,23 +102,31 @@ optimusctx run
 
 ## 5. Preview or write MCP client registration
 
-Preview Claude Desktop registration:
+`optimusctx init --client ...` is the canonical supported-client onboarding surface.
+
+Preview the supported clients:
 
 ```bash
-optimusctx status --client claude-desktop
+optimusctx init --client claude-desktop
+optimusctx init --client claude-cli --scope local
+optimusctx init --client codex-app
+optimusctx init --client codex-cli --config /path/to/.codex/config.toml
 ```
 
-Preview a specific config path:
+Write only when you want to opt in:
 
 ```bash
-optimusctx status --client claude-desktop --config /path/to/claude_desktop_config.json
+optimusctx init --client claude-desktop --write
+optimusctx init --client claude-cli --scope project --write
+optimusctx init --client codex-app --write
+optimusctx init --client codex-cli --config /path/to/.codex/config.toml --write
 ```
 
-Write the config only when you want to opt in:
+Notes:
 
-```bash
-optimusctx status --client claude-desktop --write
-```
+- Claude CLI supports `--scope local`, `--scope project`, and `--scope user`.
+- Codex App defaults to the shared `~/.codex/config.toml` path.
+- Codex CLI can use the shared default path or an explicit repo-local `.codex/config.toml` path.
 
 ## 6. Update
 
@@ -153,7 +166,7 @@ OptimusCtx keeps a narrow public contract:
 
 - local-first single binary
 - repository state under `.optimusctx/`
-- explicit MCP registration preview/write flow
+- explicit MCP registration preview/write flow through init-led onboarding
 - no hosted service
 - no silent mutation of client configuration during install
 
