@@ -11,7 +11,7 @@ From a user point of view, OptimusCtx helps in a few concrete ways:
 - Persistent repo understanding: it stores repository state under `.optimusctx/` so the next agent session does not start from a full rescan.
 - Faster exact navigation: it builds repository maps and symbol-level structure so agents can find files, directories, and functions with less blind exploration.
 - Smaller prompts: it prefers exact, bounded context over broad file dumps, which reduces wasted tokens and makes responses faster to assemble.
-- Safer onboarding: it can register supported MCP clients from `init`, but it keeps that flow explicit and reviewable instead of silently editing config.
+- Safer onboarding: it can register supported MCP clients from `init`, and for hosts that support it it also installs durable agent guidance so the agent knows how to use the MCP well.
 - One runtime for multiple hosts: Claude and Codex integrations sit on the same local runtime instead of separate per-client implementations.
 
 ## How it works
@@ -21,27 +21,27 @@ At a high level:
 - `optimusctx init` creates `.optimusctx/` and persists the first repository snapshot.
 - OptimusCtx then keeps structured repository data locally, including freshness state, repository maps, and exact symbol lookup data.
 - `optimusctx run` exposes that local state over STDIO for MCP clients, and registered MCP hosts launch it automatically when they connect.
-- Supported-client onboarding stays opt-in through `init`, with a review/apply flow for host registration.
+- Supported-client onboarding stays opt-in through `init`, with a review/apply flow for host registration and agent guidance.
 
 ## Command surface
 
-OptimusCtx is built around six public commands:
+OptimusCtx is built around five primary public commands plus one deprecated alias:
 
 - `optimusctx init`
 - `optimusctx run`
 - `optimusctx status`
-- `optimusctx doctor`
 - `optimusctx version`
 - `optimusctx release`
+- `optimusctx doctor` (deprecated alias for `status`)
 
 In practice:
 
 - `init` bootstraps repository-local state under `.optimusctx/` and can offer supported-client onboarding during the same command
 - `run` is the main runtime entrypoint for agents and MCP clients
-- `status` shows short read-only readiness information
-- `doctor` shows deeper diagnostics when something looks wrong
+- `status` is the canonical operational report for repository readiness, host registration evidence, MCP discovery evidence, and recent `optimusctx.*` usage
 - `version` prints build metadata for the installed binary
 - `release` is the maintainer-facing release preparation surface
+- `doctor` remains as a deprecated alias so older workflows still work
 
 ## Install
 
@@ -87,7 +87,6 @@ Verify the binary:
 ```bash
 optimusctx version
 optimusctx status
-optimusctx doctor
 ```
 
 Initialize one repository:
@@ -98,7 +97,11 @@ optimusctx init
 optimusctx status
 ```
 
-In an interactive terminal, `optimusctx init` can offer Claude and Codex onboarding during that same command after the repository bootstrap finishes. It asks where the client should be configured, then lets you either configure it now or review the exact change first.
+In an interactive terminal, `optimusctx init` can offer Claude and Codex onboarding during that same command after the repository bootstrap finishes. It asks where the client should be configured, then lets you either configure it now or review the exact change first. When the host supports it, the same flow also installs durable agent guidance:
+
+- Codex writes or updates the active `AGENTS.md` or `AGENTS.override.md`
+- Claude CLI writes a dedicated OptimusCtx rule under `.claude/rules/` or `~/.claude/rules/`
+- Claude Desktop gets MCP registration, but no durable agent-guidance surface is managed there
 
 Registered MCP hosts should launch the runtime automatically after onboarding. Run it manually only when you want direct STDIO access or you are debugging startup:
 
@@ -123,6 +126,13 @@ optimusctx init --client claude-cli --scope project --write
 optimusctx init --client codex-app --write
 optimusctx init --client codex-cli --config /path/to/.codex/config.toml --write
 ```
+
+After registration, use `optimusctx status` to answer the real integration question:
+
+- which host configs currently reference OptimusCtx
+- which guidance files were installed
+- whether any host session has initialized the MCP server
+- whether `tools/list` and real `optimusctx.*` tool calls have been observed yet
 
 ## Update
 
@@ -153,7 +163,6 @@ After any upgrade, verify the installed binary again:
 ```bash
 optimusctx version
 optimusctx status
-optimusctx doctor
 ```
 
 ## Command reference
@@ -170,11 +179,11 @@ This is the canonical MCP entrypoint. It is also responsible for bringing reposi
 
 ### `optimusctx status`
 
-Shows short read-only runtime and repository status.
+Shows the canonical runtime report: repository state, host registration evidence, MCP discovery evidence, recent tool-call evidence, and next action.
 
 ### `optimusctx doctor`
 
-Shows actionable diagnostics across repository state, freshness, runtime health, parsing coverage, and MCP readiness.
+Deprecated alias for `optimusctx status`.
 
 ### `optimusctx version`
 
@@ -190,9 +199,9 @@ OptimusCtx keeps a narrow contract:
 
 - local-first single binary
 - repository state lives under `.optimusctx/`
-- explicit MCP registration review/apply flow through init-led onboarding
+- explicit MCP registration and guidance review/apply flow through init-led onboarding
 - no hosted service
-- no silent mutation of client configuration during install
+- no silent mutation of client configuration during install; writes happen only through explicit `init ... --write`
 
 ## Build from source
 

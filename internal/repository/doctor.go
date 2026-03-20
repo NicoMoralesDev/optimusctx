@@ -27,6 +27,8 @@ type DoctorReport struct {
 	Structural     DoctorStructuralSection
 	Budget         DoctorBudgetSection
 	MCPReadiness   DoctorMCPReadinessSection
+	MCPActivity    DoctorMCPActivitySection
+	HostMCP        DoctorHostRegistrationSection
 	RecommendedFix []string
 }
 

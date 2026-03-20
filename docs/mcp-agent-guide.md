@@ -6,6 +6,12 @@ Use this guide to get real value from the registered `optimusctx` MCP server ins
 
 When `optimusctx init` registers a supported MCP client correctly, the host should launch `optimusctx run` automatically when it connects.
 
+When the host supports durable agent guidance, `init --write` also installs it where the host actually reads instructions:
+
+- Codex: the active `AGENTS.md` or `AGENTS.override.md`
+- Claude CLI: `.claude/rules/optimusctx-mcp.md` or `~/.claude/rules/optimusctx-mcp.md`
+- Claude Desktop: no durable guidance file is managed there, so only MCP registration is written
+
 Manual `optimusctx run` is still useful, but mainly for:
 
 - direct STDIO testing
@@ -54,11 +60,16 @@ Compared with repeated full-file scanning, the MCP surface is designed to:
 
 ## How to verify discovery and real usage
 
-There are three useful checks:
+There are three useful checks, and they do not all come from the same place:
 
 ### 1. Registration check
 
-Run `optimusctx init` in the repository and register your host there, or use the explicit `--client ... --write` path. The result should tell you where the host config landed.
+Run `optimusctx init` in the repository and register your host there, or use the explicit `--client ... --write` path. The result should tell you where the host config landed and, when supported, where the agent-guidance file landed.
+
+`optimusctx status` can now verify this part directly by showing:
+
+- detected host configs that reference OptimusCtx
+- detected guidance files that were installed for supported hosts
 
 ### 2. Host discovery check
 
@@ -77,9 +88,20 @@ To prove the agent is not only discovering the server but actually using it, ins
 - an MCP `tools/list` response that includes `optimusctx.*`
 - actual tool calls such as `optimusctx.repository_map`, `optimusctx.symbol_lookup`, or `optimusctx.health`
 
-`optimusctx status` and `optimusctx doctor` also help on the runtime side:
+`optimusctx status` closes part of this gap from the OptimusCtx side by persisting local evidence for:
 
-- `status` shows the MCP serve command and whether runtime state is ready
-- `doctor` shows MCP readiness details, repository freshness, and deeper diagnostics
+- last MCP session start
+- last `initialize`
+- last `tools/list`
+- recent `tools/call`
+
+So the split is:
+
+- the host proves what the agent UI or transcript saw
+- `optimusctx status` proves what the runtime actually recorded locally
+
+If `optimusctx status` shows registration but no initialize, the host never connected.
+If it shows initialize and tools discovery but no tool calls, the host connected but the agent has not used the MCP yet.
+If it shows recent tool calls, you have runtime-side evidence that the MCP is being used.
 
 If the host is registered but no `optimusctx.*` tools appear and no tool calls are recorded, the agent is not using the MCP yet.

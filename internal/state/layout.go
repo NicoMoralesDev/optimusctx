@@ -15,17 +15,19 @@ const (
 	DirectoryName        = ".optimusctx"
 	MetadataFilename     = "state.json"
 	DatabaseFilename     = "db.sqlite"
+	MCPActivityFilename  = "mcp-activity.json"
 	CurrentFormatVersion = 1
 )
 
 type Layout struct {
-	RepoRoot     string
-	StateDir     string
-	DatabasePath string
-	MetadataPath string
-	EvalDir      string
-	LogsDir      string
-	TmpDir       string
+	RepoRoot        string
+	StateDir        string
+	DatabasePath    string
+	MCPActivityPath string
+	MetadataPath    string
+	EvalDir         string
+	LogsDir         string
+	TmpDir          string
 }
 
 type Metadata struct {
@@ -58,13 +60,14 @@ func ResolveLayout(repoRoot string) (Layout, error) {
 
 	stateDir := filepath.Join(realRoot, DirectoryName)
 	return Layout{
-		RepoRoot:     realRoot,
-		StateDir:     stateDir,
-		DatabasePath: filepath.Join(stateDir, DatabaseFilename),
-		MetadataPath: filepath.Join(stateDir, MetadataFilename),
-		EvalDir:      filepath.Join(stateDir, "eval"),
-		LogsDir:      filepath.Join(stateDir, "logs"),
-		TmpDir:       filepath.Join(stateDir, "tmp"),
+		RepoRoot:        realRoot,
+		StateDir:        stateDir,
+		DatabasePath:    filepath.Join(stateDir, DatabaseFilename),
+		MCPActivityPath: filepath.Join(stateDir, MCPActivityFilename),
+		MetadataPath:    filepath.Join(stateDir, MetadataFilename),
+		EvalDir:         filepath.Join(stateDir, "eval"),
+		LogsDir:         filepath.Join(stateDir, "logs"),
+		TmpDir:          filepath.Join(stateDir, "tmp"),
 	}, nil
 }
 

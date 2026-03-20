@@ -33,7 +33,7 @@ The npm package is a wrapper over the canonical tagged GitHub Release binary.
 
 ```bash
 npx @niccrow/optimusctx version
-npx @niccrow/optimusctx doctor
+npx @niccrow/optimusctx status
 ```
 
 Use this if you want to try the tool before installing globally.
@@ -66,14 +66,12 @@ Run:
 ```bash
 optimusctx version
 optimusctx status
-optimusctx doctor
 ```
 
 Expected intent:
 
 - `version` confirms release metadata
-- `status` confirms runtime and repository readiness
-- `doctor` confirms deeper diagnostics when needed
+- `status` confirms runtime and repository readiness, current host registration evidence, and whether any `optimusctx.*` MCP usage has been observed yet
 
 ## 3. Start in one repository
 
@@ -83,7 +81,11 @@ optimusctx init
 ```
 
 `init` creates `.optimusctx/` and persists the first repository snapshot.
-In an interactive terminal, it can also offer supported-client onboarding during that same invocation, asking where the client should be configured before you either configure it now or review the exact change first.
+In an interactive terminal, it can also offer supported-client onboarding during that same invocation, asking where the client should be configured before you either configure it now or review the exact change first. When the host supports it, the same flow also writes durable agent guidance:
+
+- Codex: active `AGENTS.md` or `AGENTS.override.md`
+- Claude CLI: `.claude/rules/optimusctx-mcp.md` or `~/.claude/rules/optimusctx-mcp.md`
+- Claude Desktop: no durable agent-guidance file is managed
 
 Check the read-only runtime status at any time with:
 
@@ -132,7 +134,9 @@ Notes:
 - Claude CLI supports `--scope local`, `--scope project`, and `--scope user`.
 - Codex App and Codex CLI can target the shared `~/.codex/config.toml` path or an explicit repo-local `.codex/config.toml` path.
 - The interactive `init` flow surfaces those destinations before anything is written.
-- After registration, your host should discover the `optimusctx.*` tool surface automatically. Use [`mcp-agent-guide.md`](./mcp-agent-guide.md) for the recommended usage order and verification checks.
+- After registration, your host should discover the `optimusctx.*` tool surface automatically.
+- After registration, use `optimusctx status` to confirm detected host registrations, guidance files, last MCP initialize, last tools discovery, and recent `optimusctx.*` tool calls.
+- Use [`mcp-agent-guide.md`](./mcp-agent-guide.md) for the recommended usage order and the host-versus-OptimusCtx verification split.
 
 ## 6. Update
 
@@ -163,7 +167,6 @@ After any update, verify again:
 ```bash
 optimusctx version
 optimusctx status
-optimusctx doctor
 ```
 
 ## 7. Scope and support boundary
@@ -172,9 +175,9 @@ OptimusCtx keeps a narrow public contract:
 
 - local-first single binary
 - repository state under `.optimusctx/`
-- explicit MCP registration review/apply flow through init-led onboarding
+- explicit MCP registration and guidance review/apply flow through init-led onboarding
 - no hosted service
-- no silent mutation of client configuration during install
+- no silent mutation of client configuration during install; writes happen only through explicit `init ... --write`
 
 Supported package-manager channels:
 
@@ -195,4 +198,4 @@ Not claimed in the current product boundary:
 - WinGet or Chocolatey
 - signed artifacts
 - SBOM generation
-- automatic edits to repository instruction files
+- automatic or silent edits to repository instruction files outside explicit init-led onboarding

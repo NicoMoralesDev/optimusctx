@@ -65,7 +65,7 @@ func runWatchRunCommand(stdout io.Writer, args []string) error {
 	}
 
 	_, _ = io.WriteString(stdout, "warning: `optimusctx watch run` is deprecated; use `optimusctx run` instead\n")
-	return runCommandServer(context.Background(), runCommandInput, stdout, runCommandStderr)
+	return runCommandServer(context.Background(), "", runCommandInput, stdout, runCommandStderr)
 }
 
 func runWatchStatusCommand(stdout io.Writer, args []string) error {

@@ -46,8 +46,11 @@ func TestRunCommand(t *testing.T) {
 		t.Fatal("refresh should not be called for fresh state")
 		return app.RefreshResult{}, nil
 	}
-	runCommandServer = func(ctx context.Context, stdin io.Reader, serveStdout io.Writer, serveStderr io.Writer) error {
+	runCommandServer = func(ctx context.Context, repoRoot string, stdin io.Reader, serveStdout io.Writer, serveStderr io.Writer) error {
 		called = true
+		if repoRoot != "/repo" {
+			t.Fatalf("repo root = %q, want /repo", repoRoot)
+		}
 		if stdin != runCommandInput {
 			t.Fatal("run stdin did not use configured input")
 		}
@@ -107,7 +110,7 @@ func TestRunCommandBootstrapsMissingState(t *testing.T) {
 		t.Fatal("refresh should not be called immediately after init bootstrap")
 		return app.RefreshResult{}, nil
 	}
-	runCommandServer = func(ctx context.Context, stdin io.Reader, serveStdout io.Writer, serveStderr io.Writer) error {
+	runCommandServer = func(ctx context.Context, repoRoot string, stdin io.Reader, serveStdout io.Writer, serveStderr io.Writer) error {
 		calledServer = true
 		return nil
 	}
@@ -160,8 +163,11 @@ func TestRunCommandRefreshesStaleState(t *testing.T) {
 		}
 		return app.RefreshResult{RepositoryRoot: "/repo", FreshnessStatus: repository.FreshnessStatusFresh}, nil
 	}
-	runCommandServer = func(ctx context.Context, stdin io.Reader, serveStdout io.Writer, serveStderr io.Writer) error {
+	runCommandServer = func(ctx context.Context, repoRoot string, stdin io.Reader, serveStdout io.Writer, serveStderr io.Writer) error {
 		calledServer = true
+		if repoRoot != "/repo" {
+			t.Fatalf("repo root = %q, want /repo", repoRoot)
+		}
 		return nil
 	}
 

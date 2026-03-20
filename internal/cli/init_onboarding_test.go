@@ -240,7 +240,7 @@ func TestInitCommandInteractiveClaudeCLIWriteUsesScope(t *testing.T) {
 			"native target: claude mcp add --scope project",
 			"status: configured",
 			"runtime: your registered MCP client should launch `optimusctx run` automatically when it connects",
-			"verify: confirm your host exposes `optimusctx.*` tools such as `optimusctx.repository_map`, `optimusctx.symbol_lookup`, and `optimusctx.health`",
+			"verify with `optimusctx status`: it will show registration evidence, last MCP initialize/tools discovery, and recent `optimusctx.*` tool calls",
 		} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("missing %q in:\n%s", want, output)

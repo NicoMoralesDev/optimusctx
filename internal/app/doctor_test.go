@@ -16,6 +16,8 @@ import (
 
 func TestDoctorReportSections(t *testing.T) {
 	repoRoot := initRepo(t)
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
 	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "alpha.go"), "package pkg\n\nfunc Alpha() {}\n")
 	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "beta.go"), "package pkg\n\nfunc Beta() {}\n")
 	writeRepoFile(t, filepath.Join(repoRoot, "docs", "guide.md"), strings.Repeat("guide\n", 20))
@@ -30,6 +32,8 @@ func TestDoctorReportSections(t *testing.T) {
 
 	now := time.Date(2026, 3, 15, 18, 0, 0, 0, time.UTC)
 	writeDoctorWatchStatus(t, repoRoot, repository.NewWatchStatusRecord(4242, repoRoot, "dev", now))
+	writeDoctorMCPActivity(t, repoRoot, now)
+	writeDoctorCodexRegistration(t, homeDir)
 
 	service := NewDoctorService()
 	service.Getwd = func() (string, error) { return repoRoot, nil }
@@ -171,6 +175,8 @@ func TestDoctorDetectsDegradedState(t *testing.T) {
 
 func TestDoctorHealthyWithoutWatch(t *testing.T) {
 	repoRoot := initRepo(t)
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
 	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "alpha.go"), "package pkg\n\nfunc Alpha() {}\n")
 
 	if _, err := NewRefreshService().Refresh(context.Background(), RefreshRequest{
@@ -180,6 +186,9 @@ func TestDoctorHealthyWithoutWatch(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("Refresh() error = %v", err)
 	}
+	now := time.Date(2026, 3, 15, 18, 0, 0, 0, time.UTC)
+	writeDoctorMCPActivity(t, repoRoot, now)
+	writeDoctorCodexRegistration(t, homeDir)
 
 	service := NewDoctorService()
 	service.Getwd = func() (string, error) { return repoRoot, nil }
@@ -273,5 +282,48 @@ func writeDoctorWatchStatus(t *testing.T, repoRoot string, record repository.Wat
 	statusPath := filepath.Join(layout.TmpDir, repository.DefaultWatchStatusFilename)
 	if err := os.WriteFile(statusPath, data, 0o644); err != nil {
 		t.Fatalf("WriteFile(%q) error = %v", statusPath, err)
+	}
+}
+
+func writeDoctorMCPActivity(t *testing.T, repoRoot string, now time.Time) {
+	t.Helper()
+
+	layout, err := state.ResolveLayout(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolveLayout(%q) error = %v", repoRoot, err)
+	}
+	record := repository.MCPActivityRecord{
+		SchemaVersion:      repository.MCPActivitySchemaVersion,
+		UpdatedAt:          now.Format(time.RFC3339),
+		LastSessionStartAt: now.Format(time.RFC3339),
+		LastInitializeAt:   now.Format(time.RFC3339),
+		LastToolsListAt:    now.Format(time.RFC3339),
+		RecentToolCalls: []repository.MCPObservedToolCall{
+			{Name: "optimusctx.repository_map", At: now.Format(time.RFC3339)},
+		},
+	}
+	data, err := json.MarshalIndent(record, "", "  ")
+	if err != nil {
+		t.Fatalf("MarshalIndent(record) error = %v", err)
+	}
+	data = append(data, '\n')
+	if err := os.WriteFile(layout.MCPActivityPath, data, 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", layout.MCPActivityPath, err)
+	}
+}
+
+func writeDoctorCodexRegistration(t *testing.T, homeDir string) {
+	t.Helper()
+
+	configPath := filepath.Join(homeDir, ".codex", "config.toml")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(configPath), err)
+	}
+	if err := os.WriteFile(configPath, []byte("[mcp_servers.optimusctx]\ncommand = \"optimusctx\"\nargs = [\"run\"]\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", configPath, err)
+	}
+	guidancePath := filepath.Join(homeDir, ".codex", "AGENTS.md")
+	if err := os.WriteFile(guidancePath, []byte(repository.RenderCodexGuidanceBlock()), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", guidancePath, err)
 	}
 }

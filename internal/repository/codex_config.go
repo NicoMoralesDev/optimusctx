@@ -23,14 +23,9 @@ func RenderCodexConfig(serverName string, command ServeCommand) (string, error) 
 }
 
 func MergeCodexConfig(existing []byte, serverName string, command ServeCommand) (string, error) {
-	document := codexConfigDocument{}
-	if len(strings.TrimSpace(string(existing))) > 0 {
-		if err := toml.Unmarshal(existing, &document); err != nil {
-			return "", fmt.Errorf("decode codex config: %w", err)
-		}
-	}
-	if document == nil {
-		document = codexConfigDocument{}
+	document, err := parseCodexConfig(existing)
+	if err != nil {
+		return "", err
 	}
 
 	serverTable, err := document.serverTable()
@@ -43,11 +38,40 @@ func MergeCodexConfig(existing []byte, serverName string, command ServeCommand) 
 	return renderCodexDocument(document)
 }
 
+func CodexConfigServerNames(existing []byte) (map[string]bool, error) {
+	document, err := parseCodexConfig(existing)
+	if err != nil {
+		return nil, err
+	}
+	serverTable, err := document.serverTable()
+	if err != nil {
+		return nil, err
+	}
+	names := make(map[string]bool, len(serverTable))
+	for name := range serverTable {
+		names[name] = true
+	}
+	return names, nil
+}
+
 const codexMCPServersKey = "mcp_servers"
 
 type codexConfigDocument map[string]any
 
 type codexServerTable map[string]any
+
+func parseCodexConfig(existing []byte) (codexConfigDocument, error) {
+	document := codexConfigDocument{}
+	if len(strings.TrimSpace(string(existing))) > 0 {
+		if err := toml.Unmarshal(existing, &document); err != nil {
+			return nil, fmt.Errorf("decode codex config: %w", err)
+		}
+	}
+	if document == nil {
+		document = codexConfigDocument{}
+	}
+	return document, nil
+}
 
 func (d codexConfigDocument) serverTable() (codexServerTable, error) {
 	if d == nil {

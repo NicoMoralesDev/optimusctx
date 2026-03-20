@@ -111,18 +111,27 @@ func CanonicalServeCommandPath(binaryPath string) string {
 }
 
 func MergeClientConfig(existing []byte, serverName string, command ServeCommand) (ClientConfigDocument, error) {
-	document := ClientConfigDocument{
-		MCPServers: map[string]ServeCommand{},
-	}
-	if len(strings.TrimSpace(string(existing))) > 0 {
-		if err := json.Unmarshal(existing, &document); err != nil {
-			return ClientConfigDocument{}, fmt.Errorf("decode client config: %w", err)
-		}
+	document, err := ParseClientConfig(existing)
+	if err != nil {
+		return ClientConfigDocument{}, err
 	}
 	if document.MCPServers == nil {
 		document.MCPServers = map[string]ServeCommand{}
 	}
 	document.MCPServers[serverName] = command
+	return document, nil
+}
+
+func ParseClientConfig(existing []byte) (ClientConfigDocument, error) {
+	document := ClientConfigDocument{
+		MCPServers: map[string]ServeCommand{},
+	}
+	if len(strings.TrimSpace(string(existing))) == 0 {
+		return document, nil
+	}
+	if err := json.Unmarshal(existing, &document); err != nil {
+		return ClientConfigDocument{}, fmt.Errorf("decode client config: %w", err)
+	}
 	return document, nil
 }
 

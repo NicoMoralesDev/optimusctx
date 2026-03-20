@@ -17,7 +17,7 @@ func NewRootCommand() *Command {
 	return &Command{
 		Name:        "optimusctx",
 		Summary:     "Local-first persistent repository context runtime",
-		Description: "OptimusCtx builds and maintains repository-local context state for coding agents without rewriting project instruction files.",
+		Description: "OptimusCtx builds and maintains repository-local context state, MCP registration, and agent guidance for coding agents.",
 	}
 }
 

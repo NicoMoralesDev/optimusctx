@@ -28,22 +28,35 @@ type ToolHandler struct {
 	Call func(context.Context, CallToolParams) (CallToolResult, *ResponseError)
 }
 
+type SessionObserver interface {
+	OnSessionStart(context.Context) error
+	OnInitialize(context.Context) error
+	OnToolsList(context.Context) error
+	OnToolCall(context.Context, string) error
+}
+
 type Server struct {
-	input   *bufio.Reader
-	output  io.Writer
-	errout  io.Writer
-	tools   map[string]ToolHandler
-	order   []string
-	version string
+	input    *bufio.Reader
+	output   io.Writer
+	errout   io.Writer
+	tools    map[string]ToolHandler
+	order    []string
+	version  string
+	observer SessionObserver
 }
 
 func NewServer(stdin io.Reader, stdout io.Writer, stderr io.Writer) *Server {
+	return NewServerWithObserver(stdin, stdout, stderr, nil)
+}
+
+func NewServerWithObserver(stdin io.Reader, stdout io.Writer, stderr io.Writer, observer SessionObserver) *Server {
 	server := &Server{
-		input:   bufio.NewReader(stdin),
-		output:  stdout,
-		errout:  stderr,
-		tools:   map[string]ToolHandler{},
-		version: "0.1.0",
+		input:    bufio.NewReader(stdin),
+		output:   stdout,
+		errout:   stderr,
+		tools:    map[string]ToolHandler{},
+		version:  "0.1.0",
+		observer: observer,
 	}
 	registerDefaultTools(server)
 	return server
@@ -51,6 +64,10 @@ func NewServer(stdin io.Reader, stdout io.Writer, stderr io.Writer) *Server {
 
 func ServeStdio(ctx context.Context, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 	return NewServer(stdin, stdout, stderr).Serve(ctx)
+}
+
+func ServeStdioWithObserver(ctx context.Context, stdin io.Reader, stdout io.Writer, stderr io.Writer, observer SessionObserver) error {
+	return NewServerWithObserver(stdin, stdout, stderr, observer).Serve(ctx)
 }
 
 func (s *Server) RegisterTool(handler ToolHandler) {
@@ -64,6 +81,7 @@ func (s *Server) Serve(ctx context.Context) error {
 	if err := s.signalReadiness(); err != nil {
 		return err
 	}
+	s.observe(ctx, func(context.Context) error { return s.observer.OnSessionStart(ctx) })
 
 	for {
 		if err := ctx.Err(); err != nil {
@@ -137,6 +155,7 @@ func (s *Server) handleRequest(ctx context.Context, request Request) *Response {
 	case "notifications/initialized":
 		return nil
 	case "initialize":
+		s.observe(ctx, func(context.Context) error { return s.observer.OnInitialize(ctx) })
 		return &Response{
 			JSONRPC: jsonRPCVersion,
 			ID:      request.ID,
@@ -152,6 +171,7 @@ func (s *Server) handleRequest(ctx context.Context, request Request) *Response {
 			},
 		}
 	case "tools/list":
+		s.observe(ctx, func(context.Context) error { return s.observer.OnToolsList(ctx) })
 		tools := make([]Tool, 0, len(s.tools))
 		names := append([]string(nil), s.order...)
 		sort.Strings(names)
@@ -200,6 +220,7 @@ func (s *Server) handleRequest(ctx context.Context, request Request) *Response {
 				},
 			}
 		}
+		s.observe(ctx, func(context.Context) error { return s.observer.OnToolCall(ctx, params.Name) })
 
 		result, callErr := handler.Call(ctx, params)
 		if callErr != nil {
@@ -224,6 +245,15 @@ func (s *Server) handleRequest(ctx context.Context, request Request) *Response {
 				Data:    map[string]any{"method": request.Method},
 			},
 		}
+	}
+}
+
+func (s *Server) observe(ctx context.Context, fn func(context.Context) error) {
+	if s.observer == nil || fn == nil {
+		return
+	}
+	if err := fn(ctx); err != nil && s.errout != nil {
+		log.New(s.errout, "optimusctx mcp: ", 0).Printf("observability error: %v", err)
 	}
 }
 

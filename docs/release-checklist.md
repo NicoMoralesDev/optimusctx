@@ -67,7 +67,6 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 
 - After installation or upgrade, run `optimusctx version`.
 - After installation or upgrade, run `optimusctx status`.
-- After installation or upgrade, run `optimusctx doctor`.
 - Use `optimusctx init --client claude-desktop` to review supported-client onboarding in a repository.
 - Use `optimusctx init --client claude-desktop --write` only when the operator explicitly wants the config-write path after reviewing the rendered change.
 
@@ -81,7 +80,7 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 
 ## Support Follow-Through
 
-- Watch incoming reports for failures in `optimusctx version`, `optimusctx status`, `optimusctx doctor`, or the explicit `init --client` onboarding flow.
+- Watch incoming reports for failures in `optimusctx version`, `optimusctx status`, or the explicit `init --client` onboarding flow.
 - Ask for the exact channel used by the reporter: GitHub Release archive, Homebrew, Scoop, or npm.
 - Treat undocumented channels as unsupported and route users back to the named release channels.
 - Prefer GitHub Release archive rollback guidance when package-manager state is unclear.

@@ -23,7 +23,7 @@ func TestDistributionChannelPolicy(t *testing.T) {
 		t.Fatalf("channel IDs = %v, want %v", got, want)
 	}
 
-	if got, want := policy.Upgrade.VerificationCommands, []string{"optimusctx version", "optimusctx status", "optimusctx doctor"}; !reflect.DeepEqual(got, want) {
+	if got, want := policy.Upgrade.VerificationCommands, []string{"optimusctx version", "optimusctx status"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("verification commands = %v, want %v", got, want)
 	}
 
@@ -31,7 +31,6 @@ func TestDistributionChannelPolicy(t *testing.T) {
 		"optimusctx version",
 		"optimusctx init",
 		"optimusctx status",
-		"optimusctx doctor",
 		"optimusctx init --client claude-desktop --write",
 	}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("supported commands = %v, want %v", got, want)

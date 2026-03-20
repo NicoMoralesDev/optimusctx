@@ -15,8 +15,11 @@ import (
 var (
 	runCommandInput  io.Reader = os.Stdin
 	runCommandStderr io.Writer = os.Stderr
-	runCommandServer           = func(ctx context.Context, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
-		return mcp.ServeStdio(ctx, stdin, stdout, stderr)
+	runCommandServer           = func(ctx context.Context, repoRoot string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
+		return mcp.ServeStdioWithObserver(ctx, stdin, stdout, stderr, app.MCPServerObserver{
+			RepoRoot: repoRoot,
+			Store:    app.NewMCPActivityStore(),
+		})
 	}
 	runHealthService = func(ctx context.Context, workingDir string) (repository.HealthResult, error) {
 		return app.NewHealthService().Health(ctx, workingDir, repository.HealthRequest{})
@@ -86,7 +89,7 @@ func newRunCommand() *Command {
 				watchErr <- err
 			}()
 
-			serverErr := runCommandServer(ctx, runCommandInput, stdout, runCommandStderr)
+			serverErr := runCommandServer(ctx, health.Repository.RepositoryRoot, runCommandInput, stdout, runCommandStderr)
 			cancel()
 			watchRunErr := <-watchErr
 			if serverErr != nil {

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/niccrow/optimusctx/internal/buildinfo"
@@ -21,10 +23,13 @@ type DoctorService struct {
 	HealthService   HealthService
 	WatchService    WatchService
 	BudgetService   BudgetAnalysisService
+	MCPActivity     MCPActivityStore
 	ResolveLayout   func(string) (state.Layout, error)
 	OpenDB          func(string) (*sql.DB, error)
 	Getwd           func() (string, error)
 	SnippetRenderer func() string
+	ReadFile        func(string) ([]byte, error)
+	RunCommand      func(context.Context, string, ...string) ([]byte, error)
 }
 
 func NewDoctorService() DoctorService {
@@ -33,9 +38,14 @@ func NewDoctorService() DoctorService {
 		HealthService: health,
 		WatchService:  NewWatchService(),
 		BudgetService: NewBudgetAnalysisService(),
+		MCPActivity:   NewMCPActivityStore(),
 		ResolveLayout: state.ResolveLayout,
 		OpenDB:        health.OpenDB,
 		Getwd:         os.Getwd,
+		ReadFile:      os.ReadFile,
+		RunCommand: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			return exec.CommandContext(ctx, name, args...).CombinedOutput()
+		},
 		SnippetRenderer: func() string {
 			return NewSnippetGenerator().Render()
 		},
@@ -92,6 +102,17 @@ func (s DoctorService) Doctor(ctx context.Context, startPath string, request rep
 		Optional: watch.Status == repository.WatchStatusKindAbsent,
 		Summary:  doctorWatchSummary(watch),
 		Health:   watch,
+	}
+	report.MCPActivity, err = s.MCPActivity.Load(health.Identity.RootPath)
+	if err != nil {
+		return repository.DoctorReport{}, fmt.Errorf("read mcp activity: %w", err)
+	}
+	report.HostMCP, err = s.hostRegistrations(ctx, health.Identity.RootPath)
+	if err != nil {
+		return repository.DoctorReport{}, fmt.Errorf("read host mcp registrations: %w", err)
+	}
+	if report.HostMCP.Status == repository.DoctorStatusHealthy && report.MCPActivity.Status == repository.DoctorStatusMissing {
+		report.MCPActivity.Status = repository.DoctorStatusDegraded
 	}
 
 	if health.State.DatabaseFile.Exists {
@@ -387,6 +408,8 @@ func doctorSummary(report repository.DoctorReport) repository.DoctorSummary {
 	addIssue("structural", report.Structural.Status, doctorStructuralIssue(report), doctorStructuralAction(report))
 	addIssue("budget", report.Budget.Status, "no persisted token-cost hotspots available", "run `optimusctx run` so runtime refresh can persist budget analysis inputs")
 	addIssue("mcp", report.MCPReadiness.Status, doctorMCPIssue(report), "use `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register the MCP contract")
+	addIssue("mcp-registration", report.HostMCP.Status, doctorMCPRegistrationIssue(report), doctorMCPRegistrationAction(report))
+	addIssue("mcp-usage", report.MCPActivity.Status, doctorMCPActivityIssue(report), doctorMCPActivityAction(report))
 
 	status := repository.DoctorStatusHealthy
 	for _, issue := range issues {
@@ -500,6 +523,37 @@ func doctorMCPIssue(report repository.DoctorReport) string {
 	return "MCP readiness preview could not be rendered"
 }
 
+func doctorMCPRegistrationIssue(report repository.DoctorReport) string {
+	if report.HostMCP.Status == repository.DoctorStatusHealthy {
+		return ""
+	}
+	if report.HostMCP.Status == repository.DoctorStatusMissing {
+		return "no supported MCP host registration was detected"
+	}
+	return "some supported MCP hosts could not be verified or are missing OptimusCtx guidance"
+}
+
+func doctorMCPRegistrationAction(report repository.DoctorReport) string {
+	return "run `optimusctx init --client <client> [--write]` for the host you expect to use, then rerun `optimusctx status`"
+}
+
+func doctorMCPActivityIssue(report repository.DoctorReport) string {
+	if report.MCPActivity.Status == repository.DoctorStatusHealthy {
+		return ""
+	}
+	if report.MCPActivity.LastInitializeAt.IsZero() {
+		return "no host session has initialized the OptimusCtx MCP server yet"
+	}
+	if report.MCPActivity.LastToolsListAt.IsZero() {
+		return "a host connected, but no tools discovery has been recorded yet"
+	}
+	return "OptimusCtx tools have been discovered but no tool calls were recorded yet"
+}
+
+func doctorMCPActivityAction(report repository.DoctorReport) string {
+	return "start a session from your registered host and verify it exposes and calls `optimusctx.*` tools; `optimusctx status` will record the evidence"
+}
+
 func doctorRecommendedFixes(issues []repository.DoctorIssue) []string {
 	if len(issues) == 0 {
 		return nil
@@ -539,4 +593,232 @@ func (s DoctorService) getwd() (string, error) {
 		return s.Getwd()
 	}
 	return os.Getwd()
+}
+
+func (s DoctorService) hostRegistrations(ctx context.Context, repoRoot string) (repository.DoctorHostRegistrationSection, error) {
+	clients := repository.SupportedClients()
+	hosts := make([]repository.DoctorHostRegistration, 0, len(clients)-1)
+
+	claudeDesktopPath, err := resolveClaudeDesktopConfigPath("")
+	if err == nil {
+		hosts = append(hosts, s.detectClaudeDesktop(claudeDesktopPath))
+	}
+	hosts = append(hosts, s.detectClaudeCLI(ctx, repoRoot))
+
+	codexSharedPath, err := resolveCodexConfigPath("")
+	if err == nil {
+		hosts = append(hosts, s.detectCodexClient(clients[2], repoRoot, codexSharedPath))
+		hosts = append(hosts, s.detectCodexClient(clients[3], repoRoot, codexSharedPath))
+	}
+
+	status := repository.DoctorStatusMissing
+	hasDetected := false
+	hasDetectedWithoutGuidance := false
+	for _, host := range hosts {
+		if host.RegistrationState == repository.HostRegistrationDetected {
+			hasDetected = true
+			if host.GuidanceState == repository.GuidanceStateNotConfigured {
+				hasDetectedWithoutGuidance = true
+			}
+		}
+	}
+	switch {
+	case hasDetected && !hasDetectedWithoutGuidance:
+		status = repository.DoctorStatusHealthy
+	case hasDetected || hasDetectedWithoutGuidance:
+		status = repository.DoctorStatusDegraded
+	}
+
+	return repository.DoctorHostRegistrationSection{Status: status, Hosts: hosts}, nil
+}
+
+func (s DoctorService) detectClaudeDesktop(configPath string) repository.DoctorHostRegistration {
+	client, _ := repository.LookupSupportedClient(string(repository.ClientClaudeDesktop))
+	host := repository.DoctorHostRegistration{
+		Client:            client,
+		RegistrationState: repository.HostRegistrationNotDetected,
+		RegistrationPath:  configPath,
+		GuidanceState:     repository.GuidanceStateUnsupported,
+		GuidanceEvidence:  "Claude Desktop registration is supported, but durable agent guidance is not managed through Claude Desktop config.",
+	}
+
+	existing, err := readExistingClientConfig(s.readFileFn(), configPath)
+	if err != nil {
+		host.RegistrationState = repository.HostRegistrationUnverified
+		host.RegistrationEvidence = err.Error()
+		return host
+	}
+	if len(existing) == 0 {
+		host.RegistrationEvidence = "Claude Desktop config not found at the default path"
+		return host
+	}
+
+	document, err := repository.ParseClientConfig(existing)
+	if err != nil {
+		host.RegistrationState = repository.HostRegistrationUnverified
+		host.RegistrationEvidence = err.Error()
+		return host
+	}
+	if _, ok := document.MCPServers[repository.DefaultMCPServerName]; ok {
+		host.RegistrationState = repository.HostRegistrationDetected
+		host.RegistrationEvidence = "found OptimusCtx in Claude Desktop config"
+		return host
+	}
+	host.RegistrationEvidence = "Claude Desktop config does not contain an OptimusCtx MCP entry"
+	return host
+}
+
+func (s DoctorService) detectClaudeCLI(ctx context.Context, repoRoot string) repository.DoctorHostRegistration {
+	client, _ := repository.LookupSupportedClient(string(repository.ClientClaudeCLI))
+	host := repository.DoctorHostRegistration{
+		Client:            client,
+		RegistrationState: repository.HostRegistrationUnverified,
+		GuidanceState:     repository.GuidanceStateUnverified,
+	}
+
+	projectPath := filepath.Join(repoRoot, ".mcp.json")
+	if existing, err := readExistingClientConfig(s.readFileFn(), projectPath); err == nil && len(existing) > 0 {
+		document, err := repository.ParseClientConfig(existing)
+		if err == nil {
+			if _, ok := document.MCPServers[repository.DefaultMCPServerName]; ok {
+				host.RegistrationState = repository.HostRegistrationDetected
+				host.RegistrationPath = projectPath
+				host.RegistrationEvidence = "found OptimusCtx in project `.mcp.json`"
+				host.GuidancePath = filepath.Join(repoRoot, ".claude", "rules", repository.ClaudeRulesFilename)
+				if s.fileExists(host.GuidancePath) {
+					host.GuidanceState = repository.GuidanceStateConfigured
+					host.GuidanceEvidence = "found project Claude rule for OptimusCtx"
+				} else {
+					host.GuidanceState = repository.GuidanceStateNotConfigured
+					host.GuidanceEvidence = "project Claude rule for OptimusCtx is missing"
+				}
+				return host
+			}
+		}
+	}
+
+	output, err := s.runCommandFn()(ctx, "claude", "mcp", "list")
+	if err != nil {
+		if errors.Is(err, exec.ErrNotFound) {
+			host.RegistrationEvidence = "claude binary not found; could not verify local/user MCP registrations"
+			return host
+		}
+		host.RegistrationEvidence = strings.TrimSpace(string(output))
+		if host.RegistrationEvidence == "" {
+			host.RegistrationEvidence = err.Error()
+		}
+		return host
+	}
+
+	trimmed := strings.TrimSpace(string(output))
+	if strings.Contains(trimmed, repository.DefaultMCPServerName) {
+		host.RegistrationState = repository.HostRegistrationDetected
+		host.RegistrationEvidence = "Claude CLI reports an OptimusCtx MCP registration"
+		homeDir, homeErr := os.UserHomeDir()
+		if homeErr == nil {
+			host.GuidancePath = filepath.Join(homeDir, ".claude", "rules", repository.ClaudeRulesFilename)
+			if s.fileExists(host.GuidancePath) {
+				host.GuidanceState = repository.GuidanceStateConfigured
+				host.GuidanceEvidence = "found user Claude rule for OptimusCtx"
+			} else {
+				host.GuidanceState = repository.GuidanceStateNotConfigured
+				host.GuidanceEvidence = "user Claude rule for OptimusCtx is missing"
+			}
+		}
+		return host
+	}
+
+	host.RegistrationState = repository.HostRegistrationNotDetected
+	host.RegistrationEvidence = "Claude CLI did not report an OptimusCtx MCP registration"
+	if strings.TrimSpace(repoRoot) != "" {
+		host.GuidancePath = filepath.Join(repoRoot, ".claude", "rules", repository.ClaudeRulesFilename)
+	}
+	return host
+}
+
+func (s DoctorService) detectCodexClient(client repository.SupportedClient, repoRoot string, sharedConfigPath string) repository.DoctorHostRegistration {
+	host := repository.DoctorHostRegistration{
+		Client:            client,
+		RegistrationState: repository.HostRegistrationNotDetected,
+		GuidanceState:     repository.GuidanceStateNotConfigured,
+	}
+
+	repoConfigPath := filepath.Join(repoRoot, ".codex", "config.toml")
+	paths := []string{repoConfigPath, sharedConfigPath}
+	for _, path := range paths {
+		existing, err := readExistingClientConfig(s.readFileFn(), path)
+		if err != nil {
+			host.RegistrationState = repository.HostRegistrationUnverified
+			host.RegistrationEvidence = err.Error()
+			return host
+		}
+		if len(existing) == 0 {
+			continue
+		}
+		document, err := repository.CodexConfigServerNames(existing)
+		if err != nil {
+			host.RegistrationState = repository.HostRegistrationUnverified
+			host.RegistrationEvidence = err.Error()
+			host.RegistrationPath = path
+			return host
+		}
+		if document[repository.DefaultMCPServerName] {
+			host.RegistrationState = repository.HostRegistrationDetected
+			host.RegistrationPath = path
+			if path == repoConfigPath {
+				host.RegistrationEvidence = "found OptimusCtx in repo `.codex/config.toml`"
+				host.GuidancePath = s.codexGuidancePath(repoRoot)
+			} else {
+				host.RegistrationEvidence = "found OptimusCtx in shared Codex config"
+				host.GuidancePath = s.codexGuidancePath(filepath.Dir(sharedConfigPath))
+			}
+			if s.fileContains(host.GuidancePath, "OptimusCtx MCP guidance") {
+				host.GuidanceState = repository.GuidanceStateConfigured
+				host.GuidanceEvidence = "found managed Codex guidance block"
+			} else {
+				host.GuidanceState = repository.GuidanceStateNotConfigured
+				host.GuidanceEvidence = "Codex guidance block is missing"
+			}
+			return host
+		}
+	}
+
+	host.RegistrationEvidence = "no Codex config currently references OptimusCtx"
+	host.GuidancePath = s.codexGuidancePath(repoRoot)
+	return host
+}
+
+func (s DoctorService) codexGuidancePath(root string) string {
+	overridePath := filepath.Join(root, "AGENTS.override.md")
+	overrideContent, err := readExistingClientConfig(s.readFileFn(), overridePath)
+	if err == nil && strings.TrimSpace(string(overrideContent)) != "" {
+		return overridePath
+	}
+	return filepath.Join(root, "AGENTS.md")
+}
+
+func (s DoctorService) readFileFn() func(string) ([]byte, error) {
+	if s.ReadFile != nil {
+		return s.ReadFile
+	}
+	return os.ReadFile
+}
+
+func (s DoctorService) runCommandFn() func(context.Context, string, ...string) ([]byte, error) {
+	if s.RunCommand != nil {
+		return s.RunCommand
+	}
+	return func(ctx context.Context, name string, args ...string) ([]byte, error) {
+		return exec.CommandContext(ctx, name, args...).CombinedOutput()
+	}
+}
+
+func (s DoctorService) fileExists(path string) bool {
+	content, err := readExistingClientConfig(s.readFileFn(), path)
+	return err == nil && len(content) > 0
+}
+
+func (s DoctorService) fileContains(path string, needle string) bool {
+	content, err := readExistingClientConfig(s.readFileFn(), path)
+	return err == nil && strings.Contains(string(content), needle)
 }

@@ -42,14 +42,12 @@ Download the tagged archive for your platform from GitHub Releases, unpack it, a
 ```bash
 optimusctx version
 optimusctx status
-optimusctx doctor
 ```
 
 What these commands do:
 
 - `version` shows installed build metadata
-- `status` shows whether the runtime and repository state are ready
-- `doctor` shows deeper diagnostics when something looks wrong
+- `status` shows whether the runtime and repository state are ready, which hosts are registered, and whether any real `optimusctx.*` usage has been observed yet
 
 ## 3. Initialize one repository
 
@@ -59,7 +57,7 @@ optimusctx init
 ```
 
 `init` creates `.optimusctx/` for that repository and persists the first snapshot.
-In an interactive terminal, it can also offer supported-client onboarding during that same command, asking where the client should be configured before you either configure it now or review the exact change first.
+In an interactive terminal, it can also offer supported-client onboarding during that same command, asking where the client should be configured before you either configure it now or review the exact change first. When the host supports it, the same flow also installs durable agent guidance.
 
 Check the read-only runtime status any time:
 
@@ -101,7 +99,7 @@ optimusctx init --client codex-app --write
 optimusctx init --client codex-cli --config /path/to/.codex/config.toml --write
 ```
 
-After registration, verify in your host that `optimusctx.*` tools are available and actually being called. Use [`mcp-agent-guide.md`](./mcp-agent-guide.md) for the recommended tool-usage pattern and verification checks.
+After registration, use `optimusctx status` to confirm host registration, agent-guidance installation, discovery evidence, and recent `optimusctx.*` tool calls. Use [`mcp-agent-guide.md`](./mcp-agent-guide.md) for the recommended tool-usage pattern and the host-versus-OptimusCtx verification split.
 
 ## 6. Update
 
@@ -132,7 +130,6 @@ After updating, verify again:
 ```bash
 optimusctx version
 optimusctx status
-optimusctx doctor
 ```
 
 ## 7. If something looks wrong
@@ -141,7 +138,6 @@ Start here:
 
 ```bash
 optimusctx status
-optimusctx doctor
 ```
 
 Then:

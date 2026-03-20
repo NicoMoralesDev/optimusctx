@@ -25,11 +25,15 @@ type InstallRequest struct {
 
 type InstallResult struct {
 	Rendered repository.RenderedClientConfig
+	Guidance *repository.RenderedGuidance
 	Wrote    bool
 }
 
 type InstallService struct {
-	adapters map[repository.ClientID]clientRegistrationAdapter
+	adapters  map[repository.ClientID]clientRegistrationAdapter
+	readFile  func(string) ([]byte, error)
+	writeFile func(string, []byte, os.FileMode) error
+	mkdirAll  func(string, os.FileMode) error
 }
 
 type clientRegistrationAdapter interface {
@@ -114,6 +118,9 @@ func NewInstallService() InstallService {
 			},
 			generic.ID: genericClientAdapter{client: generic, notes: genericMCPNotes()},
 		},
+		readFile:  os.ReadFile,
+		writeFile: os.WriteFile,
+		mkdirAll:  os.MkdirAll,
 	}
 }
 
@@ -132,14 +139,27 @@ func (s InstallService) Register(ctx context.Context, request InstallRequest) (I
 		if err != nil {
 			return InstallResult{}, err
 		}
-		return InstallResult{Rendered: rendered, Wrote: true}, nil
+		guidance, err := s.renderGuidance(request, repository.RenderModeWrite)
+		if err != nil {
+			return InstallResult{}, err
+		}
+		if guidance != nil {
+			if err := s.writeGuidance(*guidance); err != nil {
+				return InstallResult{}, err
+			}
+		}
+		return InstallResult{Rendered: rendered, Guidance: guidance, Wrote: true}, nil
 	}
 
 	rendered, err := adapter.Preview(request)
 	if err != nil {
 		return InstallResult{}, err
 	}
-	return InstallResult{Rendered: rendered, Wrote: false}, nil
+	guidance, err := s.renderGuidance(request, repository.RenderModePreview)
+	if err != nil {
+		return InstallResult{}, err
+	}
+	return InstallResult{Rendered: rendered, Guidance: guidance, Wrote: false}, nil
 }
 
 func (a jsonFileClientAdapter) Preview(request InstallRequest) (repository.RenderedClientConfig, error) {
@@ -461,6 +481,148 @@ func resolveClaudeDesktopConfigPath(explicitPath string) (string, error) {
 
 func DefaultClaudeDesktopConfigPath() (string, error) {
 	return resolveClaudeDesktopConfigPath("")
+}
+
+func (s InstallService) renderGuidance(request InstallRequest, mode repository.RenderMode) (*repository.RenderedGuidance, error) {
+	switch repository.ClientID(request.ClientID) {
+	case repository.ClientCodexApp, repository.ClientCodexCLI:
+		return s.renderCodexGuidance(request, mode)
+	case repository.ClientClaudeCLI:
+		return s.renderClaudeGuidance(request, mode)
+	default:
+		return nil, nil
+	}
+}
+
+func (s InstallService) renderCodexGuidance(request InstallRequest, mode repository.RenderMode) (*repository.RenderedGuidance, error) {
+	configPath, err := resolveCodexConfigPath(request.ConfigPath)
+	if err != nil {
+		return nil, err
+	}
+
+	targetPath, err := s.resolveCodexGuidancePath(request.RepoRoot, configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	existing, err := readExistingClientConfig(s.readFileOrDefault(), targetPath)
+	if err != nil {
+		return nil, err
+	}
+	block := repository.RenderCodexGuidanceBlock()
+	applied, err := repository.MergeManagedGuidance(existing, block)
+	if err != nil {
+		return nil, err
+	}
+
+	return &repository.RenderedGuidance{
+		Label:          "Codex agent guidance",
+		Path:           targetPath,
+		Mode:           mode,
+		Content:        block,
+		AppliedContent: applied,
+		Notes: []string{
+			"Codex reads AGENTS guidance from the active AGENTS file in the selected scope.",
+			"This managed block tells Codex when to use OptimusCtx lookups, maps, bounded context, and refresh/health tools.",
+		},
+	}, nil
+}
+
+func (s InstallService) renderClaudeGuidance(request InstallRequest, mode repository.RenderMode) (*repository.RenderedGuidance, error) {
+	targetPath, note, err := s.resolveClaudeGuidancePath(request)
+	if err != nil {
+		return nil, err
+	}
+	if targetPath == "" {
+		return nil, nil
+	}
+
+	content := repository.RenderClaudeGuidanceDocument()
+	return &repository.RenderedGuidance{
+		Label:          "Claude agent guidance",
+		Path:           targetPath,
+		Mode:           mode,
+		Content:        content,
+		AppliedContent: content,
+		Notes: []string{
+			note,
+			"This dedicated rule teaches Claude when to prefer OptimusCtx exact lookup, bounded context, repository maps, and health/refresh recovery.",
+		},
+	}, nil
+}
+
+func (s InstallService) writeGuidance(guidance repository.RenderedGuidance) error {
+	if err := s.mkdirAllOrDefault()(filepath.Dir(guidance.Path), 0o755); err != nil {
+		return fmt.Errorf("prepare agent guidance directory: %w", err)
+	}
+	if err := s.writeFileOrDefault()(guidance.Path, []byte(guidance.ContentForWrite()), 0o644); err != nil {
+		return fmt.Errorf("write agent guidance: %w", err)
+	}
+	return nil
+}
+
+func (s InstallService) resolveCodexGuidancePath(repoRoot string, configPath string) (string, error) {
+	configPath = filepath.Clean(configPath)
+	repoRoot = filepath.Clean(strings.TrimSpace(repoRoot))
+	if repoRoot != "." && repoRoot != "" && configPath == filepath.Join(repoRoot, ".codex", "config.toml") {
+		return s.resolveActiveCodexGuidanceFile(repoRoot)
+	}
+	return s.resolveActiveCodexGuidanceFile(filepath.Dir(configPath))
+}
+
+func (s InstallService) resolveActiveCodexGuidanceFile(root string) (string, error) {
+	overridePath := filepath.Join(root, "AGENTS.override.md")
+	overrideContent, err := readExistingClientConfig(s.readFileOrDefault(), overridePath)
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(string(overrideContent)) != "" {
+		return overridePath, nil
+	}
+	return filepath.Join(root, "AGENTS.md"), nil
+}
+
+func (s InstallService) resolveClaudeGuidancePath(request InstallRequest) (string, string, error) {
+	scope, err := repository.NormalizeClaudeCLIScope(request.Scope)
+	if err != nil {
+		return "", "", err
+	}
+	switch scope {
+	case repository.ClaudeCLIScopeProject:
+		if strings.TrimSpace(request.RepoRoot) == "" {
+			return "", "", nil
+		}
+		return filepath.Join(request.RepoRoot, ".claude", "rules", repository.ClaudeRulesFilename), "Claude Code loads project rules from `.claude/rules/` when they exist.", nil
+	case repository.ClaudeCLIScopeLocal, repository.ClaudeCLIScopeUser:
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", "", fmt.Errorf("resolve home directory: %w", err)
+		}
+		return filepath.Join(homeDir, ".claude", "rules", repository.ClaudeRulesFilename), "Claude Code loads user rules from `~/.claude/rules/` before project rules.", nil
+	default:
+		return "", "", nil
+	}
+}
+
+func (s InstallService) readFileOrDefault() func(string) ([]byte, error) {
+	if s.readFile != nil {
+		return s.readFile
+	}
+	return os.ReadFile
+}
+
+func (s InstallService) writeFileOrDefault() func(string, []byte, os.FileMode) error {
+	if s.writeFile != nil {
+		return s.writeFile
+	}
+	return os.WriteFile
+}
+
+func (s InstallService) mkdirAllOrDefault() func(string, os.FileMode) error {
+	if s.mkdirAll != nil {
+		return s.mkdirAll
+	}
+	return os.MkdirAll
 }
 
 func resolveClaudeDesktopConfigPathForPlatform(goos string, homeDir string, appData string, explicitPath string) (string, error) {

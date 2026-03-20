@@ -54,7 +54,6 @@ cp ../optimusctx .
 ./optimusctx version
 ./optimusctx init
 ./optimusctx status
-./optimusctx doctor
 ./optimusctx init --client claude-desktop
 ```
 
@@ -72,7 +71,6 @@ Publication target: `@niccrow/optimusctx`
 npm install -g @niccrow/optimusctx
 optimusctx version
 optimusctx status
-optimusctx doctor
 ```
 
 ### Homebrew
@@ -83,7 +81,6 @@ Publication target: `niccrow/homebrew-tap`
 brew install niccrow/tap/optimusctx
 optimusctx version
 optimusctx status
-optimusctx doctor
 ```
 
 ### Scoop
@@ -95,7 +92,6 @@ scoop bucket add niccrow https://github.com/niccrow/scoop-bucket.git
 scoop install niccrow/optimusctx
 optimusctx version
 optimusctx status
-optimusctx doctor
 ```
 
 ## Rerun One Downstream Channel
@@ -116,7 +112,7 @@ If the workflow summary shows `publication_status=not_published` for Homebrew or
 1. Identify the last known good GitHub Release tag.
 2. Download the prior tagged archive from GitHub Releases.
 3. Reinstall that archive as the operator-facing fallback.
-4. Re-run `optimusctx version`, `optimusctx status`, and `optimusctx doctor`.
+4. Re-run `optimusctx version` and `optimusctx status`.
 5. Re-run `optimusctx init --client claude-desktop` if you need to verify supported-client onboarding again.
 6. Only after the canonical archive path is stable should you decide whether a downstream rerun or a new fixed release is needed.
 
