@@ -59,7 +59,7 @@ optimusctx init
 ```
 
 `init` creates `.optimusctx/` for that repository and persists the first snapshot.
-In an interactive terminal, it can also offer supported-client onboarding during that same command.
+In an interactive terminal, it can also offer supported-client onboarding during that same command, asking where the client should be configured before you either configure it now or review the exact change first.
 
 Check the read-only runtime status any time:
 
@@ -80,6 +80,8 @@ optimusctx run
 ## 5. Connect your MCP client
 
 The smooth path is to run `optimusctx init` interactively and accept onboarding there.
+For Codex, that flow can point OptimusCtx at a repo-local `.codex/config.toml` or your shared Codex config.
+For Claude CLI, it can choose the native registration scope before anything is applied.
 If you want direct control or a non-interactive flow, use the explicit client flags:
 
 ```bash
@@ -89,7 +91,7 @@ optimusctx init --client codex-app
 optimusctx init --client codex-cli --config /path/to/.codex/config.toml
 ```
 
-Write it only when you want to opt in:
+Those commands review the exact change first. Add `--write` only when you want to configure the chosen target immediately:
 
 ```bash
 optimusctx init --client claude-desktop --write
@@ -142,7 +144,7 @@ Then:
 
 - if the repo was never initialized, run `optimusctx init`
 - if the runtime is not active for agent use, start `optimusctx run`
-- if MCP registration needs review or you skipped the interactive onboarding flow, use `optimusctx init --client <client> [--write]`
+- if MCP registration needs review or you skipped the interactive onboarding flow, use `optimusctx init --client <client>` to review the exact change, then add `--write` when you want to apply it
 
 ## 8. More docs
 

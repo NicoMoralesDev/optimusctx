@@ -77,7 +77,7 @@ optimusctx init
 optimusctx status
 ```
 
-In an interactive terminal, `optimusctx init` can offer Claude and Codex onboarding during that same command after the repository bootstrap finishes.
+In an interactive terminal, `optimusctx init` can offer Claude and Codex onboarding during that same command after the repository bootstrap finishes. It asks where the client should be configured, then lets you either configure it now or review the exact change first.
 
 Start the runtime for agent use:
 
@@ -94,7 +94,7 @@ optimusctx init --client codex-app
 optimusctx init --client codex-cli --config /path/to/.codex/config.toml
 ```
 
-Write MCP client registration only when you want to opt in:
+Those commands review the exact change first. Add `--write` only when you want to configure the target immediately:
 
 ```bash
 optimusctx init --client claude-desktop --write
@@ -139,7 +139,7 @@ optimusctx doctor
 
 ### `optimusctx init`
 
-Creates repository-local state in `.optimusctx/`, persists the first repository snapshot, and can offer supported-client onboarding during the same interactive invocation. Use `--client <client> [--write]` when you want the direct non-interactive path.
+Creates repository-local state in `.optimusctx/`, persists the first repository snapshot, and can offer supported-client onboarding during the same interactive invocation. The interactive flow asks where the client should be configured, then lets you configure it now or review the exact change first. Use `--client <client> [--write]` when you want the direct non-interactive path.
 
 ### `optimusctx run`
 
@@ -165,7 +165,7 @@ OptimusCtx keeps a narrow contract:
 
 - local-first single binary
 - repository state lives under `.optimusctx/`
-- explicit MCP registration preview/write flow through init-led onboarding
+- explicit MCP registration review/apply flow through init-led onboarding
 - no hosted service
 - no silent mutation of client configuration during install
 

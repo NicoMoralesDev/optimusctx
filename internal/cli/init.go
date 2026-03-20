@@ -92,7 +92,7 @@ func newInitCommand() *Command {
 			}
 
 			if request.ClientID == "" && initShouldPrompt(stdout) {
-				promptRequest, skipped, err := promptInitOnboarding(initPromptInput, stdout)
+				promptRequest, skipped, err := promptInitOnboarding(initPromptInput, stdout, result.RepositoryRoot)
 				if err != nil {
 					return err
 				}
@@ -108,6 +108,7 @@ func newInitCommand() *Command {
 				return err
 			}
 
+			request.RepoRoot = result.RepositoryRoot
 			if request.BinaryPath == "" {
 				request.BinaryPath = repository.DefaultServeCommandName
 			}

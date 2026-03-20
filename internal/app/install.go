@@ -20,6 +20,7 @@ type InstallRequest struct {
 	ServerName string
 	Scope      string
 	Write      bool
+	RepoRoot   string
 }
 
 type InstallResult struct {
@@ -445,6 +446,10 @@ func resolveCodexConfigPath(explicitPath string) (string, error) {
 	return filepath.Join(homeDir, ".codex", "config.toml"), nil
 }
 
+func DefaultCodexConfigPath() (string, error) {
+	return resolveCodexConfigPath("")
+}
+
 func resolveClaudeDesktopConfigPath(explicitPath string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -452,6 +457,10 @@ func resolveClaudeDesktopConfigPath(explicitPath string) (string, error) {
 	}
 
 	return resolveClaudeDesktopConfigPathForPlatform(runtime.GOOS, homeDir, os.Getenv("AppData"), explicitPath)
+}
+
+func DefaultClaudeDesktopConfigPath() (string, error) {
+	return resolveClaudeDesktopConfigPath("")
 }
 
 func resolveClaudeDesktopConfigPathForPlatform(goos string, homeDir string, appData string, explicitPath string) (string, error) {

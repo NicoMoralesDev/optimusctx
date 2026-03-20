@@ -83,7 +83,7 @@ optimusctx init
 ```
 
 `init` creates `.optimusctx/` and persists the first repository snapshot.
-In an interactive terminal, it can also offer supported-client onboarding during that same invocation.
+In an interactive terminal, it can also offer supported-client onboarding during that same invocation, asking where the client should be configured before you either configure it now or review the exact change first.
 
 Check the read-only runtime status at any time with:
 
@@ -101,13 +101,13 @@ optimusctx run
 
 `run` is the canonical runtime entrypoint.
 
-## 5. Preview or write MCP client registration
+## 5. Review or apply MCP client registration
 
 The smooth path is to run plain `optimusctx init` interactively and choose a supported client during that same command.
 
 `optimusctx init --client ...` remains the canonical explicit fallback for direct control, scripting, and non-interactive use.
 
-Preview the supported clients explicitly:
+Review the supported clients explicitly:
 
 ```bash
 optimusctx init --client claude-desktop
@@ -116,7 +116,7 @@ optimusctx init --client codex-app
 optimusctx init --client codex-cli --config /path/to/.codex/config.toml
 ```
 
-Write only when you want to opt in:
+Apply the change only when you want to opt in:
 
 ```bash
 optimusctx init --client claude-desktop --write
@@ -128,8 +128,8 @@ optimusctx init --client codex-cli --config /path/to/.codex/config.toml --write
 Notes:
 
 - Claude CLI supports `--scope local`, `--scope project`, and `--scope user`.
-- Codex App defaults to the shared `~/.codex/config.toml` path.
-- Codex CLI can use the shared default path or an explicit repo-local `.codex/config.toml` path.
+- Codex App and Codex CLI can target the shared `~/.codex/config.toml` path or an explicit repo-local `.codex/config.toml` path.
+- The interactive `init` flow surfaces those destinations before anything is written.
 
 ## 6. Update
 
@@ -169,7 +169,7 @@ OptimusCtx keeps a narrow public contract:
 
 - local-first single binary
 - repository state under `.optimusctx/`
-- explicit MCP registration preview/write flow through init-led onboarding
+- explicit MCP registration review/apply flow through init-led onboarding
 - no hosted service
 - no silent mutation of client configuration during install
 
