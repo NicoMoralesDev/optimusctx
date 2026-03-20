@@ -83,6 +83,7 @@ optimusctx init
 ```
 
 `init` creates `.optimusctx/` and persists the first repository snapshot.
+In an interactive terminal, it can also offer supported-client onboarding during that same invocation.
 
 Check the read-only runtime status at any time with:
 
@@ -102,9 +103,11 @@ optimusctx run
 
 ## 5. Preview or write MCP client registration
 
-`optimusctx init --client ...` is the canonical supported-client onboarding surface.
+The smooth path is to run plain `optimusctx init` interactively and choose a supported client during that same command.
 
-Preview the supported clients:
+`optimusctx init --client ...` remains the canonical explicit fallback for direct control, scripting, and non-interactive use.
+
+Preview the supported clients explicitly:
 
 ```bash
 optimusctx init --client claude-desktop

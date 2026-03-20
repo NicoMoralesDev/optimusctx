@@ -59,6 +59,7 @@ optimusctx init
 ```
 
 `init` creates `.optimusctx/` for that repository and persists the first snapshot.
+In an interactive terminal, it can also offer supported-client onboarding during that same command.
 
 Check the read-only runtime status any time:
 
@@ -78,7 +79,8 @@ optimusctx run
 
 ## 5. Connect your MCP client
 
-Preview supported-client onboarding:
+The smooth path is to run `optimusctx init` interactively and accept onboarding there.
+If you want direct control or a non-interactive flow, use the explicit client flags:
 
 ```bash
 optimusctx init --client claude-desktop
@@ -140,7 +142,7 @@ Then:
 
 - if the repo was never initialized, run `optimusctx init`
 - if the runtime is not active for agent use, start `optimusctx run`
-- if MCP registration needs review, rerun `optimusctx init --client <client> [--write]`
+- if MCP registration needs review or you skipped the interactive onboarding flow, use `optimusctx init --client <client> [--write]`
 
 ## 8. More docs
 

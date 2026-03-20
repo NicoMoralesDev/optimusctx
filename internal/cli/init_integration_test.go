@@ -45,7 +45,7 @@ func TestInitCommandInitializesFromNestedRepositoryPath(t *testing.T) {
 		if !strings.Contains(output, "discovered files: 3") {
 			t.Fatalf("output = %q, want discovered file count", output)
 		}
-		if !strings.Contains(output, "next step: rerun `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register MCP during onboarding, then use `optimusctx run`") {
+		if !strings.Contains(output, "next step: use `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli when you're ready, then use `optimusctx run`") {
 			t.Fatalf("output = %q, want onboarding next step", output)
 		}
 	})
@@ -163,6 +163,7 @@ trust_level = "trusted"
 			`command = "optimusctx"`,
 			`args = ["run"]`,
 			"status: preview only",
+			"next step: rerun `optimusctx init --client codex-cli --write` to apply this setup, then use `optimusctx run`",
 		} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("missing %q in:\n%s", want, output)

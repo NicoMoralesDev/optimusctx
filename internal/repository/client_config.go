@@ -134,6 +134,14 @@ func RenderClientConfig(document ClientConfigDocument) (string, error) {
 	return string(encoded) + "\n", nil
 }
 
+func RenderClientConfigSnippet(serverName string, command ServeCommand) (string, error) {
+	document, err := MergeClientConfig(nil, serverName, command)
+	if err != nil {
+		return "", err
+	}
+	return RenderClientConfig(document)
+}
+
 func NormalizeClaudeCLIScope(scope string) (string, error) {
 	normalized := strings.TrimSpace(strings.ToLower(scope))
 	if normalized == "" {

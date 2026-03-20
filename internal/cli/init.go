@@ -25,7 +25,7 @@ func newInitCommand() *Command {
 				arg := args[i]
 				switch arg {
 				case "-h", "--help":
-					_, err := io.WriteString(stdout, "Usage:\n  optimusctx init [--client <client>] [--config <path>] [--binary <path>] [--scope <local|project|user>] [--write]\n\nInitialize repository-local OptimusCtx state. When --client is provided, also preview or write MCP client registration as part of onboarding.\n")
+					_, err := io.WriteString(stdout, "Usage:\n  optimusctx init [--client <client>] [--config <path>] [--binary <path>] [--scope <local|project|user>] [--write]\n\nInitialize repository-local OptimusCtx state. In an interactive terminal, plain `init` can also offer supported-client onboarding during the same command. When --client is provided, `init` previews or writes MCP client registration directly.\n")
 					return err
 				case "--client":
 					value, next, err := requireInstallValue(args, i, arg)
@@ -91,8 +91,20 @@ func newInitCommand() *Command {
 				return err
 			}
 
+			if request.ClientID == "" && initShouldPrompt(stdout) {
+				promptRequest, skipped, err := promptInitOnboarding(initPromptInput, stdout)
+				if err != nil {
+					return err
+				}
+				if skipped {
+					_, err = io.WriteString(stdout, "\n"+renderDefaultInitNextStep())
+					return err
+				}
+				request = promptRequest
+			}
+
 			if request.ClientID == "" {
-				_, err = io.WriteString(stdout, "\nnext step: rerun `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register MCP during onboarding, then use `optimusctx run`\n")
+				_, err = io.WriteString(stdout, "\n"+renderDefaultInitNextStep())
 				return err
 			}
 
@@ -103,20 +115,7 @@ func newInitCommand() *Command {
 			if err != nil {
 				return err
 			}
-			if _, err := fmt.Fprintf(stdout, "\nclient: %s\nconfig path: %s\nmode: %s\n\n%s", installResult.Rendered.Client.DisplayName, installResult.Rendered.ConfigPath, installResult.Rendered.Mode, ensureTrailingNewline(installResult.Rendered.Content)); err != nil {
-				return err
-			}
-			for _, note := range installResult.Rendered.Notes {
-				if _, err := fmt.Fprintf(stdout, "note: %s\n", note); err != nil {
-					return err
-				}
-			}
-			if installResult.Wrote {
-				_, err = io.WriteString(stdout, "status: wrote config\n")
-				return err
-			}
-			_, err = io.WriteString(stdout, "status: preview only\n")
-			return err
+			return writeOnboardingResult(stdout, request, installResult)
 		},
 	}
 }

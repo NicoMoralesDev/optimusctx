@@ -48,6 +48,18 @@ func TestRenderGenericClientConfig(t *testing.T) {
 	}
 }
 
+func TestRenderGenericClientConfigSnippet(t *testing.T) {
+	got, err := RenderClientConfigSnippet(DefaultMCPServerName, NewServeCommand(""))
+	if err != nil {
+		t.Fatalf("RenderClientConfigSnippet() error = %v", err)
+	}
+
+	const want = "{\n  \"mcpServers\": {\n    \"optimusctx\": {\n      \"command\": \"optimusctx\",\n      \"args\": [\n        \"run\"\n      ]\n    }\n  }\n}\n"
+	if got != want {
+		t.Fatalf("RenderClientConfigSnippet() = %q, want %q", got, want)
+	}
+}
+
 func TestNormalizeClaudeCLIScope(t *testing.T) {
 	tests := []struct {
 		name    string

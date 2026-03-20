@@ -567,8 +567,8 @@ func TestInstallServiceClaudeDesktopPreviewUsesResolvedPath(t *testing.T) {
 	}
 
 	document := mustDecodeClientConfig(t, result.Rendered.Content)
-	if _, ok := document.MCPServers["existing"]; !ok {
-		t.Fatalf("preview missing existing server: %s", result.Rendered.Content)
+	if _, ok := document.MCPServers["existing"]; ok {
+		t.Fatalf("preview should not dump existing server: %s", result.Rendered.Content)
 	}
 	command, ok := document.MCPServers["optimusctx"]
 	if !ok {
@@ -576,6 +576,10 @@ func TestInstallServiceClaudeDesktopPreviewUsesResolvedPath(t *testing.T) {
 	}
 	if command.Command != "optimusctx" || len(command.Args) != 1 || command.Args[0] != "run" {
 		t.Fatalf("optimusctx server command = %+v", command)
+	}
+	applied := mustDecodeClientConfig(t, result.Rendered.AppliedContent)
+	if _, ok := applied.MCPServers["existing"]; !ok {
+		t.Fatalf("applied content missing existing server: %s", result.Rendered.AppliedContent)
 	}
 }
 

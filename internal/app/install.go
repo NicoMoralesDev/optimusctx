@@ -42,6 +42,7 @@ type jsonFileClientAdapter struct {
 	readFile    func(string) ([]byte, error)
 	writeFile   func(string, []byte, os.FileMode) error
 	mkdirAll    func(string, os.FileMode) error
+	notes       []string
 }
 
 type previewOnlyClientAdapter struct {
@@ -83,6 +84,7 @@ func NewInstallService() InstallService {
 		readFile:    os.ReadFile,
 		writeFile:   os.WriteFile,
 		mkdirAll:    os.MkdirAll,
+		notes:       claudeDesktopNotes(),
 	}
 
 	return InstallService{
@@ -163,6 +165,10 @@ func (a jsonFileClientAdapter) Preview(request InstallRequest) (repository.Rende
 	if err != nil {
 		return repository.RenderedClientConfig{}, err
 	}
+	preview, err := repository.RenderClientConfigSnippet(serverName, repository.NewServeCommand(request.BinaryPath))
+	if err != nil {
+		return repository.RenderedClientConfig{}, err
+	}
 
 	mode := repository.RenderModePreview
 	if request.Write {
@@ -173,8 +179,9 @@ func (a jsonFileClientAdapter) Preview(request InstallRequest) (repository.Rende
 		Client:         a.client,
 		ConfigPath:     configPath,
 		Mode:           mode,
-		Content:        content,
+		Content:        preview,
 		AppliedContent: content,
+		Notes:          append([]string(nil), a.notes...),
 	}, nil
 }
 
@@ -361,6 +368,14 @@ func genericMCPNotes() []string {
 	return []string{
 		"Place this JSON into your MCP host configuration.",
 		"Use command `optimusctx` with args `[\"run\"]`.",
+	}
+}
+
+func claudeDesktopNotes() []string {
+	return []string{
+		"Claude Desktop writes the native `claude_desktop_config.json` MCP contract.",
+		"The preview shows only the `optimusctx` MCP entry; unrelated desktop config stays preserved during merges.",
+		"Use --config to target a non-default Claude Desktop config path.",
 	}
 }
 

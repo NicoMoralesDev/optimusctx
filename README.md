@@ -16,7 +16,7 @@ OptimusCtx is built around five public commands:
 
 In practice:
 
-- `init` bootstraps repository-local state under `.optimusctx/` and owns supported-client onboarding when `--client` is provided
+- `init` bootstraps repository-local state under `.optimusctx/` and can offer supported-client onboarding during the same command
 - `run` is the main runtime entrypoint for agents and MCP clients
 - `status` shows short read-only readiness information
 - `doctor` shows deeper diagnostics when something looks wrong
@@ -77,24 +77,30 @@ optimusctx init
 optimusctx status
 ```
 
+In an interactive terminal, `optimusctx init` can offer Claude and Codex onboarding during that same command after the repository bootstrap finishes.
+
 Start the runtime for agent use:
 
 ```bash
 optimusctx run
 ```
 
-Preview supported-client onboarding:
+Use the explicit flag path when you want direct control or a non-interactive flow:
 
 ```bash
 optimusctx init --client claude-desktop
 optimusctx init --client claude-cli --scope local
+optimusctx init --client codex-app
+optimusctx init --client codex-cli --config /path/to/.codex/config.toml
 ```
 
 Write MCP client registration only when you want to opt in:
 
 ```bash
 optimusctx init --client claude-desktop --write
+optimusctx init --client claude-cli --scope project --write
 optimusctx init --client codex-app --write
+optimusctx init --client codex-cli --config /path/to/.codex/config.toml --write
 ```
 
 ## Update
@@ -133,7 +139,7 @@ optimusctx doctor
 
 ### `optimusctx init`
 
-Creates repository-local state in `.optimusctx/`, persists the first repository snapshot, and optionally previews or writes supported-client MCP registration when `--client` is provided.
+Creates repository-local state in `.optimusctx/`, persists the first repository snapshot, and can offer supported-client onboarding during the same interactive invocation. Use `--client <client> [--write]` when you want the direct non-interactive path.
 
 ### `optimusctx run`
 

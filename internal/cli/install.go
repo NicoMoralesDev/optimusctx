@@ -83,16 +83,7 @@ func runInstallCommand(stdout io.Writer, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	if _, err := fmt.Fprintf(stdout, "client: %s\nconfig path: %s\nmode: %s\n\n%s", result.Rendered.Client.DisplayName, result.Rendered.ConfigPath, result.Rendered.Mode, ensureTrailingNewline(result.Rendered.Content)); err != nil {
-		return err
-	}
-	if result.Wrote {
-		_, err = io.WriteString(stdout, "status: wrote config\n")
-		return err
-	}
-	_, err = io.WriteString(stdout, "status: preview only\n")
-	return err
+	return writeOnboardingResult(stdout, request, result)
 }
 
 func requireInstallValue(args []string, index int, flag string) (string, int, error) {
