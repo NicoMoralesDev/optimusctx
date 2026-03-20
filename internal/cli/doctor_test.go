@@ -109,9 +109,52 @@ func TestDoctorCommand(t *testing.T) {
 		"watch state: running",
 		"summary: runtime watch loop is running",
 		"optional: no",
+		"serve command: optimusctx run",
 		"hotspot: pkg/alpha.go tokens=120 files=1 bytes=480",
 		"item: none",
 		"step: none",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output missing %q:\n%s", want, output)
+		}
+	}
+}
+
+func TestDoctorCommandRendersSupportedClientMCPAction(t *testing.T) {
+	report := repository.DoctorReport{
+		Identity: repository.LayeredContextRepositoryIdentity{
+			RootPath:      "/repo",
+			DetectionMode: "git",
+		},
+		Install: repository.DoctorInstallSection{
+			BinaryVersion: "dev",
+			WorkingDir:    "/repo",
+		},
+		MCPReadiness: repository.DoctorMCPReadinessSection{
+			Status:       repository.DoctorStatusDegraded,
+			ServerName:   repository.DefaultMCPServerName,
+			ServeCommand: repository.NewServeCommand(""),
+		},
+		Summary: repository.DoctorSummary{
+			Status: repository.DoctorStatusDegraded,
+			Issues: []repository.DoctorIssue{
+				{
+					Section: "mcp",
+					Summary: "snippet preview could not be rendered",
+					Action:  "use `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to validate or register the MCP contract",
+				},
+			},
+		},
+		RecommendedFix: []string{
+			"use `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to validate or register the MCP contract",
+		},
+	}
+
+	output := formatDoctorReport(report)
+	for _, want := range []string{
+		"serve command: optimusctx run",
+		"item: mcp: snippet preview could not be rendered; next action: use `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to validate or register the MCP contract",
+		"step: use `optimusctx status --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to validate or register the MCP contract",
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output missing %q:\n%s", want, output)
