@@ -1,5 +1,28 @@
 # Project Milestones: OptimusCtx
 
+## v1.3.6 Release Channel Truth and Workflow Modernization (Completed: 2026-03-20)
+
+**Delivered:** Correct first-publish behavior for Homebrew and Scoop, truthful downstream publication states, release-doc alignment, and a release workflow upgraded off the Node 20 warning path.
+
+**Phases completed:** 32-33 (2 plans total)
+
+**Key accomplishments:**
+- Added a reusable downstream repo update script that correctly treats untracked generated files in empty taps and buckets as publishable changes.
+- Fixed Homebrew and Scoop workflow summaries so `published` now means a real downstream repo update, while matching no-op reruns report `already_current`.
+- Added regression coverage for first-file publication and already-current reruns against temp git remotes.
+- Upgraded the release workflow to `actions/checkout@v6`, `actions/setup-go@v6`, and `goreleaser/goreleaser-action@v7`.
+- Updated operator docs and release checklist language so empty downstream repos and downstream publication states are described truthfully.
+
+**Stats:**
+- 2 phases, 2 plans, 2 tasks
+- Rough execution window: 2026-03-20
+
+**Git range:** `fix: repair downstream release publication truth` → `chore: archive v1.3.6 milestone`
+
+**What's next:** Cut the `v1.3.6` release and confirm Homebrew and Scoop now create their first real downstream commits on the configured repos.
+
+---
+
 ## v1.3.5 MCP Observability and Status Unification (Completed: 2026-03-20)
 
 **Delivered:** Repo-local MCP activity evidence, canonical `status` verification, deprecated `doctor` aliasing, durable host guidance wiring, and docs aligned to the new truth.
@@ -19,7 +42,7 @@
 
 **Git range:** `feat: add MCP observability and status-led verification` → `chore: archive v1.3.5 milestone`
 
-**What's next:** Cut the `v1.3.5` release, then validate the new `status` evidence against a real supported host session in day-to-day use.
+**What's next:** `v1.3.5` exposed a downstream publication truth bug in Homebrew and Scoop, which is repaired on the branch by `v1.3.6` before the next public cut.
 
 ---
 

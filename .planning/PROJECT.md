@@ -13,24 +13,22 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 - Shipped version: `v1.3.5`
 - Runtime stack: Go, SQLite, Tree-sitter, MCP-over-STDIO
 - Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `status`, deprecated alias `doctor`, `eval`, `install`, `version`, and `release prepare`, with first-class supported-client onboarding for Claude and Codex hosts plus canonical GitHub Release-rooted downstream publication
-- Product state: `v1.0`, `v1.1`, `v1.2`, `v1.3.1`, `v1.3.2`, and `v1.3.3` are published; `v1.3.4` remains intentionally unreleased; `v1.3.5` now has a canonical GitHub Release and npm publication, but Homebrew and Scoop falsely reported `published` against still-empty downstream repos; `v1.3.6` is active to repair that release truth and workflow runtime drift
+- Product state: `v1.0`, `v1.1`, `v1.2`, `v1.3.1`, `v1.3.2`, and `v1.3.3` are published; `v1.3.4` remains intentionally unreleased; `v1.3.5` now has a canonical GitHub Release and npm publication; `v1.3.6` is complete on the branch and is the next intended public release cut to repair downstream publication truth and workflow runtime drift
 
 ## Current Milestone
 
-v1.3.6 Release Channel Truth and Workflow Modernization
+No active milestone
 
-**Goal:** Make downstream package-manager publication truthful and first-publish safe, then modernize the release workflow so it no longer emits Node 20 deprecation warnings.
-
-**Target features:**
-- Repair Homebrew and Scoop publication so empty tap and bucket repositories receive their first generated files and commits correctly
-- Fix release summaries and verification logic so `published` only means a real downstream write happened
-- Update the release workflow to supported Node 24-compatible action paths and align operator docs with the corrected contract
+**Current release position:**
+- `v1.3.6` is complete on the branch and ready for release
+- `v1.3.5` remains the latest public tag, but its Homebrew and Scoop publication truth gap is corrected in `v1.3.6`
+- `v1.3.4` stays intentionally unreleased
 
 ## Next Milestone Goals
 
 - Cut `v1.3.6` as the corrective release for downstream publication truth
-- Verify first-publish behavior against the newly created Homebrew tap and Scoop bucket repositories
-- Remove the remaining GitHub Actions Node 20 warnings from the release lane
+- Verify that Homebrew and Scoop now create real downstream commits on first publication
+- Confirm the release lane no longer emits the old Node 20 deprecation warnings
 
 ## Requirements
 
@@ -56,6 +54,8 @@ v1.3.6 Release Channel Truth and Workflow Modernization
 - ✓ MCP session evidence now proves whether a supported host only registered OptimusCtx, actually discovered it, and actually used its tools — `v1.3.5`
 - ✓ Supported-host onboarding now registers durable agent-usable OptimusCtx guidance where the host supports it, with explicit fallback truth where it does not — `v1.3.5`
 - ✓ Release preflight now detects Homebrew and Scoop secret presence before tag creation, even though first-publish correctness still needs repair — `v1.3.4-v1.3.5`
+- ✓ Downstream publication now treats first generated files in empty taps and buckets as real changes and reports truthful downstream publication states — `v1.3.6`
+- ✓ The release workflow now uses current non-warning action majors and the operator docs explain `published` vs `already_current` truthfully — `v1.3.6`
 
 ### Out of Scope
 
@@ -71,7 +71,7 @@ v1.0 proved the core runtime wedge. v1.1 then proved the shipped product works e
 
 v1.2 closed the operator loop around the release surface. v1.3.1 then finished the supported Claude and Codex onboarding story by delivering host-native preview/write behavior, correcting command ownership around `init`, and updating the docs/evidence to match the shipped contract. v1.3.2 tightened that operator experience further by collapsing the common bootstrap and onboarding path into one smooth interactive `init` flow while preserving explicit scripting and direct-flag usage. v1.3.3 refined that same onboarding path again by making the conversation intent-led and destination-first, while trimming avoidable noise from the result output and docs.
 
-`v1.3.4` improved release truthfulness and clarified runtime handoff, but it still left the core adoption question unresolved inside the product: OptimusCtx itself still could not prove whether the host discovered or actually used the MCP server, `status` and `doctor` still overlapped heavily, and the new guidance mostly landed as human docs rather than durable agent-facing instructions consumed by the host. `v1.3.5` corrected that gap directly and the release was cut, but the first real Homebrew and Scoop publication against fresh downstream repos exposed a separate release-lane bug: the workflow treated newly created formula and manifest files as unchanged because they were still untracked, so the run reported `published` without ever committing or pushing to the tap or bucket. `v1.3.6` is the corrective milestone for that release truth gap and for the remaining GitHub Actions runtime warnings.
+`v1.3.4` improved release truthfulness and clarified runtime handoff, but it still left the core adoption question unresolved inside the product: OptimusCtx itself still could not prove whether the host discovered or actually used the MCP server, `status` and `doctor` still overlapped heavily, and the new guidance mostly landed as human docs rather than durable agent-facing instructions consumed by the host. `v1.3.5` corrected that gap directly and the release was cut, but the first real Homebrew and Scoop publication against fresh downstream repos exposed a separate release-lane bug: the workflow treated newly created formula and manifest files as unchanged because they were still untracked, so the run reported `published` without ever committing or pushing to the tap or bucket. `v1.3.6` closes that distribution truth gap and upgrades the release workflow off the deprecated action majors, so the next step is the corrective `v1.3.6` release rather than more milestone planning.
 
 ## Constraints
 
@@ -104,8 +104,8 @@ v1.2 closed the operator loop around the release surface. v1.3.1 then finished t
 | Onboarding prompts should speak in terms of user intention and destination, not backend implementation jargon | The init flow should optimize for operator comprehension first, while still preserving precise direct-control escape hatches | ✓ Shipped in v1.3.3 |
 | Downstream release channels must be operator-truthful even when they do not publish | A release flow that silently degrades into `skipped` publication is too easy to misread; channel readiness and outcomes need first-class visibility | ✓ Completed in v1.3.4 |
 | Runtime handoff guidance alone is not enough; OptimusCtx must expose proof of host discovery and use | Human docs cannot substitute for product-visible observability and host-consumable guidance | ✓ Completed in v1.3.5 |
-| Downstream publication must treat first-file writes as real changes and only report `published` after a real repo update | Fresh tap and bucket repositories exposed that untracked generated files can bypass `git diff --quiet` and produce false-positive success | — Active in v1.3.6 |
-| Release automation should use current supported GitHub Actions runtimes instead of relying on compatibility warnings | The release lane should stay quiet and future-proof on current GitHub-hosted runners | — Active in v1.3.6 |
+| Downstream publication must treat first-file writes as real changes and only report `published` after a real repo update | Fresh tap and bucket repositories exposed that untracked generated files can bypass `git diff --quiet` and produce false-positive success | ✓ Completed in v1.3.6 |
+| Release automation should use current supported GitHub Actions runtimes instead of relying on compatibility warnings | The release lane should stay quiet and future-proof on current GitHub-hosted runners | ✓ Completed in v1.3.6 |
 
 ---
-*Last updated: 2026-03-20 after starting milestone v1.3.6*
+*Last updated: 2026-03-20 after archiving milestone v1.3.6*
