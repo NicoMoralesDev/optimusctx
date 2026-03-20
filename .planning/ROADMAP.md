@@ -14,18 +14,51 @@
 
 ## Current Milestone
 
-No active milestone.
+`v1.3.3` Intent-led onboarding conversation UX
 
-Define the next milestone with fresh requirements before adding new phases.
+Goal: make interactive supported-client onboarding talk in user-facing intent and destination terms, with clearer scope selection and less noisy completion output.
+Requirements: [REQUIREMENTS.md](/home/nico/projects/optimusctx/.planning/REQUIREMENTS.md)
 
 ## Current Status
 
-The `v1.3.2` smooth init-led onboarding UX milestone is archived.
+The `v1.3.3` milestone is defined and ready for phase planning.
 
 Next step:
 
-- Cut the `v1.3.2` release if you want this archived milestone published next.
-- Otherwise define the next milestone scope and requirements before adding new phases.
+- Plan Phase `24` to redesign the interactive init conversation around intent and destination choice.
+- Keep the direct `init --client ...` escape hatch explicit while the smoother interactive UX is refined.
+
+### Phase 24: Intent-led init conversation and scope targeting
+
+**Goal:** Rework the interactive `init` conversation so it asks what the operator wants to do and where OptimusCtx should be configured before any mutation occurs.
+**Depends on:** Phase 23
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 24 to break down)
+
+**Requirements covered:** `CONV-01`, `CONV-02`, `SCOPE-01`, `SCOPE-02`, `SCOPE-03`
+
+**Success criteria:**
+- Interactive `init` asks the operator in intent-led language instead of preview/write jargon.
+- Supported clients expose client-appropriate destination choices before mutation, with the exact path or native target shown.
+- Direct non-interactive `init --client <client> [--write]` flows remain available for scripts and explicit control.
+
+### Phase 25: Outcome-oriented results, docs, and verification
+
+**Goal:** Make the onboarding result output and public guides explain the outcome clearly, with less config noise and more operator-facing guidance.
+**Depends on:** Phase 24
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 25 to break down)
+
+**Requirements covered:** `RESULT-01`, `RESULT-02`, `DOC-01`
+
+**Success criteria:**
+- Apply-now results summarize what changed, where it changed, and what to do next without dumping avoidable config blocks.
+- Review-first results are framed as a user-facing review of the exact change rather than as backend preview/write terminology.
+- README and operator docs match the shipped onboarding conversation and direct-flag fallback.
 
 ---
-*Last updated: 2026-03-20 after archiving v1.3.2*
+*Last updated: 2026-03-20 after starting milestone v1.3.3 and defining Phases 24-25*

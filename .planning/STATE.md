@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: none
-current_phase: none
-current_phase_name: none
+milestone: v1.3.3
+milestone_name: intent-led onboarding conversation ux
+current_phase: 24
+current_phase_name: intent-led init conversation and scope targeting
 current_plan: 0
-status: milestone_archived
-stopped_at: Archived v1.3.2 after milestone audit and cleanup
-last_updated: "2026-03-20T15:36:00Z"
+status: ready_for_planning
+stopped_at: Started milestone v1.3.3 and defined roadmap Phases 24-25
+last_updated: "2026-03-20T16:05:00Z"
 last_activity: 2026-03-20
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 100
+  percent: 0
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** No active milestone; `v1.3.2` is archived
-**Current Phase:** None
-**Current Phase Name:** None
-**Total Phases:** 0
+**Status:** Milestone defined and ready for planning
+**Current Phase:** 24
+**Current Phase Name:** intent-led init conversation and scope targeting
+**Total Phases:** 2
 **Current Plan:** 0
 **Total Plans in Phase:** 0
-**Progress:** [██████████] 100%
+**Progress:** [----------] 0%
 **Last Activity:** 2026-03-20
-**Last Activity Description:** Archived `v1.3.2` after verification, milestone audit, and phase-directory cleanup
+**Last Activity Description:** Started milestone `v1.3.3` for intent-led onboarding UX and defined roadmap Phases 24-25
 
 ## Project Memory
 
@@ -43,19 +43,19 @@ progress:
 
 ## Current Planning Context
 
-- Active milestone: none
+- Active milestone: `v1.3.3` Intent-led onboarding conversation UX
 - Most recently archived milestone: `v1.3.2` Smooth init-led onboarding UX
-- Latest published release: `v1.3.1`
-- Next execution action: cut the `v1.3.2` release or define the next milestone before adding new phases
+- Latest published release: `v1.3.2`
+- Next execution action: run `$gsd-plan-phase 24` for intent-led init conversation and destination selection
 - Historical v1.0, v1.1, v1.2, and v1.3.x requirements and roadmaps are archived under `.planning/milestones/`
 - Hosted GitHub Actions `release.yml` summary and publication validation were confirmed resolved on 2026-03-19
 
-## Most Recent Milestone Scope
+## Current Milestone Scope
 
-- Collapsed plain `init` and supported-client onboarding into one smoother operator path for the current supported host set
-- Kept direct flag-based `init --client <client> [--write]` flows available for scripting and explicit host targeting
-- Made previews uniformly focused so OptimusCtx shows the relevant change rather than dumping unrelated host config
-- Updated README, quickstart, and install-and-verify docs to the same-command onboarding contract
+- Replace preview/write-centric language in interactive onboarding with intent-led user-facing language
+- Ask where OptimusCtx should be configured before any mutation, using client-appropriate scope labels and exact targets
+- Reduce result-output noise so the command emphasizes what changed, where it changed, and what to do next
+- Keep the direct `init --client <client> [--write]` contract explicit for scripts and operator control
 
 ## Verification Status
 
@@ -65,12 +65,16 @@ progress:
 - v1.3.1 milestone audit remains archived as `tech_debt`: the only deferred manual step is still the real `claude` binary validation for `optimusctx init --client claude-cli --scope local --write` on a host with Claude Code installed.
 - Phase 23 verification passed on 2026-03-20 with a passing full `go test ./...` suite and a real PTY walkthrough of interactive `init` in a disposable repository.
 - v1.3.2 milestone audit passed with all seven milestone requirements satisfied.
+- `v1.3.2` release publication completed on 2026-03-20; GitHub Release and npm published successfully, while Homebrew and Scoop workflow jobs skipped because publication credentials were absent.
 
 ## Recent Decisions
 
 - `v1.3.2` optimized the common operator path around `optimusctx init` instead of expanding the host matrix or adding new lifecycle commands.
 - Interactive onboarding now happens during the same `init` invocation for the common path, while explicit flag-based invocation stays available for scripts and direct control.
 - Focused previews are now a product requirement for all supported clients; OptimusCtx should show the relevant change, not dump unrelated host configuration.
+- `v1.3.3` will optimize the language and destination model of onboarding rather than expanding the host set or adding management commands.
+- The next UX step should ask first about user intent and registration destination, not about backend concepts like preview and write.
+- Destination selection should show the exact config path or native target before the operator confirms mutation.
 - Phase 21.1 restored `optimusctx init --client <client> [--write]` as the supported-client onboarding owner and removed registration behavior from `optimusctx status`.
 - Deprecated/operator helper surfaces now point at init-led onboarding while preserving `optimusctx run` as the canonical runtime handoff.
 
@@ -117,7 +121,7 @@ progress:
 
 - Source of truth for intent: `.planning/PROJECT.md`
 - Source of truth for current scope: `.planning/REQUIREMENTS.md`
-- Source of truth for last shipped scope: `.planning/milestones/v1.3.1-REQUIREMENTS.md`
+- Source of truth for last shipped scope: `.planning/milestones/v1.3.2-REQUIREMENTS.md`
 - Source of truth for phase sequence: `.planning/ROADMAP.md`
 - Source of truth for technical direction: `.planning/research/SUMMARY.md`
 

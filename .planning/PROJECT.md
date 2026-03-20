@@ -10,20 +10,28 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 ## Current State
 
-- Shipped version: `v1.3.1`
+- Shipped version: `v1.3.2`
 - Runtime stack: Go, SQLite, Tree-sitter, MCP-over-STDIO
 - Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `doctor`, `eval`, `install`, `version`, and `release prepare`, with first-class supported-client onboarding for Claude and Codex hosts
-- Product state: `v1.0`, `v1.1`, `v1.2`, `v1.3.0`, and `v1.3.1` are published, and the `v1.3.2` smooth-init milestone is complete and archived in planning pending any release cut
+- Product state: `v1.0`, `v1.1`, `v1.2`, `v1.3.0`, `v1.3.1`, and `v1.3.2` are published; the next milestone is a UX follow-up on the init-led onboarding flow
 
 ## Current Milestone
 
-No active milestone. `v1.3.2` is archived in planning and the latest published release remains `v1.3.1`.
+`v1.3.3` Intent-led onboarding conversation UX
+
+**Goal:** Make supported-client onboarding in `optimusctx init` speak in user-facing intent and destination terms instead of implementation jargon, while preserving explicit direct-control flows.
+
+**Target features:**
+- Interactive `init` uses intent-led prompts like configuring now and reviewing the change first instead of `preview` and `write`
+- Supported clients ask where OptimusCtx should be registered before mutation, showing the exact path or native target up front
+- Completion output explains what changed and where it changed without dumping avoidable config noise
+- Public docs match the new conversation and keep the direct `init --client ...` fallback truthful
 
 ## Next Milestone Goals
 
-- Expand first-class MCP host support beyond the current Claude and Codex set
-- Add host-capability preflight and integration hardening around supported-client writes
-- Keep the onboarding and runtime contract truthful as additional hosts and validation paths are introduced
+- Replace preview/write-centric onboarding wording with intent-oriented language
+- Add scope or destination selection before config mutation, with explicit target display
+- Reduce post-write output noise and keep docs aligned with the user-facing flow
 
 ## Requirements
 
@@ -43,9 +51,10 @@ No active milestone. `v1.3.2` is archived in planning and the latest published r
 
 ### Active
 
-- [ ] Additional first-class MCP hosts can be added beyond `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli`
-- [ ] Supported hosts get explicit capability preflight before write-backed registration runs
-- [ ] Maintainers can remove or manage existing supported-host registrations through OptimusCtx instead of host tooling directly
+- [ ] Interactive onboarding language is intent-led and user-facing rather than implementation-led
+- [ ] Supported clients ask for destination or scope before mutation and show the exact target path or native registration target
+- [ ] Result output explains the outcome cleanly without dumping avoidable config content
+- [ ] Public docs match the intent-led onboarding conversation and explicit fallback paths
 
 ### Out of Scope
 
@@ -53,12 +62,17 @@ No active milestone. `v1.3.2` is archived in planning and the latest published r
 - Default semantic retrieval or general-purpose RAG behavior — the wedge is still deterministic exact-first context optimization.
 - Automatic modification of repository instruction files or client configs during install — installation and integration remain explicit.
 - New distribution channels beyond the currently supported set — `.deb`, `.rpm`, WinGet, Chocolatey, signing, and SBOMs stay deferred until the current channels are fully automated.
+- Additional first-class MCP hosts beyond `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` — `v1.3.3` is a UX refinement milestone, not a host-expansion milestone.
+- Host-registration removal or long-lived registration management — this milestone focuses on first-run onboarding clarity, not lifecycle commands.
+- Full-screen onboarding wizard or TUI — the goal is a better CLI conversation, not a new interaction surface.
 
 ## Context
 
 v1.0 proved the core runtime wedge. v1.1 then proved the shipped product works end to end on fixture-backed CLI and MCP workflows, tightened benchmark claims around declared agent-facing inputs and comparable final artifacts, and expanded distribution through a narrow set of verifiable release channels.
 
 v1.2 closed the operator loop around the release surface. v1.3.1 then finished the supported Claude and Codex onboarding story by delivering host-native preview/write behavior, correcting command ownership around `init`, and updating the docs/evidence to match the shipped contract. v1.3.2 tightened that operator experience further by collapsing the common bootstrap and onboarding path into one smooth interactive `init` flow while preserving explicit scripting and direct-flag usage.
+
+`v1.3.3` is a second-pass UX refinement on top of that shipped flow. The common path now works, but the conversation still leaks implementation terms like `preview` and `write`, and it does not lead with the more important user question: where should OptimusCtx be configured. This milestone narrows that gap by shifting the init conversation toward user intent, destination choice, and clearer outcome summaries.
 
 <details>
 <summary>Archived v1.1 planning context</summary>
@@ -120,6 +134,7 @@ This repository is greenfield. The development process is expected to be heavily
 | Release automation must fail before publication when version, tag, or prerequisite checks are invalid | The operator workflow should be safe to start and cheap to abort before touching release channels | ✓ Shipped in v1.2 |
 | Every downstream channel should derive from the same tag and release metadata contract | Multi-channel automation is only trustworthy if there is one source of truth for archives, checksums, and package metadata | ✓ Shipped in v1.2 |
 | `init` is the onboarding front door for supported clients | Repository bootstrap and host onboarding should feel like one coherent operator flow, while explicit flags remain available for automation and direct control | ✓ Shipped in v1.3.2 planning |
+| Onboarding prompts should speak in terms of user intention and destination, not backend implementation jargon | The init flow should optimize for operator comprehension first, while still preserving precise direct-control escape hatches | — Active in v1.3.3 |
 
 ---
-*Last updated: 2026-03-20 after archiving v1.3.2 Smooth init-led onboarding UX*
+*Last updated: 2026-03-20 after starting milestone v1.3.3 Intent-led onboarding conversation UX*
