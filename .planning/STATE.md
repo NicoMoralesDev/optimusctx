@@ -75,5 +75,13 @@ progress:
 - `v1.3.4` should harden the release operator experience before expanding hosts or channels again.
 - Missing Homebrew and Scoop publication credentials are now treated as a product-truthfulness problem, not just an external-ops footnote.
 
+## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 28 added: agent MCP guidance, init visibility, and MCP usage verification
+
+This follow-up captures the agent-side adoption gap that remains after MCP registration works: operators need the toolchain and docs to explain what `optimusctx` exposes, when `optimusctx run` is automatic via MCP host registration, and how to verify that an agent is actually discovering and using the runtime.
+
 ---
 *Last updated: 2026-03-20 after starting milestone v1.3.4 Release channel truthfulness and publication readiness*

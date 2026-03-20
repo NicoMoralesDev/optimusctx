@@ -61,5 +61,15 @@ Plans:
 - Skipped Homebrew or Scoop publication is clearly described as not published, not silently successful.
 - Operator docs and rerun guidance match the actual credential and partial-release recovery contract.
 
+### Phase 28: agent MCP guidance, init visibility, and MCP usage verification
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 27
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 28 to break down)
+
 ---
-*Last updated: 2026-03-20 after starting milestone v1.3.4 and defining Phases 26-27*
+*Last updated: 2026-03-20 after adding Phase 28 to milestone v1.3.4*
