@@ -13,18 +13,28 @@
 
 ## Current Milestone
 
-No active milestone.
+Draft next milestone (name TBD).
 
-Define the next milestone with fresh requirements before adding new phases.
+Define the milestone name and requirements before planning or executing the draft phase below.
 
 ## Current Status
 
-The v1.3.1 MCP client compatibility milestone is archived.
+The v1.3.1 MCP client compatibility milestone is archived, and the next milestone has one draft phase queued.
 
 Next step:
 
-- Define the next milestone scope and requirements.
+- Define the next milestone scope, name, and requirements around the draft Phase 1 below.
 - Decide whether the deferred real-Claude host validation should be cleared first or carried into the next milestone as explicit tech debt.
 
+### Phase 1: Smooth init-led client onboarding for all supported clients and docs update
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 0
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 1 to break down)
+
 ---
-*Last updated: 2026-03-20 after archiving v1.3.1*
+*Last updated: 2026-03-20 after adding draft Phase 1 for the next milestone*

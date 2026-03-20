@@ -5,9 +5,9 @@ milestone_name: none
 current_phase: none
 current_phase_name: none
 current_plan: 0
-status: milestone_archived
-stopped_at: Archived v1.3.1 after milestone audit and cleanup
-last_updated: "2026-03-20T10:52:22Z"
+status: roadmap_draft
+stopped_at: Added draft Phase 1 for the next milestone after archiving v1.3.1
+last_updated: "2026-03-20T11:41:17Z"
 last_activity: 2026-03-20
 progress:
   total_phases: 0
@@ -23,7 +23,7 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** No active milestone; `v1.3.1` is archived
+**Status:** No active milestone name yet; draft roadmap work resumed after `v1.3.1`
 **Current Phase:** None
 **Current Phase Name:** None
 **Total Phases:** 0
@@ -31,7 +31,7 @@ progress:
 **Total Plans in Phase:** 0
 **Progress:** [██████████] 100%
 **Last Activity:** 2026-03-20
-**Last Activity Description:** Archived `v1.3.1` after milestone audit, planning collapse, and phase-directory cleanup
+**Last Activity Description:** Added draft Phase 1 for the next milestone around smooth init-led client onboarding and docs follow-through
 
 ## Project Memory
 
@@ -46,7 +46,7 @@ progress:
 - Active milestone: none
 - Most recently archived milestone: `v1.3.1` MCP client compatibility
 - Latest published release: `v1.3.1`
-- Next execution action: define the next milestone or explicitly clear the deferred real-Claude host validation on a machine with Claude Code installed
+- Next execution action: define the next milestone name and requirements, then plan draft Phase 1 around smooth init-led onboarding and documentation updates
 - Historical v1.0, v1.1, and v1.2 requirements and roadmaps are archived under `.planning/milestones/`
 - Hosted GitHub Actions `release.yml` summary and publication validation were confirmed resolved on 2026-03-19
 
@@ -121,6 +121,7 @@ progress:
 
 ### Roadmap Evolution
 
+- Phase 1 added: Smooth init-led client onboarding for all supported clients and docs update
 - Phase 21.1 inserted after Phase 21: Init-led MCP onboarding and read-only status contract (URGENT)
 - Phase 16 added: Release versioning and preflight guardrails
 - Phase 16 planned: three plans cover semver normalization, preflight probes and review JSON, and an operator-facing `release prepare` CLI
