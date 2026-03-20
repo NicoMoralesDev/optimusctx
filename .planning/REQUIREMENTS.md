@@ -20,8 +20,8 @@
 
 ### Codex Clients
 
-- [ ] **CDX-01**: Operator can preview and write Codex App registration in the native `config.toml` MCP format.
-- [ ] **CDX-02**: Operator can preview and write Codex CLI registration in the native `config.toml` MCP format.
+- [x] **CDX-01**: Operator can preview and write Codex App registration in the native `config.toml` MCP format.
+- [x] **CDX-02**: Operator can preview and write Codex CLI registration in the native `config.toml` MCP format.
 - [x] **CDX-03**: Codex App and Codex CLI registration stay consistent because both use one shared `config.toml`-backed integration model.
 
 ### Operator Surface
@@ -63,8 +63,8 @@
 | MCP-03 | Phase 21 | Complete |
 | CLD-02 | Phase 21 | Complete |
 | CLD-03 | Phase 21 | Complete |
-| CDX-01 | Phase 21 | Pending |
-| CDX-02 | Phase 21 | Pending |
+| CDX-01 | Phase 21 | Complete |
+| CDX-02 | Phase 21 | Complete |
 | OPS-01 | Phase 21 | Pending |
 | DOC-01 | Phase 22 | Pending |
 | TST-01 | Phase 22 | Pending |

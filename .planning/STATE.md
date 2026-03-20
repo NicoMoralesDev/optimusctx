@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 21
 current_phase_name: real write paths and operator surface integration
-current_plan: 2
-status: ready_to_execute
-stopped_at: Completed 21-01-PLAN.md
-last_updated: "2026-03-20T01:28:07.136Z"
+current_plan: 3
+status: executing
+stopped_at: Completed 21-02-PLAN.md
+last_updated: "2026-03-20T01:36:22.790Z"
 last_activity: 2026-03-20
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
-  percent: 67
+  completed_plans: 5
+  percent: 83
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Ready to execute Phase 21
+**Status:** Ready to execute
 **Current Phase:** 21
 **Current Phase Name:** real write paths and operator surface integration
 **Total Phases:** 3
-**Current Plan:** 2
+**Current Plan:** 3
 **Total Plans in Phase:** 3
-**Progress:** [███████░░░] 67%
+**Progress:** [████████░░] 83%
 **Last Activity:** 2026-03-20
-**Last Activity Description:** Completed plan 21-01 with the real Claude CLI write path and scope-aware status surface
+**Last Activity Description:** Completed plan 21-02 with real Codex App and Codex CLI writes through the shared native config.toml backend
 
 ## Project Memory
 
@@ -266,6 +266,7 @@ progress:
 | Phase 20 P01 | 7min | 2 tasks | 6 files |
 | Phase 20-mcp-client-contract-and-config-backend-foundation P02 | 3min | 2 tasks | 6 files |
 | Phase 20 P03 | 2min | 2 tasks | 2 files |
+| Phase 21 P02 | 3min | 2 tasks | 2 files |
 
 ## Decisions Made
 
@@ -464,6 +465,8 @@ progress:
 - [Phase 20]: Claude Desktop JSON-file safety is locked through InstallService regression tests instead of lower-level merge-only coverage.
 - [Phase 21]: Claude CLI preview and write now reuse one scope-aware rendered command contract instead of a preview-only fallback.
 - [Phase 21]: Claude CLI write failures surface host-native remediation by distinguishing missing claude installs from command execution output.
+- [Phase 21]: Codex App and Codex CLI now share one config.toml merge backend for both preview and persisted writes.
+- [Phase 21]: Codex write support stays file-backed and uses --config for repo-local targets instead of introducing a codex mcp add flow.
 
 ## Blockers
 
@@ -471,8 +474,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-20T01:28:01.389Z
-**Stopped At:** Completed 21-01-PLAN.md
+**Last Date:** 2026-03-20T01:36:22.786Z
+**Stopped At:** Completed 21-02-PLAN.md
 **Resume File:** None
 
 ---
