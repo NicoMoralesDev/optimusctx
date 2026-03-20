@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/niccrow/optimusctx/internal/repository"
 )
@@ -16,6 +18,7 @@ type InstallRequest struct {
 	BinaryPath string
 	ConfigPath string
 	ServerName string
+	Scope      string
 	Write      bool
 }
 
@@ -47,9 +50,10 @@ type previewOnlyClientAdapter struct {
 	notes      []string
 }
 
-type commandPreviewClientAdapter struct {
-	client repository.SupportedClient
-	notes  []string
+type claudeCLIClientAdapter struct {
+	client     repository.SupportedClient
+	notes      []string
+	runCommand func(context.Context, string, ...string) ([]byte, error)
 }
 
 type codexConfigClientAdapter struct {
@@ -82,10 +86,14 @@ func NewInstallService() InstallService {
 	return InstallService{
 		adapters: map[repository.ClientID]clientRegistrationAdapter{
 			claudeDesktop.ID: jsonAdapter,
-			claudeCLI.ID:     commandPreviewClientAdapter{client: claudeCLI, notes: claudeCLINotes()},
-			codexApp.ID:      codexConfigClientAdapter{client: codexApp, resolvePath: resolveCodexConfigPath, readFile: os.ReadFile, notes: codexAppNotes()},
-			codexCLI.ID:      codexConfigClientAdapter{client: codexCLI, resolvePath: resolveCodexConfigPath, readFile: os.ReadFile, notes: codexCLINotes()},
-			generic.ID:       genericClientAdapter{client: generic, notes: genericMCPNotes()},
+			claudeCLI.ID: claudeCLIClientAdapter{
+				client:     claudeCLI,
+				notes:      claudeCLINotes(),
+				runCommand: runCommand,
+			},
+			codexApp.ID: codexConfigClientAdapter{client: codexApp, resolvePath: resolveCodexConfigPath, readFile: os.ReadFile, notes: codexAppNotes()},
+			codexCLI.ID: codexConfigClientAdapter{client: codexCLI, resolvePath: resolveCodexConfigPath, readFile: os.ReadFile, notes: codexCLINotes()},
+			generic.ID:  genericClientAdapter{client: generic, notes: genericMCPNotes()},
 		},
 	}
 }
@@ -200,24 +208,63 @@ func (a previewOnlyClientAdapter) Write(_ context.Context, _ InstallRequest) (re
 	return repository.RenderedClientConfig{}, errors.New("this client does not support --write yet; preview the host-specific contract until native config writes land")
 }
 
-func (a commandPreviewClientAdapter) Preview(request InstallRequest) (repository.RenderedClientConfig, error) {
+func (a claudeCLIClientAdapter) Preview(request InstallRequest) (repository.RenderedClientConfig, error) {
+	return a.render(request, repository.RenderModePreview)
+}
+
+func (a claudeCLIClientAdapter) Write(ctx context.Context, request InstallRequest) (repository.RenderedClientConfig, error) {
+	rendered, args, err := a.renderCommand(request, repository.RenderModeWrite)
+	if err != nil {
+		return repository.RenderedClientConfig{}, err
+	}
+
+	output, err := a.runCommand(ctx, "claude", args...)
+	if err != nil {
+		if errors.Is(err, exec.ErrNotFound) {
+			return repository.RenderedClientConfig{}, errors.New("run Claude CLI registration: claude command not found; install Claude Code or rerun without --write to preview the command")
+		}
+		if trimmed := strings.TrimSpace(string(output)); trimmed != "" {
+			return repository.RenderedClientConfig{}, fmt.Errorf("run Claude CLI registration: %s", trimmed)
+		}
+		return repository.RenderedClientConfig{}, fmt.Errorf("run Claude CLI registration: %w", err)
+	}
+
+	return rendered, nil
+}
+
+func (a claudeCLIClientAdapter) render(request InstallRequest, mode repository.RenderMode) (repository.RenderedClientConfig, error) {
+	rendered, _, err := a.renderCommand(request, mode)
+	if err != nil {
+		return repository.RenderedClientConfig{}, err
+	}
+
+	return rendered, nil
+}
+
+func (a claudeCLIClientAdapter) renderCommand(request InstallRequest, mode repository.RenderMode) (repository.RenderedClientConfig, []string, error) {
 	serverName := request.ServerName
 	if serverName == "" {
 		serverName = repository.DefaultMCPServerName
 	}
 
-	content := repository.RenderClaudeCLIAddCommand(serverName, repository.NewServeCommand(request.BinaryPath))
-	return repository.RenderedClientConfig{
+	scope, err := repository.NormalizeClaudeCLIScope(request.Scope)
+	if err != nil {
+		return repository.RenderedClientConfig{}, nil, err
+	}
+
+	command := repository.NewServeCommand(request.BinaryPath)
+	content := repository.RenderClaudeCLIAddCommand(serverName, scope, command)
+	rendered := repository.RenderedClientConfig{
 		Client:     a.client,
 		ConfigPath: "command",
-		Mode:       repository.RenderModePreview,
+		Mode:       mode,
 		Content:    content,
 		Notes:      append([]string(nil), a.notes...),
-	}, nil
-}
+	}
 
-func (a commandPreviewClientAdapter) Write(_ context.Context, _ InstallRequest) (repository.RenderedClientConfig, error) {
-	return repository.RenderedClientConfig{}, errors.New("this client does not support --write yet; preview the native Claude CLI registration command for now")
+	args := []string{"mcp", "add", "--transport", "stdio", "--scope", scope, serverName, "--", command.Command}
+	args = append(args, command.Args...)
+	return rendered, args, nil
 }
 
 func (a codexConfigClientAdapter) Preview(request InstallRequest) (repository.RenderedClientConfig, error) {
@@ -277,8 +324,8 @@ func genericMCPNotes() []string {
 func claudeCLINotes() []string {
 	return []string{
 		"This previews the native Claude CLI stdio registration command.",
-		"Phase 21 will let `optimusctx status --client claude-cli --write` execute this command for you.",
-		"The rendered command keeps `optimusctx run` as the canonical runtime handoff.",
+		"Use --scope local, --scope project, or --scope user to select Claude CLI's registration target.",
+		"This command keeps optimusctx run as the canonical runtime handoff.",
 	}
 }
 
@@ -367,4 +414,8 @@ func resolveClaudeDesktopConfigPathForPlatform(goos string, homeDir string, appD
 	default:
 		return "", fmt.Errorf("resolve Claude Desktop config path: unsupported platform %q; pass --config", goos)
 	}
+}
+
+func runCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
+	return exec.CommandContext(ctx, name, args...).CombinedOutput()
 }

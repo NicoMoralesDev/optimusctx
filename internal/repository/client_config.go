@@ -9,6 +9,9 @@ import (
 const (
 	DefaultMCPServerName    = "optimusctx"
 	DefaultServeCommandName = "optimusctx"
+	ClaudeCLIScopeLocal     = "local"
+	ClaudeCLIScopeProject   = "project"
+	ClaudeCLIScopeUser      = "user"
 )
 
 type ClientID string
@@ -123,14 +126,33 @@ func RenderClientConfig(document ClientConfigDocument) (string, error) {
 	return string(encoded) + "\n", nil
 }
 
-func RenderClaudeCLIAddCommand(serverName string, command ServeCommand) string {
+func NormalizeClaudeCLIScope(scope string) (string, error) {
+	normalized := strings.TrimSpace(strings.ToLower(scope))
+	if normalized == "" {
+		return ClaudeCLIScopeLocal, nil
+	}
+
+	switch normalized {
+	case ClaudeCLIScopeLocal, ClaudeCLIScopeProject, ClaudeCLIScopeUser:
+		return normalized, nil
+	default:
+		return "", fmt.Errorf("unsupported Claude CLI scope %q; expected local, project, or user", scope)
+	}
+}
+
+func RenderClaudeCLIAddCommand(serverName string, scope string, command ServeCommand) string {
 	serverName = strings.TrimSpace(serverName)
 	if serverName == "" {
 		serverName = DefaultMCPServerName
 	}
 
+	scope = strings.TrimSpace(strings.ToLower(scope))
+	if scope == "" {
+		scope = ClaudeCLIScopeLocal
+	}
+
 	command = NormalizeServeCommand(command)
-	parts := []string{"claude", "mcp", "add", "--transport", "stdio", serverName, "--", command.Command}
+	parts := []string{"claude", "mcp", "add", "--transport", "stdio", "--scope", scope, serverName, "--", command.Command}
 	parts = append(parts, command.Args...)
 
 	return strings.Join(parts, " ")
