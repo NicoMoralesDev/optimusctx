@@ -9,14 +9,14 @@
 
 - [x] **MCP-01**: Operator can select `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` as explicit supported clients from the `optimusctx` client-registration surface.
 - [x] **MCP-02**: Operator can preview a host-native registration contract for each supported client and every preview points at `optimusctx run`.
-- [ ] **MCP-03**: Operator can execute an explicit `--write` flow for each supported client through that host's real config or registration path instead of manual translation.
+- [x] **MCP-03**: Operator can execute an explicit `--write` flow for each supported client through that host's real config or registration path instead of manual translation.
 - [x] **MCP-04**: Operator gets idempotent writes that preserve unrelated MCP registrations when OptimusCtx updates an existing supported-host configuration.
 
 ### Claude Clients
 
 - [x] **CLD-01**: Operator can preview and write Claude Desktop registration with the resolved default config path or an explicit override path.
-- [ ] **CLD-02**: Operator can preview Claude CLI registration using the host's documented scope and registration model instead of a generic JSON/manual fallback.
-- [ ] **CLD-03**: Operator can complete Claude CLI registration through `optimusctx ... --write` without manually retyping or translating the server definition.
+- [x] **CLD-02**: Operator can preview Claude CLI registration using the host's documented scope and registration model instead of a generic JSON/manual fallback.
+- [x] **CLD-03**: Operator can complete Claude CLI registration through `optimusctx ... --write` without manually retyping or translating the server definition.
 
 ### Codex Clients
 
@@ -60,9 +60,9 @@
 | MCP-04 | Phase 20 | Complete |
 | CLD-01 | Phase 20 | Complete |
 | CDX-03 | Phase 20 | Complete |
-| MCP-03 | Phase 21 | Pending |
-| CLD-02 | Phase 21 | Pending |
-| CLD-03 | Phase 21 | Pending |
+| MCP-03 | Phase 21 | Complete |
+| CLD-02 | Phase 21 | Complete |
+| CLD-03 | Phase 21 | Complete |
 | CDX-01 | Phase 21 | Pending |
 | CDX-02 | Phase 21 | Pending |
 | OPS-01 | Phase 21 | Pending |

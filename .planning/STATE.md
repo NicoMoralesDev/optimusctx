@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3.1
-milestone_name: MCP client compatibility
+milestone: v1.0
+milestone_name: milestone
 current_phase: 21
 current_phase_name: real write paths and operator surface integration
-current_plan: null
+current_plan: 2
 status: ready_to_execute
-stopped_at: Phase 21 planned and ready for execution
-last_updated: "2026-03-20T00:53:58Z"
-last_activity: 2026-03-19
+stopped_at: Completed 21-01-PLAN.md
+last_updated: "2026-03-20T01:28:07.136Z"
+last_activity: 2026-03-20
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 9
-  completed_plans: 3
-  percent: 33
+  total_plans: 6
+  completed_plans: 4
+  percent: 67
 ---
 
 # Planning State: OptimusCtx
@@ -27,11 +27,11 @@ progress:
 **Current Phase:** 21
 **Current Phase Name:** real write paths and operator surface integration
 **Total Phases:** 3
-**Current Plan:** None
+**Current Plan:** 2
 **Total Plans in Phase:** 3
-**Progress:** [███░░░░░░░] 33%
-**Last Activity:** 2026-03-19
-**Last Activity Description:** Planned Phase 21 with 3 executable plans for real write paths and operator surface integration
+**Progress:** [███████░░░] 67%
+**Last Activity:** 2026-03-20
+**Last Activity Description:** Completed plan 21-01 with the real Claude CLI write path and scope-aware status surface
 
 ## Project Memory
 
@@ -462,6 +462,8 @@ progress:
 - [Phase 20-mcp-client-contract-and-config-backend-foundation]: Codex preview output now uses TOML parsing plus a deterministic renderer so the shared config emits the documented [mcp_servers.<name>] contract with double-quoted values.
 - [Phase 20]: Claude Desktop path resolution now delegates runtime values into a platform-input helper so default locations stay explicit and directly testable.
 - [Phase 20]: Claude Desktop JSON-file safety is locked through InstallService regression tests instead of lower-level merge-only coverage.
+- [Phase 21]: Claude CLI preview and write now reuse one scope-aware rendered command contract instead of a preview-only fallback.
+- [Phase 21]: Claude CLI write failures surface host-native remediation by distinguishing missing claude installs from command execution output.
 
 ## Blockers
 
@@ -469,8 +471,8 @@ None
 
 ## Session
 
-**Last Date:** 2026-03-19T20:51:59.006Z
-**Stopped At:** Completed 20-03-PLAN.md
+**Last Date:** 2026-03-20T01:28:01.389Z
+**Stopped At:** Completed 21-01-PLAN.md
 **Resume File:** None
 
 ---
