@@ -4,15 +4,35 @@ OptimusCtx is a local-first runtime that builds and maintains persistent reposit
 
 It keeps repository state on disk, serves that state to MCP clients through a single runtime entrypoint, and stays explicit about what it writes and what it does not.
 
-## What it does
+## What you get
 
-OptimusCtx is built around five public commands:
+From a user point of view, OptimusCtx helps in a few concrete ways:
+
+- Persistent repo understanding: it stores repository state under `.optimusctx/` so the next agent session does not start from a full rescan.
+- Faster exact navigation: it builds repository maps and symbol-level structure so agents can find files, directories, and functions with less blind exploration.
+- Smaller prompts: it prefers exact, bounded context over broad file dumps, which reduces wasted tokens and makes responses faster to assemble.
+- Safer onboarding: it can register supported MCP clients from `init`, but it keeps that flow explicit and reviewable instead of silently editing config.
+- One runtime for multiple hosts: Claude and Codex integrations sit on the same local runtime instead of separate per-client implementations.
+
+## How it works
+
+At a high level:
+
+- `optimusctx init` creates `.optimusctx/` and persists the first repository snapshot.
+- OptimusCtx then keeps structured repository data locally, including freshness state, repository maps, and exact symbol lookup data.
+- `optimusctx run` exposes that local state over STDIO for MCP clients.
+- Supported-client onboarding stays opt-in through `init`, with a review/apply flow for host registration.
+
+## Command surface
+
+OptimusCtx is built around six public commands:
 
 - `optimusctx init`
 - `optimusctx run`
 - `optimusctx status`
 - `optimusctx doctor`
 - `optimusctx version`
+- `optimusctx release`
 
 In practice:
 
@@ -21,6 +41,7 @@ In practice:
 - `status` shows short read-only readiness information
 - `doctor` shows deeper diagnostics when something looks wrong
 - `version` prints build metadata for the installed binary
+- `release` is the maintainer-facing release preparation surface
 
 ## Install
 
@@ -158,6 +179,10 @@ Shows actionable diagnostics across repository state, freshness, runtime health,
 ### `optimusctx version`
 
 Prints version, commit, and build metadata for the installed binary.
+
+### `optimusctx release`
+
+Maintainer-facing release preparation and validation workflow.
 
 ## Product boundaries
 

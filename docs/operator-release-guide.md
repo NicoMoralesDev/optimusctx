@@ -16,8 +16,8 @@ Use the exact reviewed tag for every later verification, `workflow_dispatch` rer
 ## Publish
 
 ```bash
-git tag v1.2.3
-git push origin v1.2.3
+git tag vX.Y.Z
+git push origin vX.Y.Z
 ```
 
 That tag push starts `.github/workflows/release.yml` and builds the canonical GitHub Release archives plus checksum manifest first. npm, Homebrew, and Scoop publish from that same tagged release contract after the canonical release is available.
@@ -25,7 +25,7 @@ That tag push starts `.github/workflows/release.yml` and builds the canonical Gi
 ## Verify The Canonical GitHub Release
 
 ```bash
-TAG="v1.2.3"
+TAG="vX.Y.Z"
 gh release view "$TAG"
 mkdir -p /tmp/optimusctx-release-check
 gh release download "$TAG" --dir /tmp/optimusctx-release-check
@@ -94,7 +94,7 @@ optimusctx doctor
 Downstream reruns reuse the existing tag via `workflow_dispatch` with `release_tag` and `publication_channel`.
 
 ```bash
-TAG="v1.2.3"
+TAG="vX.Y.Z"
 gh workflow run release.yml -f release_tag="$TAG" -f publication_channel=npm
 ```
 

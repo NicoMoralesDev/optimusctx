@@ -2,9 +2,9 @@
 
 ## Purpose
 
-OptimusCtx v1.2 keeps a narrow distribution story that helps real users adopt the shipped binary without implying a broader installer platform than the repository actually supports today.
+OptimusCtx keeps a narrow distribution story that helps real users adopt the shipped binary without implying a broader installer platform than the repository actually supports today.
 
-This document defines the concrete release channels, the users those channels are for, how upgrades and rollbacks work, and what support assumptions apply after installation. For the v1.2 release-operator procedure, use `docs/operator-release-guide.md` as the canonical release, rerun, verification, and rollback flow.
+This document defines the concrete release channels, the users those channels are for, how upgrades and rollbacks work, and what support assumptions apply after installation. For the current release-operator procedure, use `docs/operator-release-guide.md` as the canonical release, rerun, verification, and rollback flow.
 
 The guiding constraint is unchanged from the product itself: OptimusCtx is a local-first single binary. Distribution should make that binary easier to obtain, verify, and upgrade, not turn it into a managed service or an invasive installer.
 
@@ -14,7 +14,7 @@ The guiding constraint is unchanged from the product itself: OptimusCtx is a loc
 - Installation and verification stay on the real shipped command surface.
 - The supported post-install commands are `optimusctx version`, `optimusctx init`, `optimusctx status`, `optimusctx doctor`, and the agent-facing runtime entrypoint `optimusctx run`.
 - Distribution does not promise a hosted onboarding flow, background agent, or managed update service.
-- Configuration writes remain explicit. `optimusctx init --client ...` is preview-first, and host registration is only written when the operator opts into `--write`.
+- Configuration writes remain explicit. `optimusctx init --client ...` reviews the exact change first, and host registration is only written when the operator opts into `--write`.
 
 ## Supported Release Channels
 
@@ -50,7 +50,7 @@ GitHub Release archives are the fallback and baseline channel.
   - `npm install -g @niccrow/optimusctx`
   - `npx @niccrow/optimusctx version`
 - Upgrade command: `npm install -g @niccrow/optimusctx@latest`
-- Verification after install or upgrade: rerun `optimusctx version`, `optimusctx status`, and `optimusctx doctor`, then use `optimusctx init --client claude-desktop` to preview onboarding and `optimusctx init --client claude-desktop --write` only if desired
+- Verification after install or upgrade: rerun `optimusctx version`, `optimusctx status`, and `optimusctx doctor`, then use `optimusctx init --client claude-desktop` to review onboarding and `optimusctx init --client claude-desktop --write` only if desired
 - Support boundary: the npm package is a wrapper over the canonical tagged GitHub Release binary, not a JavaScript reimplementation or a silent client-config installer
 
 ## Upgrade Policy
@@ -81,8 +81,8 @@ Every supported channel should converge on the same verification path:
 1. `optimusctx version` to confirm the installed binary reports the expected release metadata.
 2. `optimusctx status` to confirm the runtime and repository state are ready.
 3. `optimusctx doctor` when deeper diagnostics are needed.
-4. `optimusctx init --client claude-desktop` to preview supported-client onboarding in a real repository.
-5. `optimusctx init --client claude-desktop --write` only if the operator explicitly wants the config file write path after reviewing the preview output.
+4. `optimusctx init --client claude-desktop` to review supported-client onboarding in a real repository.
+5. `optimusctx init --client claude-desktop --write` only if the operator explicitly wants the config file write path after reviewing the rendered change.
 
 ## Support Boundary
 
@@ -91,7 +91,7 @@ Supported help covers:
 - obtaining the binary from one of the named channels
 - running the documented install commands for Homebrew, Scoop, or npm
 - verifying the binary with `version`, `status`, and `doctor`
-- understanding the explicit `init --client` preview and write flow
+- understanding the explicit `init --client` review and apply flow
 - best-effort and issue-driven support through repository docs and GitHub issues
 
 Support does not cover:
@@ -113,7 +113,7 @@ The following distribution work is explicitly deferred to later milestones:
 
 ## Release Messaging Guidance
 
-When communicating v1.2 externally or to early adopters, describe the release as:
+When communicating the current OptimusCtx release externally or to early adopters, describe it as:
 
 - a local-first single binary
 - available through GitHub Release archives, Homebrew, Scoop, and the npm wrapper package

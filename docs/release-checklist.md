@@ -2,7 +2,7 @@
 
 ## Goal
 
-Use this checklist when publishing a v1.2 release so the rollout stays aligned with the supported channel contract in `docs/distribution-strategy.md`.
+Use this checklist when publishing a release so the rollout stays aligned with the supported channel contract in `docs/distribution-strategy.md`.
 
 For the full operator path from `optimusctx release prepare` through verification, targeted rerun, and rollback, use [`operator-release-guide.md`](./operator-release-guide.md) as the canonical workflow.
 
@@ -65,8 +65,8 @@ After GitHub Release assets are available, npm, Homebrew, and Scoop are publishe
 - After installation or upgrade, run `optimusctx version`.
 - After installation or upgrade, run `optimusctx status`.
 - After installation or upgrade, run `optimusctx doctor`.
-- Use `optimusctx init --client claude-desktop` to preview supported-client onboarding in a repository.
-- Use `optimusctx init --client claude-desktop --write` only when the operator explicitly wants the config-write path after reviewing the preview output.
+- Use `optimusctx init --client claude-desktop` to review supported-client onboarding in a repository.
+- Use `optimusctx init --client claude-desktop --write` only when the operator explicitly wants the config-write path after reviewing the rendered change.
 
 ## Rollout Messaging
 
