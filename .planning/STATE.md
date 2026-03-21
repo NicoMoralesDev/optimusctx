@@ -5,9 +5,9 @@ milestone_name: "Command Surface Truth Cleanup"
 current_phase: 34
 current_phase_name: "Command Surface Truth And Canonical Output Cleanup"
 current_plan: 0
-status: defining_requirements
+status: ready_to_plan
 stopped_at: null
-last_updated: "2026-03-20T21:30:00Z"
+last_updated: "2026-03-20T21:45:00Z"
 last_activity: 2026-03-20
 progress:
   total_phases: 2
@@ -23,7 +23,7 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** Defining requirements
+**Status:** Ready to plan
 **Current Phase:** 34
 **Current Phase Name:** Command Surface Truth And Canonical Output Cleanup
 **Total Phases:** 2
@@ -31,7 +31,7 @@ progress:
 **Total Plans in Phase:** 0
 **Progress:** [----------] 0%
 **Last Activity:** 2026-03-20
-**Last Activity Description:** Started milestone `v1.3.8` for command-surface truth cleanup and deprecated-surface removal
+**Last Activity Description:** Defined requirements and roadmap for milestone `v1.3.8`
 
 ## Project Memory
 
@@ -45,7 +45,7 @@ progress:
 - Active milestone: `v1.3.8` command surface truth cleanup
 - Most recently completed milestone: `v1.3.6` release publication repair and workflow modernization
 - Latest public release tag: `v1.3.7`
-- Next execution action: define requirements and plan Phase `34`
+- Next execution action: run `$gsd-plan-phase 34`
 - Historical v1.0, v1.1, v1.2, and v1.3.x requirements and roadmaps are archived under `.planning/milestones/`
 
 ## Current Milestone Scope
@@ -90,4 +90,4 @@ progress:
 `v1.3.5` closed the MCP observability and guidance gaps left by `v1.3.4`, but the first real downstream publication against new package-manager repos showed a separate release-lane defect. `v1.3.6` closed that defect, `v1.3.7` shipped the follow-up cleanup to make `status` shorter and less noisy, and post-release feedback now points at the next cleanup target: stale references to `watch` and other discarded or deprecated surfaces still leak through some operator-facing outputs and docs.
 
 ---
-*Last updated: 2026-03-20 after starting milestone v1.3.8*
+*Last updated: 2026-03-20 after defining milestone v1.3.8 requirements and roadmap*
