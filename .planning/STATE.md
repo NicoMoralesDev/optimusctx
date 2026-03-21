@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: null
-milestone_name: null
-current_phase: null
-current_phase_name: null
+milestone: "1.3.8"
+milestone_name: "Command Surface Truth Cleanup"
+current_phase: 34
+current_phase_name: "Command Surface Truth And Canonical Output Cleanup"
 current_plan: 0
-status: no_active_milestone
-stopped_at: Archived milestone v1.3.6 after repairing downstream publication truth and modernizing the release workflow
-last_updated: "2026-03-20T20:05:58Z"
+status: defining_requirements
+stopped_at: null
+last_updated: "2026-03-20T21:30:00Z"
 last_activity: 2026-03-20
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 100
+  percent: 0
 ---
 
 # Planning State: OptimusCtx
@@ -23,15 +23,15 @@ progress:
 **Project reference:** `.planning/PROJECT.md`
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
-**Status:** No active milestone
-**Current Phase:** None
-**Current Phase Name:** None
-**Total Phases:** 0
+**Status:** Defining requirements
+**Current Phase:** 34
+**Current Phase Name:** Command Surface Truth And Canonical Output Cleanup
+**Total Phases:** 2
 **Current Plan:** 0
 **Total Plans in Phase:** 0
-**Progress:** [##########] 100%
+**Progress:** [----------] 0%
 **Last Activity:** 2026-03-20
-**Last Activity Description:** Archived milestone `v1.3.6` after fixing downstream publication truth and modernizing the release workflow
+**Last Activity Description:** Started milestone `v1.3.8` for command-surface truth cleanup and deprecated-surface removal
 
 ## Project Memory
 
@@ -42,20 +42,21 @@ progress:
 
 ## Current Planning Context
 
-- Active milestone: none
+- Active milestone: `v1.3.8` command surface truth cleanup
 - Most recently completed milestone: `v1.3.6` release publication repair and workflow modernization
-- Latest public release tag: `v1.3.5`
-- Next execution action: cut the `v1.3.6` release
+- Latest public release tag: `v1.3.7`
+- Next execution action: define requirements and plan Phase `34`
 - Historical v1.0, v1.1, v1.2, and v1.3.x requirements and roadmaps are archived under `.planning/milestones/`
 
-## Completed Milestone Scope
+## Current Milestone Scope
 
-- Repair Homebrew and Scoop publication against empty downstream repositories so first generated files are committed and pushed
-- Make downstream publication summaries truthful when a channel performed no write, a first write, or a real no-op against tracked content
-- Update the release workflow away from Node 20-deprecated action paths and align operator docs with the repaired contract
+- Remove stale references to discarded or deprecated commands from canonical CLI output
+- Align public and planning docs to the current supported command surface and release position
+- Add regression guardrails so deprecated-surface wording does not leak back into shipped operator paths
 
 ## Verification Status
 
+- `v1.3.7` release publication completed on 2026-03-20 with GitHub Release, npm, Homebrew, and Scoop all confirmed against the real downstream repositories.
 - Phase 32 verification passed on 2026-03-20 with targeted release tests covering first publication into empty downstream repos and truthful already-current reruns.
 - Phase 33 verification passed on 2026-03-20 with a passing full `go test ./...` suite and a clean `go run ./cmd/optimusctx release prepare --version 1.3.6 --json` preflight.
 - The `v1.3.5` release run `23359690455` remains the observed trigger: GitHub Release and npm published, while Homebrew and Scoop falsely reported `published` without any downstream commit.
@@ -63,7 +64,7 @@ progress:
 - Phase 27 verification passed on 2026-03-20 with a passing full `go test ./...` suite and workflow summary assertions updated for `publication_status`.
 - Phase 28 verification passed on 2026-03-20 with a passing full `go test ./...` suite and real onboarding/result guidance aligned to automatic `optimusctx run` host handoff.
 - `v1.3.3` release publication completed on 2026-03-20; GitHub Release and npm published successfully, while Homebrew and Scoop skipped because publication credentials were absent.
-- `v1.3.4` remains intentionally unreleased; `v1.3.6` is now complete on the branch and is the next fully truthful public release candidate.
+- `v1.3.4` remains intentionally unreleased; `v1.3.6` repaired the downstream publication truth gap and `v1.3.7` is now the latest public cut.
 - v1.3.1 milestone audit still carries one unchanged deferred manual item: real `claude` binary validation for `optimusctx init --client claude-cli --scope local --write` on a host with Claude Code installed.
 
 ## Recent Decisions
@@ -73,7 +74,8 @@ progress:
 - Agent guidance only counts if the host can actually consume it from a durable supported integration surface.
 - If a host cannot persist that guidance, `init` and docs must say so explicitly instead of implying the problem is solved.
 - A green downstream publication step is not enough evidence of shipment; first-publish flows against empty external repos must prove a real commit and push.
-- `v1.3.6` is the next intended public release because it repairs the `v1.3.5` downstream publication truth gap and modernizes the release workflow runtime.
+- Default `status` output should optimize for operator signal first, with raw diagnostics pushed behind an explicit verbose mode.
+- `v1.3.8` should remove stale references to discarded or deprecated commands rather than continuing to paper over them with copy tweaks.
 
 ## Accumulated Context
 
@@ -85,7 +87,7 @@ progress:
 - Phase 32 completed: downstream first-publish correctness and truthful publication status
 - Phase 33 completed: GitHub Actions runtime modernization and release docs alignment
 
-`v1.3.5` closed the MCP observability and guidance gaps left by `v1.3.4`, but the first real downstream publication against new package-manager repos showed a separate release-lane defect. `v1.3.6` closes that defect and leaves the branch ready for the corrective public release cut.
+`v1.3.5` closed the MCP observability and guidance gaps left by `v1.3.4`, but the first real downstream publication against new package-manager repos showed a separate release-lane defect. `v1.3.6` closed that defect, `v1.3.7` shipped the follow-up cleanup to make `status` shorter and less noisy, and post-release feedback now points at the next cleanup target: stale references to `watch` and other discarded or deprecated surfaces still leak through some operator-facing outputs and docs.
 
 ---
-*Last updated: 2026-03-20 after archiving milestone v1.3.6*
+*Last updated: 2026-03-20 after starting milestone v1.3.8*

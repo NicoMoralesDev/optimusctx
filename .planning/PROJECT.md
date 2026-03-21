@@ -10,25 +10,25 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 ## Current State
 
-- Shipped version: `v1.3.5`
+- Shipped version: `v1.3.7`
 - Runtime stack: Go, SQLite, Tree-sitter, MCP-over-STDIO
-- Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `watch`, `pack export`, `status`, deprecated alias `doctor`, `eval`, `install`, `version`, and `release prepare`, with first-class supported-client onboarding for Claude and Codex hosts plus canonical GitHub Release-rooted downstream publication
-- Product state: `v1.0`, `v1.1`, `v1.2`, `v1.3.1`, `v1.3.2`, and `v1.3.3` are published; `v1.3.4` remains intentionally unreleased; `v1.3.5` now has a canonical GitHub Release and npm publication; `v1.3.6` is complete on the branch and is the next intended public release cut to repair downstream publication truth and workflow runtime drift
+- Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `pack export`, `status`, deprecated alias `doctor`, `eval`, `install`, `version`, and `release prepare`, with first-class supported-client onboarding for Claude and Codex hosts plus canonical GitHub Release-rooted downstream publication. Some operator-facing outputs and docs still leak stale references to discarded or deprecated surfaces, which is the focus of `v1.3.8`.
+- Product state: `v1.0`, `v1.1`, `v1.2`, `v1.3.1`, `v1.3.2`, `v1.3.3`, `v1.3.6`, and `v1.3.7` are published; `v1.3.4` remains intentionally unreleased; `v1.3.5` shipped with a downstream publication truth gap that was repaired in `v1.3.6`
 
-## Current Milestone
+## Current Milestone: v1.3.8 Command Surface Truth Cleanup
 
-No active milestone
+**Goal:** Remove stale references to discarded or deprecated commands so the shipped CLI, status surfaces, and docs describe only the supported operator contract.
 
-**Current release position:**
-- `v1.3.6` is complete on the branch and ready for release
-- `v1.3.5` remains the latest public tag, but its Homebrew and Scoop publication truth gap is corrected in `v1.3.6`
-- `v1.3.4` stays intentionally unreleased
+**Target features:**
+- Canonical status and help output no longer surface `watch` or other discarded flows as active operator paths
+- Deprecated aliases and compatibility surfaces are clearly marked as such wherever they still exist
+- Public docs and planning docs reflect the current command surface and latest published release position
 
 ## Next Milestone Goals
 
-- Cut `v1.3.6` as the corrective release for downstream publication truth
-- Verify that Homebrew and Scoop now create real downstream commits on first publication
-- Confirm the release lane no longer emits the old Node 20 deprecation warnings
+- Remove stale command references from canonical CLI output, next-step guidance, and diagnostics
+- Align public and planning documentation to the current supported command surface
+- Add regression coverage so discarded or deprecated command references do not silently return
 
 ## Requirements
 
@@ -71,7 +71,7 @@ v1.0 proved the core runtime wedge. v1.1 then proved the shipped product works e
 
 v1.2 closed the operator loop around the release surface. v1.3.1 then finished the supported Claude and Codex onboarding story by delivering host-native preview/write behavior, correcting command ownership around `init`, and updating the docs/evidence to match the shipped contract. v1.3.2 tightened that operator experience further by collapsing the common bootstrap and onboarding path into one smooth interactive `init` flow while preserving explicit scripting and direct-flag usage. v1.3.3 refined that same onboarding path again by making the conversation intent-led and destination-first, while trimming avoidable noise from the result output and docs.
 
-`v1.3.4` improved release truthfulness and clarified runtime handoff, but it still left the core adoption question unresolved inside the product: OptimusCtx itself still could not prove whether the host discovered or actually used the MCP server, `status` and `doctor` still overlapped heavily, and the new guidance mostly landed as human docs rather than durable agent-facing instructions consumed by the host. `v1.3.5` corrected that gap directly and the release was cut, but the first real Homebrew and Scoop publication against fresh downstream repos exposed a separate release-lane bug: the workflow treated newly created formula and manifest files as unchanged because they were still untracked, so the run reported `published` without ever committing or pushing to the tap or bucket. `v1.3.6` closes that distribution truth gap and upgrades the release workflow off the deprecated action majors, so the next step is the corrective `v1.3.6` release rather than more milestone planning.
+`v1.3.4` improved release truthfulness and clarified runtime handoff, but it still left the core adoption question unresolved inside the product: OptimusCtx itself still could not prove whether the host discovered or actually used the MCP server, `status` and `doctor` still overlapped heavily, and the new guidance mostly landed as human docs rather than durable agent-facing instructions consumed by the host. `v1.3.5` corrected that gap directly, but the first real Homebrew and Scoop publication against fresh downstream repos exposed a separate release-lane bug: the workflow treated newly created formula and manifest files as unchanged because they were still untracked, so the run reported `published` without ever committing or pushing to the tap or bucket. `v1.3.6` closed that distribution truth gap and upgraded the release workflow off the deprecated action majors, and `v1.3.7` shipped the follow-up cleanup that made the default `status` output shorter and less misleading. The next milestone is not about new runtime capability; it is about making every remaining CLI and documentation surface tell the same truth about what commands still matter.
 
 ## Constraints
 
@@ -108,4 +108,4 @@ v1.2 closed the operator loop around the release surface. v1.3.1 then finished t
 | Release automation should use current supported GitHub Actions runtimes instead of relying on compatibility warnings | The release lane should stay quiet and future-proof on current GitHub-hosted runners | ✓ Completed in v1.3.6 |
 
 ---
-*Last updated: 2026-03-20 after archiving milestone v1.3.6*
+*Last updated: 2026-03-20 after starting milestone v1.3.8*
