@@ -98,6 +98,59 @@ func TestIgnoreMatcherGitInfoExcludeAndNegation(t *testing.T) {
 	}
 }
 
+func TestIgnoreMatcherEvaluateBatchMixedResults(t *testing.T) {
+	repoRoot := initDiscoveryRepo(t)
+	writeFile(t, filepath.Join(repoRoot, ".gitignore"), "*.tmp\n!keep.tmp\nignored-dir/\n")
+	writeFile(t, filepath.Join(repoRoot, ".git", "info", "exclude"), "local-only.txt\n")
+	writeFile(t, filepath.Join(repoRoot, "keep.tmp"), "keep me\n")
+	writeFile(t, filepath.Join(repoRoot, "ignored.tmp"), "ignore me\n")
+	writeFile(t, filepath.Join(repoRoot, "local-only.txt"), "local only\n")
+
+	matcher := NewIgnoreMatcher(repoRoot)
+	matches, err := matcher.evaluateBatch([]ignoreQuery{
+		{relPath: "ignored.tmp", isDir: false},
+		{relPath: "local-only.txt", isDir: false},
+		{relPath: "keep.tmp", isDir: false},
+		{relPath: "ignored-dir", isDir: true},
+		{relPath: ".optimusctx", isDir: true},
+	})
+	if err != nil {
+		t.Fatalf("evaluateBatch() error = %v", err)
+	}
+
+	if got := matches["ignored.tmp"].Reason; got != IgnoreReasonGitIgnore {
+		t.Fatalf("ignored.tmp reason = %q, want %q", got, IgnoreReasonGitIgnore)
+	}
+	if got := matches["local-only.txt"].Reason; got != IgnoreReasonGitInfoExclude {
+		t.Fatalf("local-only.txt reason = %q, want %q", got, IgnoreReasonGitInfoExclude)
+	}
+	if got := matches["keep.tmp"].Status; got != IgnoreStatusIncluded {
+		t.Fatalf("keep.tmp status = %q, want %q", got, IgnoreStatusIncluded)
+	}
+	if got := matches["ignored-dir"].Reason; got != IgnoreReasonGitIgnore {
+		t.Fatalf("ignored-dir reason = %q, want %q", got, IgnoreReasonGitIgnore)
+	}
+	if got := matches[".optimusctx"].Reason; got != IgnoreReasonBuiltinExclusion {
+		t.Fatalf(".optimusctx reason = %q, want %q", got, IgnoreReasonBuiltinExclusion)
+	}
+}
+
+func TestParseCheckIgnoreBatchOutput(t *testing.T) {
+	output := []byte(".gitignore\x001\x00*.tmp\x00ignored.tmp\x00\x00\x00\x00keep.tmp\x00")
+
+	results, err := parseCheckIgnoreBatchOutput(output)
+	if err != nil {
+		t.Fatalf("parseCheckIgnoreBatchOutput() error = %v", err)
+	}
+
+	if got := results["ignored.tmp"]; !got.ignored || got.source != ".gitignore" || got.pattern != "*.tmp" {
+		t.Fatalf("ignored.tmp result = %+v", got)
+	}
+	if got := results["keep.tmp"]; got.ignored || got.source != "" || got.pattern != "" {
+		t.Fatalf("keep.tmp result = %+v", got)
+	}
+}
+
 func TestDiscoveryDoesNotTraverseSymlinks(t *testing.T) {
 	repoRoot := initDiscoveryRepo(t)
 	writeFile(t, filepath.Join(repoRoot, "src", "app.go"), "package main\n")

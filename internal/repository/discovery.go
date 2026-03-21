@@ -100,6 +100,18 @@ func (d Discovery) walkDirectory(absPath, relPath string, discoveredAt time.Time
 		return entries[i].Name() < entries[j].Name()
 	})
 
+	type discoveredEntry struct {
+		entry        os.DirEntry
+		relPath      string
+		absPath      string
+		info         os.FileInfo
+		isDir        bool
+		isSymlink    bool
+		ignoreRecord IgnoreMatch
+	}
+
+	discoveredEntries := make([]discoveredEntry, 0, len(entries))
+	ignoreQueries := make([]ignoreQuery, 0, len(entries))
 	for _, entry := range entries {
 		childRelPath := entry.Name()
 		if relPath != "." {
@@ -113,14 +125,34 @@ func (d Discovery) walkDirectory(absPath, relPath string, discoveredAt time.Time
 			return err
 		}
 
-		if info.Mode()&os.ModeSymlink != 0 {
+		discovered := discoveredEntry{
+			entry:     entry,
+			relPath:   childRelPath,
+			absPath:   childAbsPath,
+			info:      info,
+			isDir:     entry.IsDir(),
+			isSymlink: info.Mode()&os.ModeSymlink != 0,
+		}
+		discoveredEntries = append(discoveredEntries, discovered)
+		if !discovered.isSymlink {
+			ignoreQueries = append(ignoreQueries, ignoreQuery{relPath: childRelPath, isDir: discovered.isDir})
+		}
+	}
+
+	ignoreMatches, err := d.Matcher.evaluateBatch(ignoreQueries)
+	if err != nil {
+		return err
+	}
+
+	for _, discovered := range discoveredEntries {
+		if discovered.isSymlink {
 			result.Files = append(result.Files, FileRecord{
-				Path:              childRelPath,
-				DirectoryPath:     normalizeDirectory(filepath.Dir(childRelPath)),
-				Extension:         filepath.Ext(childRelPath),
-				LanguageHint:      languageHint(childRelPath),
-				SizeBytes:         info.Size(),
-				FilesystemModTime: info.ModTime().UTC(),
+				Path:              discovered.relPath,
+				DirectoryPath:     normalizeDirectory(filepath.Dir(discovered.relPath)),
+				Extension:         filepath.Ext(discovered.relPath),
+				LanguageHint:      languageHint(discovered.relPath),
+				SizeBytes:         discovered.info.Size(),
+				FilesystemModTime: discovered.info.ModTime().UTC(),
 				IgnoreStatus:      IgnoreStatusIgnored,
 				IgnoreReason:      IgnoreReasonSymlinkNotTraversed,
 				DiscoveredAt:      discoveredAt,
@@ -128,11 +160,11 @@ func (d Discovery) walkDirectory(absPath, relPath string, discoveredAt time.Time
 			continue
 		}
 
-		match := d.Matcher.Evaluate(childRelPath, entry.IsDir())
-		if entry.IsDir() {
+		match := ignoreMatches[discovered.relPath]
+		if discovered.isDir {
 			result.Directories = append(result.Directories, DirectoryRecord{
-				Path:         childRelPath,
-				ParentPath:   normalizeDirectory(filepath.Dir(childRelPath)),
+				Path:         discovered.relPath,
+				ParentPath:   normalizeDirectory(filepath.Dir(discovered.relPath)),
 				IgnoreStatus: match.Status,
 				IgnoreReason: match.Reason,
 				DiscoveredAt: discoveredAt,
@@ -140,29 +172,29 @@ func (d Discovery) walkDirectory(absPath, relPath string, discoveredAt time.Time
 			if match.Status == IgnoreStatusIgnored {
 				continue
 			}
-			if err := d.walkDirectory(childAbsPath, childRelPath, discoveredAt, persistedFiles, result); err != nil {
+			if err := d.walkDirectory(discovered.absPath, discovered.relPath, discoveredAt, persistedFiles, result); err != nil {
 				return err
 			}
 			continue
 		}
 
 		fileRecord := FileRecord{
-			Path:              childRelPath,
-			DirectoryPath:     normalizeDirectory(filepath.Dir(childRelPath)),
-			Extension:         filepath.Ext(childRelPath),
-			LanguageHint:      languageHint(childRelPath),
-			SizeBytes:         info.Size(),
-			FilesystemModTime: info.ModTime().UTC(),
+			Path:              discovered.relPath,
+			DirectoryPath:     normalizeDirectory(filepath.Dir(discovered.relPath)),
+			Extension:         filepath.Ext(discovered.relPath),
+			LanguageHint:      languageHint(discovered.relPath),
+			SizeBytes:         discovered.info.Size(),
+			FilesystemModTime: discovered.info.ModTime().UTC(),
 			IgnoreStatus:      match.Status,
 			IgnoreReason:      match.Reason,
 			DiscoveredAt:      discoveredAt,
 		}
 		if match.Status == IgnoreStatusIncluded {
-			if persisted := persistedFiles[childRelPath]; canReusePersistedHash(persisted, fileRecord) {
+			if persisted := persistedFiles[discovered.relPath]; canReusePersistedHash(persisted, fileRecord) {
 				fileRecord.ContentHash = persisted.ContentHash
 				fileRecord.LastIndexedAt = persisted.LastIndexedAt
 			} else {
-				hash, err := d.HashFile(childAbsPath)
+				hash, err := d.HashFile(discovered.absPath)
 				if err != nil {
 					return err
 				}

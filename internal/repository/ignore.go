@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"bytes"
+	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -36,6 +38,17 @@ type IgnoreMatcher struct {
 	builtinDirs map[string]struct{}
 }
 
+type ignoreQuery struct {
+	relPath string
+	isDir   bool
+}
+
+type ignoreGitResult struct {
+	source  string
+	pattern string
+	ignored bool
+}
+
 func NewIgnoreMatcher(rootPath string) *IgnoreMatcher {
 	_, err := runGit(rootPath, "rev-parse", "--git-dir")
 
@@ -58,43 +71,73 @@ func NewIgnoreMatcher(rootPath string) *IgnoreMatcher {
 }
 
 func (m *IgnoreMatcher) Evaluate(relPath string, isDir bool) IgnoreMatch {
-	normalized := normalizeRelativePath(relPath)
-	if normalized == "." {
+	matches, err := m.evaluateBatch([]ignoreQuery{{relPath: relPath, isDir: isDir}})
+	if err != nil {
 		return IgnoreMatch{Status: IgnoreStatusIncluded}
 	}
+	return matches[normalizeRelativePath(relPath)]
+}
 
-	if source := m.matchBuiltin(normalized); source != "" {
-		return IgnoreMatch{
-			Status: IgnoreStatusIgnored,
-			Reason: IgnoreReasonBuiltinExclusion,
-			Source: source,
+func (m *IgnoreMatcher) evaluateBatch(queries []ignoreQuery) (map[string]IgnoreMatch, error) {
+	results := make(map[string]IgnoreMatch, len(queries))
+	if len(queries) == 0 {
+		return results, nil
+	}
+
+	gitQueries := make([]ignoreQuery, 0, len(queries))
+	for _, query := range queries {
+		normalized := normalizeRelativePath(query.relPath)
+		if source := m.matchBuiltin(normalized); source != "" {
+			results[normalized] = IgnoreMatch{
+				Status: IgnoreStatusIgnored,
+				Reason: IgnoreReasonBuiltinExclusion,
+				Source: source,
+			}
+			continue
+		}
+		switch {
+		case normalized == ".":
+			results[normalized] = IgnoreMatch{Status: IgnoreStatusIncluded}
+		case !m.gitEnabled:
+			results[normalized] = IgnoreMatch{Status: IgnoreStatusIncluded}
+		default:
+			gitQueries = append(gitQueries, ignoreQuery{relPath: normalized, isDir: query.isDir})
 		}
 	}
 
-	if !m.gitEnabled {
-		return IgnoreMatch{Status: IgnoreStatusIncluded}
+	if len(gitQueries) == 0 {
+		return results, nil
 	}
 
-	output, ignored, err := m.checkGitIgnore(normalized, isDir)
-	if err != nil || !ignored {
-		return IgnoreMatch{Status: IgnoreStatusIncluded}
+	gitResults, err := m.checkGitIgnoreBatch(gitQueries)
+	if err != nil {
+		return results, err
 	}
 
-	source, pattern := parseCheckIgnoreOutput(output)
-	if strings.HasPrefix(pattern, "!") {
-		return IgnoreMatch{Status: IgnoreStatusIncluded}
-	}
-	reason := IgnoreReasonGitIgnore
-	if strings.HasSuffix(source, ".git/info/exclude") {
-		reason = IgnoreReasonGitInfoExclude
+	for _, query := range gitQueries {
+		normalized := normalizeRelativePath(query.relPath)
+		gitResult, ok := gitResults[normalized]
+		if !ok || !gitResult.ignored {
+			results[normalized] = IgnoreMatch{Status: IgnoreStatusIncluded}
+			continue
+		}
+		if strings.HasPrefix(gitResult.pattern, "!") {
+			results[normalized] = IgnoreMatch{Status: IgnoreStatusIncluded}
+			continue
+		}
+		reason := IgnoreReasonGitIgnore
+		if strings.HasSuffix(gitResult.source, ".git/info/exclude") {
+			reason = IgnoreReasonGitInfoExclude
+		}
+		results[normalized] = IgnoreMatch{
+			Status:  IgnoreStatusIgnored,
+			Reason:  reason,
+			Source:  gitResult.source,
+			Pattern: gitResult.pattern,
+		}
 	}
 
-	return IgnoreMatch{
-		Status:  IgnoreStatusIgnored,
-		Reason:  reason,
-		Source:  source,
-		Pattern: pattern,
-	}
+	return results, nil
 }
 
 func (m *IgnoreMatcher) matchBuiltin(relPath string) string {
@@ -106,40 +149,59 @@ func (m *IgnoreMatcher) matchBuiltin(relPath string) string {
 	return ""
 }
 
-func (m *IgnoreMatcher) checkGitIgnore(relPath string, isDir bool) (string, bool, error) {
-	queryPath := relPath
-	if isDir && !strings.HasSuffix(queryPath, "/") {
-		queryPath += "/"
+func (m *IgnoreMatcher) checkGitIgnoreBatch(queries []ignoreQuery) (map[string]ignoreGitResult, error) {
+	if len(queries) == 0 {
+		return map[string]ignoreGitResult{}, nil
 	}
 
-	cmd := exec.Command("git", "check-ignore", "-v", queryPath)
+	var stdin bytes.Buffer
+	for _, query := range queries {
+		path := query.relPath
+		if query.isDir && !strings.HasSuffix(path, "/") {
+			path += "/"
+		}
+		stdin.WriteString(path)
+		stdin.WriteByte(0)
+	}
+
+	cmd := exec.Command("git", "check-ignore", "-v", "-z", "--non-matching", "--stdin")
 	cmd.Dir = m.rootPath
+	cmd.Stdin = &stdin
 	output, err := cmd.CombinedOutput()
-	if err == nil {
-		return strings.TrimSpace(string(output)), true, nil
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			return map[string]ignoreGitResult{}, nil
+		}
+		return nil, err
 	}
-
-	if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
-		return "", false, nil
-	}
-
-	return "", false, err
+	return parseCheckIgnoreBatchOutput(output)
 }
 
-func parseCheckIgnoreOutput(output string) (string, string) {
-	if output == "" {
-		return "", ""
+func parseCheckIgnoreBatchOutput(output []byte) (map[string]ignoreGitResult, error) {
+	if len(output) == 0 {
+		return map[string]ignoreGitResult{}, nil
 	}
 
-	line := strings.SplitN(output, "\n", 2)[0]
-	parts := strings.SplitN(line, "\t", 2)
-	meta := parts[0]
-	metaParts := strings.SplitN(meta, ":", 3)
-	if len(metaParts) < 3 {
-		return filepath.ToSlash(meta), ""
+	parts := strings.Split(string(output), "\x00")
+	if parts[len(parts)-1] == "" {
+		parts = parts[:len(parts)-1]
+	}
+	if len(parts)%4 != 0 {
+		return nil, fmt.Errorf("parse git check-ignore batch output: expected groups of 4, got %d fields", len(parts))
 	}
 
-	return filepath.ToSlash(metaParts[0]), metaParts[2]
+	results := make(map[string]ignoreGitResult, len(parts)/4)
+	for i := 0; i < len(parts); i += 4 {
+		source := filepath.ToSlash(parts[i])
+		pattern := parts[i+2]
+		path := normalizeRelativePath(parts[i+3])
+		results[path] = ignoreGitResult{
+			source:  source,
+			pattern: pattern,
+			ignored: source != "" || pattern != "",
+		}
+	}
+	return results, nil
 }
 
 func normalizeRelativePath(path string) string {
