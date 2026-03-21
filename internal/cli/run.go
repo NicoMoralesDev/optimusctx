@@ -30,10 +30,10 @@ var (
 	runRefreshService = func(ctx context.Context, workingDir string, reason repository.RefreshReason) (app.RefreshResult, error) {
 		return app.NewRefreshService().Refresh(ctx, app.RefreshRequest{StartPath: workingDir, Reason: reason})
 	}
-	runWatchService = func(ctx context.Context, workingDir string, stdout io.Writer) (repository.WatchRunResult, error) {
+	runWatchService = func(ctx context.Context, workingDir string, errout io.Writer) (repository.WatchRunResult, error) {
 		service := app.NewWatchService()
 		service.ReportRefresh = func(report repository.WatchRefreshReport) {
-			_, _ = io.WriteString(stdout, formatWatchRefreshReport(report))
+			_, _ = io.WriteString(errout, formatWatchRefreshReport(report))
 		}
 		return service.Run(ctx, repository.WatchRequest{StartPath: workingDir})
 	}
@@ -85,7 +85,7 @@ func newRunCommand() *Command {
 
 			watchErr := make(chan error, 1)
 			go func() {
-				_, err := runWatchService(ctx, workingDir, stdout)
+				_, err := runWatchService(ctx, workingDir, runCommandStderr)
 				watchErr <- err
 			}()
 

@@ -18,6 +18,7 @@ func TestRunCommand(t *testing.T) {
 	previousHealth := runHealthService
 	previousInit := runInitService
 	previousRefresh := runRefreshService
+	previousWatch := runWatchService
 	t.Cleanup(func() {
 		runCommandServer = previousServe
 		runCommandInput = previousInput
@@ -25,6 +26,7 @@ func TestRunCommand(t *testing.T) {
 		runHealthService = previousHealth
 		runInitService = previousInit
 		runRefreshService = previousRefresh
+		runWatchService = previousWatch
 	})
 
 	var called bool
@@ -85,6 +87,7 @@ func TestRunCommandBootstrapsMissingState(t *testing.T) {
 	previousHealth := runHealthService
 	previousInit := runInitService
 	previousRefresh := runRefreshService
+	previousWatch := runWatchService
 	t.Cleanup(func() {
 		runCommandServer = previousServe
 		runCommandInput = previousInput
@@ -92,6 +95,7 @@ func TestRunCommandBootstrapsMissingState(t *testing.T) {
 		runHealthService = previousHealth
 		runInitService = previousInit
 		runRefreshService = previousRefresh
+		runWatchService = previousWatch
 	})
 
 	var calledInit bool
@@ -109,6 +113,9 @@ func TestRunCommandBootstrapsMissingState(t *testing.T) {
 	runRefreshService = func(ctx context.Context, workingDir string, reason repository.RefreshReason) (app.RefreshResult, error) {
 		t.Fatal("refresh should not be called immediately after init bootstrap")
 		return app.RefreshResult{}, nil
+	}
+	runWatchService = func(ctx context.Context, workingDir string, errout io.Writer) (repository.WatchRunResult, error) {
+		return repository.WatchRunResult{}, nil
 	}
 	runCommandServer = func(ctx context.Context, repoRoot string, stdin io.Reader, serveStdout io.Writer, serveStderr io.Writer) error {
 		calledServer = true
@@ -134,6 +141,7 @@ func TestRunCommandRefreshesStaleState(t *testing.T) {
 	previousHealth := runHealthService
 	previousInit := runInitService
 	previousRefresh := runRefreshService
+	previousWatch := runWatchService
 	t.Cleanup(func() {
 		runCommandServer = previousServe
 		runCommandInput = previousInput
@@ -141,6 +149,7 @@ func TestRunCommandRefreshesStaleState(t *testing.T) {
 		runHealthService = previousHealth
 		runInitService = previousInit
 		runRefreshService = previousRefresh
+		runWatchService = previousWatch
 	})
 
 	var calledRefresh bool
@@ -162,6 +171,9 @@ func TestRunCommandRefreshesStaleState(t *testing.T) {
 			t.Fatalf("refresh reason = %q, want watch", reason)
 		}
 		return app.RefreshResult{RepositoryRoot: "/repo", FreshnessStatus: repository.FreshnessStatusFresh}, nil
+	}
+	runWatchService = func(ctx context.Context, workingDir string, errout io.Writer) (repository.WatchRunResult, error) {
+		return repository.WatchRunResult{}, nil
 	}
 	runCommandServer = func(ctx context.Context, repoRoot string, stdin io.Reader, serveStdout io.Writer, serveStderr io.Writer) error {
 		calledServer = true
@@ -203,6 +215,65 @@ func TestRunCommandRejectsUnsupportedWorkingDirectory(t *testing.T) {
 	err := NewRootCommand().Execute([]string{"run"}, &stdout)
 	if err == nil || !strings.Contains(err.Error(), "no supported repository root found") {
 		t.Fatalf("Execute(run) error = %v", err)
+	}
+}
+
+func TestRunCommandRoutesWatchReportsToStderr(t *testing.T) {
+	previousServe := runCommandServer
+	previousInput := runCommandInput
+	previousStderr := runCommandStderr
+	previousHealth := runHealthService
+	previousInit := runInitService
+	previousRefresh := runRefreshService
+	previousWatch := runWatchService
+	t.Cleanup(func() {
+		runCommandServer = previousServe
+		runCommandInput = previousInput
+		runCommandStderr = previousStderr
+		runHealthService = previousHealth
+		runInitService = previousInit
+		runRefreshService = previousRefresh
+		runWatchService = previousWatch
+	})
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	runCommandInput = bytes.NewBufferString("")
+	runCommandStderr = &stderr
+	runHealthService = func(ctx context.Context, workingDir string) (repository.HealthResult, error) {
+		return repository.HealthResult{
+			Repository: repository.LayeredContextEnvelope{RepositoryRoot: "/repo", Freshness: repository.FreshnessStatusFresh},
+			Summary:    repository.HealthSummary{StateStatus: repository.HealthStateStatusReady},
+		}, nil
+	}
+	runInitService = func(ctx context.Context, workingDir string) (app.InitResult, error) {
+		t.Fatal("init should not be called for healthy state")
+		return app.InitResult{}, nil
+	}
+	runRefreshService = func(ctx context.Context, workingDir string, reason repository.RefreshReason) (app.RefreshResult, error) {
+		t.Fatal("refresh should not be called for fresh state")
+		return app.RefreshResult{}, nil
+	}
+	runWatchService = func(ctx context.Context, workingDir string, errout io.Writer) (repository.WatchRunResult, error) {
+		if errout != &stderr {
+			t.Fatal("watch output should use stderr during MCP run")
+		}
+		_, _ = io.WriteString(errout, "watch refresh: reason=watch generation=1 freshness=fresh changed=0 unchanged=1 affected_directories=1 force_full=false error=n/a\n")
+		return repository.WatchRunResult{}, nil
+	}
+	runCommandServer = func(ctx context.Context, repoRoot string, stdin io.Reader, serveStdout io.Writer, serveStderr io.Writer) error {
+		_, _ = io.WriteString(serveStderr, "optimusctx mcp: ready for stdio requests\n")
+		return nil
+	}
+
+	if err := NewRootCommand().Execute([]string{"run"}, &stdout); err != nil {
+		t.Fatalf("Execute(run) error = %v", err)
+	}
+	if strings.Contains(stdout.String(), "watch refresh:") {
+		t.Fatalf("stdout should not contain watch reports: %q", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "watch refresh:") {
+		t.Fatalf("stderr should contain watch report: %q", stderr.String())
 	}
 }
 
