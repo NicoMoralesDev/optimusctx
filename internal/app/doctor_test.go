@@ -218,6 +218,45 @@ func TestDoctorHealthyWithoutWatch(t *testing.T) {
 	}
 }
 
+func TestDoctorDoesNotDegradeWhenHostIsConfiguredButUnused(t *testing.T) {
+	repoRoot := initRepo(t)
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "alpha.go"), "package pkg\n\nfunc Alpha() {}\n")
+
+	if _, err := NewRefreshService().Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+	writeDoctorCodexRegistration(t, homeDir)
+
+	service := NewDoctorService()
+	service.Getwd = func() (string, error) { return repoRoot, nil }
+
+	report, err := service.Doctor(context.Background(), repoRoot, repository.DoctorRequest{BudgetLimit: 2})
+	if err != nil {
+		t.Fatalf("Doctor() error = %v", err)
+	}
+
+	if report.HostMCP.Status != repository.DoctorStatusHealthy {
+		t.Fatalf("HostMCP.Status = %q, want healthy", report.HostMCP.Status)
+	}
+	if report.MCPActivity.Status != repository.DoctorStatusMissing {
+		t.Fatalf("MCPActivity.Status = %q, want missing", report.MCPActivity.Status)
+	}
+	if report.Summary.Status != repository.DoctorStatusHealthy {
+		t.Fatalf("Summary.Status = %q, want healthy", report.Summary.Status)
+	}
+	for _, issue := range report.Summary.Issues {
+		if issue.Section == "mcp-usage" {
+			t.Fatalf("Issues should not include mcp-usage before any observed session: %+v", report.Summary.Issues)
+		}
+	}
+}
+
 func TestDoctorDetectsStaleWatch(t *testing.T) {
 	repoRoot := initRepo(t)
 	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "alpha.go"), "package pkg\n\nfunc Alpha() {}\n")

@@ -111,9 +111,6 @@ func (s DoctorService) Doctor(ctx context.Context, startPath string, request rep
 	if err != nil {
 		return repository.DoctorReport{}, fmt.Errorf("read host mcp registrations: %w", err)
 	}
-	if report.HostMCP.Status == repository.DoctorStatusHealthy && report.MCPActivity.Status == repository.DoctorStatusMissing {
-		report.MCPActivity.Status = repository.DoctorStatusDegraded
-	}
 
 	if health.State.DatabaseFile.Exists {
 		layout, err := s.resolveLayout(health.Identity.RootPath)
@@ -409,7 +406,9 @@ func doctorSummary(report repository.DoctorReport) repository.DoctorSummary {
 	addIssue("budget", report.Budget.Status, "no persisted token-cost hotspots available", "run `optimusctx run` so runtime refresh can persist budget analysis inputs")
 	addIssue("mcp", report.MCPReadiness.Status, doctorMCPIssue(report), "use `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register the MCP contract")
 	addIssue("mcp-registration", report.HostMCP.Status, doctorMCPRegistrationIssue(report), doctorMCPRegistrationAction(report))
-	addIssue("mcp-usage", report.MCPActivity.Status, doctorMCPActivityIssue(report), doctorMCPActivityAction(report))
+	if doctorShouldReportMCPActivityIssue(report) {
+		addIssue("mcp-usage", report.MCPActivity.Status, doctorMCPActivityIssue(report), doctorMCPActivityAction(report))
+	}
 
 	status := repository.DoctorStatusHealthy
 	for _, issue := range issues {
@@ -552,6 +551,16 @@ func doctorMCPActivityIssue(report repository.DoctorReport) string {
 
 func doctorMCPActivityAction(report repository.DoctorReport) string {
 	return "start a session from your registered host and verify it exposes and calls `optimusctx.*` tools; `optimusctx status` will record the evidence"
+}
+
+func doctorShouldReportMCPActivityIssue(report repository.DoctorReport) bool {
+	if report.HostMCP.Status != repository.DoctorStatusHealthy {
+		return false
+	}
+	if report.MCPActivity.LastSessionStartAt.IsZero() {
+		return false
+	}
+	return report.MCPActivity.Status != repository.DoctorStatusHealthy
 }
 
 func doctorRecommendedFixes(issues []repository.DoctorIssue) []string {

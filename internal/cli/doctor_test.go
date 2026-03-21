@@ -43,8 +43,8 @@ func TestDoctorCommandWarnsAndDelegatesToStatus(t *testing.T) {
 	output := stdout.String()
 	for _, want := range []string{
 		"warning: `optimusctx doctor` is deprecated; use `optimusctx status`",
-		"overall status: healthy",
-		"serve command: optimusctx run",
+		"status: ready",
+		"runtime launch:",
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("doctor output missing %q:\n%s", want, output)

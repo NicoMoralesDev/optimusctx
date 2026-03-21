@@ -108,17 +108,111 @@ func TestStatusCommandCanonicalReport(t *testing.T) {
 		}
 		output := stdout.String()
 		for _, want := range []string{
+			"status: ready",
+			"repository: " + repoRoot,
+			"freshness: fresh (generation 7)",
+			"refresh: success at 2026-03-19T12:00:00Z",
+			"watch: running",
+			"MCP",
+			"setup: configured for Codex CLI",
+			"config: /home/test/.codex/config.toml",
+			"agent guidance: /home/test/.codex/AGENTS.md",
+			"runtime launch: automatic via the registered host (`optimusctx run`)",
+			"usage: confirmed",
+			"evidence: last tool call optimusctx.repository_map at 2026-03-19T12:01:03Z",
+			"tip: rerun `optimusctx status --verbose` for full diagnostics",
+		} {
+			if !strings.Contains(output, want) {
+				t.Fatalf("status output missing %q:\n%s", want, output)
+			}
+		}
+		for _, unwanted := range []string{
+			"Structural Coverage",
+			"MCP Host Registration",
+			"serve command: optimusctx run",
+		} {
+			if strings.Contains(output, unwanted) {
+				t.Fatalf("status output should omit %q in default mode:\n%s", unwanted, output)
+			}
+		}
+	})
+}
+
+func TestStatusCommandVerboseReport(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+
+	previous := statusCommandService
+	t.Cleanup(func() { statusCommandService = previous })
+
+	statusCommandService = func(ctx context.Context, workingDir string) (repository.DoctorReport, error) {
+		return repository.DoctorReport{
+			Identity: repository.LayeredContextRepositoryIdentity{
+				RootPath:      repoRoot,
+				DetectionMode: "git",
+			},
+			Repository: repository.LayeredContextEnvelope{
+				RepositoryRoot: repoRoot,
+				Generation:     7,
+				Freshness:      repository.FreshnessStatusFresh,
+			},
+			Install: repository.DoctorInstallSection{
+				BinaryVersion: "dev",
+				WorkingDir:    repoRoot,
+			},
+			MCPReadiness: repository.DoctorMCPReadinessSection{
+				Status:           repository.DoctorStatusHealthy,
+				ServerName:       repository.DefaultMCPServerName,
+				ServeCommand:     repository.NewServeCommand(""),
+				SnippetAvailable: true,
+			},
+			HostMCP: repository.DoctorHostRegistrationSection{
+				Status: repository.DoctorStatusHealthy,
+				Hosts: []repository.DoctorHostRegistration{
+					{
+						Client:               repository.SupportedClient{ID: repository.ClientCodexCLI, DisplayName: "Codex CLI"},
+						RegistrationState:    repository.HostRegistrationDetected,
+						RegistrationEvidence: "found OptimusCtx in shared Codex config",
+						RegistrationPath:     "/home/test/.codex/config.toml",
+						GuidanceState:        repository.GuidanceStateConfigured,
+						GuidanceEvidence:     "found managed Codex guidance block",
+						GuidancePath:         "/home/test/.codex/AGENTS.md",
+					},
+				},
+			},
+			MCPActivity: repository.DoctorMCPActivitySection{
+				Status:             repository.DoctorStatusHealthy,
+				LastSessionStartAt: time.Date(2026, 3, 19, 12, 1, 0, 0, time.UTC),
+				LastInitializeAt:   time.Date(2026, 3, 19, 12, 1, 1, 0, time.UTC),
+				LastToolsListAt:    time.Date(2026, 3, 19, 12, 1, 2, 0, time.UTC),
+				LastToolCallAt:     time.Date(2026, 3, 19, 12, 1, 3, 0, time.UTC),
+				RecentToolCalls: []repository.MCPObservedToolCall{
+					{Name: "optimusctx.repository_map", At: "2026-03-19T12:01:03Z"},
+				},
+			},
+			Summary: repository.DoctorSummary{
+				Status: repository.DoctorStatusHealthy,
+			},
+		}, nil
+	}
+
+	withWorkingDirectory(t, repoRoot, func() {
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"status", "--verbose"}, &stdout); err != nil {
+			t.Fatalf("Execute(status --verbose) error = %v", err)
+		}
+		output := stdout.String()
+		for _, want := range []string{
+			"status: ready",
+			"Diagnostics",
 			"overall status: healthy",
-			"repository root: " + repoRoot,
 			"MCP Host Registration",
 			"Codex CLI registration=detected guidance=configured",
 			"MCP Evidence",
-			"last initialize: 2026-03-19T12:01:01Z",
 			"recent tool call: optimusctx.repository_map at 2026-03-19T12:01:03Z",
 			"serve command: optimusctx run",
 		} {
 			if !strings.Contains(output, want) {
-				t.Fatalf("status output missing %q:\n%s", want, output)
+				t.Fatalf("verbose status output missing %q:\n%s", want, output)
 			}
 		}
 	})
@@ -133,6 +227,9 @@ func TestStatusCommandHelp(t *testing.T) {
 	output := stdout.String()
 	if !strings.Contains(output, "optimusctx status") {
 		t.Fatalf("help output missing status usage:\n%s", output)
+	}
+	if !strings.Contains(output, "--verbose") {
+		t.Fatalf("help output missing verbose flag:\n%s", output)
 	}
 	if strings.Contains(output, "--client") {
 		t.Fatalf("help output should not advertise registration flags:\n%s", output)
