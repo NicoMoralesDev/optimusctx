@@ -73,34 +73,53 @@ func newRunCommand() *Command {
 				return err
 			}
 
-			if health.Summary.StateStatus == repository.HealthStateStatusMissing {
-				if _, err := runInitService(ctx, workingDir); err != nil {
-					return err
-				}
-			} else if health.Repository.Freshness == repository.FreshnessStatusStale || health.Repository.Freshness == repository.FreshnessStatusPartiallyDegraded {
-				if _, err := runRefreshService(ctx, workingDir, repository.RefreshReasonWatch); err != nil {
-					return err
-				}
+			repoRoot := health.Repository.RepositoryRoot
+			if repoRoot == "" {
+				repoRoot = health.Identity.RootPath
 			}
 
-			watchErr := make(chan error, 1)
+			backgroundErr := make(chan error, 1)
 			go func() {
-				_, err := runWatchService(ctx, workingDir, runCommandStderr)
-				watchErr <- err
+				backgroundErr <- runRuntimeBootstrap(ctx, workingDir, health, runCommandStderr)
 			}()
 
-			serverErr := runCommandServer(ctx, health.Repository.RepositoryRoot, runCommandInput, stdout, runCommandStderr)
+			serverErr := runCommandServer(ctx, repoRoot, runCommandInput, stdout, runCommandStderr)
 			cancel()
-			watchRunErr := <-watchErr
+			backgroundRunErr := <-backgroundErr
 			if serverErr != nil {
 				return serverErr
 			}
-			if watchRunErr != nil && !errors.Is(watchRunErr, context.Canceled) {
-				return watchRunErr
+			if backgroundRunErr != nil && !errors.Is(backgroundRunErr, context.Canceled) {
+				return backgroundRunErr
 			}
 			return nil
 		},
 	}
+}
+
+func runRuntimeBootstrap(ctx context.Context, workingDir string, health repository.HealthResult, errout io.Writer) error {
+	switch {
+	case health.Summary.StateStatus == repository.HealthStateStatusMissing:
+		if _, err := runInitService(ctx, workingDir); err != nil {
+			reportRuntimeBootstrapError(errout, err)
+			return err
+		}
+	case health.Repository.Freshness == repository.FreshnessStatusStale || health.Repository.Freshness == repository.FreshnessStatusPartiallyDegraded:
+		if _, err := runRefreshService(ctx, workingDir, repository.RefreshReasonWatch); err != nil {
+			reportRuntimeBootstrapError(errout, err)
+			return err
+		}
+	}
+
+	_, err := runWatchService(ctx, workingDir, errout)
+	return err
+}
+
+func reportRuntimeBootstrapError(errout io.Writer, err error) {
+	if errout == nil || err == nil || errors.Is(err, context.Canceled) {
+		return
+	}
+	_, _ = fmt.Fprintf(errout, "optimusctx runtime bootstrap warning: %v\n", err)
 }
 
 func healthErrNeedsInit(err error) bool {
