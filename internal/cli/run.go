@@ -24,8 +24,8 @@ var (
 			Store:    app.NewMCPActivityStore(),
 		})
 	}
-	runHealthService = func(ctx context.Context, workingDir string) (repository.HealthResult, error) {
-		return app.NewHealthService().Health(ctx, workingDir, repository.HealthRequest{})
+	runHealthService = func(ctx context.Context, rootPath string) (repository.HealthResult, error) {
+		return app.NewHealthService().HealthForRootPath(ctx, rootPath, repository.HealthRequest{})
 	}
 	runInitService = func(ctx context.Context, workingDir string) (app.InitResult, error) {
 		return app.NewInitService().Init(ctx, workingDir)
@@ -78,7 +78,7 @@ func newRunCommand() *Command {
 
 			backgroundErr := make(chan error, 1)
 			go func() {
-				backgroundErr <- runRuntimeBootstrap(ctx, workingDir, runCommandStderr)
+				backgroundErr <- runRuntimeBootstrap(ctx, repoRoot.RootPath, runCommandStderr)
 			}()
 
 			serverErr := runCommandServer(ctx, repoRoot.RootPath, runCommandInput, stdout, runCommandStderr)
@@ -95,8 +95,8 @@ func newRunCommand() *Command {
 	}
 }
 
-func runRuntimeBootstrap(ctx context.Context, workingDir string, errout io.Writer) error {
-	health, err := runHealthService(ctx, workingDir)
+func runRuntimeBootstrap(ctx context.Context, rootPath string, errout io.Writer) error {
+	health, err := runHealthService(ctx, rootPath)
 	if err != nil {
 		reportRuntimeBootstrapError(errout, err)
 		return err
@@ -104,18 +104,18 @@ func runRuntimeBootstrap(ctx context.Context, workingDir string, errout io.Write
 
 	switch {
 	case health.Summary.StateStatus == repository.HealthStateStatusMissing:
-		if _, err := runInitService(ctx, workingDir); err != nil {
+		if _, err := runInitService(ctx, rootPath); err != nil {
 			reportRuntimeBootstrapError(errout, err)
 			return err
 		}
 	case health.Repository.Freshness == repository.FreshnessStatusStale || health.Repository.Freshness == repository.FreshnessStatusPartiallyDegraded:
-		if _, err := runRefreshService(ctx, workingDir, repository.RefreshReasonWatch); err != nil {
+		if _, err := runRefreshService(ctx, rootPath, repository.RefreshReasonWatch); err != nil {
 			reportRuntimeBootstrapError(errout, err)
 			return err
 		}
 	}
 
-	_, err = runWatchService(ctx, workingDir, errout)
+	_, err = runWatchService(ctx, rootPath, errout)
 	return err
 }
 

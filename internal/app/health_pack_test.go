@@ -82,6 +82,37 @@ func TestHealthService(t *testing.T) {
 	}
 }
 
+func TestHealthServiceForRootPath(t *testing.T) {
+	repoRoot := initRepo(t)
+	writeRepoFile(t, filepath.Join(repoRoot, "main.go"), "package main\n\nfunc Healthy() {}\n")
+
+	refresh := NewRefreshService()
+	initial, err := refresh.Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	})
+	if err != nil {
+		t.Fatalf("Refresh() baseline error = %v", err)
+	}
+
+	service := NewHealthService()
+	healthy, err := service.HealthForRootPath(context.Background(), repoRoot, repository.HealthRequest{})
+	if err != nil {
+		t.Fatalf("HealthForRootPath() error = %v", err)
+	}
+
+	if healthy.Repository.RepositoryRoot != repoRoot {
+		t.Fatalf("RepositoryRoot = %q, want %q", healthy.Repository.RepositoryRoot, repoRoot)
+	}
+	if healthy.Repository.Generation != initial.Generation {
+		t.Fatalf("Generation = %d, want %d", healthy.Repository.Generation, initial.Generation)
+	}
+	if healthy.Repository.Freshness != repository.FreshnessStatusFresh {
+		t.Fatalf("Freshness = %q, want %q", healthy.Repository.Freshness, repository.FreshnessStatusFresh)
+	}
+}
+
 func TestPackService(t *testing.T) {
 	repoRoot := initRepo(t)
 	source := "package pkg\n\ntype Alpha struct{}\n\nfunc (Alpha) Run() {\n\tprintln(\"run\")\n}\n"

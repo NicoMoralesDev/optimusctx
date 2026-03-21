@@ -53,6 +53,9 @@ func TestRunCommand(t *testing.T) {
 		t.Fatal("refresh should not be called for fresh state")
 		return app.RefreshResult{}, nil
 	}
+	runWatchService = func(ctx context.Context, workingDir string, errout io.Writer) (repository.WatchRunResult, error) {
+		return repository.WatchRunResult{}, nil
+	}
 	runCommandServer = func(ctx context.Context, repoRoot string, stdin io.Reader, serveStdout io.Writer, serveStderr io.Writer) error {
 		called = true
 		if repoRoot != "/repo" {

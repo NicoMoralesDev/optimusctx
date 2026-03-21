@@ -41,7 +41,14 @@ func (s HealthService) Health(ctx context.Context, startPath string, request rep
 	if err != nil {
 		return repository.HealthResult{}, fmt.Errorf("resolve repository root: %w", err)
 	}
+	return s.healthForRoot(ctx, root, request)
+}
 
+func (s HealthService) HealthForRootPath(ctx context.Context, rootPath string, request repository.HealthRequest) (repository.HealthResult, error) {
+	return s.healthForRoot(ctx, repository.RepositoryRoot{RootPath: rootPath}, request)
+}
+
+func (s HealthService) healthForRoot(ctx context.Context, root repository.RepositoryRoot, request repository.HealthRequest) (repository.HealthResult, error) {
 	layoutResolver := s.ResolveLayout
 	if layoutResolver == nil {
 		layoutResolver = state.ResolveLayout
