@@ -9,6 +9,8 @@ For the full operator path from `optimusctx release prepare` through verificatio
 GitHub Release is the canonical root for archives, checksums, and downstream release facts.
 After GitHub Release assets are available, npm, Homebrew, and Scoop are published from the same canonical tagged release contract.
 
+For the project-side root cause and fix record of the Codex MCP startup incident, see [`project-codex-mcp-startup-incident.md`](./project-codex-mcp-startup-incident.md).
+
 ## Pre-Tag Checks
 
 - Confirm the release is still limited to the shipped single-binary, local-first product shape.

@@ -4,6 +4,8 @@ Use this as the canonical operator flow for `optimusctx release prepare`, tagged
 
 GitHub Release remains the canonical root and rollback source.
 
+For the project-only record of the Codex MCP startup incident fixed on `2026-03-21`, see [`project-codex-mcp-startup-incident.md`](./project-codex-mcp-startup-incident.md).
+
 ## Prepare
 
 ```bash
