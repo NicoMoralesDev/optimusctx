@@ -142,6 +142,7 @@ func TestInstallServiceClaudeCLIPreviewUsesRequestedScope(t *testing.T) {
 func TestInstallServiceClaudeCLIWriteExecutesCommand(t *testing.T) {
 	var gotName string
 	var gotArgs []string
+	var wroteGuidance bool
 
 	service := InstallService{
 		adapters: map[repository.ClientID]clientRegistrationAdapter{
@@ -155,6 +156,16 @@ func TestInstallServiceClaudeCLIWriteExecutesCommand(t *testing.T) {
 				},
 			},
 		},
+		readFile: func(string) ([]byte, error) {
+			return nil, os.ErrNotExist
+		},
+		writeFile: func(path string, _ []byte, _ os.FileMode) error {
+			if strings.Contains(path, repository.ClaudeRulesFilename) {
+				wroteGuidance = true
+			}
+			return nil
+		},
+		mkdirAll: func(string, os.FileMode) error { return nil },
 	}
 
 	result, err := service.Register(context.Background(), InstallRequest{ClientID: "claude-cli", Write: true})
@@ -184,6 +195,9 @@ func TestInstallServiceClaudeCLIWriteExecutesCommand(t *testing.T) {
 	}
 	if result.Rendered.Content != "claude mcp add --transport stdio --scope local optimusctx -- optimusctx run" {
 		t.Fatalf("content = %q", result.Rendered.Content)
+	}
+	if !wroteGuidance {
+		t.Fatal("expected Claude CLI write to persist guidance")
 	}
 }
 

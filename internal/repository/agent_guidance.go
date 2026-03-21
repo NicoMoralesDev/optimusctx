@@ -60,13 +60,13 @@ func RenderClaudeGuidanceDocument() string {
 }
 
 func MergeManagedGuidance(existing []byte, block string) (string, error) {
-	content := strings.TrimSpace(string(existing))
+	content := string(existing)
 	block = strings.TrimSpace(block)
 	if block == "" {
 		return "", fmt.Errorf("merge managed guidance: block is required")
 	}
 
-	if content == "" {
+	if len(existing) == 0 {
 		return block + "\n", nil
 	}
 
@@ -74,9 +74,23 @@ func MergeManagedGuidance(existing []byte, block string) (string, error) {
 	end := strings.Index(content, managedGuidanceEnd)
 	if start >= 0 && end >= start {
 		end += len(managedGuidanceEnd)
-		replaced := strings.TrimSpace(content[:start] + block + content[end:])
-		return replaced + "\n", nil
+		replaced := content[:start] + block + content[end:]
+		if !strings.HasSuffix(replaced, "\n") {
+			replaced += "\n"
+		}
+		return replaced, nil
 	}
 
-	return strings.TrimSpace(content) + "\n\n" + block + "\n", nil
+	var builder strings.Builder
+	builder.WriteString(content)
+	switch {
+	case strings.HasSuffix(content, "\n\n"):
+	case strings.HasSuffix(content, "\n"):
+		builder.WriteString("\n")
+	default:
+		builder.WriteString("\n\n")
+	}
+	builder.WriteString(block)
+	builder.WriteString("\n")
+	return builder.String(), nil
 }
