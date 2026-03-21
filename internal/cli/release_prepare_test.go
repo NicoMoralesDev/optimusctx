@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -66,5 +68,26 @@ func TestFormatReleasePreparationShowsChannelSummariesAndWarningNextStep(t *test
 		if !strings.Contains(output, want) {
 			t.Fatalf("formatReleasePreparation output missing %q:\n%s", want, output)
 		}
+	}
+}
+
+func TestLoadReleaseMilestoneStripsOptionalQuotes(t *testing.T) {
+	repoRoot := t.TempDir()
+	planningDir := filepath.Join(repoRoot, ".planning")
+	if err := os.MkdirAll(planningDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(.planning) error = %v", err)
+	}
+
+	state := "---\nmilestone: \"1.3.8\"\n---\n"
+	if err := os.WriteFile(filepath.Join(planningDir, "STATE.md"), []byte(state), 0o644); err != nil {
+		t.Fatalf("WriteFile(STATE.md) error = %v", err)
+	}
+
+	got, err := loadReleaseMilestone(repoRoot)
+	if err != nil {
+		t.Fatalf("loadReleaseMilestone error = %v", err)
+	}
+	if got != "1.3.8" {
+		t.Fatalf("loadReleaseMilestone = %q, want %q", got, "1.3.8")
 	}
 }

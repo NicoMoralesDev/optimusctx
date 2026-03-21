@@ -393,10 +393,20 @@ func loadReleaseMilestone(repoRoot string) (string, error) {
 		if value == "" {
 			break
 		}
-		return value, nil
+		return trimOptionalScalarQuotes(value), nil
 	}
 
 	return "", fmt.Errorf("milestone missing from %s", statePath)
+}
+
+func trimOptionalScalarQuotes(value string) string {
+	if len(value) < 2 {
+		return value
+	}
+	if (value[0] == '"' && value[len(value)-1] == '"') || (value[0] == '\'' && value[len(value)-1] == '\'') {
+		return value[1 : len(value)-1]
+	}
+	return value
 }
 
 func writeReleaseHelp(stdout io.Writer) {
