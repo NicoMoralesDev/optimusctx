@@ -71,7 +71,19 @@ func NewWatchService() WatchService {
 }
 
 func (s WatchService) Run(ctx context.Context, request repository.WatchRequest) (repository.WatchRunResult, error) {
-	root, layout, debounceWindow, heartbeatInterval, statusPath, err := s.resolveRunDependencies(request)
+	root, err := s.Locator.Resolve(request.StartPath)
+	if err != nil {
+		return repository.WatchRunResult{}, fmt.Errorf("resolve repository root: %w", err)
+	}
+	return s.runForRoot(ctx, root, request)
+}
+
+func (s WatchService) RunForRootPath(ctx context.Context, rootPath string, request repository.WatchRequest) (repository.WatchRunResult, error) {
+	return s.runForRoot(ctx, repository.RepositoryRoot{RootPath: rootPath}, request)
+}
+
+func (s WatchService) runForRoot(ctx context.Context, root repository.RepositoryRoot, request repository.WatchRequest) (repository.WatchRunResult, error) {
+	layout, debounceWindow, heartbeatInterval, statusPath, err := s.resolveRunDependenciesForRoot(root, request)
 	if err != nil {
 		return repository.WatchRunResult{}, err
 	}
@@ -303,18 +315,13 @@ func (s WatchService) Status(ctx context.Context, startPath string, staleAfter t
 	return result, nil
 }
 
-func (s WatchService) resolveRunDependencies(request repository.WatchRequest) (repository.RepositoryRoot, state.Layout, time.Duration, time.Duration, string, error) {
-	root, err := s.Locator.Resolve(request.StartPath)
-	if err != nil {
-		return repository.RepositoryRoot{}, state.Layout{}, 0, 0, "", fmt.Errorf("resolve repository root: %w", err)
-	}
-
+func (s WatchService) resolveRunDependenciesForRoot(root repository.RepositoryRoot, request repository.WatchRequest) (state.Layout, time.Duration, time.Duration, string, error) {
 	layout, err := s.resolveLayout(root.RootPath)
 	if err != nil {
-		return repository.RepositoryRoot{}, state.Layout{}, 0, 0, "", fmt.Errorf("resolve state layout: %w", err)
+		return state.Layout{}, 0, 0, "", fmt.Errorf("resolve state layout: %w", err)
 	}
 	if err := s.MkdirAll(layout.TmpDir, 0o755); err != nil {
-		return repository.RepositoryRoot{}, state.Layout{}, 0, 0, "", fmt.Errorf("create tmp directory: %w", err)
+		return state.Layout{}, 0, 0, "", fmt.Errorf("create tmp directory: %w", err)
 	}
 
 	debounceWindow := request.DebounceWindow
@@ -327,7 +334,7 @@ func (s WatchService) resolveRunDependencies(request repository.WatchRequest) (r
 		heartbeatInterval = s.defaultHeartbeat()
 	}
 
-	return root, layout, debounceWindow, heartbeatInterval, s.statusPath(layout), nil
+	return layout, debounceWindow, heartbeatInterval, s.statusPath(layout), nil
 }
 
 func (s WatchService) pollingObserver(ctx context.Context, root string) (<-chan repository.WatchEvent, error) {

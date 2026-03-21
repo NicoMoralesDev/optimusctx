@@ -38,7 +38,7 @@ var (
 		service.ReportRefresh = func(report repository.WatchRefreshReport) {
 			_, _ = io.WriteString(errout, formatWatchRefreshReport(report))
 		}
-		return service.Run(ctx, repository.WatchRequest{StartPath: workingDir})
+		return service.RunForRootPath(ctx, workingDir, repository.WatchRequest{StartPath: workingDir})
 	}
 )
 

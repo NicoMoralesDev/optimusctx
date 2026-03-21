@@ -121,6 +121,39 @@ func TestWatchRunnerLifecycle(t *testing.T) {
 	}
 }
 
+func TestWatchRunnerForRootPath(t *testing.T) {
+	repoRoot := initRepo(t)
+	layout, err := state.ResolveLayout(repoRoot)
+	if err != nil {
+		t.Fatalf("ResolveLayout(%q) error = %v", repoRoot, err)
+	}
+	if err := os.MkdirAll(layout.TmpDir, 0o755); err != nil {
+		t.Fatalf("mkdir tmp dir: %v", err)
+	}
+
+	events := make(chan repository.WatchEvent)
+	close(events)
+
+	service := NewWatchService()
+	service.Observe = func(ctx context.Context, root string) (<-chan repository.WatchEvent, error) {
+		if root != repoRoot {
+			t.Fatalf("observer root = %q, want %q", root, repoRoot)
+		}
+		return events, nil
+	}
+
+	result, err := service.RunForRootPath(context.Background(), repoRoot, repository.WatchRequest{})
+	if err != nil {
+		t.Fatalf("RunForRootPath() error = %v", err)
+	}
+	if result.RepositoryRoot != repoRoot {
+		t.Fatalf("RepositoryRoot = %q, want %q", result.RepositoryRoot, repoRoot)
+	}
+	if result.StatePath != layout.StateDir {
+		t.Fatalf("StatePath = %q, want %q", result.StatePath, layout.StateDir)
+	}
+}
+
 func TestWatchRefreshUsesCanonicalPipeline(t *testing.T) {
 	repoRoot := initRepo(t)
 	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "helper.go"), "package pkg\n")
