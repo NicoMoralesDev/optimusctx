@@ -15,6 +15,7 @@ func TestRunCommand(t *testing.T) {
 	previousServe := runCommandServer
 	previousInput := runCommandInput
 	previousStderr := runCommandStderr
+	previousResolve := runResolveRepositoryRoot
 	previousHealth := runHealthService
 	previousInit := runInitService
 	previousRefresh := runRefreshService
@@ -23,6 +24,7 @@ func TestRunCommand(t *testing.T) {
 		runCommandServer = previousServe
 		runCommandInput = previousInput
 		runCommandStderr = previousStderr
+		runResolveRepositoryRoot = previousResolve
 		runHealthService = previousHealth
 		runInitService = previousInit
 		runRefreshService = previousRefresh
@@ -34,6 +36,9 @@ func TestRunCommand(t *testing.T) {
 	var stderr bytes.Buffer
 	runCommandInput = bytes.NewBufferString("")
 	runCommandStderr = &stderr
+	runResolveRepositoryRoot = func(workingDir string) (repository.RepositoryRoot, error) {
+		return repository.RepositoryRoot{RootPath: "/repo"}, nil
+	}
 	runHealthService = func(ctx context.Context, workingDir string) (repository.HealthResult, error) {
 		return repository.HealthResult{
 			Repository: repository.LayeredContextEnvelope{RepositoryRoot: "/repo", Generation: 7, Freshness: repository.FreshnessStatusFresh},
@@ -84,6 +89,7 @@ func TestRunCommandBootstrapsMissingState(t *testing.T) {
 	previousServe := runCommandServer
 	previousInput := runCommandInput
 	previousStderr := runCommandStderr
+	previousResolve := runResolveRepositoryRoot
 	previousHealth := runHealthService
 	previousInit := runInitService
 	previousRefresh := runRefreshService
@@ -92,6 +98,7 @@ func TestRunCommandBootstrapsMissingState(t *testing.T) {
 		runCommandServer = previousServe
 		runCommandInput = previousInput
 		runCommandStderr = previousStderr
+		runResolveRepositoryRoot = previousResolve
 		runHealthService = previousHealth
 		runInitService = previousInit
 		runRefreshService = previousRefresh
@@ -101,6 +108,9 @@ func TestRunCommandBootstrapsMissingState(t *testing.T) {
 	var calledInit bool
 	var calledServer bool
 	runCommandInput = bytes.NewBufferString("")
+	runResolveRepositoryRoot = func(workingDir string) (repository.RepositoryRoot, error) {
+		return repository.RepositoryRoot{RootPath: "/repo"}, nil
+	}
 	runHealthService = func(ctx context.Context, workingDir string) (repository.HealthResult, error) {
 		return repository.HealthResult{
 			Summary: repository.HealthSummary{StateStatus: repository.HealthStateStatusMissing},
@@ -138,6 +148,7 @@ func TestRunCommandRefreshesStaleState(t *testing.T) {
 	previousServe := runCommandServer
 	previousInput := runCommandInput
 	previousStderr := runCommandStderr
+	previousResolve := runResolveRepositoryRoot
 	previousHealth := runHealthService
 	previousInit := runInitService
 	previousRefresh := runRefreshService
@@ -146,6 +157,7 @@ func TestRunCommandRefreshesStaleState(t *testing.T) {
 		runCommandServer = previousServe
 		runCommandInput = previousInput
 		runCommandStderr = previousStderr
+		runResolveRepositoryRoot = previousResolve
 		runHealthService = previousHealth
 		runInitService = previousInit
 		runRefreshService = previousRefresh
@@ -155,6 +167,9 @@ func TestRunCommandRefreshesStaleState(t *testing.T) {
 	var calledRefresh bool
 	var calledServer bool
 	runCommandInput = bytes.NewBufferString("")
+	runResolveRepositoryRoot = func(workingDir string) (repository.RepositoryRoot, error) {
+		return repository.RepositoryRoot{RootPath: "/repo"}, nil
+	}
 	runHealthService = func(ctx context.Context, workingDir string) (repository.HealthResult, error) {
 		return repository.HealthResult{
 			Repository: repository.LayeredContextEnvelope{RepositoryRoot: "/repo", Freshness: repository.FreshnessStatusStale},
@@ -205,10 +220,10 @@ func TestRunCommandRejectsUnsupportedArguments(t *testing.T) {
 }
 
 func TestRunCommandRejectsUnsupportedWorkingDirectory(t *testing.T) {
-	previousHealth := runHealthService
-	t.Cleanup(func() { runHealthService = previousHealth })
-	runHealthService = func(ctx context.Context, workingDir string) (repository.HealthResult, error) {
-		return repository.HealthResult{}, repository.ErrRepositoryNotFound
+	previousResolve := runResolveRepositoryRoot
+	t.Cleanup(func() { runResolveRepositoryRoot = previousResolve })
+	runResolveRepositoryRoot = func(workingDir string) (repository.RepositoryRoot, error) {
+		return repository.RepositoryRoot{}, repository.ErrRepositoryNotFound
 	}
 
 	var stdout bytes.Buffer
@@ -222,6 +237,7 @@ func TestRunCommandRoutesWatchReportsToStderr(t *testing.T) {
 	previousServe := runCommandServer
 	previousInput := runCommandInput
 	previousStderr := runCommandStderr
+	previousResolve := runResolveRepositoryRoot
 	previousHealth := runHealthService
 	previousInit := runInitService
 	previousRefresh := runRefreshService
@@ -230,6 +246,7 @@ func TestRunCommandRoutesWatchReportsToStderr(t *testing.T) {
 		runCommandServer = previousServe
 		runCommandInput = previousInput
 		runCommandStderr = previousStderr
+		runResolveRepositoryRoot = previousResolve
 		runHealthService = previousHealth
 		runInitService = previousInit
 		runRefreshService = previousRefresh
@@ -240,6 +257,9 @@ func TestRunCommandRoutesWatchReportsToStderr(t *testing.T) {
 	var stderr bytes.Buffer
 	runCommandInput = bytes.NewBufferString("")
 	runCommandStderr = &stderr
+	runResolveRepositoryRoot = func(workingDir string) (repository.RepositoryRoot, error) {
+		return repository.RepositoryRoot{RootPath: "/repo"}, nil
+	}
 	runHealthService = func(ctx context.Context, workingDir string) (repository.HealthResult, error) {
 		return repository.HealthResult{
 			Repository: repository.LayeredContextEnvelope{RepositoryRoot: "/repo", Freshness: repository.FreshnessStatusFresh},
@@ -281,6 +301,7 @@ func TestRunCommandStartsServerBeforeInitCompletes(t *testing.T) {
 	previousServe := runCommandServer
 	previousInput := runCommandInput
 	previousStderr := runCommandStderr
+	previousResolve := runResolveRepositoryRoot
 	previousHealth := runHealthService
 	previousInit := runInitService
 	previousRefresh := runRefreshService
@@ -289,6 +310,7 @@ func TestRunCommandStartsServerBeforeInitCompletes(t *testing.T) {
 		runCommandServer = previousServe
 		runCommandInput = previousInput
 		runCommandStderr = previousStderr
+		runResolveRepositoryRoot = previousResolve
 		runHealthService = previousHealth
 		runInitService = previousInit
 		runRefreshService = previousRefresh
@@ -298,6 +320,9 @@ func TestRunCommandStartsServerBeforeInitCompletes(t *testing.T) {
 	var order []string
 	initRelease := make(chan struct{})
 	runCommandInput = bytes.NewBufferString("")
+	runResolveRepositoryRoot = func(workingDir string) (repository.RepositoryRoot, error) {
+		return repository.RepositoryRoot{RootPath: "/repo"}, nil
+	}
 	runHealthService = func(ctx context.Context, workingDir string) (repository.HealthResult, error) {
 		return repository.HealthResult{
 			Repository: repository.LayeredContextEnvelope{RepositoryRoot: "/repo"},
@@ -347,6 +372,7 @@ func TestRunCommandStartsServerBeforeRefreshCompletes(t *testing.T) {
 	previousServe := runCommandServer
 	previousInput := runCommandInput
 	previousStderr := runCommandStderr
+	previousResolve := runResolveRepositoryRoot
 	previousHealth := runHealthService
 	previousInit := runInitService
 	previousRefresh := runRefreshService
@@ -355,6 +381,7 @@ func TestRunCommandStartsServerBeforeRefreshCompletes(t *testing.T) {
 		runCommandServer = previousServe
 		runCommandInput = previousInput
 		runCommandStderr = previousStderr
+		runResolveRepositoryRoot = previousResolve
 		runHealthService = previousHealth
 		runInitService = previousInit
 		runRefreshService = previousRefresh
@@ -364,6 +391,9 @@ func TestRunCommandStartsServerBeforeRefreshCompletes(t *testing.T) {
 	var order []string
 	refreshRelease := make(chan struct{})
 	runCommandInput = bytes.NewBufferString("")
+	runResolveRepositoryRoot = func(workingDir string) (repository.RepositoryRoot, error) {
+		return repository.RepositoryRoot{RootPath: "/repo"}, nil
+	}
 	runHealthService = func(ctx context.Context, workingDir string) (repository.HealthResult, error) {
 		return repository.HealthResult{
 			Repository: repository.LayeredContextEnvelope{RepositoryRoot: "/repo", Freshness: repository.FreshnessStatusStale},
@@ -406,6 +436,74 @@ func TestRunCommandStartsServerBeforeRefreshCompletes(t *testing.T) {
 	}
 	if serverIndex > refreshDoneIndex {
 		t.Fatalf("server should start before refresh completes: %v", order)
+	}
+}
+
+func TestRunCommandStartsServerBeforeHealthCompletes(t *testing.T) {
+	previousServe := runCommandServer
+	previousInput := runCommandInput
+	previousStderr := runCommandStderr
+	previousResolve := runResolveRepositoryRoot
+	previousHealth := runHealthService
+	previousInit := runInitService
+	previousRefresh := runRefreshService
+	previousWatch := runWatchService
+	t.Cleanup(func() {
+		runCommandServer = previousServe
+		runCommandInput = previousInput
+		runCommandStderr = previousStderr
+		runResolveRepositoryRoot = previousResolve
+		runHealthService = previousHealth
+		runInitService = previousInit
+		runRefreshService = previousRefresh
+		runWatchService = previousWatch
+	})
+
+	var order []string
+	healthRelease := make(chan struct{})
+	runCommandInput = bytes.NewBufferString("")
+	runResolveRepositoryRoot = func(workingDir string) (repository.RepositoryRoot, error) {
+		return repository.RepositoryRoot{RootPath: "/repo"}, nil
+	}
+	runHealthService = func(ctx context.Context, workingDir string) (repository.HealthResult, error) {
+		order = append(order, "health-start")
+		<-healthRelease
+		order = append(order, "health-done")
+		return repository.HealthResult{
+			Repository: repository.LayeredContextEnvelope{RepositoryRoot: "/repo", Freshness: repository.FreshnessStatusFresh},
+			Summary:    repository.HealthSummary{StateStatus: repository.HealthStateStatusReady},
+		}, nil
+	}
+	runInitService = func(ctx context.Context, workingDir string) (app.InitResult, error) {
+		t.Fatal("init should not be called for healthy state")
+		return app.InitResult{}, nil
+	}
+	runRefreshService = func(ctx context.Context, workingDir string, reason repository.RefreshReason) (app.RefreshResult, error) {
+		t.Fatal("refresh should not be called for healthy state")
+		return app.RefreshResult{}, nil
+	}
+	runWatchService = func(ctx context.Context, workingDir string, errout io.Writer) (repository.WatchRunResult, error) {
+		order = append(order, "watch-start")
+		return repository.WatchRunResult{}, nil
+	}
+	runCommandServer = func(ctx context.Context, repoRoot string, stdin io.Reader, serveStdout io.Writer, serveStderr io.Writer) error {
+		order = append(order, "server-start")
+		close(healthRelease)
+		return nil
+	}
+
+	var stdout bytes.Buffer
+	if err := NewRootCommand().Execute([]string{"run"}, &stdout); err != nil {
+		t.Fatalf("Execute(run) error = %v", err)
+	}
+
+	serverIndex := indexOfRunOrder(order, "server-start")
+	healthDoneIndex := indexOfRunOrder(order, "health-done")
+	if serverIndex == -1 || healthDoneIndex == -1 {
+		t.Fatalf("unexpected order = %v", order)
+	}
+	if serverIndex > healthDoneIndex {
+		t.Fatalf("server should start before health completes: %v", order)
 	}
 }
 

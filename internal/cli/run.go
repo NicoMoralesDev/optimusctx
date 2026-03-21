@@ -15,6 +15,9 @@ import (
 var (
 	runCommandInput  io.Reader = os.Stdin
 	runCommandStderr io.Writer = os.Stderr
+	runResolveRepositoryRoot      = func(workingDir string) (repository.RepositoryRoot, error) {
+		return repository.NewLocator().Resolve(workingDir)
+	}
 	runCommandServer           = func(ctx context.Context, repoRoot string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 		return mcp.ServeStdioWithObserver(ctx, stdin, stdout, stderr, app.MCPServerObserver{
 			RepoRoot: repoRoot,
@@ -62,10 +65,7 @@ func newRunCommand() *Command {
 				return fmt.Errorf("resolve working directory: %w", err)
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			health, err := runHealthService(ctx, workingDir)
+			repoRoot, err := runResolveRepositoryRoot(workingDir)
 			if err != nil {
 				if errors.Is(err, repository.ErrRepositoryNotFound) {
 					return fmt.Errorf("no supported repository root found from %s; run `optimusctx init` inside a Git repository or an existing .optimusctx state directory", workingDir)
@@ -73,17 +73,15 @@ func newRunCommand() *Command {
 				return err
 			}
 
-			repoRoot := health.Repository.RepositoryRoot
-			if repoRoot == "" {
-				repoRoot = health.Identity.RootPath
-			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
 			backgroundErr := make(chan error, 1)
 			go func() {
-				backgroundErr <- runRuntimeBootstrap(ctx, workingDir, health, runCommandStderr)
+				backgroundErr <- runRuntimeBootstrap(ctx, workingDir, runCommandStderr)
 			}()
 
-			serverErr := runCommandServer(ctx, repoRoot, runCommandInput, stdout, runCommandStderr)
+			serverErr := runCommandServer(ctx, repoRoot.RootPath, runCommandInput, stdout, runCommandStderr)
 			cancel()
 			backgroundRunErr := <-backgroundErr
 			if serverErr != nil {
@@ -97,7 +95,13 @@ func newRunCommand() *Command {
 	}
 }
 
-func runRuntimeBootstrap(ctx context.Context, workingDir string, health repository.HealthResult, errout io.Writer) error {
+func runRuntimeBootstrap(ctx context.Context, workingDir string, errout io.Writer) error {
+	health, err := runHealthService(ctx, workingDir)
+	if err != nil {
+		reportRuntimeBootstrapError(errout, err)
+		return err
+	}
+
 	switch {
 	case health.Summary.StateStatus == repository.HealthStateStatusMissing:
 		if _, err := runInitService(ctx, workingDir); err != nil {
@@ -111,7 +115,7 @@ func runRuntimeBootstrap(ctx context.Context, workingDir string, health reposito
 		}
 	}
 
-	_, err := runWatchService(ctx, workingDir, errout)
+	_, err = runWatchService(ctx, workingDir, errout)
 	return err
 }
 
