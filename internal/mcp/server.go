@@ -43,7 +43,16 @@ type Server struct {
 	order    []string
 	version  string
 	observer SessionObserver
+	mode     transportMode
 }
+
+type transportMode int
+
+const (
+	transportModeUnknown transportMode = iota
+	transportModeFramed
+	transportModeLineDelimited
+)
 
 func NewServer(stdin io.Reader, stdout io.Writer, stderr io.Writer) *Server {
 	return NewServerWithObserver(stdin, stdout, stderr, nil)
@@ -88,7 +97,7 @@ func (s *Server) Serve(ctx context.Context) error {
 			return err
 		}
 
-		payload, err := readFrame(s.input)
+		payload, mode, err := readFrameWithMode(s.input)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil
@@ -98,12 +107,15 @@ func (s *Server) Serve(ctx context.Context) error {
 			}
 			return err
 		}
+		if s.mode == transportModeUnknown {
+			s.mode = mode
+		}
 
 		response, ok := s.handlePayload(ctx, payload)
 		if !ok {
 			continue
 		}
-		if err := writeFrame(s.output, response); err != nil {
+		if err := writeFrameWithMode(s.output, response, s.mode); err != nil {
 			return err
 		}
 	}
@@ -278,13 +290,48 @@ func decodeCallToolParams(raw any) (CallToolParams, error) {
 }
 
 func readFrame(reader *bufio.Reader) ([]byte, error) {
-	contentLength := -1
+	payload, _, err := readFrameWithMode(reader)
+	return payload, err
+}
+
+func readFrameWithMode(reader *bufio.Reader) ([]byte, transportMode, error) {
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			return nil, err
+			return nil, transportModeUnknown, err
 		}
 		line = strings.TrimRight(line, "\r\n")
+		if line == "" {
+			continue
+		}
+
+		if looksLikeJSONPayload(line) {
+			return []byte(line), transportModeLineDelimited, nil
+		}
+
+		payload, err := readFramedPayload(reader, line)
+		return payload, transportModeFramed, err
+	}
+}
+
+func looksLikeJSONPayload(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	return strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[")
+}
+
+func readFramedPayload(reader *bufio.Reader, firstLine string) ([]byte, error) {
+	contentLength := -1
+	for {
+		line := firstLine
+		firstLine = ""
+		if line == "" {
+			var err error
+			line, err = reader.ReadString('\n')
+			if err != nil {
+				return nil, err
+			}
+			line = strings.TrimRight(line, "\r\n")
+		}
 		if line == "" {
 			break
 		}
@@ -293,10 +340,11 @@ func readFrame(reader *bufio.Reader) ([]byte, error) {
 			return nil, fmt.Errorf("invalid header line %q", line)
 		}
 		if strings.EqualFold(strings.TrimSpace(name), "Content-Length") {
-			contentLength, err = strconv.Atoi(strings.TrimSpace(value))
+			length, err := strconv.Atoi(strings.TrimSpace(value))
 			if err != nil {
 				return nil, fmt.Errorf("parse content length: %w", err)
 			}
+			contentLength = length
 		}
 	}
 
@@ -312,6 +360,17 @@ func readFrame(reader *bufio.Reader) ([]byte, error) {
 }
 
 func writeFrame(writer io.Writer, payload []byte) error {
+	return writeFrameWithMode(writer, payload, transportModeFramed)
+}
+
+func writeFrameWithMode(writer io.Writer, payload []byte, mode transportMode) error {
+	if mode == transportModeLineDelimited {
+		if _, err := writer.Write(payload); err != nil {
+			return err
+		}
+		_, err := writer.Write([]byte("\n"))
+		return err
+	}
 	if _, err := fmt.Fprintf(writer, "Content-Length: %d\r\n\r\n", len(payload)); err != nil {
 		return err
 	}

@@ -163,6 +163,62 @@ func TestMCPServerRejectsUnimplementedTool(t *testing.T) {
 	}
 }
 
+func TestReadFrameAcceptsLineDelimitedJSON(t *testing.T) {
+	reader := bufio.NewReader(bytes.NewBufferString("{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"initialize\"}\n"))
+
+	payload, err := readFrame(reader)
+	if err != nil {
+		t.Fatalf("readFrame() error = %v", err)
+	}
+	if got, want := string(payload), "{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"initialize\"}"; got != want {
+		t.Fatalf("payload = %q, want %q", got, want)
+	}
+}
+
+func TestMCPServerAcceptsLineDelimitedSession(t *testing.T) {
+	var input bytes.Buffer
+	for _, request := range []Request{
+		{
+			JSONRPC: jsonRPCVersion,
+			ID:      1,
+			Method:  "initialize",
+			Params: InitializeParams{
+				ClientInfo:      ClientInfo{Name: "test-client", Version: "1.0.0"},
+				ProtocolVersion: protocolVersion,
+			},
+		},
+		{JSONRPC: jsonRPCVersion, Method: "notifications/initialized"},
+		{JSONRPC: jsonRPCVersion, ID: 2, Method: "tools/list"},
+	} {
+		payload, err := json.Marshal(request)
+		if err != nil {
+			t.Fatalf("json.Marshal(request) error = %v", err)
+		}
+		input.Write(payload)
+		input.WriteByte('\n')
+	}
+
+	var output bytes.Buffer
+	server := NewServer(&input, &output, io.Discard)
+	if err := server.Serve(context.Background()); err != nil {
+		t.Fatalf("Serve() error = %v", err)
+	}
+
+	responses := readTestResponses(t, &output)
+	if len(responses) != 2 {
+		t.Fatalf("response count = %d, want 2", len(responses))
+	}
+	if bytes.Contains(output.Bytes(), []byte("Content-Length:")) {
+		t.Fatalf("line-delimited session should not emit framed responses: %q", output.String())
+	}
+
+	var initResult InitializeResult
+	mustDecodeResult(t, responses[0].Result, &initResult)
+	if initResult.ProtocolVersion != protocolVersion {
+		t.Fatalf("initialize protocol version = %q, want %q", initResult.ProtocolVersion, protocolVersion)
+	}
+}
+
 func writeTestFrame(t *testing.T, writer io.Writer, request Request) {
 	t.Helper()
 
