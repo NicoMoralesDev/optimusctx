@@ -1,13 +1,25 @@
 # Requirements: OptimusCtx
 
 **Defined:** 2026-03-20
+**Milestone:** `v1.3.8`
 **Core Value:** Make repository understanding persistent, compact, incremental, and reusable across coding agents.
 
-## No Active Milestone Requirements
+## Milestone v1.3.8 Requirements
 
-`v1.3.6` is complete and archived. There is no active milestone requirement set right now.
+### Command Surface Truth
 
-The next planned public action is to cut the `v1.3.6` release. Start a new milestone only after that release decision.
+- [ ] **SURF-01**: `optimusctx status` default output presents only the currently relevant operator contract and does not surface discarded flows such as `watch` as if they were active or expected.
+- [ ] **SURF-02**: Detailed diagnostics keep only actionable runtime information for current operators and remove or explicitly downgrade stale references to discarded commands and deprecated flows.
+- [ ] **SURF-03**: Canonical CLI help, recommendations, and next-step copy reference only the supported command surface, while compatibility aliases that still exist are explicitly marked as deprecated.
+
+### Documentation Truth
+
+- [ ] **DOC-01**: Public product documentation no longer describes discarded or deprecated commands as active product surface area.
+- [ ] **DOC-02**: Planning and operator docs reflect the latest public release position and the current canonical command set without stale release or workflow references.
+
+### Regression Guardrails
+
+- [ ] **VER-01**: Automated verification covers the canonical status/help/docs surfaces so stale discarded-command references regress in tests instead of silently shipping.
 
 ## Future Requirements
 
@@ -29,21 +41,28 @@ The next planned public action is to cut the `v1.3.6` release. Start a new miles
 
 | Feature | Reason |
 |---------|--------|
-| Additional first-class MCP hosts beyond `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` | This milestone is narrowly about release-lane correctness and CI runtime modernization |
-| Hosted telemetry or cloud dashboards for MCP usage | `v1.3.6` does not expand observability beyond the already-shipped local evidence surface |
-| Automatic or silent rewriting of repository instruction files | Guidance may now be written through explicit init-led onboarding, but never silently |
-| New public release channels such as `.deb`, `.rpm`, WinGet, or Chocolatey | The current work still prioritizes correctness and truthfulness of the existing GitHub Release, npm, Homebrew, and Scoop channels |
-| Signing, notarization, or SBOM publication | The immediate gap is false-positive package-manager publication, not broader supply-chain expansion |
+| New runtime capabilities or new command families | `v1.3.8` is a surface-truth cleanup milestone, not a capability-expansion milestone |
+| Additional first-class MCP hosts beyond `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` | Host coverage is unchanged; this milestone only fixes how the current surface is described |
+| Hosted telemetry or cloud dashboards for MCP usage | Observability remains local-first and repo-local |
+| New public release channels such as `.deb`, `.rpm`, WinGet, or Chocolatey | Distribution expansion stays deferred while current operator surfaces are being cleaned up |
+| Silent removal or rewriting of user files beyond explicit supported-host onboarding behavior | Surface cleanup should preserve the existing explicit write contract |
 
 ## Traceability
 
-See [v1.3.6-REQUIREMENTS.md](/home/nico/projects/optimusctx/.planning/milestones/v1.3.6-REQUIREMENTS.md) and [v1.3.6-MILESTONE-AUDIT.md](/home/nico/projects/optimusctx/.planning/milestones/v1.3.6-MILESTONE-AUDIT.md) for the completed requirement set and final traceability.
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| SURF-01 | Phase 34 | Pending |
+| SURF-02 | Phase 34 | Pending |
+| SURF-03 | Phase 34 | Pending |
+| DOC-01 | Phase 35 | Pending |
+| DOC-02 | Phase 35 | Pending |
+| VER-01 | Phase 35 | Pending |
 
 **Coverage:**
-- active milestone requirements: 0
-- mapped to phases: 0
+- active milestone requirements: 6
+- mapped to phases: 6
 - unmapped: 0
 
 ---
 *Requirements defined: 2026-03-20*
-*Last updated: 2026-03-20 after archiving milestone v1.3.6*
+*Last updated: 2026-03-20 for milestone v1.3.8*
