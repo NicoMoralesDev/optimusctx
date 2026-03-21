@@ -36,12 +36,29 @@ func NewLocator() Locator {
 }
 
 func (Locator) Resolve(startPath string) (RepositoryRoot, error) {
+	root, err := NewLocator().ResolveWithoutFingerprint(startPath)
+	if err != nil {
+		return RepositoryRoot{}, err
+	}
+	if root.DetectionMode != DetectionModeGit {
+		return root, nil
+	}
+
+	fingerprint, err := loadGitFingerprint(root.RootPath)
+	if err != nil {
+		return RepositoryRoot{}, err
+	}
+	root.Fingerprint = fingerprint
+	return root, nil
+}
+
+func (Locator) ResolveWithoutFingerprint(startPath string) (RepositoryRoot, error) {
 	canonicalStart, err := canonicalPath(startPath)
 	if err != nil {
 		return RepositoryRoot{}, fmt.Errorf("canonicalize start path: %w", err)
 	}
 
-	if gitRoot, err := resolveGitRoot(canonicalStart); err == nil {
+	if gitRoot, err := resolveGitRootWithoutFingerprint(canonicalStart); err == nil {
 		return gitRoot, nil
 	}
 
@@ -54,6 +71,10 @@ func (Locator) Resolve(startPath string) (RepositoryRoot, error) {
 
 func ResolveRepositoryRoot(startPath string) (RepositoryRoot, error) {
 	return NewLocator().Resolve(startPath)
+}
+
+func ResolveRepositoryRootWithoutFingerprint(startPath string) (RepositoryRoot, error) {
+	return NewLocator().ResolveWithoutFingerprint(startPath)
 }
 
 func canonicalPath(path string) (string, error) {
@@ -77,7 +98,7 @@ func canonicalPath(path string) (string, error) {
 	return filepath.Clean(resolved), nil
 }
 
-func resolveGitRoot(startPath string) (RepositoryRoot, error) {
+func resolveGitRootWithoutFingerprint(startPath string) (RepositoryRoot, error) {
 	rootPath, err := runGit(startPath, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return RepositoryRoot{}, err
@@ -88,33 +109,36 @@ func resolveGitRoot(startPath string) (RepositoryRoot, error) {
 		return RepositoryRoot{}, err
 	}
 
-	gitCommonDir, err := runGit(canonicalRoot, "rev-parse", "--git-common-dir")
+	return RepositoryRoot{
+		RootPath:      canonicalRoot,
+		DetectionMode: DetectionModeGit,
+	}, nil
+}
+
+func loadGitFingerprint(rootPath string) (RepositoryFingerprint, error) {
+	gitCommonDir, err := runGit(rootPath, "rev-parse", "--git-common-dir")
 	if err == nil && !filepath.IsAbs(gitCommonDir) {
-		gitCommonDir = filepath.Join(canonicalRoot, gitCommonDir)
+		gitCommonDir = filepath.Join(rootPath, gitCommonDir)
 	}
 	if gitCommonDir != "" {
 		gitCommonDir, _ = canonicalPath(gitCommonDir)
 	}
 
-	headRef, err := runGit(canonicalRoot, "symbolic-ref", "-q", "--short", "HEAD")
+	headRef, err := runGit(rootPath, "symbolic-ref", "-q", "--short", "HEAD")
 	if err != nil {
 		headRef = ""
 	}
 
-	headCommit, err := runGit(canonicalRoot, "rev-parse", "HEAD")
+	headCommit, err := runGit(rootPath, "rev-parse", "HEAD")
 	if err != nil {
 		headCommit = ""
 	}
 
-	return RepositoryRoot{
-		RootPath:      canonicalRoot,
-		DetectionMode: DetectionModeGit,
-		Fingerprint: RepositoryFingerprint{
-			RootPath:      canonicalRoot,
-			GitCommonDir:  gitCommonDir,
-			GitHeadRef:    headRef,
-			GitHeadCommit: headCommit,
-		},
+	return RepositoryFingerprint{
+		RootPath:      rootPath,
+		GitCommonDir:  gitCommonDir,
+		GitHeadRef:    headRef,
+		GitHeadCommit: headCommit,
 	}, nil
 }
 

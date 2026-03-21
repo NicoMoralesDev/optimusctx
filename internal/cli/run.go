@@ -13,12 +13,12 @@ import (
 )
 
 var (
-	runCommandInput  io.Reader = os.Stdin
-	runCommandStderr io.Writer = os.Stderr
-	runResolveRepositoryRoot      = func(workingDir string) (repository.RepositoryRoot, error) {
-		return repository.NewLocator().Resolve(workingDir)
+	runCommandInput          io.Reader = os.Stdin
+	runCommandStderr         io.Writer = os.Stderr
+	runResolveRepositoryRoot           = func(workingDir string) (repository.RepositoryRoot, error) {
+		return repository.NewLocator().ResolveWithoutFingerprint(workingDir)
 	}
-	runCommandServer           = func(ctx context.Context, repoRoot string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
+	runCommandServer = func(ctx context.Context, repoRoot string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 		return mcp.ServeStdioWithObserver(ctx, stdin, stdout, stderr, app.MCPServerObserver{
 			RepoRoot: repoRoot,
 			Store:    app.NewMCPActivityStore(),

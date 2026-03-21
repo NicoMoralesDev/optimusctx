@@ -43,6 +43,31 @@ func TestRepositoryLocatorPrefersGitRootFromNestedDirectory(t *testing.T) {
 	}
 }
 
+func TestRepositoryLocatorResolveWithoutFingerprintPrefersGitRootFromNestedDirectory(t *testing.T) {
+	repoRoot := t.TempDir()
+	runGitCommand(t, repoRoot, "init")
+
+	nested := filepath.Join(repoRoot, "a", "b", "c")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatalf("mkdir nested: %v", err)
+	}
+
+	root, err := NewLocator().ResolveWithoutFingerprint(nested)
+	if err != nil {
+		t.Fatalf("resolve root: %v", err)
+	}
+
+	if root.RootPath != repoRoot {
+		t.Fatalf("root path = %q, want %q", root.RootPath, repoRoot)
+	}
+	if root.DetectionMode != DetectionModeGit {
+		t.Fatalf("detection mode = %q, want %q", root.DetectionMode, DetectionModeGit)
+	}
+	if root.Fingerprint != (RepositoryFingerprint{}) {
+		t.Fatalf("fingerprint = %+v, want empty", root.Fingerprint)
+	}
+}
+
 func TestRepositoryLocatorFallsBackToOptimusCtxState(t *testing.T) {
 	rootDir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(rootDir, ".optimusctx"), 0o755); err != nil {
@@ -67,6 +92,36 @@ func TestRepositoryLocatorFallsBackToOptimusCtxState(t *testing.T) {
 	}
 	if root.Fingerprint.GitCommonDir != "" || root.Fingerprint.GitHeadRef != "" || root.Fingerprint.GitHeadCommit != "" {
 		t.Fatal("fallback fingerprint should not include git metadata")
+	}
+}
+
+func TestRepositoryLocatorResolveWithoutFingerprintFallsBackToOptimusCtxState(t *testing.T) {
+	rootDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(rootDir, ".optimusctx"), 0o755); err != nil {
+		t.Fatalf("mkdir state dir: %v", err)
+	}
+
+	nested := filepath.Join(rootDir, "nested", "dir")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatalf("mkdir nested: %v", err)
+	}
+
+	root, err := ResolveRepositoryRootWithoutFingerprint(nested)
+	if err != nil {
+		t.Fatalf("resolve root: %v", err)
+	}
+
+	if root.RootPath != rootDir {
+		t.Fatalf("root path = %q, want %q", root.RootPath, rootDir)
+	}
+	if root.DetectionMode != DetectionModeOptimusCtxState {
+		t.Fatalf("detection mode = %q, want %q", root.DetectionMode, DetectionModeOptimusCtxState)
+	}
+	if root.Fingerprint.RootPath != rootDir {
+		t.Fatalf("fingerprint root path = %q, want %q", root.Fingerprint.RootPath, rootDir)
+	}
+	if root.Fingerprint.GitCommonDir != "" || root.Fingerprint.GitHeadRef != "" || root.Fingerprint.GitHeadCommit != "" {
+		t.Fatalf("fingerprint git fields should be empty: %+v", root.Fingerprint)
 	}
 }
 
