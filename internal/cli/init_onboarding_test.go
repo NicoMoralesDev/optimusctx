@@ -238,9 +238,9 @@ func TestInitCommandInteractiveClaudeCLIWriteUsesScope(t *testing.T) {
 			"client: Claude CLI",
 			"destination: This project",
 			"native target: claude mcp add --scope project",
-			"status: configured",
-			"runtime: your registered MCP client should launch `optimusctx run` automatically when it connects",
-			"verify with `optimusctx status`: it will show registration evidence, last MCP initialize/tools discovery, and recent `optimusctx.*` tool calls",
+			"status: wrote config",
+			"runtime after host pickup: your MCP client should launch `optimusctx run` automatically when it connects",
+			"verify host pickup with `optimusctx status`: it should eventually show registration evidence, last MCP initialize/tools discovery, and recent `optimusctx.*` tool calls",
 		} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("missing %q in:\n%s", want, output)
@@ -295,7 +295,7 @@ func TestInitCommandInteractiveCodexCLISharedConfigChoice(t *testing.T) {
 			sharedPath,
 			"destination: Your shared Codex config",
 			"config path: " + sharedPath,
-			"status: configured",
+			"status: wrote config",
 		} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("missing %q in:\n%s", want, output)

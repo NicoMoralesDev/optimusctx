@@ -22,18 +22,18 @@ func writeOnboardingResult(stdout io.Writer, request app.InstallRequest, result 
 		}
 	}
 	if result.Wrote {
-		if _, err := io.WriteString(stdout, "status: configured\n"); err != nil {
+		if _, err := io.WriteString(stdout, "status: wrote config\n"); err != nil {
 			return err
 		}
 		if result.Guidance != nil {
-			if _, err := io.WriteString(stdout, "agent guidance status: configured\n"); err != nil {
+			if _, err := io.WriteString(stdout, "agent guidance status: wrote guidance\n"); err != nil {
 				return err
 			}
 		}
-		if _, err := io.WriteString(stdout, "runtime: your registered MCP client should launch `optimusctx run` automatically when it connects\n"); err != nil {
+		if _, err := io.WriteString(stdout, "runtime after host pickup: your MCP client should launch `optimusctx run` automatically when it connects\n"); err != nil {
 			return err
 		}
-		if _, err := io.WriteString(stdout, "verify with `optimusctx status`: it will show registration evidence, last MCP initialize/tools discovery, and recent `optimusctx.*` tool calls\n"); err != nil {
+		if _, err := io.WriteString(stdout, "verify host pickup with `optimusctx status`: it should eventually show registration evidence, last MCP initialize/tools discovery, and recent `optimusctx.*` tool calls\n"); err != nil {
 			return err
 		}
 		_, err := io.WriteString(stdout, "manual fallback: run `optimusctx run` yourself only for direct STDIO use or debugging\n")
