@@ -1,5 +1,15 @@
 # optimusctx
 
+## Project status
+
+OptimusCtx is deprecated.
+
+Benchmarks against the intended product goals did not show enough improvement over baseline workflows to justify continued development, even though the product direction looked strong on paper.
+
+`v1.4.0` is the final planned release. The repository stays available as a reference implementation and archive point for the last release line, but no new feature work is planned.
+
+For the deprecation summary and final-release policy, see [docs/final-release.md](./docs/final-release.md).
+
 OptimusCtx is a local-first runtime that builds and maintains persistent repository context for coding agents.
 
 It keeps repository state on disk, serves that state to MCP clients through a single runtime entrypoint, and stays explicit about what it writes and what it does not.
@@ -47,10 +57,10 @@ In practice:
 
 ### npm
 
-Recommended for most users:
+Archived final release:
 
 ```bash
-npm install -g @niccrow/optimusctx
+npm install -g @niccrow/optimusctx@1.4.0
 ```
 
 Try without installing globally:
@@ -78,7 +88,7 @@ scoop install niccrow/optimusctx
 
 ### GitHub Release archives
 
-If you want the raw binary, download the tagged archive from GitHub Releases, unpack it, and place `optimusctx` on your PATH.
+If you want the raw binary, download the `v1.4.0` archive from GitHub Releases, unpack it, and place `optimusctx` on your PATH.
 
 ## Quick start
 
@@ -140,12 +150,12 @@ After registration, use `optimusctx status` to answer the real integration quest
 - whether any host session has initialized the MCP server
 - whether `tools/list` and real `optimusctx.*` tool calls have been observed yet
 
-## Update
+## Final release policy
 
 ### npm
 
 ```bash
-npm install -g @niccrow/optimusctx@latest
+npm install -g @niccrow/optimusctx@1.4.0
 ```
 
 ### Homebrew
@@ -162,9 +172,11 @@ scoop update optimusctx
 
 ### GitHub Release archives
 
-Download the newer tagged archive, replace the existing `optimusctx` binary on your PATH, and rerun verification.
+Download the `v1.4.0` archive, replace the existing `optimusctx` binary on your PATH, and rerun verification.
 
-After any upgrade, verify the installed binary again:
+`v1.4.0` is the terminal release. If you are on an earlier build, upgrade once to `v1.4.0` and treat the installed binary as an archived final version.
+
+After that final upgrade, verify the installed binary again:
 
 ```bash
 optimusctx version
@@ -226,6 +238,7 @@ go run ./cmd/optimusctx version
 
 ## Documentation
 
+- [docs/final-release.md](./docs/final-release.md) — deprecation summary, outcome, and final release policy
 - [docs/quickstart.md](./docs/quickstart.md) — shortest path from install to daily use
 - [docs/install-and-verify.md](./docs/install-and-verify.md) — fuller install and verification guide
 - [docs/mcp-agent-guide.md](./docs/mcp-agent-guide.md) — how registered hosts use the MCP surface well and how to verify real tool usage

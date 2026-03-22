@@ -157,7 +157,7 @@ func TestUpgradePolicy(t *testing.T) {
 		"prior tagged GitHub Release archive",
 		"brew upgrade niccrow/tap/optimusctx",
 		"scoop update optimusctx",
-		"npm install -g @niccrow/optimusctx@latest",
+		"npm install -g @niccrow/optimusctx@1.4.0",
 		"`optimusctx init --client ...` reviews the exact change first",
 		"operator opts into `--write`",
 		"native Linux packages such as `.deb` and `.rpm`",

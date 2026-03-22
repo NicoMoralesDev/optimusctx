@@ -98,6 +98,7 @@ func TestRenderNPMPackageManifestForTag(t *testing.T) {
 	}
 
 	for _, want := range []string{
+		`"description": "Deprecated local-first runtime for persistent repository context for coding agents."`,
 		`"releaseTag": "v1.2.3"`,
 		`"version": "1.2.3"`,
 		`"url": "https://github.com/NicoMoralesDev/optimusctx/releases/download/v1.2.3/optimusctx_1.2.3_checksums.txt"`,

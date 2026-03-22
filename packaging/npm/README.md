@@ -1,9 +1,15 @@
 # @niccrow/optimusctx
 
-Install OptimusCtx from npm:
+## Status
+
+This package is deprecated.
+
+Benchmark results did not show enough improvement over baseline workflows to justify continuing the product, so `1.4.0` is the final planned release for `@niccrow/optimusctx`.
+
+Install the archived final release from npm:
 
 ```bash
-npm install -g @niccrow/optimusctx
+npm install -g @niccrow/optimusctx@1.4.0
 ```
 
 Or try it first without keeping a global install:
@@ -51,10 +57,11 @@ In an interactive terminal, `optimusctx init` can also offer supported-client on
 
 - If install fails, retry once to rule out a temporary network issue.
 - If `optimusctx` is not found after install, open a new shell or check that your npm global bin directory is on your PATH.
-- If you want the raw binary instead of the npm install path, use the release archives at `https://github.com/NicoMoralesDev/optimusctx/releases`.
+- If you want the raw binary instead of the npm install path, use the final release archives at `https://github.com/NicoMoralesDev/optimusctx/releases/tag/v1.4.0`.
 
 ## Docs
 
+- Final release: `https://github.com/NicoMoralesDev/optimusctx/blob/main/docs/final-release.md`
 - Quickstart: `https://github.com/NicoMoralesDev/optimusctx/blob/main/docs/quickstart.md`
 - Install and verify: `https://github.com/NicoMoralesDev/optimusctx/blob/main/docs/install-and-verify.md`
 - Releases: `https://github.com/NicoMoralesDev/optimusctx/releases`

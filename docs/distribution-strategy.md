@@ -1,8 +1,14 @@
 # OptimusCtx Distribution Strategy
 
+## Project Status
+
+OptimusCtx is deprecated, and `v1.4.0` is the final planned release.
+
+Distribution channels remain available as archive paths for the last release line. They should not be described as an active growth surface for future releases.
+
 ## Purpose
 
-OptimusCtx keeps a narrow distribution story that helps real users adopt the shipped binary without implying a broader installer platform than the repository actually supports today.
+OptimusCtx keeps a narrow distribution story that helps real users obtain the final archived binary without implying a broader installer platform than the repository actually supports today.
 
 This document defines the concrete release channels, the users those channels are for, how upgrades and rollbacks work, and what support assumptions apply after installation. For the current release-operator procedure, use `docs/operator-release-guide.md` as the canonical release, rerun, verification, and rollback flow.
 
@@ -48,9 +54,9 @@ GitHub Release archives are the fallback and baseline channel.
 
 - Publication target: npm registry package `@niccrow/optimusctx`
 - Install commands:
-  - `npm install -g @niccrow/optimusctx`
+  - `npm install -g @niccrow/optimusctx@1.4.0`
   - `npx @niccrow/optimusctx version`
-- Upgrade command: `npm install -g @niccrow/optimusctx@latest`
+- Upgrade command: `npm install -g @niccrow/optimusctx@1.4.0`
 - Verification after install or upgrade: rerun `optimusctx version` and `optimusctx status`, then use `optimusctx init --client <supported-client>` to review onboarding and add `--write` only if desired
 - Support boundary: the npm package is a wrapper over the canonical tagged GitHub Release binary, not a JavaScript reimplementation or a silent client-config installer
 
@@ -62,10 +68,12 @@ Package-manager users upgrade through the channel-native command while GitHub Re
 
 In practice that means:
 
-- GitHub Release archive users download a newer tagged archive, replace the binary manually on their PATH, and rerun the verification commands.
+- GitHub Release archive users download the `v1.4.0` archive, replace the binary manually on their PATH, and rerun the verification commands.
 - Homebrew users run `brew upgrade niccrow/tap/optimusctx`, then rerun `optimusctx version` and `optimusctx status`.
 - Scoop users run `scoop update optimusctx`, then rerun `optimusctx version` and `optimusctx status`.
-- npm users rerun `npm install -g @niccrow/optimusctx@latest`, or use `npx @niccrow/optimusctx version` for ephemeral execution, then verify with `optimusctx version` and `optimusctx status`.
+- npm users rerun `npm install -g @niccrow/optimusctx@1.4.0`, or use `npx @niccrow/optimusctx version` for ephemeral execution, then verify with `optimusctx version` and `optimusctx status`.
+
+Because `v1.4.0` is the final planned release, the practical upgrade target is the final archived line rather than a continuing stream of new versions.
 
 ## Rollback Expectations
 

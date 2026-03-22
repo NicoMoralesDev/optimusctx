@@ -1,7 +1,7 @@
 {
   "name": "@niccrow/optimusctx",
   "version": "0.0.0-development",
-  "description": "Local-first runtime that builds and maintains persistent repository context for coding agents.",
+  "description": "Deprecated local-first runtime for persistent repository context for coding agents.",
   "license": "MIT",
   "homepage": "https://github.com/NicoMoralesDev/optimusctx",
   "repository": {

@@ -13,7 +13,7 @@ const (
 	canonicalPublisherOwner    = "niccrow"
 	canonicalProjectName       = "optimusctx"
 	canonicalHomepage          = "https://github.com/NicoMoralesDev/optimusctx"
-	canonicalDescription       = "Local-first runtime that builds and maintains persistent repository context for coding agents."
+	canonicalDescription       = "Deprecated local-first runtime for persistent repository context for coding agents."
 	canonicalLicense           = "MIT"
 	homebrewTapRepo            = "homebrew-tap"
 	homebrewTapDirectory       = "Formula"

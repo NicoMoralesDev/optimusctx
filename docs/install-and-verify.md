@@ -154,7 +154,7 @@ Notes:
 ### npm
 
 ```bash
-npm install -g @niccrow/optimusctx@latest
+npm install -g @niccrow/optimusctx@1.4.0
 ```
 
 ### Homebrew
@@ -171,7 +171,7 @@ scoop update optimusctx
 
 ### GitHub Release archives
 
-Download the newer tagged archive and replace the existing `optimusctx` binary on your PATH.
+Download the `v1.4.0` archive and replace the existing `optimusctx` binary on your PATH.
 
 After any update, verify again:
 
