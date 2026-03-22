@@ -56,6 +56,61 @@ func TestResolveClaudeDesktopConfigPathWindowsRequiresAppData(t *testing.T) {
 	}
 }
 
+func TestResolveClaudeDesktopConfigPathWSLUsesWindowsAppData(t *testing.T) {
+	previousGetenv := codexConfigGetenv
+	previousReadFile := codexConfigReadFile
+	previousGOOS := codexConfigGOOS
+	t.Cleanup(func() {
+		codexConfigGetenv = previousGetenv
+		codexConfigReadFile = previousReadFile
+		codexConfigGOOS = previousGOOS
+	})
+	codexConfigGOOS = "linux"
+	codexConfigGetenv = func(key string) string {
+		switch key {
+		case "WSL_DISTRO_NAME":
+			return "Ubuntu-22.04"
+		case "APPDATA":
+			return `C:\Users\nicle\AppData\Roaming`
+		default:
+			return ""
+		}
+	}
+	codexConfigReadFile = func(string) ([]byte, error) { return nil, os.ErrNotExist }
+
+	got, err := resolveClaudeDesktopConfigPath("")
+	if err != nil {
+		t.Fatalf("resolveClaudeDesktopConfigPath() error = %v", err)
+	}
+	if want := "/mnt/c/Users/nicle/AppData/Roaming/Claude/claude_desktop_config.json"; got != want {
+		t.Fatalf("config path = %q, want %q", got, want)
+	}
+}
+
+func TestResolveClaudeDesktopConfigPathWSLRequiresExplicitPathWhenWindowsProfileUnknown(t *testing.T) {
+	previousGetenv := codexConfigGetenv
+	previousReadFile := codexConfigReadFile
+	previousGOOS := codexConfigGOOS
+	t.Cleanup(func() {
+		codexConfigGetenv = previousGetenv
+		codexConfigReadFile = previousReadFile
+		codexConfigGOOS = previousGOOS
+	})
+	codexConfigGOOS = "linux"
+	codexConfigGetenv = func(key string) string {
+		if key == "WSL_DISTRO_NAME" {
+			return "Ubuntu-22.04"
+		}
+		return ""
+	}
+	codexConfigReadFile = func(string) ([]byte, error) { return nil, os.ErrNotExist }
+
+	_, err := resolveClaudeDesktopConfigPath("")
+	if err == nil || !strings.Contains(err.Error(), "pass --config /mnt/c/Users/<user>/AppData/Roaming/Claude/claude_desktop_config.json") {
+		t.Fatalf("resolveClaudeDesktopConfigPath() error = %v", err)
+	}
+}
+
 func TestResolveCodexCLIConfigPathUsesHomeDir(t *testing.T) {
 	previousHome := codexConfigUserHomeDir
 	previousGOOS := codexConfigGOOS
@@ -637,7 +692,7 @@ func TestInstallServiceRejectsGenericWrite(t *testing.T) {
 func TestInstallServiceClaudeDesktopPreviewUsesResolvedPath(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
-	t.Setenv("AppData", filepath.Join(homeDir, "AppData", "Roaming"))
+	t.Setenv("OPTIMUSCTX_CLAUDE_DESKTOP_CONFIG", filepath.Join(homeDir, "AppData", "Roaming", "Claude", "claude_desktop_config.json"))
 
 	configPath, err := resolveClaudeDesktopConfigPath("")
 	if err != nil {

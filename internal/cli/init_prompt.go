@@ -68,9 +68,9 @@ func promptInitOnboarding(stdin io.Reader, stdout io.Writer, repoRoot string) (a
 	request := app.InstallRequest{ClientID: clientChoice, RepoRoot: repoRoot}
 	switch request.ClientID {
 	case string(repository.ClientClaudeDesktop):
-		configPath, err := app.DefaultClaudeDesktopConfigPath()
-		if err != nil {
-			return app.InstallRequest{}, false, err
+		configPath, resolveErr := app.DefaultClaudeDesktopConfigPath()
+		if resolveErr != nil {
+			configPath = "requires --config in WSL, for example /mnt/c/Users/<user>/AppData/Roaming/Claude/claude_desktop_config.json"
 		}
 		if _, err := fmt.Fprintf(stdout, "Where should Claude Desktop load OptimusCtx from?\n  1. Claude Desktop app config\n     %s\nChoose [1, default: 1]: ", configPath); err != nil {
 			return app.InstallRequest{}, false, err
@@ -79,6 +79,9 @@ func promptInitOnboarding(stdin io.Reader, stdout io.Writer, repoRoot string) (a
 			"1": "desktop",
 		}, "desktop"); err != nil {
 			return app.InstallRequest{}, false, err
+		}
+		if resolveErr != nil {
+			return app.InstallRequest{}, false, resolveErr
 		}
 	case string(repository.ClientClaudeCLI):
 		if _, err := io.WriteString(stdout, "Where should Claude CLI register OptimusCtx?\n  1. This project\n     Native target: claude mcp add --scope project\n  2. Your current Claude setup\n     Native target: claude mcp add --scope local\n  3. Your Claude user profile\n     Native target: claude mcp add --scope user\nChoose [1-3, default: 1]: "); err != nil {

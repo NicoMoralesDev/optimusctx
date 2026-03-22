@@ -403,7 +403,7 @@ func claudeDesktopNotes() []string {
 	return []string{
 		"Claude Desktop writes the native `claude_desktop_config.json` MCP contract.",
 		"The preview shows only the `optimusctx` MCP entry; unrelated desktop config stays preserved during merges.",
-		"Use --config to target a non-default Claude Desktop config path.",
+		"If you run from WSL and Claude Desktop lives on Windows, use --config with the Windows-backed path such as `/mnt/c/Users/<user>/AppData/Roaming/Claude/claude_desktop_config.json` when auto-detection cannot infer it.",
 	}
 }
 
@@ -503,12 +503,22 @@ func DefaultCodexAppConfigPath() (string, error) {
 }
 
 func resolveClaudeDesktopConfigPath(explicitPath string) (string, error) {
-	homeDir, err := os.UserHomeDir()
+	if explicitPath != "" {
+		return normalizeCodexConfigPath(explicitPath), nil
+	}
+	if runningInWSL() {
+		if path, ok := inferWindowsClaudeDesktopConfigPathFromEnv(); ok {
+			return path, nil
+		}
+		return "", errors.New("resolve Claude Desktop config path: running inside WSL but the Windows Claude Desktop config could not be inferred; pass --config /mnt/c/Users/<user>/AppData/Roaming/Claude/claude_desktop_config.json")
+	}
+
+	homeDir, err := codexConfigUserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("resolve home directory: %w", err)
 	}
 
-	return resolveClaudeDesktopConfigPathForPlatform(runtime.GOOS, homeDir, os.Getenv("AppData"), explicitPath)
+	return resolveClaudeDesktopConfigPathForPlatform(codexConfigGOOS, homeDir, codexConfigGetenv("AppData"), "")
 }
 
 func DefaultClaudeDesktopConfigPath() (string, error) {
@@ -710,6 +720,27 @@ func inferWindowsCodexConfigPathFromEnv() (string, bool) {
 	homePath := strings.TrimSpace(codexConfigGetenv("HOMEPATH"))
 	if homeDrive != "" && homePath != "" {
 		return normalizeCodexConfigPath(filepath.Join(homeDrive+homePath, ".codex", "config.toml")), true
+	}
+	return "", false
+}
+
+func inferWindowsClaudeDesktopConfigPathFromEnv() (string, bool) {
+	if value := strings.TrimSpace(codexConfigGetenv("OPTIMUSCTX_CLAUDE_DESKTOP_CONFIG")); value != "" {
+		return normalizeCodexConfigPath(value), true
+	}
+	if value := strings.TrimSpace(codexConfigGetenv("APPDATA")); value != "" {
+		return normalizeCodexConfigPath(filepath.Join(value, "Claude", "claude_desktop_config.json")), true
+	}
+	if value := strings.TrimSpace(codexConfigGetenv("AppData")); value != "" {
+		return normalizeCodexConfigPath(filepath.Join(value, "Claude", "claude_desktop_config.json")), true
+	}
+	if value := strings.TrimSpace(codexConfigGetenv("USERPROFILE")); value != "" {
+		return normalizeCodexConfigPath(filepath.Join(value, "AppData", "Roaming", "Claude", "claude_desktop_config.json")), true
+	}
+	homeDrive := strings.TrimSpace(codexConfigGetenv("HOMEDRIVE"))
+	homePath := strings.TrimSpace(codexConfigGetenv("HOMEPATH"))
+	if homeDrive != "" && homePath != "" {
+		return normalizeCodexConfigPath(filepath.Join(homeDrive+homePath, "AppData", "Roaming", "Claude", "claude_desktop_config.json")), true
 	}
 	return "", false
 }

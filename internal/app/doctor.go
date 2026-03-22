@@ -611,6 +611,16 @@ func (s DoctorService) hostRegistrations(ctx context.Context, repoRoot string) (
 	claudeDesktopPath, err := resolveClaudeDesktopConfigPath("")
 	if err == nil {
 		hosts = append(hosts, s.detectClaudeDesktop(claudeDesktopPath))
+	} else {
+		client, _ := repository.LookupSupportedClient(string(repository.ClientClaudeDesktop))
+		hosts = append(hosts, repository.DoctorHostRegistration{
+			Client:               client,
+			RegistrationState:    repository.HostRegistrationUnverified,
+			RegistrationPath:     "",
+			RegistrationEvidence: err.Error(),
+			GuidanceState:        repository.GuidanceStateUnsupported,
+			GuidanceEvidence:     "Claude Desktop registration is supported, but durable agent guidance is not managed through Claude Desktop config.",
+		})
 	}
 	hosts = append(hosts, s.detectClaudeCLI(ctx, repoRoot))
 
