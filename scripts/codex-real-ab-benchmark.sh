@@ -99,6 +99,8 @@ prepare_home() {
   local home_dir="$1"
   local model_value="$2"
   local reasoning_value="$3"
+  local extra_config_file="${4:-}"
+  local home_config_file="$home_dir/.codex/config.toml"
 
   mkdir -p "$home_dir/.codex"
   cp "$AUTH_FILE" "$home_dir/.codex/auth.json"
@@ -113,7 +115,15 @@ prepare_home() {
     if [[ -n "$reasoning_value" ]]; then
       printf 'model_reasoning_effort = %s\n' "$(json_string "$reasoning_value")"
     fi
-  } >"$home_dir/.codex/config.toml"
+  } >"$home_config_file"
+
+  # `codex exec` reads the active config from CODEX_HOME/HOME. When the benchmark
+  # stages a repo-local `.codex/config.toml` for the optimus arm, merge that MCP
+  # block into the effective home config so the run actually sees the server.
+  if [[ -n "$extra_config_file" && -f "$extra_config_file" ]]; then
+    printf '\n' >>"$home_config_file"
+    cat "$extra_config_file" >>"$home_config_file"
+  fi
 }
 
 prepare_workspace() {
@@ -462,12 +472,21 @@ run_plan_row() {
   local uncached_input_tokens
   local changed_files
   local completion_status
+  local effective_config_file
+  local workspace_config_file
   local -a codex_args
 
   mkdir -p "$attempt_dir"
   printf '%s\n' "$row_json" >"$attempt_dir/plan-row.json"
   prepare_workspace "$arm" "$workspace" "$attempt_dir"
-  prepare_home "$home_dir" "$MODEL" "$REASONING_EFFORT"
+  workspace_config_file="$workspace/.codex/config.toml"
+  effective_config_file="$home_dir/.codex/config.toml"
+  if [[ "$arm" == "optimus" ]]; then
+    prepare_home "$home_dir" "$MODEL" "$REASONING_EFFORT" "$workspace_config_file"
+    grep -q '^\[mcp_servers\.optimusctx\]$' "$effective_config_file" || die "optimus config was not merged into effective Codex config: $effective_config_file"
+  else
+    prepare_home "$home_dir" "$MODEL" "$REASONING_EFFORT"
+  fi
 
   codex_args=(
     exec
@@ -562,6 +581,7 @@ run_plan_row() {
   "repo_root": $(json_string "$REPO_ROOT"),
   "git_sha": $(json_string "$GIT_SHA"),
   "workspace": $(json_string "$workspace"),
+  "effective_codex_config_file": $(json_string "$effective_config_file"),
   "prompt_file": $(json_string "$prompt_file"),
   "prompt_sha256": $(json_string "$prompt_sha256"),
   "model": $(json_string "$MODEL"),
