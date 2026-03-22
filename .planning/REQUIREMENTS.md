@@ -14,8 +14,8 @@
 
 ### Gemini CLI Support
 
-- [ ] **GEM-01**: An operator can preview and write Gemini CLI MCP registration to repo-local or shared `.gemini/settings.json` using the documented `mcpServers` contract and `optimusctx run`.
-- [ ] **GEM-02**: An operator can verify Gemini CLI registration, discovery, and usage through `optimusctx status` with Gemini-specific guidance and truthful evidence.
+- [x] **GEM-01**: An operator can preview and write Gemini CLI MCP registration to repo-local or shared `.gemini/settings.json` using the documented `mcpServers` contract and `optimusctx run`.
+- [x] **GEM-02**: An operator can verify Gemini CLI registration, discovery, and usage through `optimusctx status` with Gemini-specific guidance and truthful evidence.
 
 ### Cursor CLI Support
 
@@ -60,8 +60,8 @@
 | HOST-01 | Phase 36 | Complete |
 | HOST-02 | Phase 36 | Complete |
 | HOST-03 | Phase 36 | Complete |
-| GEM-01 | Phase 37 | Pending |
-| GEM-02 | Phase 37 | Pending |
+| GEM-01 | Phase 37 | Complete |
+| GEM-02 | Phase 37 | Complete |
 | CUR-01 | Phase 38 | Pending |
 | CUR-02 | Phase 38 | Pending |
 | DOC-01 | Phase 39 | Pending |
@@ -74,4 +74,4 @@
 
 ---
 *Requirements defined: 2026-03-21*
-*Last updated: 2026-03-21 for milestone v1.3.9*
+*Last updated: 2026-03-22 after completing Phase 37*

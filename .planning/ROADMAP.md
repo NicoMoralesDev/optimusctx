@@ -31,7 +31,7 @@
 - The main implementation risk is not MCP runtime work; it is host-contract truth: path resolution, scope clarity, merge safety, and keeping CLI/editor/app support claims explicit.
 
 - [x] **Phase 36: Host Capability Matrix and Adapter Foundation** - generalize the supported-host model so new clients are admitted only through documented, testable host contracts covering config shape, target path, scope model, and verification support. (completed 2026-03-22)
-- [ ] **Phase 37: Gemini CLI Native Onboarding** - add truthful Gemini CLI preview, write, and verification support using Gemini's documented `settings.json` and `mcpServers` model.
+- [x] **Phase 37: Gemini CLI Native Onboarding** - add truthful Gemini CLI preview, write, and verification support using Gemini's documented `settings.json` and `mcpServers` model. (completed 2026-03-22)
 - [ ] **Phase 38: Cursor CLI Native Onboarding** - add truthful Cursor CLI preview, write, and verification support using Cursor's documented shared `mcp.json` contract.
 - [ ] **Phase 39: Cross-Host Verification, Docs, and Environment Safety** - close the milestone by documenting the new host set, locking the contracts with tests, and ensuring environment/path truth is consistent across supported families.
 
@@ -59,11 +59,11 @@ Plans:
   1. `optimusctx init --client gemini-cli` can preview and write the native Gemini contract without manual translation.
   2. `optimusctx status` can detect Gemini CLI registration and distinguish discovery from actual tool use when evidence exists.
   3. Repeated Gemini writes preserve unrelated config and avoid duplicate server entries.
-**Plans**: TBD
+**Plans**: 2/2 plans complete
 
 Plans:
-- [ ] 37-01: Add Gemini CLI supported-host registration, config resolution, and merge-safe writes.
-- [ ] 37-02: Extend status and onboarding guidance for Gemini CLI verification and usage evidence.
+- [x] 37-01: Add Gemini CLI supported-host registration, config resolution, and merge-safe writes.
+- [x] 37-02: Extend status and onboarding guidance for Gemini CLI verification and usage evidence.
 
 ### Phase 38: Cursor CLI Native Onboarding
 **Goal**: add truthful Cursor CLI preview, write, and verification support using Cursor's documented shared `mcp.json` contract.
@@ -101,15 +101,15 @@ Phases execute in numeric order: 36 -> 37 -> 38 -> 39
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 36. Host Capability Matrix and Adapter Foundation | 2/2 | Complete    | 2026-03-22 |
-| 37. Gemini CLI Native Onboarding | 0/2 | Not started | - |
+| 37. Gemini CLI Native Onboarding | 2/2 | Complete    | 2026-03-22 |
 | 38. Cursor CLI Native Onboarding | 0/2 | Not started | - |
 | 39. Cross-Host Verification, Docs, and Environment Safety | 0/2 | Not started | - |
 
 ## Next Step
 
-- Plan Phase 37 with `$gsd-plan-phase 37`.
+- Plan Phase 38 with `$gsd-plan-phase 38`.
 - Keep `v1.3.4` intentionally unreleased.
 - Treat `v1.3.9` as the next public cut once Gemini CLI and Cursor CLI support are both truthful, documented, and verified.
 
 ---
-*Last updated: 2026-03-22 after completing Phase 36*
+*Last updated: 2026-03-22 after completing Phase 37*
