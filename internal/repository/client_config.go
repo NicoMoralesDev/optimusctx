@@ -22,6 +22,7 @@ const (
 	ClientCodexApp      ClientID = "codex-app"
 	ClientCodexCLI      ClientID = "codex-cli"
 	ClientGeminiCLI     ClientID = "gemini-cli"
+	ClientCursorCLI     ClientID = "cursor-cli"
 	ClientGenericMCP    ClientID = "generic"
 )
 
@@ -161,6 +162,17 @@ func SupportedClients() []SupportedClient {
 				ConfigKind:      ClientConfigKindJSON,
 				ConfigScopes:    []ClientConfigScope{ClientConfigScopeRepo, ClientConfigScopeShared},
 				GuidanceSupport: ClientGuidanceSupportManaged,
+				UsageEvidence:   true,
+			},
+		},
+		{
+			ID:          ClientCursorCLI,
+			DisplayName: "Cursor CLI",
+			Capabilities: ClientCapabilities{
+				SupportLevel:    ClientSupportLevelNative,
+				ConfigKind:      ClientConfigKindJSON,
+				ConfigScopes:    []ClientConfigScope{ClientConfigScopeRepo, ClientConfigScopeShared},
+				GuidanceSupport: ClientGuidanceSupportUnsupported,
 				UsageEvidence:   true,
 			},
 		},

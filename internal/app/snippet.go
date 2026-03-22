@@ -24,7 +24,7 @@ func (SnippetGenerator) Render() string {
 
 	lines := []string{
 		"# OptimusCtx manual integration snippet",
-		"# Supported native clients: claude-desktop, claude-cli, codex-app, codex-cli, gemini-cli",
+		"# Supported native clients: claude-desktop, claude-cli, codex-app, codex-cli, gemini-cli, cursor-cli",
 		"# `optimusctx snippet` is deprecated; use `optimusctx init --client <client> [--write]` for the current supported-client surface.",
 		"# OptimusCtx now serves MCP over `optimusctx run`.",
 		"# You can paste this into a supported client config or drive onboarding with:",
@@ -32,12 +32,13 @@ func (SnippetGenerator) Render() string {
 		"#   optimusctx init --client codex-app --config /path/to/.codex/config.toml",
 		"#   optimusctx init --client codex-cli --config /path/to/.codex/config.toml",
 		"#   optimusctx init --client gemini-cli --config /path/to/.gemini/settings.json",
+		"#   optimusctx init --client cursor-cli --config /path/to/.cursor/mcp.json",
 		"",
 		strings.TrimSuffix(rendered, "\n"),
 		"",
 		"# Write the same registration explicitly with:",
 		"#   optimusctx init --client <client> [--write]",
-		"# Supported native clients: claude-desktop, claude-cli, codex-app, codex-cli, gemini-cli",
+		"# Supported native clients: claude-desktop, claude-cli, codex-app, codex-cli, gemini-cli, cursor-cli",
 	}
 
 	return strings.Join(lines, "\n") + "\n"

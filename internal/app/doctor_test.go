@@ -350,6 +350,53 @@ func TestDoctorDetectsGeminiCLIRegistration(t *testing.T) {
 	}
 }
 
+func TestDoctorDetectsCursorCLIRegistration(t *testing.T) {
+	repoRoot := initRepo(t)
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "alpha.go"), "package pkg\n\nfunc Alpha() {}\n")
+
+	if _, err := NewRefreshService().Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+	writeDoctorCursorRegistration(t, repoRoot)
+
+	service := NewDoctorService()
+	service.Getwd = func() (string, error) { return repoRoot, nil }
+
+	report, err := service.Doctor(context.Background(), repoRoot, repository.DoctorRequest{BudgetLimit: 2})
+	if err != nil {
+		t.Fatalf("Doctor() error = %v", err)
+	}
+
+	var cursor *repository.DoctorHostRegistration
+	for i := range report.HostMCP.Hosts {
+		if report.HostMCP.Hosts[i].Client.ID == repository.ClientCursorCLI {
+			cursor = &report.HostMCP.Hosts[i]
+			break
+		}
+	}
+	if cursor == nil {
+		t.Fatalf("Cursor CLI registration missing from host report: %+v", report.HostMCP.Hosts)
+	}
+	if cursor.RegistrationState != repository.HostRegistrationDetected {
+		t.Fatalf("Cursor registration state = %q, want detected", cursor.RegistrationState)
+	}
+	if cursor.GuidanceState != repository.GuidanceStateUnsupported {
+		t.Fatalf("Cursor guidance state = %q, want unsupported", cursor.GuidanceState)
+	}
+	if !strings.Contains(cursor.RegistrationEvidence, "repo `.cursor/mcp.json`") {
+		t.Fatalf("Cursor registration evidence = %q", cursor.RegistrationEvidence)
+	}
+	if !strings.Contains(cursor.GuidanceEvidence, "not managed through Cursor config") {
+		t.Fatalf("Cursor guidance evidence = %q", cursor.GuidanceEvidence)
+	}
+}
+
 func writeDoctorWatchStatus(t *testing.T, repoRoot string, record repository.WatchStatusRecord) {
 	t.Helper()
 
@@ -432,4 +479,15 @@ func writeDoctorGeminiRegistration(t *testing.T, repoRoot string) {
 	if err := os.WriteFile(guidancePath, []byte(repository.RenderGeminiGuidanceBlock()), 0o644); err != nil {
 		t.Fatalf("WriteFile(%q) error = %v", guidancePath, err)
 	}
+}
+
+func writeDoctorCursorRegistration(t *testing.T, repoRoot string) {
+	t.Helper()
+
+	configPath := filepath.Join(repoRoot, ".cursor", "mcp.json")
+	writeClaudeDesktopConfig(t, configPath, repository.ClientConfigDocument{
+		MCPServers: map[string]repository.ServeCommand{
+			repository.DefaultMCPServerName: repository.NewServeCommand(""),
+		},
+	})
 }

@@ -211,7 +211,7 @@ func TestInstallServiceSupportsGenericPreview(t *testing.T) {
 		t.Fatal("generic preview should include notes")
 	}
 
-	for _, clientID := range []string{"claude-cli", "codex-app", "codex-cli"} {
+	for _, clientID := range []string{"claude-cli", "codex-app", "codex-cli", "gemini-cli", "cursor-cli"} {
 		namedResult, err := service.Register(context.Background(), InstallRequest{ClientID: clientID})
 		if err != nil {
 			t.Fatalf("Register(%s) error = %v", clientID, err)
@@ -570,6 +570,86 @@ func TestInstallServiceGeminiCLIWritePreservesExistingContent(t *testing.T) {
 	}
 	if !strings.Contains(guidance, "OptimusCtx MCP guidance") {
 		t.Fatalf("guidance missing managed block:\n%s", guidance)
+	}
+}
+
+func TestInstallServiceSupportsCursorCLIPreview(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	service := NewInstallService()
+	result, err := service.Register(context.Background(), InstallRequest{ClientID: "cursor-cli"})
+	if err != nil {
+		t.Fatalf("Register(cursor-cli) error = %v", err)
+	}
+	if result.Wrote {
+		t.Fatal("cursor-cli preview should not write")
+	}
+	if result.Rendered.Client.ID != "cursor-cli" {
+		t.Fatalf("client id = %q", result.Rendered.Client.ID)
+	}
+	if result.Rendered.Client.DisplayName != "Cursor CLI" {
+		t.Fatalf("display name = %q", result.Rendered.Client.DisplayName)
+	}
+	if got, want := result.Rendered.ConfigPath, filepath.Join(homeDir, ".cursor", "mcp.json"); got != want {
+		t.Fatalf("config path = %q, want %q", got, want)
+	}
+	if result.Rendered.Mode != repository.RenderModePreview {
+		t.Fatalf("mode = %q", result.Rendered.Mode)
+	}
+	if !strings.Contains(result.Rendered.Content, "\"mcpServers\"") {
+		t.Fatalf("content missing mcpServers: %s", result.Rendered.Content)
+	}
+	if !strings.Contains(result.Rendered.Content, "\"optimusctx\"") {
+		t.Fatalf("content missing optimusctx entry: %s", result.Rendered.Content)
+	}
+	if strings.TrimSpace(result.Rendered.AppliedContent) == "" {
+		t.Fatal("cursor-cli preview should keep applied content for real writes")
+	}
+	if result.Guidance != nil {
+		t.Fatal("cursor-cli preview should not claim managed guidance")
+	}
+}
+
+func TestInstallServiceCursorCLIWritePreservesExistingContent(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	configPath := filepath.Join(homeDir, ".cursor", "mcp.json")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	writeClaudeDesktopConfig(t, configPath, repository.ClientConfigDocument{
+		MCPServers: map[string]repository.ServeCommand{
+			"other": {Command: "other", Args: []string{"serve"}},
+		},
+	})
+
+	service := NewInstallService()
+	result, err := service.Register(context.Background(), InstallRequest{
+		ClientID: "cursor-cli",
+		Write:    true,
+	})
+	if err != nil {
+		t.Fatalf("Register(cursor-cli write) error = %v", err)
+	}
+	if !result.Wrote {
+		t.Fatal("write should report wrote=true")
+	}
+	if result.Guidance != nil {
+		t.Fatal("cursor-cli write should not persist guidance")
+	}
+
+	document := readClaudeDesktopConfig(t, configPath)
+	if _, ok := document.MCPServers["other"]; !ok {
+		t.Fatalf("written Cursor config missing existing server: %+v", document.MCPServers)
+	}
+	command, ok := document.MCPServers["optimusctx"]
+	if !ok {
+		t.Fatalf("written Cursor config missing optimusctx: %+v", document.MCPServers)
+	}
+	if command.Command != "optimusctx" || len(command.Args) != 1 || command.Args[0] != "run" {
+		t.Fatalf("optimusctx server command = %+v", command)
 	}
 }
 

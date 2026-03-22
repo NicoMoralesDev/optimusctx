@@ -40,7 +40,7 @@ func writerIsInteractive(writer io.Writer) bool {
 func promptInitOnboarding(stdin io.Reader, stdout io.Writer, repoRoot string) (app.InstallRequest, bool, error) {
 	reader := bufio.NewReader(stdin)
 
-	if _, err := io.WriteString(stdout, "\nset up a supported MCP client now?\n  1. Claude Desktop\n  2. Claude CLI\n  3. Codex App\n  4. Codex CLI\n  5. Gemini CLI\nChoose [1-5, Enter to skip]: "); err != nil {
+	if _, err := io.WriteString(stdout, "\nset up a supported MCP client now?\n  1. Claude Desktop\n  2. Claude CLI\n  3. Codex App\n  4. Codex CLI\n  5. Gemini CLI\n  6. Cursor CLI\nChoose [1-6, Enter to skip]: "); err != nil {
 		return app.InstallRequest{}, false, err
 	}
 
@@ -60,6 +60,9 @@ func promptInitOnboarding(stdin io.Reader, stdout io.Writer, repoRoot string) (a
 		"5":              string(repository.ClientGeminiCLI),
 		"gemini-cli":     string(repository.ClientGeminiCLI),
 		"gemini cli":     string(repository.ClientGeminiCLI),
+		"6":              string(repository.ClientCursorCLI),
+		"cursor-cli":     string(repository.ClientCursorCLI),
+		"cursor cli":     string(repository.ClientCursorCLI),
 	}, "")
 	if err != nil {
 		return app.InstallRequest{}, false, err
@@ -132,6 +135,24 @@ func promptInitOnboarding(stdin io.Reader, stdout io.Writer, repoRoot string) (a
 		repoConfigPath := filepath.Join(repoRoot, ".gemini", "settings.json")
 		sharedConfigPath, sharedConfigErr := app.DefaultGeminiCLIConfigPath()
 		if _, err := fmt.Fprintf(stdout, "Where should Gemini CLI use OptimusCtx?\n  1. This repo only\n     %s\n  2. Your shared Gemini config\n     %s\nChoose [1-2, default: 1]: ", repoConfigPath, sharedConfigPath); err != nil {
+			return app.InstallRequest{}, false, err
+		}
+		destination, _, err := readPromptChoice(reader, stdout, map[string]string{
+			"1": "repo",
+			"2": "shared",
+		}, "repo")
+		if err != nil {
+			return app.InstallRequest{}, false, err
+		}
+		if destination == "repo" {
+			request.ConfigPath = repoConfigPath
+		} else if sharedConfigErr != nil {
+			return app.InstallRequest{}, false, sharedConfigErr
+		}
+	case string(repository.ClientCursorCLI):
+		repoConfigPath := filepath.Join(repoRoot, ".cursor", "mcp.json")
+		sharedConfigPath, sharedConfigErr := app.DefaultCursorCLIConfigPath()
+		if _, err := fmt.Fprintf(stdout, "Where should Cursor CLI use OptimusCtx?\n  1. This repo only\n     %s\n  2. Your shared Cursor config\n     %s\nChoose [1-2, default: 1]: ", repoConfigPath, sharedConfigPath); err != nil {
 			return app.InstallRequest{}, false, err
 		}
 		destination, _, err := readPromptChoice(reader, stdout, map[string]string{

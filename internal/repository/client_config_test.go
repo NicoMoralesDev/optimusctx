@@ -10,6 +10,7 @@ func TestSupportedClientsRemainExplicit(t *testing.T) {
 		ClientCodexApp,
 		ClientCodexCLI,
 		ClientGeminiCLI,
+		ClientCursorCLI,
 		ClientGenericMCP,
 	}
 
@@ -81,6 +82,14 @@ func TestSupportedClientsExposeCapabilities(t *testing.T) {
 			wantLevel:         ClientSupportLevelNative,
 			wantKind:          ClientConfigKindJSON,
 			wantGuidance:      ClientGuidanceSupportManaged,
+			wantUsageEvidence: true,
+			wantScopes:        []ClientConfigScope{ClientConfigScopeRepo, ClientConfigScopeShared},
+		},
+		{
+			id:                ClientCursorCLI,
+			wantLevel:         ClientSupportLevelNative,
+			wantKind:          ClientConfigKindJSON,
+			wantGuidance:      ClientGuidanceSupportUnsupported,
 			wantUsageEvidence: true,
 			wantScopes:        []ClientConfigScope{ClientConfigScopeRepo, ClientConfigScopeShared},
 		},

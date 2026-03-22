@@ -404,7 +404,7 @@ func doctorSummary(report repository.DoctorReport) repository.DoctorSummary {
 	addIssue("watch", report.Watch.Status, doctorWatchIssue(report), doctorWatchAction(report))
 	addIssue("structural", report.Structural.Status, doctorStructuralIssue(report), doctorStructuralAction(report))
 	addIssue("budget", report.Budget.Status, "no persisted token-cost hotspots available", "run `optimusctx run` so runtime refresh can persist budget analysis inputs")
-	addIssue("mcp", report.MCPReadiness.Status, doctorMCPIssue(report), "use `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, codex-cli, or gemini-cli to preview or register the MCP contract")
+	addIssue("mcp", report.MCPReadiness.Status, doctorMCPIssue(report), "use `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, codex-cli, gemini-cli, or cursor-cli to preview or register the MCP contract")
 	addIssue("mcp-registration", report.HostMCP.Status, doctorMCPRegistrationIssue(report), doctorMCPRegistrationAction(report))
 	if doctorShouldReportMCPActivityIssue(report) {
 		addIssue("mcp-usage", report.MCPActivity.Status, doctorMCPActivityIssue(report), doctorMCPActivityAction(report))
@@ -639,6 +639,9 @@ func (s DoctorService) hostRegistrations(ctx context.Context, repoRoot string) (
 		case repository.ClientGeminiCLI:
 			geminiSharedPath, _ := resolveGeminiCLIConfigPath("")
 			hosts = append(hosts, s.detectGeminiCLI(client, repoRoot, geminiSharedPath))
+		case repository.ClientCursorCLI:
+			cursorSharedPath, _ := resolveCursorCLIConfigPath("")
+			hosts = append(hosts, s.detectCursorCLI(client, repoRoot, cursorSharedPath))
 		}
 	}
 
@@ -876,6 +879,53 @@ func (s DoctorService) detectGeminiCLI(client repository.SupportedClient, repoRo
 
 	host.RegistrationEvidence = "no Gemini config currently references OptimusCtx"
 	host.GuidancePath = filepath.Join(repoRoot, repository.GeminiGuidanceFilename)
+	return host
+}
+
+func (s DoctorService) detectCursorCLI(client repository.SupportedClient, repoRoot string, sharedConfigPath string) repository.DoctorHostRegistration {
+	host := repository.DoctorHostRegistration{
+		Client:             client,
+		RegistrationState:  repository.HostRegistrationNotDetected,
+		GuidanceState:      repository.GuidanceStateUnsupported,
+		GuidanceEvidence:   "Cursor CLI registration is supported, but durable agent guidance is not managed through Cursor config.",
+		CapabilityEvidence: client.CapabilitySummary(),
+	}
+
+	repoConfigPath := filepath.Join(repoRoot, ".cursor", "mcp.json")
+	paths := []string{repoConfigPath}
+	if strings.TrimSpace(sharedConfigPath) != "" {
+		paths = append(paths, sharedConfigPath)
+	}
+	for _, path := range paths {
+		existing, err := readExistingClientConfig(s.readFileFn(), path)
+		if err != nil {
+			host.RegistrationState = repository.HostRegistrationUnverified
+			host.RegistrationEvidence = err.Error()
+			return host
+		}
+		if len(existing) == 0 {
+			continue
+		}
+		document, err := repository.ParseClientConfig(existing)
+		if err != nil {
+			host.RegistrationState = repository.HostRegistrationUnverified
+			host.RegistrationEvidence = err.Error()
+			host.RegistrationPath = path
+			return host
+		}
+		if _, ok := document.MCPServers[repository.DefaultMCPServerName]; ok {
+			host.RegistrationState = repository.HostRegistrationDetected
+			host.RegistrationPath = path
+			if path == repoConfigPath {
+				host.RegistrationEvidence = "found OptimusCtx in repo `.cursor/mcp.json`"
+			} else {
+				host.RegistrationEvidence = "found OptimusCtx in shared Cursor config"
+			}
+			return host
+		}
+	}
+
+	host.RegistrationEvidence = "no Cursor config currently references OptimusCtx"
 	return host
 }
 

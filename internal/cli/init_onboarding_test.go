@@ -131,7 +131,8 @@ func TestInitCommandInteractiveSkipOnboarding(t *testing.T) {
 			"1. Claude Desktop",
 			"4. Codex CLI",
 			"5. Gemini CLI",
-			"next step: use `optimusctx init --client <client>` to review the change for claude-desktop, claude-cli, codex-app, codex-cli, or gemini-cli, or add `--write` to configure one right away",
+			"6. Cursor CLI",
+			"next step: use `optimusctx init --client <client>` to review the change for claude-desktop, claude-cli, codex-app, codex-cli, gemini-cli, or cursor-cli, or add `--write` to configure one right away",
 			"runtime after registration: your MCP client should launch `optimusctx run` automatically when it connects",
 		} {
 			if !strings.Contains(output, want) {
@@ -179,7 +180,7 @@ func TestInitCommandInteractiveChoosesClientPreview(t *testing.T) {
 		}
 		output := stdout.String()
 		for _, want := range []string{
-			"Choose [1-5, Enter to skip]:",
+			"Choose [1-6, Enter to skip]:",
 			"Where should Codex App use OptimusCtx?",
 			filepath.Join(repoRoot, ".codex", "config.toml"),
 			"How should OptimusCtx continue?",
@@ -256,6 +257,60 @@ func TestInitCommandInteractiveChoosesGeminiCLIWrite(t *testing.T) {
 			"status: wrote config",
 			"agent guidance status: wrote guidance",
 			"runtime after host pickup: your MCP client should launch `optimusctx run` automatically when it connects",
+		} {
+			if !strings.Contains(output, want) {
+				t.Fatalf("missing %q in:\n%s", want, output)
+			}
+		}
+	})
+}
+
+func TestInitCommandInteractiveChoosesCursorCLIPreview(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	previousInstall := initInstallService
+	previousPrompt := initShouldPrompt
+	previousInput := initPromptInput
+	t.Cleanup(func() {
+		initInstallService = previousInstall
+		initShouldPrompt = previousPrompt
+		initPromptInput = previousInput
+	})
+	initShouldPrompt = func(io.Writer) bool { return true }
+	initPromptInput = strings.NewReader("6\n\n2\n")
+	initInstallService = func(ctx context.Context, request app.InstallRequest) (app.InstallResult, error) {
+		if request.ClientID != "cursor-cli" {
+			t.Fatalf("client = %q", request.ClientID)
+		}
+		if request.ConfigPath != filepath.Join(repoRoot, ".cursor", "mcp.json") {
+			t.Fatalf("config path = %q", request.ConfigPath)
+		}
+		if request.Write {
+			t.Fatal("review-first path should not set write")
+		}
+		return app.InstallResult{Rendered: repository.RenderedClientConfig{
+			Client:     repository.SupportedClient{ID: repository.ClientCursorCLI, DisplayName: "Cursor CLI"},
+			ConfigPath: filepath.Join(repoRoot, ".cursor", "mcp.json"),
+			Mode:       repository.RenderModePreview,
+			Content:    "{\n  \"mcpServers\": {\n    \"optimusctx\": {\n      \"command\": \"optimusctx\",\n      \"args\": [\n        \"run\"\n      ]\n    }\n  }\n}\n",
+		}}, nil
+	}
+
+	withWorkingDirectory(t, repoRoot, func() {
+		writeCLIFile(t, repoRoot+"/main.go", "package main\n")
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"init"}, &stdout); err != nil {
+			t.Fatalf("Execute(init) error = %v", err)
+		}
+		output := stdout.String()
+		for _, want := range []string{
+			"Where should Cursor CLI use OptimusCtx?",
+			filepath.Join(repoRoot, ".cursor", "mcp.json"),
+			"client: Cursor CLI",
+			"destination: This repo only",
+			"config path: " + filepath.Join(repoRoot, ".cursor", "mcp.json"),
+			"review this change first:",
+			"status: ready to configure",
+			"next step: rerun `optimusctx init --client cursor-cli --config " + filepath.Join(repoRoot, ".cursor", "mcp.json") + " --write` to apply this setup",
 		} {
 			if !strings.Contains(output, want) {
 				t.Fatalf("missing %q in:\n%s", want, output)

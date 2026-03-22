@@ -91,6 +91,7 @@ func NewInstallService() InstallService {
 	codexApp := mustSupportedClient(repository.ClientCodexApp)
 	codexCLI := mustSupportedClient(repository.ClientCodexCLI)
 	geminiCLI := mustSupportedClient(repository.ClientGeminiCLI)
+	cursorCLI := mustSupportedClient(repository.ClientCursorCLI)
 	generic := mustSupportedClient(repository.ClientGenericMCP)
 	jsonAdapter := jsonFileClientAdapter{
 		client:      claudeDesktop,
@@ -118,6 +119,22 @@ func NewInstallService() InstallService {
 		mkdirAll:      os.MkdirAll,
 		notes:         geminiCLINotes(),
 	}
+	cursorAdapter := jsonFileClientAdapter{
+		client:      cursorCLI,
+		resolvePath: resolveCursorCLIConfigPath,
+		mergeConfig: func(existing []byte, serverName string, command repository.ServeCommand) (string, error) {
+			document, err := repository.MergeClientConfig(existing, serverName, command)
+			if err != nil {
+				return "", err
+			}
+			return repository.RenderClientConfig(document)
+		},
+		renderPreview: repository.RenderClientConfigSnippet,
+		readFile:      os.ReadFile,
+		writeFile:     os.WriteFile,
+		mkdirAll:      os.MkdirAll,
+		notes:         cursorCLINotes(),
+	}
 
 	return InstallService{
 		adapters: map[repository.ClientID]clientRegistrationAdapter{
@@ -144,6 +161,7 @@ func NewInstallService() InstallService {
 				notes:       codexCLINotes(),
 			},
 			geminiCLI.ID: geminiAdapter,
+			cursorCLI.ID: cursorAdapter,
 			generic.ID:   genericClientAdapter{client: generic, notes: genericMCPNotes()},
 		},
 		readFile:  os.ReadFile,
@@ -465,6 +483,14 @@ func geminiCLINotes() []string {
 	}
 }
 
+func cursorCLINotes() []string {
+	return []string{
+		"Cursor CLI writes the native `mcp.json` MCP contract.",
+		"This integration verifies the `cursor-cli` host contract even though Cursor may share the same config with editor surfaces.",
+		"Use --config to target `~/.cursor/mcp.json` or a repo-local `.cursor/mcp.json` path.",
+	}
+}
+
 func renderGenericPreviewContent(request InstallRequest) (string, error) {
 	serverName := request.ServerName
 	if serverName == "" {
@@ -567,6 +593,15 @@ func resolveGeminiCLIConfigPath(explicitPath string) (string, error) {
 	})
 }
 
+func resolveCursorCLIConfigPath(explicitPath string) (string, error) {
+	return resolveHostConfigPath(explicitPath, hostConfigPathSpec{
+		resolveDefault: func(_ string, homeDir string, _ string) (string, error) {
+			return filepath.Join(homeDir, ".cursor", "mcp.json"), nil
+		},
+		normalizePath: normalizeCodexConfigPath,
+	})
+}
+
 func DefaultCodexConfigPath() (string, error) {
 	return resolveCodexCLIConfigPath("")
 }
@@ -581,6 +616,10 @@ func DefaultCodexAppConfigPath() (string, error) {
 
 func DefaultGeminiCLIConfigPath() (string, error) {
 	return resolveGeminiCLIConfigPath("")
+}
+
+func DefaultCursorCLIConfigPath() (string, error) {
+	return resolveCursorCLIConfigPath("")
 }
 
 func resolveClaudeDesktopConfigPath(explicitPath string) (string, error) {
