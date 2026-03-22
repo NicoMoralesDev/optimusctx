@@ -1,0 +1,8 @@
+Create `.benchmark/benchmark-integration-notes.md`.
+
+Write a `## Config` section with exactly 3 bullet points:
+- the repo-local Codex config path that the optimus arm prepares
+- the effective config location Codex reads during the benchmark, and include the literal token `CODEX_HOME`
+- the TOML section that must be present for OptimusCtx MCP to be available, and include the literal token `mcp_servers.optimusctx`
+
+Keep the note concise and grounded in the current benchmark runner implementation.

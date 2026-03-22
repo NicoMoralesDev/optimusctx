@@ -1,0 +1,8 @@
+Create `.benchmark/suite-redesign-notes.md`.
+
+Write a `## Gaps` section with exactly 2 bullet points about why the benchmark suite can still underrepresent real OptimusCtx value in a project workflow.
+
+Constraints:
+- one bullet must include the literal term `single-step`
+- one bullet must include the literal term `sequential`
+- ground the note in the current suite and evaluator

@@ -1,3 +1,0 @@
-In the same benchmark-argument parsing helper, what happens if the `verify` subcommand receives `--output`?
-
-Reply in one sentence and quote the exact flag name.

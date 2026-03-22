@@ -1,5 +1,0 @@
-Find the Go function that loads every benchmark suite from a directory and state one validation it performs after sorting the suites.
-
-Reply with exactly two bullet points:
-- the function name
-- the validation or error text

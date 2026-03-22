@@ -34,23 +34,38 @@ Optional:
   --random-seed N            Seed used for execution ordering (default: current epoch seconds)
   --help                     Show this help
 
-Suite file schema:
+Suite file schema (recommended, sequential workflows):
   {
-    "schema_version": 1,
-    "task_defaults": {
+    "schema_version": 2,
+    "suite_defaults": {
       "category": "analysis",
       "evaluator_command": "./scripts/evaluate-task.sh"
     },
-    "tasks": [
+    "requires_workspace_write": true,
+    "scenarios": [
       {
-        "id": "locate-symbol",
-        "name": "Locate repository symbol",
-        "prompt_file": "bench/prompts/locate-symbol.txt",
-        "category": "navigation",
-        "evaluator_command": "./scripts/evaluate-locate-symbol.sh"
+        "id": "config-investigation",
+        "name": "Config Investigation Workflow",
+        "category": "workflow-analysis",
+        "steps": [
+          {
+            "id": "record-effective-config",
+            "name": "Record Effective Config",
+            "prompt_file": "bench/prompts/step-1.txt"
+          },
+          {
+            "id": "record-usage-evidence",
+            "name": "Record Usage Evidence",
+            "prompt_file": "bench/prompts/step-2.txt"
+          }
+        ]
       }
     ]
   }
+
+Compatibility:
+  `schema_version: 1` suites with top-level `tasks` are still supported and are treated as
+  single-step scenarios.
 
 Evaluator contract:
   The evaluator command runs with benchmark metadata exposed as BENCH_* environment variables and
@@ -198,8 +213,10 @@ import os
 import pathlib
 import random
 import re
+
+
 def slugify(value):
-    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    slug = re.sub(r"[^a-z0-9]+", "-", str(value).lower()).strip("-")
     return slug or "task"
 
 
@@ -216,6 +233,15 @@ def unique_slug(base, seen):
     return candidate
 
 
+def resolve_prompt(path_value, suite_dir):
+    prompt_path = pathlib.Path(path_value)
+    if not prompt_path.is_absolute():
+        prompt_path = (suite_dir / prompt_path).resolve()
+    if not prompt_path.is_file():
+        raise SystemExit(f"prompt file not found: {prompt_path}")
+    return str(prompt_path)
+
+
 prompt_file = os.environ.get("PROMPT_FILE", "")
 suite_file = os.environ.get("SUITE_FILE", "")
 task_name = os.environ.get("TASK_NAME", "")
@@ -230,22 +256,53 @@ tasks_path = pathlib.Path(os.environ["TASKS_JSON"])
 if bool(prompt_file) == bool(suite_file):
     raise SystemExit("exactly one of PROMPT_FILE or SUITE_FILE must be set")
 
+seen_scenario_slugs = set()
+seen_task_slugs = set()
+seen_task_ids = set()
+scenarios = []
 tasks = []
-seen_slugs = set()
 
 if prompt_file:
     prompt_path = pathlib.Path(prompt_file).resolve()
     if not prompt_path.is_file():
         raise SystemExit(f"prompt file not found: {prompt_path}")
     resolved_task_name = task_name or prompt_path.name
+    scenario_id = slugify(resolved_task_name)
+    task_id = scenario_id
+    task_slug = unique_slug(resolved_task_name, seen_task_slugs)
+    scenarios.append(
+        {
+            "id": scenario_id,
+            "name": resolved_task_name,
+            "slug": unique_slug(resolved_task_name, seen_scenario_slugs),
+            "category": task_category or "uncategorized",
+            "requires_workspace_write": False,
+            "steps": [
+                {
+                    "id": task_id,
+                    "name": resolved_task_name,
+                    "slug": task_slug,
+                    "category": task_category or "uncategorized",
+                    "prompt_file": str(prompt_path),
+                    "evaluator_command": evaluator_command,
+                    "requires_workspace_write": False,
+                    "source": "prompt-file",
+                }
+            ],
+        }
+    )
     tasks.append(
         {
-            "id": slugify(resolved_task_name),
+            "id": task_id,
             "name": resolved_task_name,
-            "slug": unique_slug(resolved_task_name, seen_slugs),
-            "prompt_file": str(prompt_path),
+            "slug": task_slug,
             "category": task_category or "uncategorized",
+            "prompt_file": str(prompt_path),
             "evaluator_command": evaluator_command,
+            "requires_workspace_write": False,
+            "scenario_id": scenario_id,
+            "scenario_name": resolved_task_name,
+            "scenario_category": task_category or "uncategorized",
             "source": "prompt-file",
         }
     )
@@ -254,43 +311,125 @@ else:
     if not suite_path.is_file():
         raise SystemExit(f"suite file not found: {suite_path}")
     payload = json.loads(suite_path.read_text(encoding="utf-8"))
-    if payload.get("schema_version", 1) != 1:
-        raise SystemExit("suite schema_version must be 1")
-    raw_tasks = payload.get("tasks")
-    if not isinstance(raw_tasks, list) or not raw_tasks:
-        raise SystemExit("suite must define a non-empty tasks array")
-    defaults = payload.get("task_defaults") or {}
-    if defaults and not isinstance(defaults, dict):
-        raise SystemExit("suite task_defaults must be an object")
+    schema_version = payload.get("schema_version", 1)
+    suite_dir = suite_path.parent
+    suite_defaults = payload.get("suite_defaults") or {}
+    if suite_defaults and not isinstance(suite_defaults, dict):
+        raise SystemExit("suite suite_defaults must be an object")
+    scenario_defaults = payload.get("scenario_defaults") or {}
+    if scenario_defaults and not isinstance(scenario_defaults, dict):
+        raise SystemExit("suite scenario_defaults must be an object")
+    step_defaults = payload.get("step_defaults") or payload.get("task_defaults") or {}
+    if step_defaults and not isinstance(step_defaults, dict):
+        raise SystemExit("suite step_defaults/task_defaults must be an object")
+    suite_requires_workspace_write = bool(payload.get("requires_workspace_write", False))
 
-    for idx, raw_task in enumerate(raw_tasks, start=1):
-        if not isinstance(raw_task, dict):
-            raise SystemExit(f"tasks[{idx}] must be an object")
-        prompt_value = raw_task.get("prompt_file")
-        if not prompt_value:
-          raise SystemExit(f"tasks[{idx}] missing prompt_file")
-        prompt_path = pathlib.Path(prompt_value)
-        if not prompt_path.is_absolute():
-            prompt_path = (suite_path.parent / prompt_path).resolve()
-        if not prompt_path.is_file():
-            raise SystemExit(f"tasks[{idx}] prompt_file not found: {prompt_path}")
-        resolved_name = str(raw_task.get("name") or raw_task.get("id") or prompt_path.stem)
-        resolved_id = str(raw_task.get("id") or slugify(resolved_name))
-        tasks.append(
-            {
-                "id": resolved_id,
-                "name": resolved_name,
-                "slug": unique_slug(str(raw_task.get("id") or resolved_name), seen_slugs),
-                "prompt_file": str(prompt_path),
-                "category": str(raw_task.get("category") or defaults.get("category") or "uncategorized"),
-                "evaluator_command": str(raw_task.get("evaluator_command") or defaults.get("evaluator_command") or evaluator_command),
+    if payload.get("scenarios") is not None:
+        if schema_version != 2:
+            raise SystemExit("suite schema_version must be 2 when using scenarios")
+        raw_scenarios = payload.get("scenarios")
+        if not isinstance(raw_scenarios, list) or not raw_scenarios:
+            raise SystemExit("suite must define a non-empty scenarios array")
+        for scenario_index, raw_scenario in enumerate(raw_scenarios, start=1):
+            if not isinstance(raw_scenario, dict):
+                raise SystemExit(f"scenarios[{scenario_index}] must be an object")
+            raw_steps = raw_scenario.get("steps")
+            if not isinstance(raw_steps, list) or not raw_steps:
+                raise SystemExit(f"scenarios[{scenario_index}] must define a non-empty steps array")
+            scenario_name = str(raw_scenario.get("name") or raw_scenario.get("id") or f"scenario-{scenario_index}")
+            scenario_id = str(raw_scenario.get("id") or slugify(scenario_name))
+            scenario_slug = unique_slug(scenario_name, seen_scenario_slugs)
+            scenario_category = str(raw_scenario.get("category") or scenario_defaults.get("category") or suite_defaults.get("category") or "workflow")
+            scenario_requires_workspace_write = bool(raw_scenario.get("requires_workspace_write", suite_requires_workspace_write))
+            scenario_steps = []
+            for step_index, raw_step in enumerate(raw_steps, start=1):
+                if not isinstance(raw_step, dict):
+                    raise SystemExit(f"scenarios[{scenario_index}].steps[{step_index}] must be an object")
+                prompt_value = raw_step.get("prompt_file")
+                if not prompt_value:
+                    raise SystemExit(f"scenarios[{scenario_index}].steps[{step_index}] missing prompt_file")
+                step_name = str(raw_step.get("name") or raw_step.get("id") or f"step-{step_index}")
+                step_id = str(raw_step.get("id") or slugify(step_name))
+                if step_id in seen_task_ids:
+                    raise SystemExit(f"duplicate step id {step_id!r}")
+                seen_task_ids.add(step_id)
+                step_slug = unique_slug(f"{scenario_name}-{step_name}", seen_task_slugs)
+                step_category = str(raw_step.get("category") or scenario_category or step_defaults.get("category") or suite_defaults.get("category") or "workflow")
+                step_requires_workspace_write = bool(raw_step.get("requires_workspace_write", scenario_requires_workspace_write))
+                step = {
+                    "id": step_id,
+                    "name": step_name,
+                    "slug": step_slug,
+                    "category": step_category,
+                    "prompt_file": resolve_prompt(prompt_value, suite_dir),
+                    "evaluator_command": str(raw_step.get("evaluator_command") or step_defaults.get("evaluator_command") or suite_defaults.get("evaluator_command") or evaluator_command),
+                    "requires_workspace_write": step_requires_workspace_write,
+                    "scenario_id": scenario_id,
+                    "scenario_name": scenario_name,
+                    "scenario_category": scenario_category,
+                    "source": "suite-file",
+                }
+                scenario_steps.append(step)
+                tasks.append(step)
+            scenarios.append(
+                {
+                    "id": scenario_id,
+                    "name": scenario_name,
+                    "slug": scenario_slug,
+                    "category": scenario_category,
+                    "requires_workspace_write": scenario_requires_workspace_write,
+                    "steps": scenario_steps,
+                }
+            )
+    else:
+        if schema_version != 1:
+            raise SystemExit("suite schema_version must be 1 when using top-level tasks")
+        raw_tasks = payload.get("tasks")
+        if not isinstance(raw_tasks, list) or not raw_tasks:
+            raise SystemExit("suite must define a non-empty tasks array")
+        for task_index, raw_task in enumerate(raw_tasks, start=1):
+            if not isinstance(raw_task, dict):
+                raise SystemExit(f"tasks[{task_index}] must be an object")
+            prompt_value = raw_task.get("prompt_file")
+            if not prompt_value:
+                raise SystemExit(f"tasks[{task_index}] missing prompt_file")
+            task_name_value = str(raw_task.get("name") or raw_task.get("id") or f"task-{task_index}")
+            task_id = str(raw_task.get("id") or slugify(task_name_value))
+            if task_id in seen_task_ids:
+                raise SystemExit(f"duplicate task id {task_id!r}")
+            seen_task_ids.add(task_id)
+            task_slug = unique_slug(task_name_value, seen_task_slugs)
+            task_category_value = str(raw_task.get("category") or step_defaults.get("category") or suite_defaults.get("category") or "uncategorized")
+            task_requires_workspace_write = bool(raw_task.get("requires_workspace_write", suite_requires_workspace_write))
+            step = {
+                "id": task_id,
+                "name": task_name_value,
+                "slug": task_slug,
+                "category": task_category_value,
+                "prompt_file": resolve_prompt(prompt_value, suite_dir),
+                "evaluator_command": str(raw_task.get("evaluator_command") or step_defaults.get("evaluator_command") or suite_defaults.get("evaluator_command") or evaluator_command),
+                "requires_workspace_write": task_requires_workspace_write,
+                "scenario_id": task_id,
+                "scenario_name": task_name_value,
+                "scenario_category": task_category_value,
                 "source": "suite-file",
             }
-        )
+            scenarios.append(
+                {
+                    "id": task_id,
+                    "name": task_name_value,
+                    "slug": unique_slug(task_name_value, seen_scenario_slugs),
+                    "category": task_category_value,
+                    "requires_workspace_write": task_requires_workspace_write,
+                    "steps": [step],
+                }
+            )
+            tasks.append(step)
 
 rng = random.Random(seed)
 plan_rows = []
-for task_index, task in enumerate(tasks, start=1):
+for scenario_index, scenario in enumerate(scenarios, start=1):
+    step_count = len(scenario["steps"])
     for attempt in range(1, attempts + 1):
         arm_order = ["baseline", "optimus"]
         if order_mode == "baseline-first":
@@ -298,7 +437,7 @@ for task_index, task in enumerate(tasks, start=1):
         elif order_mode == "optimus-first":
             arm_order = ["optimus", "baseline"]
         elif order_mode == "alternating":
-            if (task_index + attempt) % 2 == 0:
+            if (scenario_index + attempt) % 2 == 0:
                 arm_order = ["optimus", "baseline"]
         elif order_mode == "paired-random":
             arm_order = ["baseline", "optimus"]
@@ -306,31 +445,47 @@ for task_index, task in enumerate(tasks, start=1):
         else:
             raise SystemExit(f"unsupported order mode: {order_mode}")
 
-        pair_key = f"{task['id']}::attempt-{attempt:02d}"
+        scenario_pair_key = f"{scenario['id']}::attempt-{attempt:02d}"
         for order_index, arm in enumerate(arm_order, start=1):
-            plan_rows.append(
-                {
-                    "task_id": task["id"],
-                    "task_name": task["name"],
-                    "task_slug": task["slug"],
-                    "task_category": task["category"],
-                    "task_prompt_file": task["prompt_file"],
-                    "evaluator_command": task["evaluator_command"],
-                    "attempt": attempt,
-                    "pair_key": pair_key,
-                    "task_index": task_index,
-                    "arm": arm,
-                    "arm_order": order_index,
-                    "pair_execution_order": arm_order,
-                }
-            )
+            arm_run_key = f"{scenario_pair_key}::{arm}"
+            for step_index, step in enumerate(scenario["steps"], start=1):
+                plan_rows.append(
+                    {
+                        "scenario_id": scenario["id"],
+                        "scenario_name": scenario["name"],
+                        "scenario_slug": scenario["slug"],
+                        "scenario_category": scenario["category"],
+                        "scenario_index": scenario_index,
+                        "scenario_pair_key": scenario_pair_key,
+                        "task_id": step["id"],
+                        "task_name": step["name"],
+                        "task_slug": step["slug"],
+                        "task_category": step["category"],
+                        "task_prompt_file": step["prompt_file"],
+                        "evaluator_command": step["evaluator_command"],
+                        "requires_workspace_write": step["requires_workspace_write"],
+                        "attempt": attempt,
+                        "pair_key": f"{scenario['id']}::{step['id']}::attempt-{attempt:02d}",
+                        "task_index": len(plan_rows) + 1,
+                        "step_index": step_index,
+                        "step_count": step_count,
+                        "arm": arm,
+                        "arm_order": order_index,
+                        "arm_run_key": arm_run_key,
+                        "pair_execution_order": arm_order,
+                    }
+                )
 
 tasks_payload = {
-    "schema_version": 1,
+    "schema_version": 2 if scenarios and any(len(scenario["steps"]) > 1 for scenario in scenarios) else 1,
+    "scenario_count": len(scenarios),
     "task_count": len(tasks),
+    "attempts_per_scenario": attempts,
     "attempts_per_task": attempts,
     "order_mode": order_mode,
     "random_seed": seed,
+    "requires_workspace_write_any": any(task["requires_workspace_write"] for task in tasks),
+    "scenarios": scenarios,
     "tasks": tasks,
 }
 tasks_path.write_text(json.dumps(tasks_payload, indent=2) + "\n", encoding="utf-8")
@@ -347,19 +502,23 @@ evaluate_attempt() {
   local task_id="$3"
   local task_name="$4"
   local task_category="$5"
-  local prompt_file="$6"
-  local arm="$7"
-  local attempt="$8"
-  local pair_key="$9"
-  local arm_order="${10}"
-  local workspace="${11}"
-  local jsonl_file="${12}"
-  local stderr_file="${13}"
-  local last_message_file="${14}"
-  local diff_file="${15}"
-  local workspace_status_file="${16}"
-  local run_status="${17}"
-  local run_exit_code="${18}"
+  local scenario_id="$6"
+  local scenario_name="$7"
+  local step_index="$8"
+  local step_count="$9"
+  local prompt_file="${10}"
+  local arm="${11}"
+  local attempt="${12}"
+  local pair_key="${13}"
+  local arm_order="${14}"
+  local workspace="${15}"
+  local jsonl_file="${16}"
+  local stderr_file="${17}"
+  local last_message_file="${18}"
+  local diff_file="${19}"
+  local workspace_status_file="${20}"
+  local run_status="${21}"
+  local run_exit_code="${22}"
 
   QUALITY_STATUS="not_evaluated"
   QUALITY_PASS_JSON="null"
@@ -380,6 +539,10 @@ evaluate_attempt() {
   BENCH_TASK_ID="$task_id" \
   BENCH_TASK_NAME="$task_name" \
   BENCH_TASK_CATEGORY="$task_category" \
+  BENCH_SCENARIO_ID="$scenario_id" \
+  BENCH_SCENARIO_NAME="$scenario_name" \
+  BENCH_STEP_INDEX="$step_index" \
+  BENCH_STEP_COUNT="$step_count" \
   BENCH_PROMPT_FILE="$prompt_file" \
   BENCH_ARM="$arm" \
   BENCH_ATTEMPT="$attempt" \
@@ -421,6 +584,12 @@ evaluate_attempt() {
 run_plan_row() {
   local row_json="$1"
 
+  local scenario_id
+  local scenario_name
+  local scenario_slug
+  local scenario_category
+  local scenario_index
+  local scenario_pair_key
   local task_id
   local task_name
   local task_slug
@@ -430,26 +599,42 @@ run_plan_row() {
   local attempt
   local pair_key
   local task_index
+  local step_index
+  local step_count
   local arm
   local arm_order
   local pair_order_json
+  local arm_run_key
+  local requires_workspace_write
+  scenario_id="$(jq -r '.scenario_id' <<<"$row_json")"
+  scenario_name="$(jq -r '.scenario_name' <<<"$row_json")"
+  scenario_slug="$(jq -r '.scenario_slug' <<<"$row_json")"
+  scenario_category="$(jq -r '.scenario_category' <<<"$row_json")"
+  scenario_index="$(jq -r '.scenario_index' <<<"$row_json")"
+  scenario_pair_key="$(jq -r '.scenario_pair_key' <<<"$row_json")"
   task_id="$(jq -r '.task_id' <<<"$row_json")"
   task_name="$(jq -r '.task_name' <<<"$row_json")"
   task_slug="$(jq -r '.task_slug' <<<"$row_json")"
   task_category="$(jq -r '.task_category' <<<"$row_json")"
   prompt_file="$(jq -r '.task_prompt_file' <<<"$row_json")"
   evaluator_command="$(jq -r '.evaluator_command // ""' <<<"$row_json")"
+  requires_workspace_write="$(jq -r '.requires_workspace_write' <<<"$row_json")"
   attempt="$(jq -r '.attempt' <<<"$row_json")"
   pair_key="$(jq -r '.pair_key' <<<"$row_json")"
   task_index="$(jq -r '.task_index' <<<"$row_json")"
+  step_index="$(jq -r '.step_index' <<<"$row_json")"
+  step_count="$(jq -r '.step_count' <<<"$row_json")"
   arm="$(jq -r '.arm' <<<"$row_json")"
   arm_order="$(jq -r '.arm_order' <<<"$row_json")"
+  arm_run_key="$(jq -r '.arm_run_key' <<<"$row_json")"
   pair_order_json="$(jq -c '.pair_execution_order' <<<"$row_json")"
 
-  local pair_dir="$RUNS_DIR/$task_slug/attempt-$(printf '%02d' "$attempt")"
-  local attempt_dir="$pair_dir/$arm"
-  local workspace="$WORKSPACES_ROOT/$task_slug/attempt-$(printf '%02d' "$attempt")/$arm"
-  local home_dir="$attempt_dir/home"
+  local scenario_dir="$RUNS_DIR/$scenario_slug/attempt-$(printf '%02d' "$attempt")"
+  local arm_dir="$scenario_dir/$arm"
+  local attempt_dir="$arm_dir/step-$(printf '%02d' "$step_index")-$task_slug"
+  local workspace="$WORKSPACES_ROOT/$scenario_slug/attempt-$(printf '%02d' "$attempt")/$arm"
+  local home_dir="$arm_dir/home"
+  local setup_marker="$arm_dir/.environment-prepared"
   local jsonl_file="$attempt_dir/codex.jsonl"
   local stderr_file="$attempt_dir/codex.stderr"
   local last_message_file="$attempt_dir/last-message.txt"
@@ -478,15 +663,23 @@ run_plan_row() {
 
   mkdir -p "$attempt_dir"
   printf '%s\n' "$row_json" >"$attempt_dir/plan-row.json"
-  prepare_workspace "$arm" "$workspace" "$attempt_dir"
+  if [[ "$requires_workspace_write" == "true" && "$SANDBOX_MODE" == "read-only" ]]; then
+    die "task $task_id requires --sandbox-mode workspace-write"
+  fi
+  if [[ ! -e "$setup_marker" ]]; then
+    prepare_workspace "$arm" "$workspace" "$attempt_dir"
+    workspace_config_file="$workspace/.codex/config.toml"
+    effective_config_file="$home_dir/.codex/config.toml"
+    if [[ "$arm" == "optimus" ]]; then
+      prepare_home "$home_dir" "$MODEL" "$REASONING_EFFORT" "$workspace_config_file"
+      grep -q '^\[mcp_servers\.optimusctx\]$' "$effective_config_file" || die "optimus config was not merged into effective Codex config: $effective_config_file"
+    else
+      prepare_home "$home_dir" "$MODEL" "$REASONING_EFFORT"
+    fi
+    : >"$setup_marker"
+  fi
   workspace_config_file="$workspace/.codex/config.toml"
   effective_config_file="$home_dir/.codex/config.toml"
-  if [[ "$arm" == "optimus" ]]; then
-    prepare_home "$home_dir" "$MODEL" "$REASONING_EFFORT" "$workspace_config_file"
-    grep -q '^\[mcp_servers\.optimusctx\]$' "$effective_config_file" || die "optimus config was not merged into effective Codex config: $effective_config_file"
-  else
-    prepare_home "$home_dir" "$MODEL" "$REASONING_EFFORT"
-  fi
 
   codex_args=(
     exec
@@ -552,6 +745,10 @@ run_plan_row() {
     "$task_id" \
     "$task_name" \
     "$task_category" \
+    "$scenario_id" \
+    "$scenario_name" \
+    "$step_index" \
+    "$step_count" \
     "$prompt_file" \
     "$arm" \
     "$attempt" \
@@ -569,14 +766,22 @@ run_plan_row() {
   cat >"$result_file" <<EOF
 {
   "schema_version": 2,
+  "scenario_id": $(json_string "$scenario_id"),
+  "scenario_name": $(json_string "$scenario_name"),
+  "scenario_category": $(json_string "$scenario_category"),
+  "scenario_index": $scenario_index,
+  "scenario_pair_key": $(json_string "$scenario_pair_key"),
   "task_id": $(json_string "$task_id"),
   "task_name": $(json_string "$task_name"),
   "task_category": $(json_string "$task_category"),
   "task_index": $task_index,
+  "step_index": $step_index,
+  "step_count": $step_count,
   "attempt": $attempt,
   "pair_key": $(json_string "$pair_key"),
   "arm": $(json_string "$arm"),
   "arm_order": $arm_order,
+  "arm_run_key": $(json_string "$arm_run_key"),
   "pair_execution_order": $pair_order_json,
   "repo_root": $(json_string "$REPO_ROOT"),
   "git_sha": $(json_string "$GIT_SHA"),
@@ -603,6 +808,7 @@ run_plan_row() {
   "optimus_status_file": $(json_string "$status_file"),
   "used_optimus_tools": $(json_bool "$used_optimus"),
   "optimus_status_summary": $(json_string "$status_summary"),
+  "requires_workspace_write": $(json_bool "$requires_workspace_write"),
   "quality_evaluation_status": $(json_string "$QUALITY_STATUS"),
   "quality_pass": $QUALITY_PASS_JSON,
   "quality_score": $QUALITY_SCORE_JSON,
@@ -787,9 +993,14 @@ SUMMARY_MD="$OUTPUT_DIR/summary.md"
 
 build_plan
 
+SCENARIO_COUNT="$(jq -r '.scenario_count // 0' "$TASKS_JSON")"
 TASK_COUNT="$(jq -r '.task_count' "$TASKS_JSON")"
-printf 'repo_root=%s\ngit_sha=%s\nprompt_file=%s\nsuite_file=%s\ntask_count=%s\nattempts=%s\nmodel=%s\nreasoning_effort=%s\nsandbox_mode=%s\norder_mode=%s\nrandom_seed=%s\noutput_dir=%s\n' \
-  "$REPO_ROOT" "$GIT_SHA" "${PROMPT_FILE:-}" "${SUITE_FILE:-}" "$TASK_COUNT" "$ATTEMPTS" "$MODEL" "$REASONING_EFFORT" "$SANDBOX_MODE" "$ORDER_MODE" "$RANDOM_SEED" "$OUTPUT_DIR"
+REQUIRES_WORKSPACE_WRITE_ANY="$(jq -r '.requires_workspace_write_any // false' "$TASKS_JSON")"
+if [[ "$REQUIRES_WORKSPACE_WRITE_ANY" == "true" && "$SANDBOX_MODE" == "read-only" ]]; then
+  die "this suite requires --sandbox-mode workspace-write"
+fi
+printf 'repo_root=%s\ngit_sha=%s\nprompt_file=%s\nsuite_file=%s\nscenario_count=%s\ntask_count=%s\nattempts=%s\nmodel=%s\nreasoning_effort=%s\nsandbox_mode=%s\norder_mode=%s\nrandom_seed=%s\noutput_dir=%s\n' \
+  "$REPO_ROOT" "$GIT_SHA" "${PROMPT_FILE:-}" "${SUITE_FILE:-}" "$SCENARIO_COUNT" "$TASK_COUNT" "$ATTEMPTS" "$MODEL" "$REASONING_EFFORT" "$SANDBOX_MODE" "$ORDER_MODE" "$RANDOM_SEED" "$OUTPUT_DIR"
 printf 'timeout_seconds=%s\n' "$TIMEOUT_SECONDS"
 printf 'workspaces_root=%s\n' "$WORKSPACES_ROOT"
 printf 'tasks_manifest=%s\nplan_jsonl=%s\n' "$TASKS_JSON" "$PLAN_JSONL"
@@ -884,7 +1095,8 @@ if not rows:
     raise SystemExit("no benchmark results recorded")
 
 tasks_payload = json.loads(tasks_path.read_text(encoding="utf-8"))
-tasks = tasks_payload["tasks"]
+tasks = tasks_payload.get("tasks", [])
+scenarios = tasks_payload.get("scenarios", [])
 
 summary = {
     "schema_version": 2,
@@ -895,13 +1107,18 @@ summary = {
     "reasoning_effort": reasoning_effort or None,
     "order_mode": order_mode,
     "random_seed": random_seed,
-    "task_count": tasks_payload["task_count"],
-    "attempts_per_task": tasks_payload["attempts_per_task"],
+    "scenario_count": tasks_payload.get("scenario_count", len(scenarios)),
+    "task_count": tasks_payload.get("task_count", len(tasks)),
+    "attempts_per_scenario": tasks_payload.get("attempts_per_scenario"),
+    "attempts_per_task": tasks_payload.get("attempts_per_task"),
+    "requires_workspace_write_any": tasks_payload.get("requires_workspace_write_any", False),
     "row_count": len(rows),
+    "scenarios": scenarios,
     "tasks": tasks,
     "rows": rows,
     "arms": {},
     "categories": {},
+    "scenarios_summary": {},
     "tasks_summary": {},
     "paired": {
         "count": 0,
@@ -916,9 +1133,11 @@ for arm in ("baseline", "optimus"):
         summary["arms"][arm] = summarize_rows(arm_rows)
 
 category_groups = defaultdict(list)
+scenario_groups = defaultdict(list)
 task_groups = defaultdict(list)
 for row in rows:
     category_groups[row["task_category"]].append(row)
+    scenario_groups[row["scenario_id"]].append(row)
     task_groups[row["task_id"]].append(row)
 
 for category, items in sorted(category_groups.items()):
@@ -928,11 +1147,26 @@ for category, items in sorted(category_groups.items()):
         if any(item["arm"] == arm for item in items)
     }
 
+for scenario in scenarios:
+    items = scenario_groups.get(scenario["id"], [])
+    summary["scenarios_summary"][scenario["id"]] = {
+        "scenario_name": scenario["name"],
+        "scenario_category": scenario["category"],
+        "step_count": len(scenario.get("steps", [])),
+        "arms": {
+            arm: summarize_rows([item for item in items if item["arm"] == arm])
+            for arm in ("baseline", "optimus")
+            if any(item["arm"] == arm for item in items)
+        },
+    }
+
 for task in tasks:
     items = task_groups.get(task["id"], [])
     summary["tasks_summary"][task["id"]] = {
         "task_name": task["name"],
         "task_category": task["category"],
+        "scenario_id": task["scenario_id"],
+        "scenario_name": task["scenario_name"],
         "arms": {
             arm: summarize_rows([item for item in items if item["arm"] == arm])
             for arm in ("baseline", "optimus")
@@ -951,7 +1185,7 @@ score_deltas = []
 pass_deltas = []
 completion_deltas = []
 
-for pair_key, pair in sorted(paired_by_key.items()):
+for _, pair in sorted(paired_by_key.items()):
     baseline = pair.get("baseline")
     optimus = pair.get("optimus")
     if not baseline or not optimus:
@@ -992,10 +1226,12 @@ lines.append(f"- prompt file: `{prompt_file}`" if prompt_file else f"- suite fil
 lines.append(f"- git sha: `{git_sha}`")
 lines.append(f"- model: `{model}`")
 lines.append(f"- reasoning effort: `{reasoning_effort}`" if reasoning_effort else "- reasoning effort: inherited")
-lines.append(f"- tasks: `{summary['task_count']}`")
-lines.append(f"- attempts per task: `{summary['attempts_per_task']}`")
+lines.append(f"- scenarios: `{summary['scenario_count']}`")
+lines.append(f"- steps: `{summary['task_count']}`")
+lines.append(f"- attempts per scenario: `{summary['attempts_per_scenario']}`")
 lines.append(f"- order mode: `{order_mode}`")
 lines.append(f"- random seed: `{random_seed}`")
+lines.append(f"- requires workspace write: `{str(summary['requires_workspace_write_any']).lower()}`")
 lines.append("")
 lines.append("## Arm Summary")
 lines.append("")
@@ -1007,11 +1243,7 @@ for arm in ("baseline", "optimus"):
         continue
     completion = f"{arm_summary['completion_count']}/{arm_summary['count']}"
     evaluated = f"{arm_summary['evaluation_count']}/{arm_summary['count']}"
-    passed = (
-        f"{arm_summary['pass_count']}/{arm_summary['evaluation_count']}"
-        if arm_summary["evaluation_count"]
-        else "n/a"
-    )
+    passed = f"{arm_summary['pass_count']}/{arm_summary['evaluation_count']}" if arm_summary["evaluation_count"] else "n/a"
     median_score = arm_summary["median_quality_score"]
     median_score_rendered = "n/a" if median_score is None else str(median_score)
     lines.append(
@@ -1031,6 +1263,28 @@ for metric, counts in summary["paired"]["wins"].items():
         f"- {metric} wins: optimus `{counts['optimus_better']}`, baseline `{counts['baseline_better']}`, ties `{counts['ties']}`"
     )
 
+if summary["scenarios_summary"]:
+    lines.append("")
+    lines.append("## Scenario Summary")
+    lines.append("")
+    lines.append("| scenario | category | steps | arm | completion | pass | median score | median elapsed ms | optimus tool evidence |")
+    lines.append("| --- | --- | ---: | --- | --- | --- | ---: | ---: | --- |")
+    for scenario in scenarios:
+        scenario_summary = summary["scenarios_summary"].get(scenario["id"], {})
+        arms = scenario_summary.get("arms", {})
+        for arm in ("baseline", "optimus"):
+            arm_summary = arms.get(arm)
+            if not arm_summary:
+                continue
+            passed = f"{arm_summary['pass_count']}/{arm_summary['evaluation_count']}" if arm_summary["evaluation_count"] else "n/a"
+            median_score = arm_summary["median_quality_score"]
+            median_score_rendered = "n/a" if median_score is None else str(median_score)
+            lines.append(
+                f"| {scenario['name']} | {scenario['category']} | {len(scenario.get('steps', []))} | {arm} | "
+                f"{arm_summary['completion_count']}/{arm_summary['count']} | {passed} | {median_score_rendered} | "
+                f"{arm_summary['median_elapsed_ms']} | {arm_summary['used_optimus_tools_count']}/{arm_summary['count']} |"
+            )
+
 if summary["categories"]:
     lines.append("")
     lines.append("## Category Summary")
@@ -1042,11 +1296,7 @@ if summary["categories"]:
             arm_summary = arms.get(arm)
             if not arm_summary:
                 continue
-            passed = (
-                f"{arm_summary['pass_count']}/{arm_summary['evaluation_count']}"
-                if arm_summary["evaluation_count"]
-                else "n/a"
-            )
+            passed = f"{arm_summary['pass_count']}/{arm_summary['evaluation_count']}" if arm_summary["evaluation_count"] else "n/a"
             median_score = arm_summary["median_quality_score"]
             median_score_rendered = "n/a" if median_score is None else str(median_score)
             lines.append(
@@ -1056,10 +1306,10 @@ if summary["categories"]:
             )
 
 lines.append("")
-lines.append("## Task Summary")
+lines.append("## Step Summary")
 lines.append("")
-lines.append("| task | category | arm | completion | pass | median score | median elapsed ms |")
-lines.append("| --- | --- | --- | --- | --- | ---: | ---: |")
+lines.append("| scenario | step | category | arm | completion | pass | median score | median elapsed ms |")
+lines.append("| --- | --- | --- | --- | --- | --- | ---: | ---: |")
 for task in tasks:
     task_summary = summary["tasks_summary"].get(task["id"], {})
     arms = task_summary.get("arms", {})
@@ -1067,15 +1317,11 @@ for task in tasks:
         arm_summary = arms.get(arm)
         if not arm_summary:
             continue
-        passed = (
-            f"{arm_summary['pass_count']}/{arm_summary['evaluation_count']}"
-            if arm_summary["evaluation_count"]
-            else "n/a"
-        )
+        passed = f"{arm_summary['pass_count']}/{arm_summary['evaluation_count']}" if arm_summary["evaluation_count"] else "n/a"
         median_score = arm_summary["median_quality_score"]
         median_score_rendered = "n/a" if median_score is None else str(median_score)
         lines.append(
-            f"| {task['name']} | {task['category']} | {arm} | "
+            f"| {task['scenario_name']} | {task['name']} | {task['category']} | {arm} | "
             f"{arm_summary['completion_count']}/{arm_summary['count']} | {passed} | "
             f"{median_score_rendered} | {arm_summary['median_elapsed_ms']} |"
         )

@@ -1,32 +1,43 @@
 {
-  "schema_version": 1,
-  "task_defaults": {
+  "schema_version": 2,
+  "suite_defaults": {
     "evaluator_command": "./scripts/codex-real-ab-evaluator.sh"
   },
-  "tasks": [
+  "requires_workspace_write": true,
+  "scenarios": [
     {
-      "id": "list-benchmark-suite-files",
-      "name": "List Benchmark Suite Files",
-      "category": "navigation",
-      "prompt_file": "prompts/list-benchmark-suite-files.txt"
+      "id": "benchmark-integration-workflow",
+      "name": "Benchmark Integration Workflow",
+      "category": "workflow-analysis",
+      "steps": [
+        {
+          "id": "record-effective-config",
+          "name": "Record Effective Config",
+          "prompt_file": "prompts/benchmark-integration-workflow/step-1-record-effective-config.txt"
+        },
+        {
+          "id": "record-usage-evidence",
+          "name": "Record Usage Evidence",
+          "prompt_file": "prompts/benchmark-integration-workflow/step-2-record-usage-evidence.txt"
+        }
+      ]
     },
     {
-      "id": "load-benchmark-suites-validation",
-      "name": "Load Benchmark Suites Validation",
-      "category": "analysis",
-      "prompt_file": "prompts/load-benchmark-suites-validation.txt"
-    },
-    {
-      "id": "parse-benchmark-args-common-constraint",
-      "name": "Parse Benchmark Args Common Constraint",
-      "category": "cli-analysis",
-      "prompt_file": "prompts/parse-benchmark-args-common-constraint.txt"
-    },
-    {
-      "id": "verify-output-flag-restriction",
-      "name": "Verify Output Flag Restriction",
-      "category": "cli-analysis",
-      "prompt_file": "prompts/verify-output-flag-restriction.txt"
+      "id": "suite-redesign-workflow",
+      "name": "Suite Redesign Workflow",
+      "category": "workflow-redesign",
+      "steps": [
+        {
+          "id": "capture-suite-gaps",
+          "name": "Capture Suite Gaps",
+          "prompt_file": "prompts/suite-redesign-workflow/step-1-capture-suite-gaps.txt"
+        },
+        {
+          "id": "propose-workflow-benchmark",
+          "name": "Propose Workflow Benchmark",
+          "prompt_file": "prompts/suite-redesign-workflow/step-2-propose-workflow-benchmark.txt"
+        }
+      ]
     }
   ]
 }

@@ -1,0 +1,11 @@
+Append to `.benchmark/suite-redesign-notes.md`.
+
+Add a `## Workflow Scenarios` section with exactly 3 numbered items.
+
+Each item must:
+- name a proposed workflow scenario
+- mention one artifact file path under `.benchmark/`
+
+Across the 3 numbered items, include the phrases `navigation`, `bug triage`, and `edit verification`.
+
+Do not remove the `## Gaps` section.
