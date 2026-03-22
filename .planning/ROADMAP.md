@@ -18,56 +18,87 @@
 
 ## Current Milestone
 
-**v1.3.8 Command Surface Truth Cleanup**
+**v1.3.9 Agent Host Expansion and Capability Hardening**
 
-Goal: remove stale references to discarded or deprecated commands so the canonical CLI, status/help surfaces, and docs all describe the same supported operator contract.
+Goal: expand first-class MCP host coverage beyond Claude and Codex, starting with Gemini CLI and Cursor CLI, while hardening the shared host capability, path-resolution, and verification model.
 
-Next intended public release cut: `v1.3.8`
+Next intended public release cut: `v1.3.9`
 Requirements: active in [REQUIREMENTS.md](/home/nico/projects/optimusctx/.planning/REQUIREMENTS.md)
 
 ## Current Status
 
-`v1.3.6` and `v1.3.7` are now publicly shipped and downstream publication is confirmed. The next milestone is driven by post-release feedback: some operator-facing outputs and docs still mention `watch` and other discarded or deprecated surfaces as if they were active or recommended, which makes the CLI feel noisier and less truthful than it should.
+`v1.3.8` is now publicly shipped, including the Codex MCP transport fix and several cross-environment host-resolution repairs discovered during real post-release usage. The next milestone is driven by the follow-up question those fixes exposed: which additional hosts have a native, documented MCP contract strong enough for first-class OptimusCtx onboarding without repeating the same environment/path mistakes.
 
 Research decision:
 
-- No milestone research required. This is command-surface and documentation cleanup on already shipped product behavior, not a new domain or integration area.
+- Research completed for this milestone because host expansion adds new external contracts.
+- Gemini CLI is a credible candidate because official docs expose repo-local and shared `.gemini/settings.json` plus `mcpServers` configuration for local MCP servers.
+- Cursor CLI is a credible candidate because official docs expose CLI MCP support and state that the CLI shares the same MCP configuration as Cursor's editor-facing `mcp.json`.
+- The main implementation risk is not MCP runtime work; it is host-contract truth: path resolution, scope clarity, merge safety, and keeping CLI/editor/app support claims explicit.
 
 Phases:
 
-1. **Phase 34: Command Surface Truth And Canonical Output Cleanup**
-   Goal: remove stale references to discarded or deprecated commands from the canonical CLI surfaces and make any remaining compatibility paths explicitly read as deprecated.
+1. **Phase 36: Host Capability Matrix and Adapter Foundation**
+   Goal: generalize the supported-host model so new clients are admitted only through documented, testable host contracts covering config shape, target path, scope model, and verification support.
    Scope:
-   - clean up `status` default and verbose output so only the supported operator contract is foregrounded
-   - remove stale `watch` or similar discarded-flow references from canonical next-step and help output
-   - ensure deprecated aliases only appear when clearly labeled as deprecated compatibility surface
-   - keep the command surface truthful without adding new runtime capability
-   Requirements: `SURF-01`, `SURF-02`, `SURF-03`
+   - extend the supported-host catalog to carry explicit capability metadata instead of ad hoc host assumptions
+   - unify repo-local/shared/Windows-backed path resolution patterns so future hosts can reuse one truthful environment model
+   - make preview and diagnostics reflect whether a host supports config writes, durable guidance, and MCP evidence capture
+   - keep generic/manual fallback separate from true first-class support
+   Requirements: `HOST-01`, `HOST-02`, `HOST-03`
    Success criteria:
-   - `optimusctx status` no longer suggests discarded flows as active operator paths
-   - canonical help and next-step copy reference only the supported command set
-   - deprecated aliases remain available only where clearly marked as deprecated
-   Phase directory: [34-command-surface-truth-and-canonical-output-cleanup](/home/nico/projects/optimusctx/.planning/phases/34-command-surface-truth-and-canonical-output-cleanup)
+   - the codebase can describe exactly why a host is first-class supported or still generic/manual
+   - shared-config path resolution behaves truthfully across native Linux/macOS paths and WSL-to-Windows cases
+   - diagnostics can explain host capabilities before the operator writes anything
+   Phase directory: [36-host-capability-matrix-and-adapter-foundation](/home/nico/projects/optimusctx/.planning/phases/36-host-capability-matrix-and-adapter-foundation)
 
-2. **Phase 35: Documentation Truth And Regression Guardrails**
-   Goal: align docs and tests to the cleaned command surface so stale deprecated-surface wording cannot silently ship again.
+2. **Phase 37: Gemini CLI Native Onboarding**
+   Goal: add truthful Gemini CLI preview, write, and verification support using Gemini's documented `settings.json` and `mcpServers` model.
    Scope:
-   - update public, operator, and planning docs to the current command surface and latest release position
-   - remove stale references to discarded commands from README and supporting docs
-   - add regression coverage for canonical outputs and docs where stale command references previously leaked
-   - verify the cleaned contract with automated tests before the next release cut
-   Requirements: `DOC-01`, `DOC-02`, `VER-01`
+   - add `gemini-cli` as an explicit supported host with repo-local and shared config targets
+   - render native Gemini JSON previews and write merged `.gemini/settings.json` safely
+   - wire host-specific next-step guidance and status detection for Gemini CLI
+   - verify repeated writes and existing unrelated settings survive merge operations
+   Requirements: `GEM-01`, `GEM-02`
    Success criteria:
-   - public and planning docs stop presenting discarded commands as active surface area
-   - the latest release position is described consistently across product and planning docs
-   - automated coverage fails if stale deprecated-command references reappear in the canonical surfaces touched by this milestone
-   Phase directory: [35-documentation-truth-and-regression-guardrails](/home/nico/projects/optimusctx/.planning/phases/35-documentation-truth-and-regression-guardrails)
+   - `optimusctx init --client gemini-cli` can preview and write the native Gemini contract without manual translation
+   - `optimusctx status` can detect Gemini CLI registration and distinguish discovery from actual tool use when evidence exists
+   - repeated Gemini writes preserve unrelated config and avoid duplicate server entries
+   Phase directory: [37-gemini-cli-native-onboarding](/home/nico/projects/optimusctx/.planning/phases/37-gemini-cli-native-onboarding)
+
+3. **Phase 38: Cursor CLI Native Onboarding**
+   Goal: add truthful Cursor CLI preview, write, and verification support using Cursor's documented shared `mcp.json` contract.
+   Scope:
+   - add `cursor-cli` as an explicit supported host with repo-local and shared config targets
+   - render native Cursor JSON previews and write merged `mcp.json` safely
+   - keep CLI guidance truthful about the shared editor/CLI config store without over-claiming unsupported editor automation
+   - verify repeated writes and existing unrelated Cursor MCP entries survive merge operations
+   Requirements: `CUR-01`, `CUR-02`
+   Success criteria:
+   - `optimusctx init --client cursor-cli` can preview and write the native Cursor contract without hand transcription
+   - `optimusctx status` can detect Cursor registration and clarify the shared config story accurately
+   - repeated Cursor writes preserve unrelated config and avoid duplicate server entries
+   Phase directory: [38-cursor-cli-native-onboarding](/home/nico/projects/optimusctx/.planning/phases/38-cursor-cli-native-onboarding)
+
+4. **Phase 39: Cross-Host Verification, Docs, and Environment Safety**
+   Goal: close the milestone by documenting the new host set, locking the contracts with tests, and ensuring environment/path truth is consistent across supported families.
+   Scope:
+   - update public, operator, and planning docs for Gemini CLI and Cursor CLI onboarding and verification
+   - add regression coverage for capability detection, path resolution, merge safety, and status/doctor host reporting
+   - verify the combined host matrix remains truthful for Linux/macOS-native and WSL-backed desktop/app flows
+   - keep unsupported hosts and future candidates clearly outside the first-class support set
+   Requirements: `DOC-01`, `VER-01`
+   Success criteria:
+   - docs describe Gemini CLI and Cursor CLI onboarding without hiding path or scope caveats
+   - automated coverage fails when host resolution or merge safety regresses for the new clients
+   - diagnostics and onboarding surfaces present one consistent support story across all first-class hosts
+   Phase directory: [39-cross-host-verification-docs-and-environment-safety](/home/nico/projects/optimusctx/.planning/phases/39-cross-host-verification-docs-and-environment-safety)
 
 Next step:
 
-- Plan Phase 34 with `$gsd-plan-phase 34`.
+- Plan Phase 36 with `$gsd-plan-phase 36`.
 - Keep `v1.3.4` intentionally unreleased.
-- Treat `v1.3.8` as the next public cut once the operator surface is fully truthful.
+- Treat `v1.3.9` as the next public cut once Gemini CLI and Cursor CLI support are both truthful, documented, and verified.
 
 ---
-*Last updated: 2026-03-20 after creating the roadmap for milestone v1.3.8*
+*Last updated: 2026-03-21 after creating the roadmap for milestone v1.3.9*
