@@ -24,8 +24,8 @@
 
 ### Documentation And Verification
 
-- [ ] **DOC-01**: Public product and operator docs explain Gemini CLI and Cursor CLI onboarding, scope choices, and environment caveats truthfully.
-- [ ] **VER-01**: Automated verification covers host capability detection, path resolution, merge safety, and diagnostics for Gemini CLI and Cursor CLI so support claims regress in CI instead of silently shipping.
+- [x] **DOC-01**: Public product and operator docs explain Gemini CLI and Cursor CLI onboarding, scope choices, and environment caveats truthfully.
+- [x] **VER-01**: Automated verification covers host capability detection, path resolution, merge safety, and diagnostics for Gemini CLI and Cursor CLI so support claims regress in CI instead of silently shipping.
 
 ## Future Requirements
 
@@ -64,8 +64,8 @@
 | GEM-02 | Phase 37 | Complete |
 | CUR-01 | Phase 38 | Complete |
 | CUR-02 | Phase 38 | Complete |
-| DOC-01 | Phase 39 | Pending |
-| VER-01 | Phase 39 | Pending |
+| DOC-01 | Phase 39 | Complete |
+| VER-01 | Phase 39 | Complete |
 
 **Coverage:**
 - active milestone requirements: 9
@@ -74,4 +74,4 @@
 
 ---
 *Requirements defined: 2026-03-21*
-*Last updated: 2026-03-22 after completing Phase 38*
+*Last updated: 2026-03-22 after completing Phase 39*
