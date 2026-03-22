@@ -10,25 +10,25 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 
 ## Current State
 
-- Shipped version: `v1.3.7`
+- Shipped version: `v1.3.8`
 - Runtime stack: Go, SQLite, Tree-sitter, MCP-over-STDIO
-- Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `pack export`, `status`, deprecated alias `doctor`, `eval`, `install`, `version`, and `release prepare`, with first-class supported-client onboarding for Claude and Codex hosts plus canonical GitHub Release-rooted downstream publication. Some operator-facing outputs and docs still leak stale references to discarded or deprecated surfaces, which is the focus of `v1.3.8`.
-- Product state: `v1.0`, `v1.1`, `v1.2`, `v1.3.1`, `v1.3.2`, `v1.3.3`, `v1.3.6`, and `v1.3.7` are published; `v1.3.4` remains intentionally unreleased; `v1.3.5` shipped with a downstream publication truth gap that was repaired in `v1.3.6`
+- Delivered surface: `init`, `refresh`, `snippet`, `mcp serve`, `pack export`, `status`, deprecated alias `doctor`, `eval`, `install`, `version`, and `release prepare`, with first-class supported-client onboarding for Claude and Codex hosts plus canonical GitHub Release-rooted downstream publication. `v1.3.8` also repaired the Codex MCP startup handshake, tightened host/runtime truth around shared config writes, and clarified WSL-to-Windows host path handling.
+- Product state: `v1.0`, `v1.1`, `v1.2`, `v1.3.1`, `v1.3.2`, `v1.3.3`, `v1.3.6`, `v1.3.7`, and `v1.3.8` are published; `v1.3.4` remains intentionally unreleased; `v1.3.5` shipped with a downstream publication truth gap that was repaired in `v1.3.6`
 
-## Current Milestone: v1.3.8 Command Surface Truth Cleanup
+## Current Milestone: v1.3.9 Agent Host Expansion and Capability Hardening
 
-**Goal:** Remove stale references to discarded or deprecated commands so the shipped CLI, status surfaces, and docs describe only the supported operator contract.
+**Goal:** Expand first-class MCP host coverage beyond Claude and Codex, starting with Gemini CLI and Cursor CLI, while hardening the host capability and path-resolution model so new support stays truthful across repo, shared, and mixed-environment setups.
 
 **Target features:**
-- Canonical status and help output no longer surface `watch` or other discarded flows as active operator paths
-- Deprecated aliases and compatibility surfaces are clearly marked as such wherever they still exist
-- Public docs and planning docs reflect the current command surface and latest published release position
+- Native `init --client` preview/write support for Gemini CLI using the documented `.gemini/settings.json` `mcpServers` contract
+- Native `init --client` preview/write support for Cursor CLI using the documented shared `mcp.json` contract used by Cursor CLI and editor surfaces
+- Generalized host capability and environment resolution so shared-config writes stay truthful across repo-local, shared, WSL, and Windows-backed host configurations
 
 ## Next Milestone Goals
 
-- Remove stale command references from canonical CLI output, next-step guidance, and diagnostics
-- Align public and planning documentation to the current supported command surface
-- Add regression coverage so discarded or deprecated command references do not silently return
+- Add first-class onboarding for the next credible local MCP hosts with documented native config contracts
+- Generalize host capability detection so new support is driven by verified host contracts instead of ad hoc per-host assumptions
+- Extend verification, diagnostics, and docs so Gemini CLI and Cursor CLI support claims are backed by real evidence and environment-aware guidance
 
 ## Requirements
 
@@ -56,13 +56,15 @@ Make repository understanding persistent, compact, incremental, and reusable acr
 - ✓ Release preflight now detects Homebrew and Scoop secret presence before tag creation, even though first-publish correctness still needs repair — `v1.3.4-v1.3.5`
 - ✓ Downstream publication now treats first generated files in empty taps and buckets as real changes and reports truthful downstream publication states — `v1.3.6`
 - ✓ The release workflow now uses current non-warning action majors and the operator docs explain `published` vs `already_current` truthfully — `v1.3.6`
+- ✓ Canonical CLI/help/docs surfaces now describe the shipped command surface truthfully, and the milestone plumbing reflects the real `v1.3.8` public release — `v1.3.8`
+- ✓ Codex MCP startup now interoperates with the host's line-delimited transport, and supported-host onboarding preserves user-owned guidance and cross-environment path truth more carefully — `v1.3.8`
 
 ### Out of Scope
 
 - Hosted telemetry, dashboards, or managed rollout services — the product remains local-first and operator-driven.
 - Default semantic retrieval or general-purpose RAG behavior — the wedge is still deterministic exact-first context optimization.
 - Automatic or silent modification of repository instruction files or client configs outside explicit supported-host onboarding — installation and integration remain explicit.
-- Additional first-class MCP hosts beyond `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli` — `v1.3.5` fixes observability and guidance quality for the current host set rather than expanding coverage.
+- Additional first-class MCP hosts beyond the milestone candidates (`gemini-cli` and `cursor-cli`) — this milestone should finish the next two viable hosts before widening the matrix again.
 - New distribution channels beyond the currently supported set — `.deb`, `.rpm`, WinGet, Chocolatey, signing, and SBOMs stay deferred until the current channels are fully truthful and operator-safe.
 
 ## Context
@@ -71,7 +73,7 @@ v1.0 proved the core runtime wedge. v1.1 then proved the shipped product works e
 
 v1.2 closed the operator loop around the release surface. v1.3.1 then finished the supported Claude and Codex onboarding story by delivering host-native preview/write behavior, correcting command ownership around `init`, and updating the docs/evidence to match the shipped contract. v1.3.2 tightened that operator experience further by collapsing the common bootstrap and onboarding path into one smooth interactive `init` flow while preserving explicit scripting and direct-flag usage. v1.3.3 refined that same onboarding path again by making the conversation intent-led and destination-first, while trimming avoidable noise from the result output and docs.
 
-`v1.3.4` improved release truthfulness and clarified runtime handoff, but it still left the core adoption question unresolved inside the product: OptimusCtx itself still could not prove whether the host discovered or actually used the MCP server, `status` and `doctor` still overlapped heavily, and the new guidance mostly landed as human docs rather than durable agent-facing instructions consumed by the host. `v1.3.5` corrected that gap directly, but the first real Homebrew and Scoop publication against fresh downstream repos exposed a separate release-lane bug: the workflow treated newly created formula and manifest files as unchanged because they were still untracked, so the run reported `published` without ever committing or pushing to the tap or bucket. `v1.3.6` closed that distribution truth gap and upgraded the release workflow off the deprecated action majors, and `v1.3.7` shipped the follow-up cleanup that made the default `status` output shorter and less misleading. The next milestone is not about new runtime capability; it is about making every remaining CLI and documentation surface tell the same truth about what commands still matter.
+`v1.3.4` improved release truthfulness and clarified runtime handoff, but it still left the core adoption question unresolved inside the product: OptimusCtx itself still could not prove whether the host discovered or actually used the MCP server, `status` and `doctor` still overlapped heavily, and the new guidance mostly landed as human docs rather than durable agent-facing instructions consumed by the host. `v1.3.5` corrected that gap directly, but the first real Homebrew and Scoop publication against fresh downstream repos exposed a separate release-lane bug: the workflow treated newly created formula and manifest files as unchanged because they were still untracked, so the run reported `published` without ever committing or pushing to the tap or bucket. `v1.3.6` closed that distribution truth gap and upgraded the release workflow off the deprecated action majors, `v1.3.7` shipped the follow-up cleanup that made the default `status` output shorter and less misleading, and `v1.3.8` finished command-surface truth work while repairing the Codex MCP startup contract and several WSL/shared-config truth gaps. The next milestone should convert those hard-won host lessons into a broader, capability-driven host expansion effort instead of repeating one-off onboarding logic per client family.
 
 ## Constraints
 
@@ -95,6 +97,7 @@ v1.2 closed the operator loop around the release surface. v1.3.1 then finished t
 | Make watch mode optional, not required | Daily usability should not depend on background processes or platform-specific watcher reliability | ✓ Shipped in v1.0 |
 | Never auto-modify agent instruction files | Integration must remain explicit and non-invasive to preserve user control | ✓ Shipped in v1.0 |
 | Allow init-led managed guidance writes where the host explicitly supports them | Durable agent guidance matters, but only through explicit host-aware onboarding and never as a silent install side effect | ✓ Completed in v1.3.5 |
+| New first-class hosts should be admitted only when their config path, config format, scope model, and runtime handoff are all backed by documented host contracts | The recent Codex and WSL fixes showed that partial host support creates more confusion than value | ✓ Adopted for v1.3.9 planning |
 | Keep evaluation and benchmark evidence fixture-backed and repo-local | Milestone claims need rerunnable evidence anchored in committed inputs and persisted outputs | ✓ Shipped in v1.1 |
 | Count only declared agent-facing inputs in benchmark claims | Token savings must measure user-visible OptimusCtx value, not hidden system provenance | ✓ Shipped in v1.1 |
 | Keep GitHub Releases as the canonical binary source and package managers as wrappers | Distribution breadth is useful only if every channel stays truthful to the same shipped runtime | ✓ Shipped in v1.1 |
@@ -108,4 +111,4 @@ v1.2 closed the operator loop around the release surface. v1.3.1 then finished t
 | Release automation should use current supported GitHub Actions runtimes instead of relying on compatibility warnings | The release lane should stay quiet and future-proof on current GitHub-hosted runners | ✓ Completed in v1.3.6 |
 
 ---
-*Last updated: 2026-03-20 after starting milestone v1.3.8*
+*Last updated: 2026-03-21 after starting milestone v1.3.9*

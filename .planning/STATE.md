@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: "1.3.8"
-milestone_name: "Command Surface Truth Cleanup"
-current_phase: 34
-current_phase_name: "Command Surface Truth And Canonical Output Cleanup"
+milestone: "1.3.9"
+milestone_name: "Agent Host Expansion and Capability Hardening"
+current_phase: 36
+current_phase_name: "Host Capability Matrix and Adapter Foundation"
 current_plan: 0
 status: ready_to_plan
 stopped_at: null
-last_updated: "2026-03-20T21:45:00Z"
-last_activity: 2026-03-20
+last_updated: "2026-03-21T21:33:56-03:00"
+last_activity: 2026-03-21
 progress:
-  total_phases: 2
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -24,14 +24,14 @@ progress:
 **Roadmap reference:** `.planning/ROADMAP.md`
 **Requirements reference:** `.planning/REQUIREMENTS.md`
 **Status:** Ready to plan
-**Current Phase:** 34
-**Current Phase Name:** Command Surface Truth And Canonical Output Cleanup
-**Total Phases:** 2
+**Current Phase:** 36
+**Current Phase Name:** Host Capability Matrix and Adapter Foundation
+**Total Phases:** 4
 **Current Plan:** 0
 **Total Plans in Phase:** 0
 **Progress:** [----------] 0%
-**Last Activity:** 2026-03-20
-**Last Activity Description:** Defined requirements and roadmap for milestone `v1.3.8`
+**Last Activity:** 2026-03-21
+**Last Activity Description:** Started milestone `v1.3.9` and defined research, requirements, and roadmap
 
 ## Project Memory
 
@@ -42,23 +42,24 @@ progress:
 
 ## Current Planning Context
 
-- Active milestone: `v1.3.8` command surface truth cleanup
-- Most recently completed milestone: `v1.3.6` release publication repair and workflow modernization
-- Latest public release tag: `v1.3.7`
-- Next execution action: run `$gsd-plan-phase 34`
+- Active milestone: `v1.3.9` agent host expansion and capability hardening
+- Most recently completed milestone: `v1.3.8` command surface truth cleanup and host-contract repair
+- Latest public release tag: `v1.3.8`
+- Next execution action: run `$gsd-plan-phase 36`
 - Historical v1.0, v1.1, v1.2, and v1.3.x requirements and roadmaps are archived under `.planning/milestones/`
 
 ## Current Milestone Scope
 
-- Remove stale references to discarded or deprecated commands from canonical CLI output
-- Align public and planning docs to the current supported command surface and release position
-- Add regression guardrails so deprecated-surface wording does not leak back into shipped operator paths
+- Add first-class Gemini CLI onboarding through the documented `.gemini/settings.json` MCP contract
+- Add first-class Cursor CLI onboarding through the documented shared `mcp.json` contract
+- Generalize host capability and path resolution so repo/shared/WSL-backed targets stay truthful before writes
+- Extend diagnostics, docs, and regression coverage so new host claims are verifiable and maintainable
 
 ## Verification Status
 
-- `v1.3.7` release publication completed on 2026-03-20 with GitHub Release, npm, Homebrew, and Scoop all confirmed against the real downstream repositories.
-- Phase 32 verification passed on 2026-03-20 with targeted release tests covering first publication into empty downstream repos and truthful already-current reruns.
-- Phase 33 verification passed on 2026-03-20 with a passing full `go test ./...` suite and a clean `go run ./cmd/optimusctx release prepare --version 1.3.6 --json` preflight.
+- `v1.3.8` release publication completed on 2026-03-21 with GitHub Release, npm, Homebrew, and Scoop all confirmed green from the canonical release workflow.
+- Post-release validation confirmed real Codex MCP `initialize`, `tools/list`, and `tools/call` evidence in more than one repo after the line-delimited transport fix shipped in `v1.3.8`.
+- WSL-to-Windows path resolution is now explicitly handled for Codex App and Claude Desktop shared-config flows, which is relevant foundation for the next host-expansion milestone.
 - The `v1.3.5` release run `23359690455` remains the observed trigger: GitHub Release and npm published, while Homebrew and Scoop falsely reported `published` without any downstream commit.
 - Phase 26 verification passed on 2026-03-20 with a passing full `go test ./...` suite and a real `go run ./cmd/optimusctx release prepare --json` walkthrough showing Homebrew and Scoop blocked by missing repository secrets before tag creation.
 - Phase 27 verification passed on 2026-03-20 with a passing full `go test ./...` suite and workflow summary assertions updated for `publication_status`.
@@ -75,7 +76,9 @@ progress:
 - If a host cannot persist that guidance, `init` and docs must say so explicitly instead of implying the problem is solved.
 - A green downstream publication step is not enough evidence of shipment; first-publish flows against empty external repos must prove a real commit and push.
 - Default `status` output should optimize for operator signal first, with raw diagnostics pushed behind an explicit verbose mode.
-- `v1.3.8` should remove stale references to discarded or deprecated commands rather than continuing to paper over them with copy tweaks.
+- New first-class hosts should be admitted only when their native config contract and environment/path model are documented and testable.
+- Gemini CLI and Cursor CLI are now the leading candidate hosts because both expose documented local MCP config rather than opaque extension-only APIs.
+- Cross-environment path truth must be treated as part of host support itself, not as a follow-up polish item after onboarding lands.
 
 ## Accumulated Context
 
@@ -87,7 +90,7 @@ progress:
 - Phase 32 completed: downstream first-publish correctness and truthful publication status
 - Phase 33 completed: GitHub Actions runtime modernization and release docs alignment
 
-`v1.3.5` closed the MCP observability and guidance gaps left by `v1.3.4`, but the first real downstream publication against new package-manager repos showed a separate release-lane defect. `v1.3.6` closed that defect, `v1.3.7` shipped the follow-up cleanup to make `status` shorter and less noisy, and post-release feedback now points at the next cleanup target: stale references to `watch` and other discarded or deprecated surfaces still leak through some operator-facing outputs and docs.
+`v1.3.5` closed the MCP observability and guidance gaps left by `v1.3.4`, but the first real downstream publication against new package-manager repos showed a separate release-lane defect. `v1.3.6` closed that defect, `v1.3.7` shipped the follow-up cleanup to make `status` shorter and less noisy, and `v1.3.8` finished command-surface truth work while repairing the real Codex MCP startup contract and WSL/shared-config edge cases. Those fixes now point directly at the next milestone: broaden host coverage, but only through a capability-driven and environment-aware onboarding model.
 
 ---
-*Last updated: 2026-03-20 after defining milestone v1.3.8 requirements and roadmap*
+*Last updated: 2026-03-21 after defining milestone v1.3.9 requirements and roadmap*
