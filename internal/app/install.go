@@ -84,12 +84,11 @@ type genericClientAdapter struct {
 }
 
 func NewInstallService() InstallService {
-	clients := repository.SupportedClients()
-	claudeDesktop := clients[0]
-	claudeCLI := clients[1]
-	codexApp := clients[2]
-	codexCLI := clients[3]
-	generic := clients[4]
+	claudeDesktop := mustSupportedClient(repository.ClientClaudeDesktop)
+	claudeCLI := mustSupportedClient(repository.ClientClaudeCLI)
+	codexApp := mustSupportedClient(repository.ClientCodexApp)
+	codexCLI := mustSupportedClient(repository.ClientCodexCLI)
+	generic := mustSupportedClient(repository.ClientGenericMCP)
 	jsonAdapter := jsonFileClientAdapter{
 		client:      claudeDesktop,
 		resolvePath: resolveClaudeDesktopConfigPath,
@@ -129,6 +128,14 @@ func NewInstallService() InstallService {
 		writeFile: os.WriteFile,
 		mkdirAll:  os.MkdirAll,
 	}
+}
+
+func mustSupportedClient(id repository.ClientID) repository.SupportedClient {
+	client, ok := repository.LookupSupportedClient(string(id))
+	if !ok {
+		panic(fmt.Sprintf("missing supported client %q", id))
+	}
+	return client
 }
 
 func (s InstallService) Register(ctx context.Context, request InstallRequest) (InstallResult, error) {
@@ -460,30 +467,64 @@ func readExistingClientConfig(readFile func(string) ([]byte, error), configPath 
 	return nil, fmt.Errorf("read client config: %w", err)
 }
 
-func resolveCodexCLIConfigPath(explicitPath string) (string, error) {
-	if explicitPath != "" {
-		return normalizeCodexConfigPath(explicitPath), nil
-	}
+type hostConfigPathSpec struct {
+	resolveDefault   func(goos string, homeDir string, appData string) (string, error)
+	inferWSLPath     func() (string, bool)
+	wslMissingHint   string
+	normalizePath    func(string) string
+}
 
+func resolveHostConfigPath(explicitPath string, spec hostConfigPathSpec) (string, error) {
+	normalize := spec.normalizePath
+	if normalize == nil {
+		normalize = func(value string) string { return value }
+	}
+	if strings.TrimSpace(explicitPath) != "" {
+		return normalize(explicitPath), nil
+	}
+	if runningInWSL() && spec.inferWSLPath != nil {
+		if path, ok := spec.inferWSLPath(); ok {
+			return normalize(path), nil
+		}
+		if strings.TrimSpace(spec.wslMissingHint) != "" {
+			return "", errors.New(spec.wslMissingHint)
+		}
+	}
 	homeDir, err := codexConfigUserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("resolve home directory: %w", err)
 	}
+	if spec.resolveDefault == nil {
+		return "", errors.New("resolve host config path: no default resolver configured")
+	}
+	return normalizePath(spec.resolveDefault(codexConfigGOOS, homeDir, codexConfigGetenv("AppData")))
+}
 
-	return filepath.Join(homeDir, ".codex", "config.toml"), nil
+func normalizePath(path string, err error) (string, error) {
+	if err != nil {
+		return "", err
+	}
+	return normalizeCodexConfigPath(path), nil
+}
+
+func resolveCodexCLIConfigPath(explicitPath string) (string, error) {
+	return resolveHostConfigPath(explicitPath, hostConfigPathSpec{
+		resolveDefault: func(_ string, homeDir string, _ string) (string, error) {
+			return filepath.Join(homeDir, ".codex", "config.toml"), nil
+		},
+		normalizePath: normalizeCodexConfigPath,
+	})
 }
 
 func resolveCodexAppConfigPath(explicitPath string) (string, error) {
-	if explicitPath != "" {
-		return normalizeCodexConfigPath(explicitPath), nil
-	}
-	if runningInWSL() {
-		if path, ok := inferWindowsCodexConfigPathFromEnv(); ok {
-			return path, nil
-		}
-		return "", errors.New("resolve Codex App config path: running inside WSL but Windows Codex App config could not be inferred; pass --config /mnt/c/Users/<user>/.codex/config.toml")
-	}
-	return resolveCodexCLIConfigPath("")
+	return resolveHostConfigPath(explicitPath, hostConfigPathSpec{
+		resolveDefault: func(_ string, homeDir string, _ string) (string, error) {
+			return filepath.Join(homeDir, ".codex", "config.toml"), nil
+		},
+		inferWSLPath:   inferWindowsCodexConfigPathFromEnv,
+		wslMissingHint: "resolve Codex App config path: running inside WSL but Windows Codex App config could not be inferred; pass --config /mnt/c/Users/<user>/.codex/config.toml",
+		normalizePath:  normalizeCodexConfigPath,
+	})
 }
 
 func resolveCodexConfigPath(explicitPath string) (string, error) {
@@ -503,22 +544,14 @@ func DefaultCodexAppConfigPath() (string, error) {
 }
 
 func resolveClaudeDesktopConfigPath(explicitPath string) (string, error) {
-	if explicitPath != "" {
-		return normalizeCodexConfigPath(explicitPath), nil
-	}
-	if runningInWSL() {
-		if path, ok := inferWindowsClaudeDesktopConfigPathFromEnv(); ok {
-			return path, nil
-		}
-		return "", errors.New("resolve Claude Desktop config path: running inside WSL but the Windows Claude Desktop config could not be inferred; pass --config /mnt/c/Users/<user>/AppData/Roaming/Claude/claude_desktop_config.json")
-	}
-
-	homeDir, err := codexConfigUserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("resolve home directory: %w", err)
-	}
-
-	return resolveClaudeDesktopConfigPathForPlatform(codexConfigGOOS, homeDir, codexConfigGetenv("AppData"), "")
+	return resolveHostConfigPath(explicitPath, hostConfigPathSpec{
+		resolveDefault: func(goos string, homeDir string, appData string) (string, error) {
+			return resolveClaudeDesktopConfigPathForPlatform(goos, homeDir, appData, "")
+		},
+		inferWSLPath:   inferWindowsClaudeDesktopConfigPathFromEnv,
+		wslMissingHint: "resolve Claude Desktop config path: running inside WSL but the Windows Claude Desktop config could not be inferred; pass --config /mnt/c/Users/<user>/AppData/Roaming/Claude/claude_desktop_config.json",
+		normalizePath:  normalizeCodexConfigPath,
+	})
 }
 
 func DefaultClaudeDesktopConfigPath() (string, error) {

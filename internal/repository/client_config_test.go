@@ -31,6 +31,103 @@ func TestSupportedClientsRemainExplicit(t *testing.T) {
 	}
 }
 
+func TestSupportedClientsExposeCapabilities(t *testing.T) {
+	tests := []struct {
+		id                    ClientID
+		wantLevel             ClientSupportLevel
+		wantKind              ClientConfigKind
+		wantGuidance          ClientGuidanceSupport
+		wantUsageEvidence     bool
+		wantMixedEnvironment  bool
+		wantScopes            []ClientConfigScope
+	}{
+		{
+			id:                   ClientClaudeDesktop,
+			wantLevel:            ClientSupportLevelNative,
+			wantKind:             ClientConfigKindJSON,
+			wantGuidance:         ClientGuidanceSupportUnsupported,
+			wantUsageEvidence:    true,
+			wantMixedEnvironment: true,
+			wantScopes:           []ClientConfigScope{ClientConfigScopeShared},
+		},
+		{
+			id:                   ClientClaudeCLI,
+			wantLevel:            ClientSupportLevelNative,
+			wantKind:             ClientConfigKindCommand,
+			wantGuidance:         ClientGuidanceSupportManaged,
+			wantUsageEvidence:    true,
+			wantScopes:           []ClientConfigScope{ClientConfigScopeLocal, ClientConfigScopeProject, ClientConfigScopeUser},
+		},
+		{
+			id:                   ClientCodexApp,
+			wantLevel:            ClientSupportLevelNative,
+			wantKind:             ClientConfigKindTOML,
+			wantGuidance:         ClientGuidanceSupportManaged,
+			wantUsageEvidence:    true,
+			wantMixedEnvironment: true,
+			wantScopes:           []ClientConfigScope{ClientConfigScopeShared},
+		},
+		{
+			id:                ClientCodexCLI,
+			wantLevel:         ClientSupportLevelNative,
+			wantKind:          ClientConfigKindTOML,
+			wantGuidance:      ClientGuidanceSupportManaged,
+			wantUsageEvidence: true,
+			wantScopes:        []ClientConfigScope{ClientConfigScopeRepo, ClientConfigScopeShared},
+		},
+		{
+			id:           ClientGenericMCP,
+			wantLevel:    ClientSupportLevelManual,
+			wantKind:     ClientConfigKindManual,
+			wantGuidance: ClientGuidanceSupportUnsupported,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.id), func(t *testing.T) {
+			client, ok := LookupSupportedClient(string(tt.id))
+			if !ok {
+				t.Fatalf("LookupSupportedClient(%q) did not resolve", tt.id)
+			}
+			if client.Capabilities.SupportLevel != tt.wantLevel {
+				t.Fatalf("support level = %q, want %q", client.Capabilities.SupportLevel, tt.wantLevel)
+			}
+			if client.Capabilities.ConfigKind != tt.wantKind {
+				t.Fatalf("config kind = %q, want %q", client.Capabilities.ConfigKind, tt.wantKind)
+			}
+			if client.Capabilities.GuidanceSupport != tt.wantGuidance {
+				t.Fatalf("guidance support = %q, want %q", client.Capabilities.GuidanceSupport, tt.wantGuidance)
+			}
+			if client.Capabilities.UsageEvidence != tt.wantUsageEvidence {
+				t.Fatalf("usage evidence = %v, want %v", client.Capabilities.UsageEvidence, tt.wantUsageEvidence)
+			}
+			if client.Capabilities.MixedEnvironmentAware != tt.wantMixedEnvironment {
+				t.Fatalf("mixed environment = %v, want %v", client.Capabilities.MixedEnvironmentAware, tt.wantMixedEnvironment)
+			}
+			if len(client.Capabilities.ConfigScopes) != len(tt.wantScopes) {
+				t.Fatalf("scope count = %d, want %d", len(client.Capabilities.ConfigScopes), len(tt.wantScopes))
+			}
+			for i, wantScope := range tt.wantScopes {
+				if client.Capabilities.ConfigScopes[i] != wantScope {
+					t.Fatalf("scope %d = %q, want %q", i, client.Capabilities.ConfigScopes[i], wantScope)
+				}
+				if !client.SupportsScope(wantScope) {
+					t.Fatalf("SupportsScope(%q) = false", wantScope)
+				}
+			}
+			if tt.wantLevel == ClientSupportLevelNative && !client.IsFirstClass() {
+				t.Fatal("IsFirstClass() = false, want true")
+			}
+			if tt.wantLevel == ClientSupportLevelManual && client.IsFirstClass() {
+				t.Fatal("IsFirstClass() = true, want false")
+			}
+			if got := client.CapabilitySummary(); got == "" {
+				t.Fatal("CapabilitySummary() should not be empty")
+			}
+		})
+	}
+}
+
 func TestRenderGenericClientConfig(t *testing.T) {
 	document, err := MergeClientConfig(nil, DefaultMCPServerName, NewServeCommand(""))
 	if err != nil {

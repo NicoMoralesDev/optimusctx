@@ -8,9 +8,9 @@
 
 ### Host Capability Foundation
 
-- [ ] **HOST-01**: An operator can target a supported host only when OptimusCtx has a verified native contract for that host's config format, config location, scope model, and runtime handoff.
-- [ ] **HOST-02**: An operator can see whether a host supports repo-local config, shared config, durable guidance, and MCP usage verification before any write is attempted.
-- [ ] **HOST-03**: When a host runs outside the current environment, such as a Windows app configured from WSL, OptimusCtx resolves the correct target path or requires explicit `--config` instead of writing to an ambiguous default.
+- [x] **HOST-01**: An operator can target a supported host only when OptimusCtx has a verified native contract for that host's config format, config location, scope model, and runtime handoff.
+- [x] **HOST-02**: An operator can see whether a host supports repo-local config, shared config, durable guidance, and MCP usage verification before any write is attempted.
+- [x] **HOST-03**: When a host runs outside the current environment, such as a Windows app configured from WSL, OptimusCtx resolves the correct target path or requires explicit `--config` instead of writing to an ambiguous default.
 
 ### Gemini CLI Support
 
@@ -57,9 +57,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HOST-01 | Phase 36 | Pending |
-| HOST-02 | Phase 36 | Pending |
-| HOST-03 | Phase 36 | Pending |
+| HOST-01 | Phase 36 | Complete |
+| HOST-02 | Phase 36 | Complete |
+| HOST-03 | Phase 36 | Complete |
 | GEM-01 | Phase 37 | Pending |
 | GEM-02 | Phase 37 | Pending |
 | CUR-01 | Phase 38 | Pending |

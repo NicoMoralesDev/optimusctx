@@ -57,4 +57,5 @@ type DoctorHostRegistration struct {
 	GuidanceState        GuidanceState
 	GuidanceEvidence     string
 	GuidancePath         string
+	CapabilityEvidence   string
 }

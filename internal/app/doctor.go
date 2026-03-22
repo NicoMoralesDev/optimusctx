@@ -608,26 +608,36 @@ func (s DoctorService) hostRegistrations(ctx context.Context, repoRoot string) (
 	clients := repository.SupportedClients()
 	hosts := make([]repository.DoctorHostRegistration, 0, len(clients)-1)
 
-	claudeDesktopPath, err := resolveClaudeDesktopConfigPath("")
-	if err == nil {
-		hosts = append(hosts, s.detectClaudeDesktop(claudeDesktopPath))
-	} else {
-		client, _ := repository.LookupSupportedClient(string(repository.ClientClaudeDesktop))
-		hosts = append(hosts, repository.DoctorHostRegistration{
-			Client:               client,
-			RegistrationState:    repository.HostRegistrationUnverified,
-			RegistrationPath:     "",
-			RegistrationEvidence: err.Error(),
-			GuidanceState:        repository.GuidanceStateUnsupported,
-			GuidanceEvidence:     "Claude Desktop registration is supported, but durable agent guidance is not managed through Claude Desktop config.",
-		})
+	for _, client := range clients {
+		if !client.IsFirstClass() {
+			continue
+		}
+		switch client.ID {
+		case repository.ClientClaudeDesktop:
+			claudeDesktopPath, err := resolveClaudeDesktopConfigPath("")
+			if err == nil {
+				hosts = append(hosts, s.detectClaudeDesktop(client, claudeDesktopPath))
+				continue
+			}
+			hosts = append(hosts, repository.DoctorHostRegistration{
+				Client:               client,
+				RegistrationState:    repository.HostRegistrationUnverified,
+				RegistrationPath:     "",
+				RegistrationEvidence: err.Error(),
+				GuidanceState:        repository.GuidanceStateUnsupported,
+				GuidanceEvidence:     "Claude Desktop registration is supported, but durable agent guidance is not managed through Claude Desktop config.",
+				CapabilityEvidence:   client.CapabilitySummary(),
+			})
+		case repository.ClientClaudeCLI:
+			hosts = append(hosts, s.detectClaudeCLI(ctx, client, repoRoot))
+		case repository.ClientCodexApp:
+			codexAppSharedPath, _ := resolveCodexAppConfigPath("")
+			hosts = append(hosts, s.detectCodexClient(client, repoRoot, codexAppSharedPath))
+		case repository.ClientCodexCLI:
+			codexCLISharedPath, _ := resolveCodexCLIConfigPath("")
+			hosts = append(hosts, s.detectCodexClient(client, repoRoot, codexCLISharedPath))
+		}
 	}
-	hosts = append(hosts, s.detectClaudeCLI(ctx, repoRoot))
-
-	codexAppSharedPath, _ := resolveCodexAppConfigPath("")
-	codexCLISharedPath, _ := resolveCodexCLIConfigPath("")
-	hosts = append(hosts, s.detectCodexClient(clients[2], repoRoot, codexAppSharedPath))
-	hosts = append(hosts, s.detectCodexClient(clients[3], repoRoot, codexCLISharedPath))
 
 	status := repository.DoctorStatusMissing
 	hasDetected := false
@@ -650,14 +660,14 @@ func (s DoctorService) hostRegistrations(ctx context.Context, repoRoot string) (
 	return repository.DoctorHostRegistrationSection{Status: status, Hosts: hosts}, nil
 }
 
-func (s DoctorService) detectClaudeDesktop(configPath string) repository.DoctorHostRegistration {
-	client, _ := repository.LookupSupportedClient(string(repository.ClientClaudeDesktop))
+func (s DoctorService) detectClaudeDesktop(client repository.SupportedClient, configPath string) repository.DoctorHostRegistration {
 	host := repository.DoctorHostRegistration{
 		Client:            client,
 		RegistrationState: repository.HostRegistrationNotDetected,
 		RegistrationPath:  configPath,
 		GuidanceState:     repository.GuidanceStateUnsupported,
 		GuidanceEvidence:  "Claude Desktop registration is supported, but durable agent guidance is not managed through Claude Desktop config.",
+		CapabilityEvidence: client.CapabilitySummary(),
 	}
 
 	existing, err := readExistingClientConfig(s.readFileFn(), configPath)
@@ -686,12 +696,12 @@ func (s DoctorService) detectClaudeDesktop(configPath string) repository.DoctorH
 	return host
 }
 
-func (s DoctorService) detectClaudeCLI(ctx context.Context, repoRoot string) repository.DoctorHostRegistration {
-	client, _ := repository.LookupSupportedClient(string(repository.ClientClaudeCLI))
+func (s DoctorService) detectClaudeCLI(ctx context.Context, client repository.SupportedClient, repoRoot string) repository.DoctorHostRegistration {
 	host := repository.DoctorHostRegistration{
 		Client:            client,
 		RegistrationState: repository.HostRegistrationUnverified,
 		GuidanceState:     repository.GuidanceStateUnverified,
+		CapabilityEvidence: client.CapabilitySummary(),
 	}
 
 	projectPath := filepath.Join(repoRoot, ".mcp.json")
@@ -759,6 +769,7 @@ func (s DoctorService) detectCodexClient(client repository.SupportedClient, repo
 		Client:            client,
 		RegistrationState: repository.HostRegistrationNotDetected,
 		GuidanceState:     repository.GuidanceStateNotConfigured,
+		CapabilityEvidence: client.CapabilitySummary(),
 	}
 
 	repoConfigPath := filepath.Join(repoRoot, ".codex", "config.toml")

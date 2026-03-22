@@ -24,9 +24,52 @@ const (
 	ClientGenericMCP    ClientID = "generic"
 )
 
+type ClientSupportLevel string
+
+const (
+	ClientSupportLevelNative ClientSupportLevel = "native"
+	ClientSupportLevelManual ClientSupportLevel = "manual"
+)
+
+type ClientConfigKind string
+
+const (
+	ClientConfigKindJSON    ClientConfigKind = "json"
+	ClientConfigKindTOML    ClientConfigKind = "toml"
+	ClientConfigKindCommand ClientConfigKind = "command"
+	ClientConfigKindManual  ClientConfigKind = "manual"
+)
+
+type ClientConfigScope string
+
+const (
+	ClientConfigScopeRepo    ClientConfigScope = "repo"
+	ClientConfigScopeShared  ClientConfigScope = "shared"
+	ClientConfigScopeProject ClientConfigScope = "project"
+	ClientConfigScopeLocal   ClientConfigScope = "local"
+	ClientConfigScopeUser    ClientConfigScope = "user"
+)
+
+type ClientGuidanceSupport string
+
+const (
+	ClientGuidanceSupportManaged     ClientGuidanceSupport = "managed"
+	ClientGuidanceSupportUnsupported ClientGuidanceSupport = "unsupported"
+)
+
+type ClientCapabilities struct {
+	SupportLevel          ClientSupportLevel
+	ConfigKind            ClientConfigKind
+	ConfigScopes          []ClientConfigScope
+	GuidanceSupport       ClientGuidanceSupport
+	UsageEvidence         bool
+	MixedEnvironmentAware bool
+}
+
 type SupportedClient struct {
 	ID          ClientID
 	DisplayName string
+	Capabilities ClientCapabilities
 }
 
 type ServeCommand struct {
@@ -63,12 +106,101 @@ func (r RenderedClientConfig) ContentForWrite() string {
 
 func SupportedClients() []SupportedClient {
 	return []SupportedClient{
-		{ID: ClientClaudeDesktop, DisplayName: "Claude Desktop"},
-		{ID: ClientClaudeCLI, DisplayName: "Claude CLI"},
-		{ID: ClientCodexApp, DisplayName: "Codex App"},
-		{ID: ClientCodexCLI, DisplayName: "Codex CLI"},
-		{ID: ClientGenericMCP, DisplayName: "Generic MCP Client"},
+		{
+			ID:          ClientClaudeDesktop,
+			DisplayName: "Claude Desktop",
+			Capabilities: ClientCapabilities{
+				SupportLevel:          ClientSupportLevelNative,
+				ConfigKind:            ClientConfigKindJSON,
+				ConfigScopes:          []ClientConfigScope{ClientConfigScopeShared},
+				GuidanceSupport:       ClientGuidanceSupportUnsupported,
+				UsageEvidence:         true,
+				MixedEnvironmentAware: true,
+			},
+		},
+		{
+			ID:          ClientClaudeCLI,
+			DisplayName: "Claude CLI",
+			Capabilities: ClientCapabilities{
+				SupportLevel:    ClientSupportLevelNative,
+				ConfigKind:      ClientConfigKindCommand,
+				ConfigScopes:    []ClientConfigScope{ClientConfigScopeLocal, ClientConfigScopeProject, ClientConfigScopeUser},
+				GuidanceSupport: ClientGuidanceSupportManaged,
+				UsageEvidence:   true,
+			},
+		},
+		{
+			ID:          ClientCodexApp,
+			DisplayName: "Codex App",
+			Capabilities: ClientCapabilities{
+				SupportLevel:          ClientSupportLevelNative,
+				ConfigKind:            ClientConfigKindTOML,
+				ConfigScopes:          []ClientConfigScope{ClientConfigScopeShared},
+				GuidanceSupport:       ClientGuidanceSupportManaged,
+				UsageEvidence:         true,
+				MixedEnvironmentAware: true,
+			},
+		},
+		{
+			ID:          ClientCodexCLI,
+			DisplayName: "Codex CLI",
+			Capabilities: ClientCapabilities{
+				SupportLevel:    ClientSupportLevelNative,
+				ConfigKind:      ClientConfigKindTOML,
+				ConfigScopes:    []ClientConfigScope{ClientConfigScopeRepo, ClientConfigScopeShared},
+				GuidanceSupport: ClientGuidanceSupportManaged,
+				UsageEvidence:   true,
+			},
+		},
+		{
+			ID:          ClientGenericMCP,
+			DisplayName: "Generic MCP Client",
+			Capabilities: ClientCapabilities{
+				SupportLevel:    ClientSupportLevelManual,
+				ConfigKind:      ClientConfigKindManual,
+				GuidanceSupport: ClientGuidanceSupportUnsupported,
+			},
+		},
 	}
+}
+
+func (c SupportedClient) IsFirstClass() bool {
+	return c.Capabilities.SupportLevel == ClientSupportLevelNative
+}
+
+func (c SupportedClient) SupportsScope(scope ClientConfigScope) bool {
+	for _, candidate := range c.Capabilities.ConfigScopes {
+		if candidate == scope {
+			return true
+		}
+	}
+	return false
+}
+
+func (c SupportedClient) CapabilitySummary() string {
+	parts := []string{
+		fmt.Sprintf("support=%s", c.Capabilities.SupportLevel),
+		fmt.Sprintf("config=%s", c.Capabilities.ConfigKind),
+	}
+	if len(c.Capabilities.ConfigScopes) > 0 {
+		scopes := make([]string, 0, len(c.Capabilities.ConfigScopes))
+		for _, scope := range c.Capabilities.ConfigScopes {
+			scopes = append(scopes, string(scope))
+		}
+		parts = append(parts, fmt.Sprintf("scopes=%s", strings.Join(scopes, "/")))
+	}
+	parts = append(parts, fmt.Sprintf("guidance=%s", c.Capabilities.GuidanceSupport))
+	if c.Capabilities.UsageEvidence {
+		parts = append(parts, "usage_evidence=repo-local")
+	} else {
+		parts = append(parts, "usage_evidence=none")
+	}
+	if c.Capabilities.MixedEnvironmentAware {
+		parts = append(parts, "env=mixed-aware")
+	} else {
+		parts = append(parts, "env=current")
+	}
+	return strings.Join(parts, " ")
 }
 
 func LookupSupportedClient(name string) (SupportedClient, bool) {

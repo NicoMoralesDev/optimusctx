@@ -329,6 +329,7 @@ func formatStatusDiagnosticReport(report repository.DoctorReport) string {
 		writeDoctorLine(&b, "host", fmt.Sprintf("%s registration=%s guidance=%s registration_path=%s guidance_path=%s", host.Client.DisplayName, host.RegistrationState, host.GuidanceState, renderDoctorValue(host.RegistrationPath), renderDoctorValue(host.GuidancePath)))
 		writeDoctorLine(&b, "host detail", fmt.Sprintf("%s: %s", host.Client.DisplayName, renderDoctorValue(host.RegistrationEvidence)))
 		writeDoctorLine(&b, "guidance detail", fmt.Sprintf("%s: %s", host.Client.DisplayName, renderDoctorValue(host.GuidanceEvidence)))
+		writeDoctorLine(&b, "capability detail", fmt.Sprintf("%s: %s", host.Client.DisplayName, renderDoctorValue(host.CapabilityEvidence)))
 	}
 
 	b.WriteString("\nMCP Evidence\n")
