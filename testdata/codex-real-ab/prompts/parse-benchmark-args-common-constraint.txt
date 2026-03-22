@@ -1,0 +1,5 @@
+Identify the helper in `internal/cli/eval.go` that parses common `eval benchmark` arguments, and state the exclusivity rule between `--suite` and `--suite-file`.
+
+Reply with exactly two bullet points:
+- the helper name
+- the exclusivity rule

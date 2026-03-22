@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "task_defaults": {
+    "evaluator_command": "./scripts/codex-real-ab-evaluator.sh"
+  },
+  "tasks": [
+    {
+      "id": "list-benchmark-suite-files",
+      "name": "List Benchmark Suite Files",
+      "category": "navigation",
+      "prompt_file": "prompts/list-benchmark-suite-files.txt"
+    },
+    {
+      "id": "load-benchmark-suites-validation",
+      "name": "Load Benchmark Suites Validation",
+      "category": "analysis",
+      "prompt_file": "prompts/load-benchmark-suites-validation.txt"
+    },
+    {
+      "id": "parse-benchmark-args-common-constraint",
+      "name": "Parse Benchmark Args Common Constraint",
+      "category": "cli-analysis",
+      "prompt_file": "prompts/parse-benchmark-args-common-constraint.txt"
+    },
+    {
+      "id": "verify-output-flag-restriction",
+      "name": "Verify Output Flag Restriction",
+      "category": "cli-analysis",
+      "prompt_file": "prompts/verify-output-flag-restriction.txt"
+    }
+  ]
+}

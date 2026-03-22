@@ -1,0 +1,3 @@
+In this repository, list the two JSON benchmark suite files shipped under `testdata/eval/benchmarks`.
+
+Reply with exactly two bullet points and include only the filenames.
