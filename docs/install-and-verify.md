@@ -85,7 +85,9 @@ In an interactive terminal, it can also offer supported-client onboarding during
 
 - Codex: active `AGENTS.md` or `AGENTS.override.md`
 - Claude CLI: `.claude/rules/optimusctx-mcp.md` or `~/.claude/rules/optimusctx-mcp.md`
+- Gemini CLI: repo-root `GEMINI.md` or `~/.gemini/GEMINI.md`
 - Claude Desktop: no durable agent-guidance file is managed
+- Cursor CLI: no durable agent-guidance file is managed
 
 Check the read-only runtime status at any time with:
 
@@ -118,6 +120,8 @@ optimusctx init --client claude-desktop
 optimusctx init --client claude-cli --scope local
 optimusctx init --client codex-app
 optimusctx init --client codex-cli --config /path/to/.codex/config.toml
+optimusctx init --client gemini-cli --config /path/to/.gemini/settings.json
+optimusctx init --client cursor-cli --config /path/to/.cursor/mcp.json
 ```
 
 Apply the change only when you want to opt in:
@@ -127,6 +131,8 @@ optimusctx init --client claude-desktop --write
 optimusctx init --client claude-cli --scope project --write
 optimusctx init --client codex-app --write
 optimusctx init --client codex-cli --config /path/to/.codex/config.toml --write
+optimusctx init --client gemini-cli --config /path/to/.gemini/settings.json --write
+optimusctx init --client cursor-cli --config /path/to/.cursor/mcp.json --write
 ```
 
 Notes:
@@ -135,6 +141,9 @@ Notes:
 - Claude Desktop can use its default desktop config path, but from WSL you may need to point it at the Windows-backed path explicitly, for example `/mnt/c/Users/<user>/AppData/Roaming/Claude/claude_desktop_config.json`.
 - Codex CLI can target the shared `~/.codex/config.toml` path or an explicit repo-local `.codex/config.toml` path.
 - Codex App can also use a shared Codex config, but from WSL you may need to point it at the Windows-backed path explicitly, for example `/mnt/c/Users/<user>/.codex/config.toml`.
+- Gemini CLI can target the shared `~/.gemini/settings.json` path or an explicit repo-local `.gemini/settings.json` path.
+- Cursor CLI can target the shared `~/.cursor/mcp.json` path or an explicit repo-local `.cursor/mcp.json` path.
+- Cursor CLI support is verified for the CLI contract; the config file may be shared with other Cursor surfaces, but OptimusCtx does not claim broader editor automation here.
 - The interactive `init` flow surfaces those destinations before anything is written.
 - After registration, your host should discover the `optimusctx.*` tool surface automatically.
 - After registration, use `optimusctx status` to confirm detected host registrations, guidance files, last MCP initialize, last tools discovery, and recent `optimusctx.*` tool calls.

@@ -97,11 +97,13 @@ optimusctx init
 optimusctx status
 ```
 
-In an interactive terminal, `optimusctx init` can offer Claude and Codex onboarding during that same command after the repository bootstrap finishes. It asks where the client should be configured, then lets you either configure it now or review the exact change first. When the host supports it, the same flow also installs durable agent guidance:
+In an interactive terminal, `optimusctx init` can offer supported-host onboarding during that same command after the repository bootstrap finishes. It asks where the client should be configured, then lets you either configure it now or review the exact change first. When the host supports it, the same flow also installs durable agent guidance:
 
 - Codex writes or updates the active `AGENTS.md` or `AGENTS.override.md`
 - Claude CLI writes a dedicated OptimusCtx rule under `.claude/rules/` or `~/.claude/rules/`
+- Gemini CLI writes or updates `GEMINI.md` in the selected repo-local or shared scope
 - Claude Desktop gets MCP registration, but no durable agent-guidance surface is managed there
+- Cursor CLI gets MCP registration, but no durable agent-guidance surface is managed there
 
 Registered MCP hosts should launch the runtime automatically after onboarding. Run it manually only when you want direct STDIO access or you are debugging startup:
 
@@ -116,6 +118,8 @@ optimusctx init --client claude-desktop
 optimusctx init --client claude-cli --scope local
 optimusctx init --client codex-app
 optimusctx init --client codex-cli --config /path/to/.codex/config.toml
+optimusctx init --client gemini-cli --config /path/to/.gemini/settings.json
+optimusctx init --client cursor-cli --config /path/to/.cursor/mcp.json
 ```
 
 Those commands review the exact change first. Add `--write` only when you want to configure the target immediately:
@@ -125,6 +129,8 @@ optimusctx init --client claude-desktop --write
 optimusctx init --client claude-cli --scope project --write
 optimusctx init --client codex-app --write
 optimusctx init --client codex-cli --config /path/to/.codex/config.toml --write
+optimusctx init --client gemini-cli --config /path/to/.gemini/settings.json --write
+optimusctx init --client cursor-cli --config /path/to/.cursor/mcp.json --write
 ```
 
 After registration, use `optimusctx status` to answer the real integration question:

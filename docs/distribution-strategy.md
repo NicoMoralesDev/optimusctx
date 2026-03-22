@@ -51,7 +51,7 @@ GitHub Release archives are the fallback and baseline channel.
   - `npm install -g @niccrow/optimusctx`
   - `npx @niccrow/optimusctx version`
 - Upgrade command: `npm install -g @niccrow/optimusctx@latest`
-- Verification after install or upgrade: rerun `optimusctx version` and `optimusctx status`, then use `optimusctx init --client claude-desktop` to review onboarding and `optimusctx init --client claude-desktop --write` only if desired
+- Verification after install or upgrade: rerun `optimusctx version` and `optimusctx status`, then use `optimusctx init --client <supported-client>` to review onboarding and add `--write` only if desired
 - Support boundary: the npm package is a wrapper over the canonical tagged GitHub Release binary, not a JavaScript reimplementation or a silent client-config installer
 
 ## Upgrade Policy
@@ -85,8 +85,8 @@ Every supported channel should converge on the same verification path:
 1. `optimusctx version` to confirm the installed binary reports the expected release metadata.
 2. `optimusctx status` to confirm the runtime and repository state are ready.
 3. `optimusctx doctor` only if you still rely on the deprecated alias; it now delegates to `status`.
-4. `optimusctx init --client claude-desktop` to review supported-client onboarding in a real repository.
-5. `optimusctx init --client claude-desktop --write` only if the operator explicitly wants the config file write path after reviewing the rendered change.
+4. `optimusctx init --client <supported-client>` to review supported-client onboarding in a real repository.
+5. `optimusctx init --client <supported-client> --write` only if the operator explicitly wants the config file write path after reviewing the rendered change.
 6. Confirm the MCP host exposes and uses `optimusctx.*` tools if the release claim includes supported-client onboarding.
 
 ## Support Boundary

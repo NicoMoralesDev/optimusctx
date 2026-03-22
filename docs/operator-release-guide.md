@@ -58,7 +58,7 @@ cp ../optimusctx .
 ./optimusctx version
 ./optimusctx init
 ./optimusctx status
-./optimusctx init --client claude-desktop
+./optimusctx init --client gemini-cli --config /tmp/optimusctx-release-check/repo/.gemini/settings.json
 ```
 
 If the canonical GitHub Release metadata, archives, or checksums are wrong, stop here. Fix the GitHub Release root before you inspect or rerun any downstream package-manager channel.
@@ -124,7 +124,7 @@ If the workflow summary shows `publication_status=not_published` for Homebrew or
 2. Download the prior tagged archive from GitHub Releases.
 3. Reinstall that archive as the operator-facing fallback.
 4. Re-run `optimusctx version` and `optimusctx status`.
-5. Re-run `optimusctx init --client claude-desktop` if you need to verify supported-client onboarding again.
+5. Re-run `optimusctx init --client <supported-client>` if you need to verify supported-client onboarding again.
 6. Only after the canonical archive path is stable should you decide whether a downstream rerun or a new fixed release is needed.
 
 GitHub Release remains the canonical root and rollback source even when npm, Homebrew, or Scoop were the failing channels.

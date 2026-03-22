@@ -74,8 +74,8 @@ For the project-side root cause and fix record of the Codex MCP startup incident
 
 - After installation or upgrade, run `optimusctx version`.
 - After installation or upgrade, run `optimusctx status`.
-- Use `optimusctx init --client claude-desktop` to review supported-client onboarding in a repository.
-- Use `optimusctx init --client claude-desktop --write` only when the operator explicitly wants the config-write path after reviewing the rendered change.
+- Use `optimusctx init --client <supported-client>` to review supported-client onboarding in a repository.
+- Use `optimusctx init --client <supported-client> --write` only when the operator explicitly wants the config-write path after reviewing the rendered change.
 
 ## Rollout Messaging
 
