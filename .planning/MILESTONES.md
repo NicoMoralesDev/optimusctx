@@ -1,5 +1,27 @@
 # Project Milestones: OptimusCtx
 
+## v1.3.9 Agent Host Expansion and Capability Hardening (Completed: 2026-03-22)
+
+**Delivered:** Capability-driven host onboarding foundations, first-class Gemini CLI and Cursor CLI support, and aligned diagnostics, docs, and regression coverage for the expanded host matrix.
+
+**Phases completed:** 36-39 (8 plans total)
+
+**Key accomplishments:**
+- Added structured supported-host capability metadata so repo/shared scope, config shape, guidance support, and verification claims are explicit and testable.
+- Added native Gemini CLI onboarding through `.gemini/settings.json` with merge-safe `mcpServers` writes and verification-aware status output.
+- Added native Cursor CLI onboarding through `mcp.json` with truthful shared-config guidance and merge-safe registration writes.
+- Aligned public/operator docs and regression coverage so host support claims stay consistent across init, status, and environment/path handling.
+
+**Stats:**
+- 4 phases, 8 plans, 8 tasks
+- Rough execution window: 2026-03-21 through 2026-03-22
+
+**Git range:** `docs: start milestone v1.3.9 agent host expansion` → `docs: record phase 39 milestone closeout`
+
+**What's next:** Decide whether to cut `v1.3.9` as the next public release or start the next milestone from the now capability-driven host foundation.
+
+---
+
 ## v1.3.6 Release Channel Truth and Workflow Modernization (Completed: 2026-03-20)
 
 **Delivered:** Correct first-publish behavior for Homebrew and Scoop, truthful downstream publication states, release-doc alignment, and a release workflow upgraded off the Node 20 warning path.
