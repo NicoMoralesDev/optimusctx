@@ -1,7 +1,7 @@
 # Stack Research
 
-**Domain:** MCP client compatibility for local coding-agent hosts
-**Researched:** 2026-03-19
+**Domain:** Next first-class MCP hosts after Claude and Codex
+**Researched:** 2026-03-21
 **Confidence:** HIGH
 
 ## Recommended Stack
@@ -10,24 +10,24 @@
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| Go | 1.26.x | Core runtime, CLI surface, host integration logic | Already shipped stack; this milestone is integration depth, not a platform rewrite |
-| `encoding/json` | stdlib | Claude Desktop config merge/render and JSON preview flows | Existing shipped path already proves the JSON merge model for Claude Desktop |
-| Host-specific registration adapters | existing app/repository layers | Keep preview/write semantics explicit per supported client | The real gap is contract accuracy per host, so the adapter boundary should stay the integration seam |
+| Go | 1.26.x | Core runtime, CLI surface, host integration logic | Already shipped stack; this milestone is host integration depth, not a platform rewrite |
+| `encoding/json` | stdlib | Gemini CLI `settings.json` and Cursor `mcp.json` merge/render flows | Both candidate hosts use documented JSON contracts, so the existing JSON path should be extended rather than replaced |
+| Host capability metadata | existing app/repository layers | Keep preview/write semantics, scope truth, and diagnostics explicit per supported client | The real gap is contract accuracy per host, so the capability/adapter boundary should stay the integration seam |
 
 ### Supporting Libraries
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| One maintained Go TOML library | current v2 line | Read, merge, and write Codex `config.toml` safely | Needed for `codex-app` and `codex-cli`, whose official MCP config lives in `config.toml` |
-| `os/exec` | stdlib | Invoke Claude CLI's official registration command when `--write` is requested | Preferred if direct mutation of Claude user config remains underdocumented |
+| Existing filesystem/path helpers | current repo | Reuse repo-local/shared/default path resolution | Needed because host correctness is partly about writing to the right file in mixed environments |
+| Targeted JSON schema wrappers | current repo patterns | Keep host-specific render/write logic explicit even when both use JSON | Needed so Gemini CLI and Cursor CLI can diverge cleanly on path and notes without forking the whole install service |
 | Existing Go test harnesses | current repo | Regression coverage for adapter and CLI behavior | Needed to lock host-specific preview/write output without broad E2E fragility |
 
 ### Development Tools
 
 | Tool | Purpose | Notes |
 |------|---------|-------|
-| Anthropic Claude Code docs | Verify Claude CLI scope and registration semantics | Official source for `claude mcp add` and `claude mcp add-json` |
-| OpenAI Codex docs | Verify Codex config path, schema, and shared app/CLI behavior | Official source for `config.toml` and `[mcp_servers.<name>]` |
+| Gemini CLI docs | Verify `settings.json`, `mcpServers`, and repo/shared config scope | Official source for Gemini CLI MCP setup |
+| Cursor docs | Verify `mcp.json`, CLI commands, and shared editor/CLI config contract | Official source for Cursor CLI MCP support |
 | Existing Go test suite | Validate new adapters without changing runtime core behavior | Extend targeted install/status/init coverage first, then run full suite |
 
 ## Installation
@@ -44,47 +44,44 @@ go test ./...
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| Shared Codex `config.toml` adapter for app and CLI | Separate `codex-app` and `codex-cli` writers | Only if implementation proves a real host divergence the docs do not show today |
-| Claude CLI command-driven write path | Direct edits to `~/.claude.json` | Only if the exact user-scope file schema is validated during implementation and is safer than invoking Claude |
-| Structured TOML merge/write | Manual string concatenation | Acceptable for preview text only, not for persisted writes |
+| JSON-backed host adapters with shared helpers | One universal JSON writer with only note-text differences | Only if host paths, scopes, and diagnostics turn out to be identical, which research suggests they are not |
+| Existing JSON merge flow with host-specific wrappers | New parser or schema layer | Only if Gemini or Cursor config shapes prove materially more complex than the current MCP server object model |
+| Structured merge/write | Manual string concatenation | Acceptable for preview text only, not for persisted writes |
 
 ## What NOT to Use
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| Treating all supported hosts as one JSON shape | Claude and Codex do not use the same persisted config format | Host-specific preview and write adapters |
-| Blind edits to undocumented Claude CLI user config | Official docs emphasize CLI registration commands and scopes, not hand-editing the user file | Use Claude's supported registration mechanism unless implementation proves otherwise |
+| Treating Gemini CLI and Cursor CLI as "just another generic JSON host" | Both use JSON, but the path, scope, and support wording differ materially | Host-specific preview and write adapters with shared helpers |
+| Assuming Linux shared-config paths for desktop/editor-backed hosts from WSL | Recent fixes showed this silently targets the wrong file | Resolve the real target path or require explicit `--config` |
 | Making `--write` implicit | Violates the shipped explicit-consent boundary around client config writes | Keep preview-first and write-only on operator request |
 
 ## Stack Patterns by Variant
 
-**If the host stores JSON MCP config:**
-- Use the current typed JSON merge-and-render path.
-- Because Claude Desktop already has a working deterministic implementation.
+**If the host stores JSON MCP config with repo/shared variants:**
+- Use the current typed JSON merge-and-render path with host-specific path resolvers and notes.
+- Because Gemini CLI and Cursor CLI both fit the local JSON merge pattern but differ on path semantics.
 
-**If the host stores TOML MCP config:**
-- Use a typed TOML adapter with merge semantics and shared path resolution.
-- Because Codex App and Codex CLI officially share `config.toml`.
-
-**If the host documents command-first registration:**
-- Wrap that host command behind `optimusctx ... --write`.
-- Because the host CLI is the authoritative writer for its own config surface.
+**If the host shares CLI and editor config:**
+- Keep the adapter explicit about the verified entrypoint while reusing the shared path/backend.
+- Because Cursor docs say CLI and editor share MCP config, but support claims still need a precise boundary.
 
 ## Version Compatibility
 
 | Package A | Compatible With | Notes |
 |-----------|-----------------|-------|
-| `optimusctx run` | Claude Desktop `mcpServers` JSON entry | Existing shipped path; must remain stable |
-| `optimusctx run` | Claude CLI stdio registration via `claude mcp add-json` | Official docs support JSON-based stdio server registration |
-| `optimusctx run` | Codex `[mcp_servers.<server-name>]` TOML table | Official docs define this as the native Codex MCP contract |
+| `optimusctx run` | Gemini CLI `mcpServers` JSON entry | Official docs define local MCP servers via `settings.json` |
+| `optimusctx run` | Cursor `mcp.json` stdio server entry | Official docs define local stdio MCP servers through `mcp.json` |
+| `optimusctx run` | Existing Claude/Codex contracts | Must remain stable while the host matrix expands |
 
 ## Sources
 
-- https://code.claude.com/docs/en/mcp — verified `claude mcp add`, `claude mcp add-json`, scopes, `.mcp.json`, and `~/.claude.json` storage notes
-- https://developers.openai.com/codex/mcp — verified `config.toml`, `~/.codex/config.toml`, project-scoped `.codex/config.toml`, CLI commands, and `[mcp_servers.<name>]`
-- https://developers.openai.com/codex/app/settings — verified Codex App shares `config.toml`-backed agent and MCP settings with Codex CLI and the IDE extension
-- Local code: `internal/app/install.go`, `internal/repository/client_config.go` — verified current write support exists only for Claude Desktop
+- https://geminicli.com/docs/tools/mcp-server — verified `mcpServers`, `settings.json`, and global MCP settings
+- https://geminicli.com/docs/cli/tutorials/mcp-setup/ — verified repo-local and shared `settings.json` targeting
+- https://docs.cursor.com/cli/mcp — verified Cursor CLI MCP support and management commands
+- https://docs.cursor.com/advanced/model-context-protocol — verified `mcp.json` JSON contract and stdio server fields
+- Local code: `internal/app/install.go`, `internal/repository/client_config.go` — verified current supported-host registry and install-service seams
 
 ---
-*Stack research for: MCP client compatibility for local coding-agent hosts*
-*Researched: 2026-03-19*
+*Stack research for: next first-class MCP hosts after Claude and Codex*
+*Researched: 2026-03-21*

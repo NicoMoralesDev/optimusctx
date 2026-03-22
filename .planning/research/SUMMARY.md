@@ -1,98 +1,106 @@
 # Project Research Summary
 
 **Project:** OptimusCtx
-**Domain:** MCP client compatibility for local coding-agent hosts
-**Researched:** 2026-03-19
+**Domain:** Next first-class MCP hosts after Claude and Codex
+**Researched:** 2026-03-21
 **Confidence:** HIGH
 
 ## Executive Summary
 
-`v1.3.1` is a finish-and-truth milestone for the shipped MCP integration surface. The runtime itself is already there and `optimusctx run` is already canonical, but the supported-client story is incomplete because only Claude Desktop currently has real write-backed integration. Claude CLI and the Codex clients are still effectively generic/manual paths.
+The next credible host-expansion step is narrow and realistic: Gemini CLI and Cursor CLI both expose documented local MCP configuration contracts that fit OptimusCtx's current local-first runtime model. Gemini CLI uses `mcpServers` in repo-local or shared `settings.json`; Cursor CLI supports MCP directly and uses the same configuration model as Cursor's editor-facing `mcp.json`. Neither candidate requires a new transport or hosted control plane.
 
-The research points to a narrow, credible implementation strategy. Claude Desktop should stay on the existing JSON merge path. Codex App and Codex CLI should share one `config.toml` backend because OpenAI documents that the app, CLI, and IDE extension use the same configuration store. Claude CLI should remain explicit, but its write path should follow the official Claude registration flow unless raw user-config mutation is explicitly validated during implementation.
+The main engineering work is therefore not "supporting more MCP." It is extending the supported-host model so each host advertises explicit capabilities: config format, repo/shared scope support, guidance support, usage evidence support, and environment-aware path resolution. Recent `v1.3.8` fixes showed that host truth breaks first on path and transport assumptions, not on repository indexing logic.
 
-The main risk is not core-runtime complexity. It is integration dishonesty: claiming first-class support while still rendering the wrong contract, or writing through a brittle host path. The roadmap should therefore front-load host-contract fidelity and safe writes, then close with docs and regression evidence.
+Gemini CLI is the lower-risk implementation target because its MCP contract is close to Claude Desktop's JSON model. Cursor CLI is also viable, but it should be positioned carefully: the official docs say CLI and editor share MCP configuration, so OptimusCtx must be precise about what is verified for CLI onboarding versus broader editor behavior. The roadmap should therefore front-load a shared host-capability foundation, then implement Gemini CLI and Cursor CLI as separate host adapters, and close with cross-host verification and docs.
 
 ## Key Findings
 
 ### Recommended Stack
 
-No runtime-stack pivot is needed. The existing Go CLI and install-service boundary remain the right seam. The likely additions are one small TOML dependency for safe Codex config merges and, if needed, structured use of `os/exec` for Claude CLI writes.
+No runtime-stack pivot is needed. The existing Go CLI and install-service boundary remain the right seam. Both candidate hosts use JSON configuration, so the shipped JSON merge machinery and path-resolution patterns can be extended rather than replaced.
 
 **Core technologies:**
 - Go: shipped runtime and CLI surface — already proven in the product
-- JSON support in stdlib: Claude Desktop config rendering — already implemented and should remain the baseline
-- TOML merge/write support: native Codex integration — required because Codex stores MCP config in `config.toml`
+- `encoding/json`: good fit for Gemini CLI `settings.json` and Cursor `mcp.json`
+- Host capability metadata and path resolvers: needed so support claims stay truthful across repo-local/shared and mixed-environment cases
 
 ### Expected Features
 
-This patch should close only the table stakes for the named supported hosts.
+This milestone should close the table stakes for two new first-class hosts without pretending to solve every MCP client in one pass.
 
 **Must have (table stakes):**
-- Explicit supported flows for `claude-desktop`, `claude-cli`, `codex-app`, and `codex-cli`
-- Host-native preview output that always points at `optimusctx run`
-- Real `--write` support for the named clients
-- Onboarding, docs, and tests that match the supported host set
+- Explicit supported flows for `gemini-cli` and `cursor-cli`
+- Host-native preview output and write support that always points at `optimusctx run`
+- Host capability reporting before writes, including scope/path truth and evidence support
+- Onboarding, docs, and tests that match the new supported host set
 
 **Should have (competitive):**
-- Shared Codex backend across App and CLI
-- Host-specific notes that reduce path and scope confusion
+- One reusable host-capability foundation for future clients
+- Environment-aware path detection that reuses the WSL/Desktop lessons from Codex App and Claude Desktop
+- Host-specific notes that reduce scope and shared-config confusion
 
 **Defer (v2+):**
-- Additional first-class MCP hosts
+- More first-class MCP hosts beyond Gemini CLI and Cursor CLI
 - Managed or organization-wide host configuration
+- Editor/app-specific automation beyond the CLI-backed contracts verified in this milestone
 
 ### Architecture Approach
 
-Keep `InstallService` as the preview/write boundary, but replace the current generic treatment of named hosts with truthful host-family adapters. Claude Desktop keeps the JSON path. Codex App and Codex CLI share one TOML-backed adapter. Claude CLI likely needs an explicit command-driven write path unless implementation validates a safer raw-file option.
+Keep `InstallService` as the preview/write boundary, but extend it with explicit host capability metadata and JSON-backed adapters for Gemini CLI and Cursor CLI. Gemini CLI should look like a new JSON-host family with repo-local/shared `settings.json` targets. Cursor CLI should look like a JSON-host family with repo-local/shared `mcp.json` targets and notes that explain the shared CLI/editor config story without over-claiming editor automation.
 
 **Major components:**
-1. Client adapter registry — maps supported client IDs to truthful preview/write behavior
-2. Native config backends — JSON merge, TOML merge, and optional Claude CLI command execution
-3. Operator-facing surfaces — `status`, `init`, docs, and tests that stop assuming Claude Desktop is the only real path
+1. Host capability registry — maps supported client IDs to config format, target-path behavior, scope model, and verification notes
+2. JSON-backed host adapters — Gemini CLI and Cursor CLI preview/write flows built on safe merge behavior
+3. Operator-facing surfaces — `status`, `init`, docs, and tests that explain supported-host differences explicitly
 
 ### Critical Pitfalls
 
-1. **Generic named-client support** — prevent this by making named clients render and write through real host paths.
-2. **Config corruption** — prevent this by using structured merge logic and idempotence tests.
-3. **Wrong Claude CLI contract** — prevent this by following documented Claude CLI registration behavior.
-4. **Duplicate Codex backends** — prevent this by sharing one `config.toml` backend across App and CLI.
-5. **Docs drift** — prevent this by treating docs and onboarding as part of the milestone scope.
+1. **Over-claiming host support** — prevent this by admitting only hosts with a documented config contract and truthful diagnostics.
+2. **Wrong shared-config path** — prevent this by treating environment-aware path resolution as part of host support, not follow-up polish.
+3. **Config corruption** — prevent this by using structured JSON merges and repeated-write idempotence tests.
+4. **Cursor CLI/editor confusion** — prevent this by being explicit about the shared config file without promising unverified editor behavior.
+5. **Docs drift** — prevent this by treating onboarding and docs as part of the milestone definition of done.
 
 ## Implications for Roadmap
 
 Based on research, suggested phase structure:
 
-### Phase 20: MCP Client Contract and Config Backend Foundation
-**Rationale:** The first failure mode is claiming support without matching the host contract.
-**Delivers:** Host-native preview models, config backend seams, shared Codex storage rules, and safe merge behavior.
-**Addresses:** Support fidelity and config safety.
-**Avoids:** Generic adapter drift and config corruption.
+### Phase 36: Host Capability Matrix and Adapter Foundation
+**Rationale:** The first failure mode is still claiming support without matching the real host contract.
+**Delivers:** Capability metadata, scope/path truth, and adapter seams for new JSON-backed hosts.
+**Addresses:** Support fidelity and environment-safe writes.
+**Avoids:** Generic adapter drift and repeated WSL/shared-config bugs.
 
-### Phase 21: Real Write Paths and Operator Surface Integration
-**Rationale:** Once truthful backends exist, the product needs explicit write behavior and host-specific operator guidance.
-**Delivers:** Claude CLI real write support, Codex App/CLI writes, and updated `status`/`init`/guidance strings.
-**Uses:** The adapter and merge foundation from Phase 20.
-**Implements:** The actual first-class user flow the milestone promises.
+### Phase 37: Gemini CLI Native Onboarding
+**Rationale:** Gemini CLI is the lowest-risk next host because the documented JSON model closely fits current patterns.
+**Delivers:** Gemini preview/write/detection behavior and merge safety.
+**Uses:** The capability and adapter foundation from Phase 36.
 
-### Phase 22: Documentation and Compatibility Verification
-**Rationale:** Support is not complete until operators can follow it and regressions are locked.
-**Delivers:** README/quickstart/install updates, regression coverage, and end-to-end verification notes.
+### Phase 38: Cursor CLI Native Onboarding
+**Rationale:** Cursor CLI is viable, but it needs careful wording around its shared editor/CLI config model.
+**Delivers:** Cursor preview/write/detection behavior and merge safety.
+**Uses:** The capability and adapter foundation from Phase 36.
+
+### Phase 39: Cross-Host Verification, Docs, and Environment Safety
+**Rationale:** New host support is not complete until docs, diagnostics, and tests all tell the same truth.
+**Delivers:** public/operator docs, regression coverage, and a stable support story across Claude, Codex, Gemini CLI, and Cursor CLI.
 
 ### Phase Ordering Rationale
 
-- Phase 20 comes first because truthful preview and safe persistence are the contract boundary.
-- Phase 21 follows because the write flows and user-facing messaging depend on those backends.
-- Phase 22 closes the milestone because docs and verification should reflect the real implemented surface.
+- Phase 36 comes first because truthful capability metadata and path resolution are the contract boundary.
+- Phase 37 follows because Gemini CLI is the simplest next-host implementation once that foundation exists.
+- Phase 38 comes next because Cursor CLI can reuse the same patterns but needs its own support wording.
+- Phase 39 closes the milestone because docs and verification should reflect the real implemented surface.
 
 ### Research Flags
 
 Phases likely needing deeper research during planning:
-- **Phase 21:** Claude CLI write implementation, because the official docs emphasize registration commands and scopes more than raw file editing.
+- **Phase 38:** Cursor CLI/editor shared-config wording and detection boundaries, because support claims need to stay precise.
 
 Phases with standard patterns (skip research-phase):
-- **Phase 20:** adapter and backend factoring inside the existing Go service boundary
-- **Phase 22:** docs/test closeout once the host paths are real
+- **Phase 36:** capability metadata and adapter factoring inside the existing Go service boundary
+- **Phase 37:** Gemini CLI JSON-backed onboarding
+- **Phase 39:** docs/test closeout once the host paths are real
 
 ## Confidence Assessment
 
@@ -107,19 +115,20 @@ Phases with standard patterns (skip research-phase):
 
 ### Gaps to Address
 
-- **Claude CLI persisted-write mechanism:** implementation must choose between the documented command path and a validated raw-file path.
-- **Exact TOML library selection:** phase planning should pick one small maintained dependency if no existing in-repo option is preferable.
+- **Cursor CLI exact config file locations across platforms:** implementation should verify the official path conventions used by the current CLI/editor docs and local installs.
+- **Gemini CLI status detection strategy:** implementation should verify what can be detected directly from config versus only from MCP evidence.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- https://code.claude.com/docs/en/mcp — Claude CLI commands, scopes, and config behavior
-- https://developers.openai.com/codex/mcp — Codex config path and MCP schema
-- https://developers.openai.com/codex/app/settings — Codex App shares `config.toml` with CLI and IDE
+- https://geminicli.com/docs/tools/mcp-server — Gemini CLI `mcpServers`, `settings.json`, and global MCP settings
+- https://geminicli.com/docs/cli/tutorials/mcp-setup/ — Gemini CLI repo-local and shared `settings.json` setup flow
+- https://docs.cursor.com/cli/mcp — Cursor CLI MCP support and CLI commands
+- https://docs.cursor.com/advanced/model-context-protocol — Cursor MCP contract, transports, and `mcp.json`
 
 ### Secondary (MEDIUM confidence)
-- Local code review — current support gap and current CLI/doc assumptions
+- Local code review — current supported-host catalog, install/status integration seams, and recent WSL/shared-config fixes
 
 ---
-*Research completed: 2026-03-19*
+*Research completed: 2026-03-21*
 *Ready for roadmap: yes*
