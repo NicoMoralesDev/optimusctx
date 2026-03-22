@@ -130,6 +130,44 @@ func TestResolveCodexCLIConfigPathUsesHomeDir(t *testing.T) {
 	}
 }
 
+func TestResolveGeminiCLIConfigPathUsesHomeDir(t *testing.T) {
+	previousHome := codexConfigUserHomeDir
+	previousGOOS := codexConfigGOOS
+	t.Cleanup(func() {
+		codexConfigUserHomeDir = previousHome
+		codexConfigGOOS = previousGOOS
+	})
+	codexConfigUserHomeDir = func() (string, error) { return "/home/tester", nil }
+	codexConfigGOOS = "linux"
+
+	got, err := resolveGeminiCLIConfigPath("")
+	if err != nil {
+		t.Fatalf("resolveGeminiCLIConfigPath() error = %v", err)
+	}
+	if want := "/home/tester/.gemini/settings.json"; got != want {
+		t.Fatalf("config path = %q, want %q", got, want)
+	}
+}
+
+func TestResolveCursorCLIConfigPathUsesHomeDir(t *testing.T) {
+	previousHome := codexConfigUserHomeDir
+	previousGOOS := codexConfigGOOS
+	t.Cleanup(func() {
+		codexConfigUserHomeDir = previousHome
+		codexConfigGOOS = previousGOOS
+	})
+	codexConfigUserHomeDir = func() (string, error) { return "/home/tester", nil }
+	codexConfigGOOS = "linux"
+
+	got, err := resolveCursorCLIConfigPath("")
+	if err != nil {
+		t.Fatalf("resolveCursorCLIConfigPath() error = %v", err)
+	}
+	if want := "/home/tester/.cursor/mcp.json"; got != want {
+		t.Fatalf("config path = %q, want %q", got, want)
+	}
+}
+
 func TestResolveCodexAppConfigPathWSLUsesWindowsUserProfile(t *testing.T) {
 	previousGetenv := codexConfigGetenv
 	previousReadFile := codexConfigReadFile
@@ -573,6 +611,41 @@ func TestInstallServiceGeminiCLIWritePreservesExistingContent(t *testing.T) {
 	}
 }
 
+func TestInstallServiceGeminiWriteIsIdempotent(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	service := NewInstallService()
+	for i := 0; i < 2; i++ {
+		result, err := service.Register(context.Background(), InstallRequest{
+			ClientID: "gemini-cli",
+			Write:    true,
+		})
+		if err != nil {
+			t.Fatalf("Register(gemini-cli write %d) error = %v", i+1, err)
+		}
+		if !result.Wrote {
+			t.Fatalf("write %d should report wrote=true", i+1)
+		}
+	}
+
+	configBytes, err := os.ReadFile(filepath.Join(homeDir, ".gemini", "settings.json"))
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if strings.Count(string(configBytes), "\"optimusctx\": {") != 1 {
+		t.Fatalf("optimusctx entry duplicated in Gemini config: %s", string(configBytes))
+	}
+
+	guidanceBytes, err := os.ReadFile(filepath.Join(homeDir, ".gemini", repository.GeminiGuidanceFilename))
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if strings.Count(string(guidanceBytes), "optimusctx:guidance-begin") != 1 {
+		t.Fatalf("managed guidance block duplicated in Gemini guidance: %s", string(guidanceBytes))
+	}
+}
+
 func TestInstallServiceSupportsCursorCLIPreview(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
@@ -650,6 +723,33 @@ func TestInstallServiceCursorCLIWritePreservesExistingContent(t *testing.T) {
 	}
 	if command.Command != "optimusctx" || len(command.Args) != 1 || command.Args[0] != "run" {
 		t.Fatalf("optimusctx server command = %+v", command)
+	}
+}
+
+func TestInstallServiceCursorWriteIsIdempotent(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	service := NewInstallService()
+	for i := 0; i < 2; i++ {
+		result, err := service.Register(context.Background(), InstallRequest{
+			ClientID: "cursor-cli",
+			Write:    true,
+		})
+		if err != nil {
+			t.Fatalf("Register(cursor-cli write %d) error = %v", i+1, err)
+		}
+		if !result.Wrote {
+			t.Fatalf("write %d should report wrote=true", i+1)
+		}
+	}
+
+	contentBytes, err := os.ReadFile(filepath.Join(homeDir, ".cursor", "mcp.json"))
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if strings.Count(string(contentBytes), "\"optimusctx\": {") != 1 {
+		t.Fatalf("optimusctx entry duplicated in Cursor config: %s", string(contentBytes))
 	}
 }
 
