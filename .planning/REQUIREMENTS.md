@@ -19,8 +19,8 @@
 
 ### Cursor CLI Support
 
-- [ ] **CUR-01**: An operator can preview and write Cursor MCP registration to repo-local or shared `mcp.json` using Cursor's documented JSON contract and `optimusctx run`.
-- [ ] **CUR-02**: An operator can verify Cursor CLI registration, discovery, and usage through `optimusctx status` with guidance that stays truthful about shared editor/CLI config.
+- [x] **CUR-01**: An operator can preview and write Cursor MCP registration to repo-local or shared `mcp.json` using Cursor's documented JSON contract and `optimusctx run`.
+- [x] **CUR-02**: An operator can verify Cursor CLI registration, discovery, and usage through `optimusctx status` with guidance that stays truthful about shared editor/CLI config.
 
 ### Documentation And Verification
 
@@ -62,8 +62,8 @@
 | HOST-03 | Phase 36 | Complete |
 | GEM-01 | Phase 37 | Complete |
 | GEM-02 | Phase 37 | Complete |
-| CUR-01 | Phase 38 | Pending |
-| CUR-02 | Phase 38 | Pending |
+| CUR-01 | Phase 38 | Complete |
+| CUR-02 | Phase 38 | Complete |
 | DOC-01 | Phase 39 | Pending |
 | VER-01 | Phase 39 | Pending |
 
@@ -74,4 +74,4 @@
 
 ---
 *Requirements defined: 2026-03-21*
-*Last updated: 2026-03-22 after completing Phase 37*
+*Last updated: 2026-03-22 after completing Phase 38*
