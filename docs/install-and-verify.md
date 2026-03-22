@@ -132,7 +132,8 @@ optimusctx init --client codex-cli --config /path/to/.codex/config.toml --write
 Notes:
 
 - Claude CLI supports `--scope local`, `--scope project`, and `--scope user`.
-- Codex App and Codex CLI can target the shared `~/.codex/config.toml` path or an explicit repo-local `.codex/config.toml` path.
+- Codex CLI can target the shared `~/.codex/config.toml` path or an explicit repo-local `.codex/config.toml` path.
+- Codex App can also use a shared Codex config, but from WSL you may need to point it at the Windows-backed path explicitly, for example `/mnt/c/Users/<user>/.codex/config.toml`.
 - The interactive `init` flow surfaces those destinations before anything is written.
 - After registration, your host should discover the `optimusctx.*` tool surface automatically.
 - After registration, use `optimusctx status` to confirm detected host registrations, guidance files, last MCP initialize, last tools discovery, and recent `optimusctx.*` tool calls.

@@ -73,6 +73,12 @@ These were separate issues found during the same debugging pass. They improved s
 - `97a744b` reuses the resolved root for bootstrap health
 - `866c8b3` reuses the resolved root for watch startup
 
+Later follow-up from the same operator debugging thread:
+
+- `5b8c162` stops treating WSL `~/.codex/config.toml` as the shared `Codex App` default when the app actually lives on Windows.
+- In mixed WSL plus Windows setups, `Codex App` may read `C:\Users\<user>\.codex\config.toml` while `optimusctx init` running inside WSL would otherwise write `/home/<user>/.codex/config.toml`.
+- The fix now requires an explicit Windows-backed `--config` path when the `Codex App` shared config cannot be inferred safely from WSL.
+
 ## Verification trail
 
 The important verification outcome was not only that Codex could list the server in config, but that it could actually complete MCP startup and tools discovery.

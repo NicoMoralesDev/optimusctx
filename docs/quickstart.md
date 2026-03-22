@@ -99,6 +99,12 @@ optimusctx init --client codex-app --write
 optimusctx init --client codex-cli --config /path/to/.codex/config.toml --write
 ```
 
+WSL note:
+
+- If `Codex App` is the Windows app but you run `optimusctx init` from WSL, the shared Codex config may live under `/mnt/c/Users/<user>/.codex/config.toml` instead of `~/.codex/config.toml`.
+- In that case, pass the Windows-backed path explicitly, for example `optimusctx init --client codex-app --config /mnt/c/Users/<user>/.codex/config.toml --write`.
+- `Codex CLI` running inside WSL can still use the Linux-side shared path `~/.codex/config.toml`.
+
 After registration, use `optimusctx status` to confirm host registration, agent-guidance installation, discovery evidence, and recent `optimusctx.*` tool calls. Use [`mcp-agent-guide.md`](./mcp-agent-guide.md) for the recommended tool-usage pattern and the host-versus-OptimusCtx verification split.
 
 ## 6. Update
