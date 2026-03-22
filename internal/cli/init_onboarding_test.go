@@ -303,3 +303,70 @@ func TestInitCommandInteractiveCodexCLISharedConfigChoice(t *testing.T) {
 		}
 	})
 }
+
+func TestInitCommandInteractiveCodexAppSharedConfigChoice(t *testing.T) {
+	repoRoot := initCLIRepo(t)
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+	sharedPath := filepath.Join(homeDir, ".codex", "config.toml")
+
+	previousInstall := initInstallService
+	previousPrompt := initShouldPrompt
+	previousInput := initPromptInput
+	t.Cleanup(func() {
+		initInstallService = previousInstall
+		initShouldPrompt = previousPrompt
+		initPromptInput = previousInput
+	})
+	initShouldPrompt = func(io.Writer) bool { return true }
+	initPromptInput = strings.NewReader("3\n2\n1\n")
+	initInstallService = func(ctx context.Context, request app.InstallRequest) (app.InstallResult, error) {
+		if request.ClientID != "codex-app" {
+			t.Fatalf("client = %q", request.ClientID)
+		}
+		if request.ConfigPath != "" {
+			t.Fatalf("shared config path should stay implicit, got %q", request.ConfigPath)
+		}
+		if !request.Write {
+			t.Fatal("configure-now path should set write")
+		}
+		return app.InstallResult{
+			Rendered: repository.RenderedClientConfig{
+				Client:     repository.SupportedClient{ID: repository.ClientCodexApp, DisplayName: "Codex App"},
+				ConfigPath: sharedPath,
+				Mode:       repository.RenderModeWrite,
+				Content:    "[mcp_servers.optimusctx]\ncommand = \"optimusctx\"\nargs = [\"run\"]\n",
+			},
+			Guidance: &repository.RenderedGuidance{
+				Label: "Codex agent guidance",
+				Path:  filepath.Join(homeDir, ".codex", "AGENTS.md"),
+			},
+			Wrote: true,
+		}, nil
+	}
+
+	withWorkingDirectory(t, repoRoot, func() {
+		writeCLIFile(t, repoRoot+"/main.go", "package main\n")
+		var stdout bytes.Buffer
+		if err := NewRootCommand().Execute([]string{"init"}, &stdout); err != nil {
+			t.Fatalf("Execute(init) error = %v", err)
+		}
+		output := stdout.String()
+		for _, want := range []string{
+			"Where should Codex App use OptimusCtx?",
+			sharedPath,
+			"destination: Your shared Codex config",
+			"config path: " + sharedPath,
+			"agent guidance: Codex agent guidance",
+			"agent guidance path: " + filepath.Join(homeDir, ".codex", "AGENTS.md"),
+			"status: wrote config",
+			"agent guidance status: wrote guidance",
+			"runtime after host pickup: your MCP client should launch `optimusctx run` automatically when it connects",
+			"verify host pickup with `optimusctx status`: it should eventually show registration evidence, last MCP initialize/tools discovery, and recent `optimusctx.*` tool calls",
+		} {
+			if !strings.Contains(output, want) {
+				t.Fatalf("missing %q in:\n%s", want, output)
+			}
+		}
+	})
+}
