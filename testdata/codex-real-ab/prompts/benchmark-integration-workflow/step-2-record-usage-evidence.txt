@@ -1,8 +1,0 @@
-Append to `.benchmark/benchmark-integration-notes.md`.
-
-Add a `## Usage Evidence` section with exactly 3 bullet points:
-- how the runner decides whether OptimusCtx tools were actually used, and include `used_optimus_tools`
-- what JSONL evidence it looks for, and include `mcp_tool_call`
-- what local status command helps diagnose host pickup, and include `optimusctx status`
-
-Do not remove or rewrite the `## Config` section.

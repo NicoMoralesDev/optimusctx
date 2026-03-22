@@ -6,36 +6,46 @@
   "requires_workspace_write": true,
   "scenarios": [
     {
-      "id": "benchmark-integration-workflow",
-      "name": "Benchmark Integration Workflow",
-      "category": "workflow-analysis",
+      "id": "benchmark-contract-audit",
+      "name": "Benchmark Contract Audit",
+      "category": "repo-analysis",
       "steps": [
         {
-          "id": "record-effective-config",
-          "name": "Record Effective Config",
-          "prompt_file": "prompts/benchmark-integration-workflow/step-1-record-effective-config.txt"
+          "id": "inspect-suite-loading",
+          "name": "Inspect Suite Loading",
+          "prompt_file": "prompts/benchmark-contract-audit/step-1-inspect-suite-loading.txt"
         },
         {
-          "id": "record-usage-evidence",
-          "name": "Record Usage Evidence",
-          "prompt_file": "prompts/benchmark-integration-workflow/step-2-record-usage-evidence.txt"
+          "id": "trace-evidence-bundle",
+          "name": "Trace Evidence Bundle",
+          "prompt_file": "prompts/benchmark-contract-audit/step-2-trace-evidence-bundle.txt"
+        },
+        {
+          "id": "propose-benchmark-workflows",
+          "name": "Propose Benchmark Workflows",
+          "prompt_file": "prompts/benchmark-contract-audit/step-3-propose-benchmark-workflows.txt"
         }
       ]
     },
     {
-      "id": "suite-redesign-workflow",
-      "name": "Suite Redesign Workflow",
-      "category": "workflow-redesign",
+      "id": "release-contract-audit",
+      "name": "Release Contract Audit",
+      "category": "release-analysis",
       "steps": [
         {
-          "id": "capture-suite-gaps",
-          "name": "Capture Suite Gaps",
-          "prompt_file": "prompts/suite-redesign-workflow/step-1-capture-suite-gaps.txt"
+          "id": "map-canonical-release-contract",
+          "name": "Map Canonical Release Contract",
+          "prompt_file": "prompts/release-contract-audit/step-1-map-canonical-release-contract.txt"
         },
         {
-          "id": "propose-workflow-benchmark",
-          "name": "Propose Workflow Benchmark",
-          "prompt_file": "prompts/suite-redesign-workflow/step-2-propose-workflow-benchmark.txt"
+          "id": "trace-downstream-rerun-rules",
+          "name": "Trace Downstream Rerun Rules",
+          "prompt_file": "prompts/release-contract-audit/step-2-trace-downstream-rerun-rules.txt"
+        },
+        {
+          "id": "propose-release-benchmark-flow",
+          "name": "Propose Release Benchmark Flow",
+          "prompt_file": "prompts/release-contract-audit/step-3-propose-release-benchmark-flow.txt"
         }
       ]
     }

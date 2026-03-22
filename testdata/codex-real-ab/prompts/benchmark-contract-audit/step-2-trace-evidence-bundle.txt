@@ -1,0 +1,12 @@
+Append to `.benchmark/benchmark-contract-audit.md`.
+
+Add a `## Evidence Bundle` section with exactly 4 bullet points.
+
+Across the 4 bullets, cover:
+- where the evidence bundle is assembled, including `internal/app/benchmark_service.go`
+- the exact symbol `buildBenchmarkEvidenceBundle`
+- at least one supporting test file, including `internal/app/benchmark_service_test.go`
+- one report-facing symbol or phrase tied to the tests, including `BuildBenchmarkHumanSummary`
+- one integrity concept from the tests, including the phrase `methodology drift`
+
+Keep the section factual and grounded in the current repo. Do not remove or rewrite `## Suite Loading`.

@@ -1,0 +1,13 @@
+Append to `.benchmark/release-contract-audit.md`.
+
+Add a `## Downstream Rerun Rules` section with exactly 3 numbered items.
+
+Across the 3 numbered items, include:
+- `npm`
+- `homebrew`
+- `scoop`
+- `publication_status=already_current`
+- `publication_status=not_published`
+- `workflow_dispatch`
+
+Keep the section grounded in the workflow and docs. Do not remove or rewrite `## Canonical Release Contract`.

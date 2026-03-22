@@ -1,0 +1,16 @@
+Append to `.benchmark/benchmark-contract-audit.md`.
+
+Add a `## Benchmark Workflow Candidates` section with exactly 3 numbered items.
+
+Each item must:
+- describe a longer repo-real benchmark workflow
+- mention one artifact path under `.benchmark/`
+
+Across the 3 items, include the phrases:
+- `navigation`
+- `bug triage`
+- `edit verification`
+- `persisted runs`
+- `final artifact`
+
+Do not remove or rewrite the earlier sections.

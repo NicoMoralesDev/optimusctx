@@ -13,38 +13,33 @@ target_file=""
 required_terms=()
 
 case "$BENCH_TASK_ID" in
-  record-effective-config)
-    target_file="$BENCH_WORKSPACE/.benchmark/benchmark-integration-notes.md"
+  inspect-suite-loading)
+    target_file="$BENCH_WORKSPACE/.benchmark/benchmark-contract-audit.md"
     required_terms=(
-      "## config"
-      "codeX_home"
-      "mcp_servers.optimusctx"
-      ".codex/config.toml"
+      "## suite loading"
+      "internal/repository/benchmark.go"
+      "internal/app/benchmark_runner.go"
+      "loadbenchmarksuite"
+      "loadbenchmarksuites"
+      "validatebenchmarkfixturereferences"
+      "duplicate benchmark suite id"
     )
     ;;
-  record-usage-evidence)
-    target_file="$BENCH_WORKSPACE/.benchmark/benchmark-integration-notes.md"
+  trace-evidence-bundle)
+    target_file="$BENCH_WORKSPACE/.benchmark/benchmark-contract-audit.md"
     required_terms=(
-      "## config"
-      "## usage evidence"
-      "used_optimus_tools"
-      "mcp_tool_call"
-      "optimusctx status"
+      "## evidence bundle"
+      "internal/app/benchmark_service.go"
+      "buildbenchmarkevidencebundle"
+      "internal/app/benchmark_service_test.go"
+      "buildbenchmarkhumansummary"
+      "methodology drift"
     )
     ;;
-  capture-suite-gaps)
-    target_file="$BENCH_WORKSPACE/.benchmark/suite-redesign-notes.md"
+  propose-benchmark-workflows)
+    target_file="$BENCH_WORKSPACE/.benchmark/benchmark-contract-audit.md"
     required_terms=(
-      "## gaps"
-      "single-step"
-      "sequential"
-    )
-    ;;
-  propose-workflow-benchmark)
-    target_file="$BENCH_WORKSPACE/.benchmark/suite-redesign-notes.md"
-    required_terms=(
-      "## gaps"
-      "## workflow scenarios"
+      "## benchmark workflow candidates"
       "1."
       "2."
       "3."
@@ -52,6 +47,47 @@ case "$BENCH_TASK_ID" in
       "navigation"
       "bug triage"
       "edit verification"
+      "persisted runs"
+      "final artifact"
+    )
+    ;;
+  map-canonical-release-contract)
+    target_file="$BENCH_WORKSPACE/.benchmark/release-contract-audit.md"
+    required_terms=(
+      "## canonical release contract"
+      ".github/workflows/release.yml"
+      "docs/operator-release-guide.md"
+      "internal/release/release_test.go"
+      "github release remains the canonical root and rollback source"
+      "workflow_dispatch"
+      "release_tag"
+      "publication_channel"
+    )
+    ;;
+  trace-downstream-rerun-rules)
+    target_file="$BENCH_WORKSPACE/.benchmark/release-contract-audit.md"
+    required_terms=(
+      "## downstream rerun rules"
+      "npm"
+      "homebrew"
+      "scoop"
+      "publication_status=already_current"
+      "publication_status=not_published"
+      "workflow_dispatch"
+    )
+    ;;
+  propose-release-benchmark-flow)
+    target_file="$BENCH_WORKSPACE/.benchmark/release-contract-audit.md"
+    required_terms=(
+      "## release benchmark flow"
+      "1."
+      "2."
+      "3."
+      ".benchmark/"
+      "sequential"
+      "cross-file"
+      "canonical release"
+      "downstream rerun"
     )
     ;;
   *)
