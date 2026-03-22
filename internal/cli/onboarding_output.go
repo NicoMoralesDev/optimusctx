@@ -61,7 +61,7 @@ func writeOnboardingResult(stdout io.Writer, request app.InstallRequest, result 
 }
 
 func renderDefaultInitNextStep() string {
-	return "next step: use `optimusctx init --client <client>` to review the change for claude-desktop, claude-cli, codex-app, or codex-cli, or add `--write` to configure one right away\nruntime after registration: your MCP client should launch `optimusctx run` automatically when it connects\nverification after registration: use `optimusctx status` to confirm registration, discovery, and actual `optimusctx.*` tool usage\nmanual fallback: run `optimusctx run` yourself only for direct STDIO use or debugging\n"
+	return "next step: use `optimusctx init --client <client>` to review the change for claude-desktop, claude-cli, codex-app, codex-cli, or gemini-cli, or add `--write` to configure one right away\nruntime after registration: your MCP client should launch `optimusctx run` automatically when it connects\nverification after registration: use `optimusctx status` to confirm registration, discovery, and actual `optimusctx.*` tool usage\nmanual fallback: run `optimusctx run` yourself only for direct STDIO use or debugging\n"
 }
 
 func renderInitWriteCommand(request app.InstallRequest) string {
@@ -136,6 +136,20 @@ func describeOnboardingTarget(request app.InstallRequest, rendered repository.Re
 			repoLocalPath = filepath.Join(request.RepoRoot, ".codex", "config.toml")
 		}
 		destination := "Your shared Codex config"
+		if repoLocalPath != "" && rendered.ConfigPath == repoLocalPath {
+			destination = "This repo only"
+		}
+		return onboardingTarget{
+			destination:   destination,
+			locationLabel: "config path",
+			location:      rendered.ConfigPath,
+		}
+	case repository.ClientGeminiCLI:
+		repoLocalPath := ""
+		if strings.TrimSpace(request.RepoRoot) != "" {
+			repoLocalPath = filepath.Join(request.RepoRoot, ".gemini", "settings.json")
+		}
+		destination := "Your shared Gemini config"
 		if repoLocalPath != "" && rendered.ConfigPath == repoLocalPath {
 			destination = "This repo only"
 		}

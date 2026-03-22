@@ -303,6 +303,53 @@ func TestDoctorDetectsStaleWatch(t *testing.T) {
 	}
 }
 
+func TestDoctorDetectsGeminiCLIRegistration(t *testing.T) {
+	repoRoot := initRepo(t)
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+	writeRepoFile(t, filepath.Join(repoRoot, "pkg", "alpha.go"), "package pkg\n\nfunc Alpha() {}\n")
+
+	if _, err := NewRefreshService().Refresh(context.Background(), RefreshRequest{
+		StartPath: repoRoot,
+		Reason:    repository.RefreshReasonInit,
+		ForceFull: true,
+	}); err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+	writeDoctorGeminiRegistration(t, repoRoot)
+
+	service := NewDoctorService()
+	service.Getwd = func() (string, error) { return repoRoot, nil }
+
+	report, err := service.Doctor(context.Background(), repoRoot, repository.DoctorRequest{BudgetLimit: 2})
+	if err != nil {
+		t.Fatalf("Doctor() error = %v", err)
+	}
+
+	var gemini *repository.DoctorHostRegistration
+	for i := range report.HostMCP.Hosts {
+		if report.HostMCP.Hosts[i].Client.ID == repository.ClientGeminiCLI {
+			gemini = &report.HostMCP.Hosts[i]
+			break
+		}
+	}
+	if gemini == nil {
+		t.Fatalf("Gemini CLI registration missing from host report: %+v", report.HostMCP.Hosts)
+	}
+	if gemini.RegistrationState != repository.HostRegistrationDetected {
+		t.Fatalf("Gemini registration state = %q, want detected", gemini.RegistrationState)
+	}
+	if gemini.GuidanceState != repository.GuidanceStateConfigured {
+		t.Fatalf("Gemini guidance state = %q, want configured", gemini.GuidanceState)
+	}
+	if !strings.Contains(gemini.RegistrationEvidence, "repo `.gemini/settings.json`") {
+		t.Fatalf("Gemini registration evidence = %q", gemini.RegistrationEvidence)
+	}
+	if !strings.Contains(gemini.CapabilityEvidence, "config=json") {
+		t.Fatalf("Gemini capability evidence = %q", gemini.CapabilityEvidence)
+	}
+}
+
 func writeDoctorWatchStatus(t *testing.T, repoRoot string, record repository.WatchStatusRecord) {
 	t.Helper()
 
@@ -363,6 +410,26 @@ func writeDoctorCodexRegistration(t *testing.T, homeDir string) {
 	}
 	guidancePath := filepath.Join(homeDir, ".codex", "AGENTS.md")
 	if err := os.WriteFile(guidancePath, []byte(repository.RenderCodexGuidanceBlock()), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", guidancePath, err)
+	}
+}
+
+func writeDoctorGeminiRegistration(t *testing.T, repoRoot string) {
+	t.Helper()
+
+	configPath := filepath.Join(repoRoot, ".gemini", "settings.json")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(configPath), err)
+	}
+	content, err := repository.RenderGeminiConfig("", repository.NewServeCommand(""))
+	if err != nil {
+		t.Fatalf("RenderGeminiConfig() error = %v", err)
+	}
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", configPath, err)
+	}
+	guidancePath := filepath.Join(repoRoot, repository.GeminiGuidanceFilename)
+	if err := os.WriteFile(guidancePath, []byte(repository.RenderGeminiGuidanceBlock()), 0o644); err != nil {
 		t.Fatalf("WriteFile(%q) error = %v", guidancePath, err)
 	}
 }

@@ -45,7 +45,7 @@ func TestInitCommandInitializesFromNestedRepositoryPath(t *testing.T) {
 		if !strings.Contains(output, "discovered files: 3") {
 			t.Fatalf("output = %q, want discovered file count", output)
 		}
-		if !strings.Contains(output, "next step: use `optimusctx init --client <client>` to review the change for claude-desktop, claude-cli, codex-app, or codex-cli, or add `--write` to configure one right away") {
+		if !strings.Contains(output, "next step: use `optimusctx init --client <client>` to review the change for claude-desktop, claude-cli, codex-app, codex-cli, or gemini-cli, or add `--write` to configure one right away") {
 			t.Fatalf("output = %q, want onboarding next step", output)
 		}
 		if !strings.Contains(output, "runtime after registration: your MCP client should launch `optimusctx run` automatically when it connects") {

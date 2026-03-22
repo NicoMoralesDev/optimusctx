@@ -6,9 +6,10 @@ import (
 )
 
 const (
-	managedGuidanceBegin = "<!-- optimusctx:guidance-begin -->"
-	managedGuidanceEnd   = "<!-- optimusctx:guidance-end -->"
-	ClaudeRulesFilename  = "optimusctx-mcp.md"
+	managedGuidanceBegin   = "<!-- optimusctx:guidance-begin -->"
+	managedGuidanceEnd     = "<!-- optimusctx:guidance-end -->"
+	ClaudeRulesFilename    = "optimusctx-mcp.md"
+	GeminiGuidanceFilename = "GEMINI.md"
 )
 
 type RenderedGuidance struct {
@@ -42,6 +43,10 @@ func RenderCodexGuidanceBlock() string {
 		managedGuidanceEnd,
 	}
 	return strings.Join(lines, "\n") + "\n"
+}
+
+func RenderGeminiGuidanceBlock() string {
+	return RenderCodexGuidanceBlock()
 }
 
 func RenderClaudeGuidanceDocument() string {

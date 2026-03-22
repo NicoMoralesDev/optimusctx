@@ -49,12 +49,14 @@ type clientRegistrationAdapter interface {
 }
 
 type jsonFileClientAdapter struct {
-	client      repository.SupportedClient
-	resolvePath func(string) (string, error)
-	readFile    func(string) ([]byte, error)
-	writeFile   func(string, []byte, os.FileMode) error
-	mkdirAll    func(string, os.FileMode) error
-	notes       []string
+	client        repository.SupportedClient
+	resolvePath   func(string) (string, error)
+	mergeConfig   func([]byte, string, repository.ServeCommand) (string, error)
+	renderPreview func(string, repository.ServeCommand) (string, error)
+	readFile      func(string) ([]byte, error)
+	writeFile     func(string, []byte, os.FileMode) error
+	mkdirAll      func(string, os.FileMode) error
+	notes         []string
 }
 
 type previewOnlyClientAdapter struct {
@@ -88,14 +90,33 @@ func NewInstallService() InstallService {
 	claudeCLI := mustSupportedClient(repository.ClientClaudeCLI)
 	codexApp := mustSupportedClient(repository.ClientCodexApp)
 	codexCLI := mustSupportedClient(repository.ClientCodexCLI)
+	geminiCLI := mustSupportedClient(repository.ClientGeminiCLI)
 	generic := mustSupportedClient(repository.ClientGenericMCP)
 	jsonAdapter := jsonFileClientAdapter{
 		client:      claudeDesktop,
 		resolvePath: resolveClaudeDesktopConfigPath,
-		readFile:    os.ReadFile,
-		writeFile:   os.WriteFile,
-		mkdirAll:    os.MkdirAll,
-		notes:       claudeDesktopNotes(),
+		mergeConfig: func(existing []byte, serverName string, command repository.ServeCommand) (string, error) {
+			document, err := repository.MergeClientConfig(existing, serverName, command)
+			if err != nil {
+				return "", err
+			}
+			return repository.RenderClientConfig(document)
+		},
+		renderPreview: repository.RenderClientConfigSnippet,
+		readFile:      os.ReadFile,
+		writeFile:     os.WriteFile,
+		mkdirAll:      os.MkdirAll,
+		notes:         claudeDesktopNotes(),
+	}
+	geminiAdapter := jsonFileClientAdapter{
+		client:        geminiCLI,
+		resolvePath:   resolveGeminiCLIConfigPath,
+		mergeConfig:   repository.MergeGeminiConfig,
+		renderPreview: repository.RenderGeminiConfig,
+		readFile:      os.ReadFile,
+		writeFile:     os.WriteFile,
+		mkdirAll:      os.MkdirAll,
+		notes:         geminiCLINotes(),
 	}
 
 	return InstallService{
@@ -122,7 +143,8 @@ func NewInstallService() InstallService {
 				mkdirAll:    os.MkdirAll,
 				notes:       codexCLINotes(),
 			},
-			generic.ID: genericClientAdapter{client: generic, notes: genericMCPNotes()},
+			geminiCLI.ID: geminiAdapter,
+			generic.ID:   genericClientAdapter{client: generic, notes: genericMCPNotes()},
 		},
 		readFile:  os.ReadFile,
 		writeFile: os.WriteFile,
@@ -192,15 +214,12 @@ func (a jsonFileClientAdapter) Preview(request InstallRequest) (repository.Rende
 		serverName = repository.DefaultMCPServerName
 	}
 
-	document, err := repository.MergeClientConfig(existing, serverName, repository.NewServeCommand(request.BinaryPath))
+	command := repository.NewServeCommand(request.BinaryPath)
+	content, err := a.mergeConfig(existing, serverName, command)
 	if err != nil {
 		return repository.RenderedClientConfig{}, err
 	}
-	content, err := repository.RenderClientConfig(document)
-	if err != nil {
-		return repository.RenderedClientConfig{}, err
-	}
-	preview, err := repository.RenderClientConfigSnippet(serverName, repository.NewServeCommand(request.BinaryPath))
+	preview, err := a.renderPreview(serverName, command)
 	if err != nil {
 		return repository.RenderedClientConfig{}, err
 	}
@@ -438,6 +457,14 @@ func codexCLINotes() []string {
 	}
 }
 
+func geminiCLINotes() []string {
+	return []string{
+		"Gemini CLI writes the native `settings.json` MCP contract.",
+		"The preview target preserves unrelated Gemini settings during merges.",
+		"Use --config to target `~/.gemini/settings.json` or a repo-local `.gemini/settings.json` path.",
+	}
+}
+
 func renderGenericPreviewContent(request InstallRequest) (string, error) {
 	serverName := request.ServerName
 	if serverName == "" {
@@ -468,10 +495,10 @@ func readExistingClientConfig(readFile func(string) ([]byte, error), configPath 
 }
 
 type hostConfigPathSpec struct {
-	resolveDefault   func(goos string, homeDir string, appData string) (string, error)
-	inferWSLPath     func() (string, bool)
-	wslMissingHint   string
-	normalizePath    func(string) string
+	resolveDefault func(goos string, homeDir string, appData string) (string, error)
+	inferWSLPath   func() (string, bool)
+	wslMissingHint string
+	normalizePath  func(string) string
 }
 
 func resolveHostConfigPath(explicitPath string, spec hostConfigPathSpec) (string, error) {
@@ -531,6 +558,15 @@ func resolveCodexConfigPath(explicitPath string) (string, error) {
 	return resolveCodexCLIConfigPath(explicitPath)
 }
 
+func resolveGeminiCLIConfigPath(explicitPath string) (string, error) {
+	return resolveHostConfigPath(explicitPath, hostConfigPathSpec{
+		resolveDefault: func(_ string, homeDir string, _ string) (string, error) {
+			return filepath.Join(homeDir, ".gemini", "settings.json"), nil
+		},
+		normalizePath: normalizeCodexConfigPath,
+	})
+}
+
 func DefaultCodexConfigPath() (string, error) {
 	return resolveCodexCLIConfigPath("")
 }
@@ -541,6 +577,10 @@ func DefaultCodexCLIConfigPath() (string, error) {
 
 func DefaultCodexAppConfigPath() (string, error) {
 	return resolveCodexAppConfigPath("")
+}
+
+func DefaultGeminiCLIConfigPath() (string, error) {
+	return resolveGeminiCLIConfigPath("")
 }
 
 func resolveClaudeDesktopConfigPath(explicitPath string) (string, error) {
@@ -564,6 +604,8 @@ func (s InstallService) renderGuidance(request InstallRequest, mode repository.R
 		return s.renderCodexGuidance(request, mode)
 	case repository.ClientClaudeCLI:
 		return s.renderClaudeGuidance(request, mode)
+	case repository.ClientGeminiCLI:
+		return s.renderGeminiGuidance(request, mode)
 	default:
 		return nil, nil
 	}
@@ -630,6 +672,34 @@ func (s InstallService) renderClaudeGuidance(request InstallRequest, mode reposi
 	}, nil
 }
 
+func (s InstallService) renderGeminiGuidance(request InstallRequest, mode repository.RenderMode) (*repository.RenderedGuidance, error) {
+	configPath, err := resolveGeminiCLIConfigPath(request.ConfigPath)
+	if err != nil {
+		return nil, err
+	}
+	targetPath := s.resolveGeminiGuidancePath(request.RepoRoot, configPath)
+	existing, err := readExistingClientConfig(s.readFileOrDefault(), targetPath)
+	if err != nil {
+		return nil, err
+	}
+	block := repository.RenderGeminiGuidanceBlock()
+	applied, err := repository.MergeManagedGuidance(existing, block)
+	if err != nil {
+		return nil, err
+	}
+	return &repository.RenderedGuidance{
+		Label:          "Gemini agent guidance",
+		Path:           targetPath,
+		Mode:           mode,
+		Content:        block,
+		AppliedContent: applied,
+		Notes: []string{
+			"Gemini CLI loads persistent context from `GEMINI.md` in the selected scope.",
+			"This managed block tells Gemini when to prefer OptimusCtx exact lookup, bounded context, repository maps, and health/refresh tools.",
+		},
+	}, nil
+}
+
 func (s InstallService) writeGuidance(guidance repository.RenderedGuidance) error {
 	if err := s.mkdirAllOrDefault()(filepath.Dir(guidance.Path), 0o755); err != nil {
 		return fmt.Errorf("prepare agent guidance directory: %w", err)
@@ -681,6 +751,15 @@ func (s InstallService) resolveClaudeGuidancePath(request InstallRequest) (strin
 	default:
 		return "", "", nil
 	}
+}
+
+func (s InstallService) resolveGeminiGuidancePath(repoRoot string, configPath string) string {
+	configPath = filepath.Clean(configPath)
+	repoRoot = filepath.Clean(strings.TrimSpace(repoRoot))
+	if repoRoot != "." && repoRoot != "" && configPath == filepath.Join(repoRoot, ".gemini", "settings.json") {
+		return filepath.Join(repoRoot, repository.GeminiGuidanceFilename)
+	}
+	return filepath.Join(filepath.Dir(configPath), repository.GeminiGuidanceFilename)
 }
 
 func (s InstallService) readFileOrDefault() func(string) ([]byte, error) {

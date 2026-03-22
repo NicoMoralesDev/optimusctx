@@ -469,6 +469,110 @@ func TestInstallServiceSupportsCodexCLIPreview(t *testing.T) {
 	}
 }
 
+func TestInstallServiceSupportsGeminiCLIPreview(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	service := NewInstallService()
+	result, err := service.Register(context.Background(), InstallRequest{ClientID: "gemini-cli"})
+	if err != nil {
+		t.Fatalf("Register(gemini-cli) error = %v", err)
+	}
+	if result.Wrote {
+		t.Fatal("gemini-cli preview should not write")
+	}
+	if result.Rendered.Client.ID != "gemini-cli" {
+		t.Fatalf("client id = %q", result.Rendered.Client.ID)
+	}
+	if result.Rendered.Client.DisplayName != "Gemini CLI" {
+		t.Fatalf("display name = %q", result.Rendered.Client.DisplayName)
+	}
+	if got, want := result.Rendered.ConfigPath, filepath.Join(homeDir, ".gemini", "settings.json"); got != want {
+		t.Fatalf("config path = %q, want %q", got, want)
+	}
+	if result.Rendered.Mode != repository.RenderModePreview {
+		t.Fatalf("mode = %q", result.Rendered.Mode)
+	}
+	if !strings.Contains(result.Rendered.Content, "\"mcpServers\"") {
+		t.Fatalf("content missing mcpServers: %s", result.Rendered.Content)
+	}
+	if !strings.Contains(result.Rendered.Content, "\"optimusctx\"") {
+		t.Fatalf("content missing optimusctx entry: %s", result.Rendered.Content)
+	}
+	if strings.TrimSpace(result.Rendered.AppliedContent) == "" {
+		t.Fatal("gemini-cli preview should keep applied content for real writes")
+	}
+	if result.Guidance == nil {
+		t.Fatal("gemini-cli preview should render guidance")
+	}
+	if got, want := result.Guidance.Path, filepath.Join(homeDir, ".gemini", repository.GeminiGuidanceFilename); got != want {
+		t.Fatalf("guidance path = %q, want %q", got, want)
+	}
+}
+
+func TestInstallServiceGeminiCLIWritePreservesExistingContent(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	configPath := filepath.Join(homeDir, ".gemini", "settings.json")
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	const existing = "{\n  \"theme\": \"dark\",\n  \"mcpServers\": {\n    \"other\": {\n      \"command\": \"other\",\n      \"args\": [\"serve\"]\n    }\n  }\n}\n"
+	if err := os.WriteFile(configPath, []byte(existing), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	existingGuidance := "# user guidance\n"
+	guidancePath := filepath.Join(homeDir, ".gemini", repository.GeminiGuidanceFilename)
+	if err := os.WriteFile(guidancePath, []byte(existingGuidance), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", guidancePath, err)
+	}
+
+	service := NewInstallService()
+	result, err := service.Register(context.Background(), InstallRequest{
+		ClientID: "gemini-cli",
+		Write:    true,
+	})
+	if err != nil {
+		t.Fatalf("Register(gemini-cli write) error = %v", err)
+	}
+	if !result.Wrote {
+		t.Fatal("write should report wrote=true")
+	}
+	if result.Guidance == nil {
+		t.Fatal("gemini-cli write should persist guidance")
+	}
+
+	contentBytes, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile(%q) error = %v", configPath, err)
+	}
+	content := string(contentBytes)
+	for _, want := range []string{
+		"\"theme\": \"dark\"",
+		"\"other\": {",
+		"\"optimusctx\": {",
+		"\"command\": \"optimusctx\"",
+		"\"run\"",
+	} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("written Gemini config missing %q:\n%s", want, content)
+		}
+	}
+
+	guidanceBytes, err := os.ReadFile(guidancePath)
+	if err != nil {
+		t.Fatalf("ReadFile(%q) error = %v", guidancePath, err)
+	}
+	guidance := string(guidanceBytes)
+	if !strings.Contains(guidance, "# user guidance") {
+		t.Fatalf("guidance should preserve existing user content:\n%s", guidance)
+	}
+	if !strings.Contains(guidance, "OptimusCtx MCP guidance") {
+		t.Fatalf("guidance missing managed block:\n%s", guidance)
+	}
+}
+
 func TestInstallServicePreservesExistingCodexConfigPreview(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)

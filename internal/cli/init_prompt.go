@@ -40,7 +40,7 @@ func writerIsInteractive(writer io.Writer) bool {
 func promptInitOnboarding(stdin io.Reader, stdout io.Writer, repoRoot string) (app.InstallRequest, bool, error) {
 	reader := bufio.NewReader(stdin)
 
-	if _, err := io.WriteString(stdout, "\nset up a supported MCP client now?\n  1. Claude Desktop\n  2. Claude CLI\n  3. Codex App\n  4. Codex CLI\nChoose [1-4, Enter to skip]: "); err != nil {
+	if _, err := io.WriteString(stdout, "\nset up a supported MCP client now?\n  1. Claude Desktop\n  2. Claude CLI\n  3. Codex App\n  4. Codex CLI\n  5. Gemini CLI\nChoose [1-5, Enter to skip]: "); err != nil {
 		return app.InstallRequest{}, false, err
 	}
 
@@ -57,6 +57,9 @@ func promptInitOnboarding(stdin io.Reader, stdout io.Writer, repoRoot string) (a
 		"4":              string(repository.ClientCodexCLI),
 		"codex-cli":      string(repository.ClientCodexCLI),
 		"codex cli":      string(repository.ClientCodexCLI),
+		"5":              string(repository.ClientGeminiCLI),
+		"gemini-cli":     string(repository.ClientGeminiCLI),
+		"gemini cli":     string(repository.ClientGeminiCLI),
 	}, "")
 	if err != nil {
 		return app.InstallRequest{}, false, err
@@ -111,6 +114,24 @@ func promptInitOnboarding(stdin io.Reader, stdout io.Writer, repoRoot string) (a
 			sharedConfigPath = "requires --config in WSL, for example /mnt/c/Users/<user>/.codex/config.toml"
 		}
 		if _, err := fmt.Fprintf(stdout, "Where should %s use OptimusCtx?\n  1. This repo only\n     %s\n  2. Your shared Codex config\n     %s\nChoose [1-2, default: 1]: ", clientLabel, repoConfigPath, sharedConfigPath); err != nil {
+			return app.InstallRequest{}, false, err
+		}
+		destination, _, err := readPromptChoice(reader, stdout, map[string]string{
+			"1": "repo",
+			"2": "shared",
+		}, "repo")
+		if err != nil {
+			return app.InstallRequest{}, false, err
+		}
+		if destination == "repo" {
+			request.ConfigPath = repoConfigPath
+		} else if sharedConfigErr != nil {
+			return app.InstallRequest{}, false, sharedConfigErr
+		}
+	case string(repository.ClientGeminiCLI):
+		repoConfigPath := filepath.Join(repoRoot, ".gemini", "settings.json")
+		sharedConfigPath, sharedConfigErr := app.DefaultGeminiCLIConfigPath()
+		if _, err := fmt.Fprintf(stdout, "Where should Gemini CLI use OptimusCtx?\n  1. This repo only\n     %s\n  2. Your shared Gemini config\n     %s\nChoose [1-2, default: 1]: ", repoConfigPath, sharedConfigPath); err != nil {
 			return app.InstallRequest{}, false, err
 		}
 		destination, _, err := readPromptChoice(reader, stdout, map[string]string{

@@ -404,7 +404,7 @@ func doctorSummary(report repository.DoctorReport) repository.DoctorSummary {
 	addIssue("watch", report.Watch.Status, doctorWatchIssue(report), doctorWatchAction(report))
 	addIssue("structural", report.Structural.Status, doctorStructuralIssue(report), doctorStructuralAction(report))
 	addIssue("budget", report.Budget.Status, "no persisted token-cost hotspots available", "run `optimusctx run` so runtime refresh can persist budget analysis inputs")
-	addIssue("mcp", report.MCPReadiness.Status, doctorMCPIssue(report), "use `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, or codex-cli to preview or register the MCP contract")
+	addIssue("mcp", report.MCPReadiness.Status, doctorMCPIssue(report), "use `optimusctx init --client <client> [--write]` for claude-desktop, claude-cli, codex-app, codex-cli, or gemini-cli to preview or register the MCP contract")
 	addIssue("mcp-registration", report.HostMCP.Status, doctorMCPRegistrationIssue(report), doctorMCPRegistrationAction(report))
 	if doctorShouldReportMCPActivityIssue(report) {
 		addIssue("mcp-usage", report.MCPActivity.Status, doctorMCPActivityIssue(report), doctorMCPActivityAction(report))
@@ -636,6 +636,9 @@ func (s DoctorService) hostRegistrations(ctx context.Context, repoRoot string) (
 		case repository.ClientCodexCLI:
 			codexCLISharedPath, _ := resolveCodexCLIConfigPath("")
 			hosts = append(hosts, s.detectCodexClient(client, repoRoot, codexCLISharedPath))
+		case repository.ClientGeminiCLI:
+			geminiSharedPath, _ := resolveGeminiCLIConfigPath("")
+			hosts = append(hosts, s.detectGeminiCLI(client, repoRoot, geminiSharedPath))
 		}
 	}
 
@@ -662,11 +665,11 @@ func (s DoctorService) hostRegistrations(ctx context.Context, repoRoot string) (
 
 func (s DoctorService) detectClaudeDesktop(client repository.SupportedClient, configPath string) repository.DoctorHostRegistration {
 	host := repository.DoctorHostRegistration{
-		Client:            client,
-		RegistrationState: repository.HostRegistrationNotDetected,
-		RegistrationPath:  configPath,
-		GuidanceState:     repository.GuidanceStateUnsupported,
-		GuidanceEvidence:  "Claude Desktop registration is supported, but durable agent guidance is not managed through Claude Desktop config.",
+		Client:             client,
+		RegistrationState:  repository.HostRegistrationNotDetected,
+		RegistrationPath:   configPath,
+		GuidanceState:      repository.GuidanceStateUnsupported,
+		GuidanceEvidence:   "Claude Desktop registration is supported, but durable agent guidance is not managed through Claude Desktop config.",
 		CapabilityEvidence: client.CapabilitySummary(),
 	}
 
@@ -698,9 +701,9 @@ func (s DoctorService) detectClaudeDesktop(client repository.SupportedClient, co
 
 func (s DoctorService) detectClaudeCLI(ctx context.Context, client repository.SupportedClient, repoRoot string) repository.DoctorHostRegistration {
 	host := repository.DoctorHostRegistration{
-		Client:            client,
-		RegistrationState: repository.HostRegistrationUnverified,
-		GuidanceState:     repository.GuidanceStateUnverified,
+		Client:             client,
+		RegistrationState:  repository.HostRegistrationUnverified,
+		GuidanceState:      repository.GuidanceStateUnverified,
 		CapabilityEvidence: client.CapabilitySummary(),
 	}
 
@@ -766,9 +769,9 @@ func (s DoctorService) detectClaudeCLI(ctx context.Context, client repository.Su
 
 func (s DoctorService) detectCodexClient(client repository.SupportedClient, repoRoot string, sharedConfigPath string) repository.DoctorHostRegistration {
 	host := repository.DoctorHostRegistration{
-		Client:            client,
-		RegistrationState: repository.HostRegistrationNotDetected,
-		GuidanceState:     repository.GuidanceStateNotConfigured,
+		Client:             client,
+		RegistrationState:  repository.HostRegistrationNotDetected,
+		GuidanceState:      repository.GuidanceStateNotConfigured,
 		CapabilityEvidence: client.CapabilitySummary(),
 	}
 
@@ -817,6 +820,62 @@ func (s DoctorService) detectCodexClient(client repository.SupportedClient, repo
 
 	host.RegistrationEvidence = "no Codex config currently references OptimusCtx"
 	host.GuidancePath = s.codexGuidancePath(repoRoot)
+	return host
+}
+
+func (s DoctorService) detectGeminiCLI(client repository.SupportedClient, repoRoot string, sharedConfigPath string) repository.DoctorHostRegistration {
+	host := repository.DoctorHostRegistration{
+		Client:             client,
+		RegistrationState:  repository.HostRegistrationNotDetected,
+		GuidanceState:      repository.GuidanceStateNotConfigured,
+		CapabilityEvidence: client.CapabilitySummary(),
+	}
+
+	repoConfigPath := filepath.Join(repoRoot, ".gemini", "settings.json")
+	paths := []string{repoConfigPath}
+	if strings.TrimSpace(sharedConfigPath) != "" {
+		paths = append(paths, sharedConfigPath)
+	}
+	for _, path := range paths {
+		existing, err := readExistingClientConfig(s.readFileFn(), path)
+		if err != nil {
+			host.RegistrationState = repository.HostRegistrationUnverified
+			host.RegistrationEvidence = err.Error()
+			return host
+		}
+		if len(existing) == 0 {
+			continue
+		}
+		document, err := repository.GeminiConfigServerNames(existing)
+		if err != nil {
+			host.RegistrationState = repository.HostRegistrationUnverified
+			host.RegistrationEvidence = err.Error()
+			host.RegistrationPath = path
+			return host
+		}
+		if document[repository.DefaultMCPServerName] {
+			host.RegistrationState = repository.HostRegistrationDetected
+			host.RegistrationPath = path
+			if path == repoConfigPath {
+				host.RegistrationEvidence = "found OptimusCtx in repo `.gemini/settings.json`"
+				host.GuidancePath = filepath.Join(repoRoot, repository.GeminiGuidanceFilename)
+			} else {
+				host.RegistrationEvidence = "found OptimusCtx in shared Gemini config"
+				host.GuidancePath = filepath.Join(filepath.Dir(sharedConfigPath), repository.GeminiGuidanceFilename)
+			}
+			if s.fileContains(host.GuidancePath, "OptimusCtx MCP guidance") {
+				host.GuidanceState = repository.GuidanceStateConfigured
+				host.GuidanceEvidence = "found managed Gemini guidance block"
+			} else {
+				host.GuidanceState = repository.GuidanceStateNotConfigured
+				host.GuidanceEvidence = "Gemini guidance block is missing"
+			}
+			return host
+		}
+	}
+
+	host.RegistrationEvidence = "no Gemini config currently references OptimusCtx"
+	host.GuidancePath = filepath.Join(repoRoot, repository.GeminiGuidanceFilename)
 	return host
 }
 

@@ -21,6 +21,7 @@ const (
 	ClientClaudeCLI     ClientID = "claude-cli"
 	ClientCodexApp      ClientID = "codex-app"
 	ClientCodexCLI      ClientID = "codex-cli"
+	ClientGeminiCLI     ClientID = "gemini-cli"
 	ClientGenericMCP    ClientID = "generic"
 )
 
@@ -67,8 +68,8 @@ type ClientCapabilities struct {
 }
 
 type SupportedClient struct {
-	ID          ClientID
-	DisplayName string
+	ID           ClientID
+	DisplayName  string
 	Capabilities ClientCapabilities
 }
 
@@ -147,6 +148,17 @@ func SupportedClients() []SupportedClient {
 			Capabilities: ClientCapabilities{
 				SupportLevel:    ClientSupportLevelNative,
 				ConfigKind:      ClientConfigKindTOML,
+				ConfigScopes:    []ClientConfigScope{ClientConfigScopeRepo, ClientConfigScopeShared},
+				GuidanceSupport: ClientGuidanceSupportManaged,
+				UsageEvidence:   true,
+			},
+		},
+		{
+			ID:          ClientGeminiCLI,
+			DisplayName: "Gemini CLI",
+			Capabilities: ClientCapabilities{
+				SupportLevel:    ClientSupportLevelNative,
+				ConfigKind:      ClientConfigKindJSON,
 				ConfigScopes:    []ClientConfigScope{ClientConfigScopeRepo, ClientConfigScopeShared},
 				GuidanceSupport: ClientGuidanceSupportManaged,
 				UsageEvidence:   true,

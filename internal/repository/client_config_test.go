@@ -9,6 +9,7 @@ func TestSupportedClientsRemainExplicit(t *testing.T) {
 		ClientClaudeCLI,
 		ClientCodexApp,
 		ClientCodexCLI,
+		ClientGeminiCLI,
 		ClientGenericMCP,
 	}
 
@@ -33,13 +34,13 @@ func TestSupportedClientsRemainExplicit(t *testing.T) {
 
 func TestSupportedClientsExposeCapabilities(t *testing.T) {
 	tests := []struct {
-		id                    ClientID
-		wantLevel             ClientSupportLevel
-		wantKind              ClientConfigKind
-		wantGuidance          ClientGuidanceSupport
-		wantUsageEvidence     bool
-		wantMixedEnvironment  bool
-		wantScopes            []ClientConfigScope
+		id                   ClientID
+		wantLevel            ClientSupportLevel
+		wantKind             ClientConfigKind
+		wantGuidance         ClientGuidanceSupport
+		wantUsageEvidence    bool
+		wantMixedEnvironment bool
+		wantScopes           []ClientConfigScope
 	}{
 		{
 			id:                   ClientClaudeDesktop,
@@ -51,12 +52,12 @@ func TestSupportedClientsExposeCapabilities(t *testing.T) {
 			wantScopes:           []ClientConfigScope{ClientConfigScopeShared},
 		},
 		{
-			id:                   ClientClaudeCLI,
-			wantLevel:            ClientSupportLevelNative,
-			wantKind:             ClientConfigKindCommand,
-			wantGuidance:         ClientGuidanceSupportManaged,
-			wantUsageEvidence:    true,
-			wantScopes:           []ClientConfigScope{ClientConfigScopeLocal, ClientConfigScopeProject, ClientConfigScopeUser},
+			id:                ClientClaudeCLI,
+			wantLevel:         ClientSupportLevelNative,
+			wantKind:          ClientConfigKindCommand,
+			wantGuidance:      ClientGuidanceSupportManaged,
+			wantUsageEvidence: true,
+			wantScopes:        []ClientConfigScope{ClientConfigScopeLocal, ClientConfigScopeProject, ClientConfigScopeUser},
 		},
 		{
 			id:                   ClientCodexApp,
@@ -71,6 +72,14 @@ func TestSupportedClientsExposeCapabilities(t *testing.T) {
 			id:                ClientCodexCLI,
 			wantLevel:         ClientSupportLevelNative,
 			wantKind:          ClientConfigKindTOML,
+			wantGuidance:      ClientGuidanceSupportManaged,
+			wantUsageEvidence: true,
+			wantScopes:        []ClientConfigScope{ClientConfigScopeRepo, ClientConfigScopeShared},
+		},
+		{
+			id:                ClientGeminiCLI,
+			wantLevel:         ClientSupportLevelNative,
+			wantKind:          ClientConfigKindJSON,
 			wantGuidance:      ClientGuidanceSupportManaged,
 			wantUsageEvidence: true,
 			wantScopes:        []ClientConfigScope{ClientConfigScopeRepo, ClientConfigScopeShared},
