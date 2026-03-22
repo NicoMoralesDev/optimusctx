@@ -13,6 +13,13 @@ import (
 	"github.com/niccrow/optimusctx/internal/repository"
 )
 
+var (
+	codexConfigUserHomeDir = os.UserHomeDir
+	codexConfigGetenv      = os.Getenv
+	codexConfigReadFile    = os.ReadFile
+	codexConfigGOOS        = runtime.GOOS
+)
+
 type InstallRequest struct {
 	ClientID   string
 	BinaryPath string
@@ -102,7 +109,7 @@ func NewInstallService() InstallService {
 			},
 			codexApp.ID: codexConfigClientAdapter{
 				client:      codexApp,
-				resolvePath: resolveCodexConfigPath,
+				resolvePath: resolveCodexAppConfigPath,
 				readFile:    os.ReadFile,
 				writeFile:   os.WriteFile,
 				mkdirAll:    os.MkdirAll,
@@ -110,7 +117,7 @@ func NewInstallService() InstallService {
 			},
 			codexCLI.ID: codexConfigClientAdapter{
 				client:      codexCLI,
-				resolvePath: resolveCodexConfigPath,
+				resolvePath: resolveCodexCLIConfigPath,
 				readFile:    os.ReadFile,
 				writeFile:   os.WriteFile,
 				mkdirAll:    os.MkdirAll,
@@ -411,8 +418,8 @@ func claudeCLINotes() []string {
 func codexAppNotes() []string {
 	return []string{
 		"Codex App writes the native shared Codex config.toml contract.",
-		"The preview target defaults to `~/.codex/config.toml` and preserves unrelated Codex settings during merges.",
-		"Use --config to target ~/.codex/config.toml or a repo-local .codex/config.toml path.",
+		"The preview target preserves unrelated Codex settings during merges.",
+		"If you run from WSL and Codex App lives on Windows, use --config with the Windows-backed path such as `/mnt/c/Users/<user>/.codex/config.toml` when auto-detection cannot infer it.",
 	}
 }
 
@@ -453,12 +460,12 @@ func readExistingClientConfig(readFile func(string) ([]byte, error), configPath 
 	return nil, fmt.Errorf("read client config: %w", err)
 }
 
-func resolveCodexConfigPath(explicitPath string) (string, error) {
+func resolveCodexCLIConfigPath(explicitPath string) (string, error) {
 	if explicitPath != "" {
-		return explicitPath, nil
+		return normalizeCodexConfigPath(explicitPath), nil
 	}
 
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := codexConfigUserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("resolve home directory: %w", err)
 	}
@@ -466,8 +473,33 @@ func resolveCodexConfigPath(explicitPath string) (string, error) {
 	return filepath.Join(homeDir, ".codex", "config.toml"), nil
 }
 
+func resolveCodexAppConfigPath(explicitPath string) (string, error) {
+	if explicitPath != "" {
+		return normalizeCodexConfigPath(explicitPath), nil
+	}
+	if runningInWSL() {
+		if path, ok := inferWindowsCodexConfigPathFromEnv(); ok {
+			return path, nil
+		}
+		return "", errors.New("resolve Codex App config path: running inside WSL but Windows Codex App config could not be inferred; pass --config /mnt/c/Users/<user>/.codex/config.toml")
+	}
+	return resolveCodexCLIConfigPath("")
+}
+
+func resolveCodexConfigPath(explicitPath string) (string, error) {
+	return resolveCodexCLIConfigPath(explicitPath)
+}
+
 func DefaultCodexConfigPath() (string, error) {
-	return resolveCodexConfigPath("")
+	return resolveCodexCLIConfigPath("")
+}
+
+func DefaultCodexCLIConfigPath() (string, error) {
+	return resolveCodexCLIConfigPath("")
+}
+
+func DefaultCodexAppConfigPath() (string, error) {
+	return resolveCodexAppConfigPath("")
 }
 
 func resolveClaudeDesktopConfigPath(explicitPath string) (string, error) {
@@ -495,7 +527,11 @@ func (s InstallService) renderGuidance(request InstallRequest, mode repository.R
 }
 
 func (s InstallService) renderCodexGuidance(request InstallRequest, mode repository.RenderMode) (*repository.RenderedGuidance, error) {
-	configPath, err := resolveCodexConfigPath(request.ConfigPath)
+	resolvePath := resolveCodexCLIConfigPath
+	if repository.ClientID(request.ClientID) == repository.ClientCodexApp {
+		resolvePath = resolveCodexAppConfigPath
+	}
+	configPath, err := resolvePath(request.ConfigPath)
 	if err != nil {
 		return nil, err
 	}
@@ -647,4 +683,59 @@ func resolveClaudeDesktopConfigPathForPlatform(goos string, homeDir string, appD
 
 func runCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
 	return exec.CommandContext(ctx, name, args...).CombinedOutput()
+}
+
+func runningInWSL() bool {
+	if codexConfigGOOS != "linux" {
+		return false
+	}
+	if strings.TrimSpace(codexConfigGetenv("WSL_DISTRO_NAME")) != "" {
+		return true
+	}
+	data, err := codexConfigReadFile("/proc/version")
+	if err != nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(string(data)), "microsoft")
+}
+
+func inferWindowsCodexConfigPathFromEnv() (string, bool) {
+	if value := strings.TrimSpace(codexConfigGetenv("OPTIMUSCTX_CODEX_APP_CONFIG")); value != "" {
+		return normalizeCodexConfigPath(value), true
+	}
+	if value := strings.TrimSpace(codexConfigGetenv("USERPROFILE")); value != "" {
+		return normalizeCodexConfigPath(filepath.Join(value, ".codex", "config.toml")), true
+	}
+	homeDrive := strings.TrimSpace(codexConfigGetenv("HOMEDRIVE"))
+	homePath := strings.TrimSpace(codexConfigGetenv("HOMEPATH"))
+	if homeDrive != "" && homePath != "" {
+		return normalizeCodexConfigPath(filepath.Join(homeDrive+homePath, ".codex", "config.toml")), true
+	}
+	return "", false
+}
+
+func normalizeCodexConfigPath(path string) string {
+	path = strings.TrimSpace(path)
+	if runningInWSL() && looksLikeWindowsDrivePath(path) {
+		return windowsPathToWSL(path)
+	}
+	return path
+}
+
+func looksLikeWindowsDrivePath(path string) bool {
+	if len(path) < 3 {
+		return false
+	}
+	drive := path[0]
+	return ((drive >= 'A' && drive <= 'Z') || (drive >= 'a' && drive <= 'z')) && path[1] == ':' && (path[2] == '\\' || path[2] == '/')
+}
+
+func windowsPathToWSL(path string) string {
+	path = strings.ReplaceAll(path, "\\", "/")
+	drive := strings.ToLower(path[:1])
+	rest := strings.TrimPrefix(path[2:], "/")
+	if rest == "" {
+		return filepath.Join("/mnt", drive)
+	}
+	return filepath.Join("/mnt", drive, rest)
 }

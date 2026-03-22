@@ -309,6 +309,7 @@ func TestInitCommandInteractiveCodexAppSharedConfigChoice(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
 	sharedPath := filepath.Join(homeDir, ".codex", "config.toml")
+	t.Setenv("OPTIMUSCTX_CODEX_APP_CONFIG", sharedPath)
 
 	previousInstall := initInstallService
 	previousPrompt := initShouldPrompt

@@ -94,14 +94,18 @@ func promptInitOnboarding(stdin io.Reader, stdout io.Writer, repoRoot string) (a
 		}
 		request.Scope = scope
 	case string(repository.ClientCodexApp), string(repository.ClientCodexCLI):
-		sharedConfigPath, err := app.DefaultCodexConfigPath()
-		if err != nil {
-			return app.InstallRequest{}, false, err
-		}
 		repoConfigPath := filepath.Join(repoRoot, ".codex", "config.toml")
 		clientLabel := "Codex App"
+		sharedConfigPath := ""
+		sharedConfigErr := error(nil)
 		if request.ClientID == string(repository.ClientCodexCLI) {
 			clientLabel = "Codex CLI"
+			sharedConfigPath, sharedConfigErr = app.DefaultCodexCLIConfigPath()
+		} else {
+			sharedConfigPath, sharedConfigErr = app.DefaultCodexAppConfigPath()
+		}
+		if sharedConfigErr != nil {
+			sharedConfigPath = "requires --config in WSL, for example /mnt/c/Users/<user>/.codex/config.toml"
 		}
 		if _, err := fmt.Fprintf(stdout, "Where should %s use OptimusCtx?\n  1. This repo only\n     %s\n  2. Your shared Codex config\n     %s\nChoose [1-2, default: 1]: ", clientLabel, repoConfigPath, sharedConfigPath); err != nil {
 			return app.InstallRequest{}, false, err
@@ -115,6 +119,8 @@ func promptInitOnboarding(stdin io.Reader, stdout io.Writer, repoRoot string) (a
 		}
 		if destination == "repo" {
 			request.ConfigPath = repoConfigPath
+		} else if sharedConfigErr != nil {
+			return app.InstallRequest{}, false, sharedConfigErr
 		}
 	}
 

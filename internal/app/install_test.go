@@ -56,8 +56,84 @@ func TestResolveClaudeDesktopConfigPathWindowsRequiresAppData(t *testing.T) {
 	}
 }
 
+func TestResolveCodexCLIConfigPathUsesHomeDir(t *testing.T) {
+	previousHome := codexConfigUserHomeDir
+	previousGOOS := codexConfigGOOS
+	t.Cleanup(func() {
+		codexConfigUserHomeDir = previousHome
+		codexConfigGOOS = previousGOOS
+	})
+	codexConfigUserHomeDir = func() (string, error) { return "/home/tester", nil }
+	codexConfigGOOS = "linux"
+
+	got, err := resolveCodexCLIConfigPath("")
+	if err != nil {
+		t.Fatalf("resolveCodexCLIConfigPath() error = %v", err)
+	}
+	if want := "/home/tester/.codex/config.toml"; got != want {
+		t.Fatalf("config path = %q, want %q", got, want)
+	}
+}
+
+func TestResolveCodexAppConfigPathWSLUsesWindowsUserProfile(t *testing.T) {
+	previousGetenv := codexConfigGetenv
+	previousReadFile := codexConfigReadFile
+	previousGOOS := codexConfigGOOS
+	t.Cleanup(func() {
+		codexConfigGetenv = previousGetenv
+		codexConfigReadFile = previousReadFile
+		codexConfigGOOS = previousGOOS
+	})
+	codexConfigGOOS = "linux"
+	codexConfigGetenv = func(key string) string {
+		switch key {
+		case "WSL_DISTRO_NAME":
+			return "Ubuntu-22.04"
+		case "USERPROFILE":
+			return `C:\Users\nicle`
+		default:
+			return ""
+		}
+	}
+	codexConfigReadFile = func(string) ([]byte, error) { return nil, os.ErrNotExist }
+
+	got, err := resolveCodexAppConfigPath("")
+	if err != nil {
+		t.Fatalf("resolveCodexAppConfigPath() error = %v", err)
+	}
+	if want := "/mnt/c/Users/nicle/.codex/config.toml"; got != want {
+		t.Fatalf("config path = %q, want %q", got, want)
+	}
+}
+
+func TestResolveCodexAppConfigPathWSLRequiresExplicitPathWhenWindowsProfileUnknown(t *testing.T) {
+	previousGetenv := codexConfigGetenv
+	previousReadFile := codexConfigReadFile
+	previousGOOS := codexConfigGOOS
+	t.Cleanup(func() {
+		codexConfigGetenv = previousGetenv
+		codexConfigReadFile = previousReadFile
+		codexConfigGOOS = previousGOOS
+	})
+	codexConfigGOOS = "linux"
+	codexConfigGetenv = func(key string) string {
+		if key == "WSL_DISTRO_NAME" {
+			return "Ubuntu-22.04"
+		}
+		return ""
+	}
+	codexConfigReadFile = func(string) ([]byte, error) { return nil, os.ErrNotExist }
+
+	_, err := resolveCodexAppConfigPath("")
+	if err == nil || !strings.Contains(err.Error(), "pass --config /mnt/c/Users/<user>/.codex/config.toml") {
+		t.Fatalf("resolveCodexAppConfigPath() error = %v", err)
+	}
+}
+
 func TestInstallServiceSupportsGenericPreview(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+	t.Setenv("OPTIMUSCTX_CODEX_APP_CONFIG", filepath.Join(homeDir, ".codex", "config.toml"))
 
 	service := NewInstallService()
 	result, err := service.Register(context.Background(), InstallRequest{ClientID: "generic"})
@@ -264,6 +340,7 @@ func TestInstallServiceClaudeCLIWriteReportsCommandFailure(t *testing.T) {
 func TestInstallServiceSupportsCodexAppPreview(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
+	t.Setenv("OPTIMUSCTX_CODEX_APP_CONFIG", filepath.Join(homeDir, ".codex", "config.toml"))
 
 	service := NewInstallService()
 	result, err := service.Register(context.Background(), InstallRequest{ClientID: "codex-app"})
@@ -340,6 +417,7 @@ func TestInstallServiceSupportsCodexCLIPreview(t *testing.T) {
 func TestInstallServicePreservesExistingCodexConfigPreview(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
+	t.Setenv("OPTIMUSCTX_CODEX_APP_CONFIG", filepath.Join(homeDir, ".codex", "config.toml"))
 
 	configPath := filepath.Join(homeDir, ".codex", "config.toml")
 	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
@@ -399,6 +477,7 @@ approval_policy = "on-request"
 func TestInstallServiceCodexAppWritePersistsNativeConfig(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
+	t.Setenv("OPTIMUSCTX_CODEX_APP_CONFIG", filepath.Join(homeDir, ".codex", "config.toml"))
 
 	service := NewInstallService()
 	result, err := service.Register(context.Background(), InstallRequest{
@@ -460,6 +539,7 @@ func TestInstallServiceCodexCLIWriteUsesExplicitConfigPath(t *testing.T) {
 func TestInstallServiceCodexAppWritePreservesExistingContent(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
+	t.Setenv("OPTIMUSCTX_CODEX_APP_CONFIG", filepath.Join(homeDir, ".codex", "config.toml"))
 
 	configPath := filepath.Join(homeDir, ".codex", "config.toml")
 	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
@@ -518,6 +598,7 @@ approval_policy = "on-request"
 func TestInstallServiceCodexWriteIsIdempotent(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
+	t.Setenv("OPTIMUSCTX_CODEX_APP_CONFIG", filepath.Join(homeDir, ".codex", "config.toml"))
 
 	service := NewInstallService()
 	for i := 0; i < 2; i++ {

@@ -614,11 +614,10 @@ func (s DoctorService) hostRegistrations(ctx context.Context, repoRoot string) (
 	}
 	hosts = append(hosts, s.detectClaudeCLI(ctx, repoRoot))
 
-	codexSharedPath, err := resolveCodexConfigPath("")
-	if err == nil {
-		hosts = append(hosts, s.detectCodexClient(clients[2], repoRoot, codexSharedPath))
-		hosts = append(hosts, s.detectCodexClient(clients[3], repoRoot, codexSharedPath))
-	}
+	codexAppSharedPath, _ := resolveCodexAppConfigPath("")
+	codexCLISharedPath, _ := resolveCodexCLIConfigPath("")
+	hosts = append(hosts, s.detectCodexClient(clients[2], repoRoot, codexAppSharedPath))
+	hosts = append(hosts, s.detectCodexClient(clients[3], repoRoot, codexCLISharedPath))
 
 	status := repository.DoctorStatusMissing
 	hasDetected := false
@@ -753,7 +752,10 @@ func (s DoctorService) detectCodexClient(client repository.SupportedClient, repo
 	}
 
 	repoConfigPath := filepath.Join(repoRoot, ".codex", "config.toml")
-	paths := []string{repoConfigPath, sharedConfigPath}
+	paths := []string{repoConfigPath}
+	if strings.TrimSpace(sharedConfigPath) != "" {
+		paths = append(paths, sharedConfigPath)
+	}
 	for _, path := range paths {
 		existing, err := readExistingClientConfig(s.readFileFn(), path)
 		if err != nil {
