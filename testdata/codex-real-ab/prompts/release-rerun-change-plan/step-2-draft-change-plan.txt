@@ -1,0 +1,16 @@
+Append to `.benchmark/release-rerun-change-plan.md`.
+
+Add a `## Change Plan` section with exactly 3 numbered items.
+
+Each item must:
+- name one file that would need an edit
+- describe the purpose of that edit
+
+Across the 3 numbered items, include:
+- `canonical release`
+- `downstream rerun`
+- `publication_status=already_current`
+- `publication_status=not_published`
+- `workflow_dispatch`
+
+Do not remove or rewrite `## Contract Surface`.

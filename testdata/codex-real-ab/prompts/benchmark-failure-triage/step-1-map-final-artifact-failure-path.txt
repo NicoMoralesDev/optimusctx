@@ -1,0 +1,11 @@
+Create `.benchmark/benchmark-failure-triage.md`.
+
+Write a `## Failure Path` section with exactly 4 bullet points.
+
+Across the 4 bullets, cover:
+- where final artifact verification is performed, including `internal/app/benchmark_runner.go`
+- where final artifact failures are summarized for humans, including `internal/app/benchmark_service.go`
+- one supporting test file, including `internal/app/benchmark_service_test.go`
+- the exact phrases `final artifact`, `normalized final artifact is missing`, and `methodology drift`
+
+Ground every bullet in the current repository code. Do not propose changes yet.

@@ -1,0 +1,12 @@
+Create `.benchmark/release-rerun-change-plan.md`.
+
+Write a `## Contract Surface` section with exactly 4 bullet points.
+
+Across the 4 bullets, cover:
+- `.github/workflows/release.yml`
+- `docs/operator-release-guide.md`
+- `docs/release-checklist.md`
+- `internal/release/release_test.go`
+- the exact tokens `workflow_dispatch`, `release_tag`, and `publication_channel`
+
+Ground every bullet in the current repo. Do not propose changes yet.

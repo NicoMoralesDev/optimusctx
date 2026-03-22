@@ -1,0 +1,15 @@
+Append to `.benchmark/release-rerun-change-plan.md`.
+
+Add a `## Verification Plan` section with exactly 3 numbered items.
+
+Each item must:
+- mention one verification command or test target
+- mention one artifact path under `.benchmark/`
+
+Across the 3 numbered items, include:
+- `go test ./internal/release`
+- `cross-file`
+- `sequential`
+- `edit verification`
+
+Do not remove or rewrite the earlier sections.

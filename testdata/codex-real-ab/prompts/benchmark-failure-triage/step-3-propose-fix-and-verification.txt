@@ -1,0 +1,16 @@
+Append to `.benchmark/benchmark-failure-triage.md`.
+
+Add a `## Fix Plan` section with exactly 3 numbered items.
+
+Each item must:
+- describe one concrete engineering step
+- mention at least one repo file path
+- mention one verification artifact path under `.benchmark/`
+
+Across the 3 numbered items, include:
+- `bug triage`
+- `edit verification`
+- `go test`
+- `final artifact`
+
+Do not remove or rewrite the earlier sections.

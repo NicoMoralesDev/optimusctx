@@ -6,46 +6,46 @@
   "requires_workspace_write": true,
   "scenarios": [
     {
-      "id": "benchmark-contract-audit",
-      "name": "Benchmark Contract Audit",
-      "category": "repo-analysis",
+      "id": "benchmark-failure-triage",
+      "name": "Benchmark Failure Triage",
+      "category": "bug-triage",
       "steps": [
         {
-          "id": "inspect-suite-loading",
-          "name": "Inspect Suite Loading",
-          "prompt_file": "prompts/benchmark-contract-audit/step-1-inspect-suite-loading.txt"
+          "id": "map-final-artifact-failure-path",
+          "name": "Map Final Artifact Failure Path",
+          "prompt_file": "prompts/benchmark-failure-triage/step-1-map-final-artifact-failure-path.txt"
         },
         {
-          "id": "trace-evidence-bundle",
-          "name": "Trace Evidence Bundle",
-          "prompt_file": "prompts/benchmark-contract-audit/step-2-trace-evidence-bundle.txt"
+          "id": "identify-regression-surface",
+          "name": "Identify Regression Surface",
+          "prompt_file": "prompts/benchmark-failure-triage/step-2-identify-regression-surface.txt"
         },
         {
-          "id": "propose-benchmark-workflows",
-          "name": "Propose Benchmark Workflows",
-          "prompt_file": "prompts/benchmark-contract-audit/step-3-propose-benchmark-workflows.txt"
+          "id": "propose-fix-and-verification",
+          "name": "Propose Fix And Verification",
+          "prompt_file": "prompts/benchmark-failure-triage/step-3-propose-fix-and-verification.txt"
         }
       ]
     },
     {
-      "id": "release-contract-audit",
-      "name": "Release Contract Audit",
-      "category": "release-analysis",
+      "id": "release-rerun-change-plan",
+      "name": "Release Rerun Change Plan",
+      "category": "edit-verification",
       "steps": [
         {
-          "id": "map-canonical-release-contract",
-          "name": "Map Canonical Release Contract",
-          "prompt_file": "prompts/release-contract-audit/step-1-map-canonical-release-contract.txt"
+          "id": "map-rerun-contract-surface",
+          "name": "Map Rerun Contract Surface",
+          "prompt_file": "prompts/release-rerun-change-plan/step-1-map-rerun-contract-surface.txt"
         },
         {
-          "id": "trace-downstream-rerun-rules",
-          "name": "Trace Downstream Rerun Rules",
-          "prompt_file": "prompts/release-contract-audit/step-2-trace-downstream-rerun-rules.txt"
+          "id": "draft-change-plan",
+          "name": "Draft Change Plan",
+          "prompt_file": "prompts/release-rerun-change-plan/step-2-draft-change-plan.txt"
         },
         {
-          "id": "propose-release-benchmark-flow",
-          "name": "Propose Release Benchmark Flow",
-          "prompt_file": "prompts/release-contract-audit/step-3-propose-release-benchmark-flow.txt"
+          "id": "draft-verification-plan",
+          "name": "Draft Verification Plan",
+          "prompt_file": "prompts/release-rerun-change-plan/step-3-draft-verification-plan.txt"
         }
       ]
     }

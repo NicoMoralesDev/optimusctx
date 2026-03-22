@@ -13,81 +13,85 @@ target_file=""
 required_terms=()
 
 case "$BENCH_TASK_ID" in
-  inspect-suite-loading)
-    target_file="$BENCH_WORKSPACE/.benchmark/benchmark-contract-audit.md"
+  map-final-artifact-failure-path)
+    target_file="$BENCH_WORKSPACE/.benchmark/benchmark-failure-triage.md"
     required_terms=(
-      "## suite loading"
-      "internal/repository/benchmark.go"
+      "## failure path"
       "internal/app/benchmark_runner.go"
-      "loadbenchmarksuite"
-      "loadbenchmarksuites"
-      "validatebenchmarkfixturereferences"
-      "duplicate benchmark suite id"
-    )
-    ;;
-  trace-evidence-bundle)
-    target_file="$BENCH_WORKSPACE/.benchmark/benchmark-contract-audit.md"
-    required_terms=(
-      "## evidence bundle"
       "internal/app/benchmark_service.go"
-      "buildbenchmarkevidencebundle"
       "internal/app/benchmark_service_test.go"
-      "buildbenchmarkhumansummary"
+      "final artifact"
+      "normalized final artifact is missing"
       "methodology drift"
     )
     ;;
-  propose-benchmark-workflows)
-    target_file="$BENCH_WORKSPACE/.benchmark/benchmark-contract-audit.md"
+  identify-regression-surface)
+    target_file="$BENCH_WORKSPACE/.benchmark/benchmark-failure-triage.md"
     required_terms=(
-      "## benchmark workflow candidates"
+      "## regression surface"
+      "1."
+      "2."
+      "3."
+      "comparebenchmarkevidencebundles"
+      "buildbenchmarkhumansummary"
+      "final artifact"
+      "invalid run"
+      "methodology"
+    )
+    ;;
+  propose-fix-and-verification)
+    target_file="$BENCH_WORKSPACE/.benchmark/benchmark-failure-triage.md"
+    required_terms=(
+      "## fix plan"
       "1."
       "2."
       "3."
       ".benchmark/"
-      "navigation"
       "bug triage"
       "edit verification"
-      "persisted runs"
+      "go test"
       "final artifact"
     )
     ;;
-  map-canonical-release-contract)
-    target_file="$BENCH_WORKSPACE/.benchmark/release-contract-audit.md"
+  map-rerun-contract-surface)
+    target_file="$BENCH_WORKSPACE/.benchmark/release-rerun-change-plan.md"
     required_terms=(
-      "## canonical release contract"
+      "## contract surface"
       ".github/workflows/release.yml"
       "docs/operator-release-guide.md"
+      "docs/release-checklist.md"
       "internal/release/release_test.go"
-      "github release remains the canonical root and rollback source"
       "workflow_dispatch"
       "release_tag"
       "publication_channel"
     )
     ;;
-  trace-downstream-rerun-rules)
-    target_file="$BENCH_WORKSPACE/.benchmark/release-contract-audit.md"
+  draft-change-plan)
+    target_file="$BENCH_WORKSPACE/.benchmark/release-rerun-change-plan.md"
     required_terms=(
-      "## downstream rerun rules"
-      "npm"
-      "homebrew"
-      "scoop"
+      "## change plan"
+      "1."
+      "2."
+      "3."
+      "canonical release"
+      "downstream rerun"
       "publication_status=already_current"
       "publication_status=not_published"
       "workflow_dispatch"
     )
     ;;
-  propose-release-benchmark-flow)
-    target_file="$BENCH_WORKSPACE/.benchmark/release-contract-audit.md"
+  draft-verification-plan)
+    target_file="$BENCH_WORKSPACE/.benchmark/release-rerun-change-plan.md"
     required_terms=(
-      "## release benchmark flow"
+      "## verification plan"
       "1."
       "2."
       "3."
       ".benchmark/"
+      "edit verification"
+      "go test ./internal/release"
       "sequential"
       "cross-file"
-      "canonical release"
-      "downstream rerun"
     )
     ;;
   *)

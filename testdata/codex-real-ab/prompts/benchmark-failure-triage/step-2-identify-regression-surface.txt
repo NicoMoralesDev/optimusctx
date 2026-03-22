@@ -1,0 +1,16 @@
+Append to `.benchmark/benchmark-failure-triage.md`.
+
+Add a `## Regression Surface` section with exactly 3 numbered items.
+
+Each item must:
+- name one concrete file or symbol that would be risky to change
+- explain why a regression could leak into benchmark output
+
+Across the 3 numbered items, include:
+- `compareBenchmarkEvidenceBundles`
+- `BuildBenchmarkHumanSummary`
+- `final artifact`
+- `invalid run`
+- `methodology`
+
+Do not remove or rewrite `## Failure Path`.
