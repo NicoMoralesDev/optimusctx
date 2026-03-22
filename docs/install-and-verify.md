@@ -132,6 +132,7 @@ optimusctx init --client codex-cli --config /path/to/.codex/config.toml --write
 Notes:
 
 - Claude CLI supports `--scope local`, `--scope project`, and `--scope user`.
+- Claude Desktop can use its default desktop config path, but from WSL you may need to point it at the Windows-backed path explicitly, for example `/mnt/c/Users/<user>/AppData/Roaming/Claude/claude_desktop_config.json`.
 - Codex CLI can target the shared `~/.codex/config.toml` path or an explicit repo-local `.codex/config.toml` path.
 - Codex App can also use a shared Codex config, but from WSL you may need to point it at the Windows-backed path explicitly, for example `/mnt/c/Users/<user>/.codex/config.toml`.
 - The interactive `init` flow surfaces those destinations before anything is written.

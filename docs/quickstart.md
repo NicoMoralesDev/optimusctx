@@ -101,6 +101,8 @@ optimusctx init --client codex-cli --config /path/to/.codex/config.toml --write
 
 WSL note:
 
+- If `Claude Desktop` is the Windows app but you run `optimusctx init` from WSL, the desktop config may live under `/mnt/c/Users/<user>/AppData/Roaming/Claude/claude_desktop_config.json` instead of `~/.config/Claude/claude_desktop_config.json`.
+- In that case, pass the Windows-backed path explicitly, for example `optimusctx init --client claude-desktop --config /mnt/c/Users/<user>/AppData/Roaming/Claude/claude_desktop_config.json --write`.
 - If `Codex App` is the Windows app but you run `optimusctx init` from WSL, the shared Codex config may live under `/mnt/c/Users/<user>/.codex/config.toml` instead of `~/.codex/config.toml`.
 - In that case, pass the Windows-backed path explicitly, for example `optimusctx init --client codex-app --config /mnt/c/Users/<user>/.codex/config.toml --write`.
 - `Codex CLI` running inside WSL can still use the Linux-side shared path `~/.codex/config.toml`.
